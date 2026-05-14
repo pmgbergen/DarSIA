@@ -1,0 +1,1881 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Multi-image comparisons (darsia.multi_image_analysis) &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'source/multi_image_analysis/darsia.multi_image_analysis';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Presets (darsia.presets)" href="../presets/darsia.presets.html" />
+    <link rel="prev" title="Measure tools (darsia.measure)" href="../measure/darsia.measure.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item pst-sidebar-collapse"><button id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar"><svg class="pst-icon svg-inline--fa" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
+  </svg>
+  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
+  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
+</button></div>
+        <div class="sidebar-primary-item">
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../corrections/darsia.corrections.html">Shape and color corrections (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../image/darsia.image.html">Physical Images and I/O (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.image</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../manager/darsia.manager.html">Analysis managers (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.manager</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mathematics/darsia.mathematics.html">Mathematical algorithms (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.mathematics</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../measure/darsia.measure.html">Measure tools (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.measure</span></code>)</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Multi-image comparisons (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.multi_image_analysis</span></code>)</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../presets/darsia.presets.html">Presets (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.presets</span></code>)</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../presets/darsia.presets.fluidflower.html">Heteroegenous media analysis workflows (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.presets.fluidflower</span></code>)</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../restoration/darsia.restoration.html">Restoration (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.restoration</span></code>)</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../signals/darsia.signals.html">Signals transformation (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.signals</span></code>)</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../signals/darsia.signals.models.html">Signal conversion models (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.signals.models</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../signals/darsia.signals.reduction.html">Dimensional reduction (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.signals.reduction</span></code>)</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../single_image_analysis/darsia.single_image_analysis.html">Single image analysis (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.single_image_analysis</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../utils/darsia.utils.html">Utilities (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.utils</span></code>)</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../darsia.html" class="nav-link">DarSIA - Darcy Scale Image Analysis toolbox (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia</span></code>)</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Multi-image comparisons (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.multi_image_analysis</span></code>)</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-darsia.multi_image_analysis">
+<span id="multi-image-comparisons-darsia-multi-image-analysis"></span><h1>Multi-image comparisons (<a class="reference internal" href="#module-darsia.multi_image_analysis" title="darsia.multi_image_analysis"><code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.multi_image_analysis</span></code></a>)<a class="headerlink" href="#module-darsia.multi_image_analysis" title="Link to this heading">#</a></h1>
+<p>Multi-image comparison tools to track dynamics in static images. Such are employed
+in order to study concentration analyses, local deformations (equivalent with the task
+of image regstration). An important step of translating iages to concentrations is the
+signal transformation into physically meaningful data. This can be achieved through
+scaling etc. Tools to calibrate models of interest are provided in this subpackage.</p>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">#</a></h2>
+</section>
+<section id="module-darsia.multi_image_analysis.balancing_calibration">
+<span id="darsia-multi-image-analysis-balancing-calibration-module"></span><h2>darsia.multi_image_analysis.balancing_calibration module<a class="headerlink" href="#module-darsia.multi_image_analysis.balancing_calibration" title="Link to this heading">#</a></h2>
+<p>Module collecting several calibration tools for models.</p>
+<p>In particular provided are objective functions for calibration in
+ConcentrationAnalysis.calibrate_balancing().</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">AbstractBalancingCalibration</span></span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/balancing_calibration.html#AbstractBalancingCalibration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Abstract class for defining an objective function
+to be called in ConcentrationAnalysis.calibrate_balancing().</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration.calibrate_balancing">
+<span class="sig-name descname"><span class="pre">calibrate_balancing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/balancing_calibration.html#AbstractBalancingCalibration.calibrate_balancing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration.calibrate_balancing" title="Link to this definition">#</a></dt>
+<dd><p>Utility for calibrating the balancing used in darsia.ConcentrationAnalysis.</p>
+<p>NOTE: Require to combine darsia.ConcentrationAnalysis with a calibration
+model mixin via multiple inheritance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>images</strong> (<em>list</em><em> of </em><em>darsia.Image</em>) – calibration images</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – container holding tuning information for the numerical
+calibration routine</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>success of the calibration study.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration.optimize_balancing">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">optimize_balancing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">images_diff</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relative_times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/balancing_calibration.html#AbstractBalancingCalibration.optimize_balancing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration.optimize_balancing" title="Link to this definition">#</a></dt>
+<dd><p>Abstract method to define an objective function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>objective function.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>callable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration.update_balancing_for_calibration">
+<span class="sig-name descname"><span class="pre">update_balancing_for_calibration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/balancing_calibration.html#AbstractBalancingCalibration.update_balancing_for_calibration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration.update_balancing_for_calibration" title="Link to this definition">#</a></dt>
+<dd><p>Wrapper for updating the balancing (provided as a model),
+depending on whether it is a single model or a combined model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>parameters</strong> (<em>np.ndarray</em>) – model parameters,</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – further tuning parameters and extra info.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ContinuityBasedBalancingCalibrationMixin</span></span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/balancing_calibration.html#ContinuityBasedBalancingCalibrationMixin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration" title="darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractBalancingCalibration</span></code></a></p>
+<p>Calibration balancing based on reducing jumps over interfaces
+for a given labeled image. Has to be combined with
+ConcentrationAnalysis.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin.calibrate_balancing">
+<span class="sig-name descname"><span class="pre">calibrate_balancing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin.calibrate_balancing" title="Link to this definition">#</a></dt>
+<dd><p>Utility for calibrating the balancing used in darsia.ConcentrationAnalysis.</p>
+<p>NOTE: Require to combine darsia.ConcentrationAnalysis with a calibration
+model mixin via multiple inheritance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>images</strong> (<em>list</em><em> of </em><em>darsia.Image</em>) – calibration images</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – container holding tuning information for the numerical
+calibration routine</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>success of the calibration study.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin.optimize_balancing">
+<span class="sig-name descname"><span class="pre">optimize_balancing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/balancing_calibration.html#ContinuityBasedBalancingCalibrationMixin.optimize_balancing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin.optimize_balancing" title="Link to this definition">#</a></dt>
+<dd><p>Define objective function such that the root is the min.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_images</strong> (<em>list</em><em> of </em><em>np.ndarray</em>) – input for _convert_signal</p></li>
+<li><p><strong>images_diff</strong> (<em>list</em><em> of </em><em>np.ndarray</em>) – plain differences wrt background image</p></li>
+<li><p><strong>relative_times</strong> (<em>list</em><em> of </em><em>float</em>) – times</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – dictionary with objective value, here the injection rate</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>optimized model parameters
+bool: success flag</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin.update_balancing_for_calibration">
+<span class="sig-name descname"><span class="pre">update_balancing_for_calibration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin.update_balancing_for_calibration" title="Link to this definition">#</a></dt>
+<dd><p>Wrapper for updating the balancing (provided as a model),
+depending on whether it is a single model or a combined model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>parameters</strong> (<em>np.ndarray</em>) – model parameters,</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – further tuning parameters and extra info.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-darsia.multi_image_analysis.concentrationanalysis">
+<span id="darsia-multi-image-analysis-concentrationanalysis-module"></span><h2>darsia.multi_image_analysis.concentrationanalysis module<a class="headerlink" href="#module-darsia.multi_image_analysis.concentrationanalysis" title="Link to this heading">#</a></h2>
+<p>Capabilities to analyze concentrations/saturation profiles based on image comparison.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ConcentrationAnalysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">signal_reduction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">balancing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restoration</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/concentrationanalysis.html#ConcentrationAnalysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class providing the capabilities to determine concentration/saturation
+profiles based on image comparison, and interpretation of intensity maps.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.find_cleaning_filter">
+<span class="sig-name descname"><span class="pre">find_cleaning_filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline_images</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/concentrationanalysis.html#ConcentrationAnalysis.find_cleaning_filter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.find_cleaning_filter" title="Link to this definition">#</a></dt>
+<dd><p>Determine structural noise by studying a series of baseline images.
+The resulting cleaning filter will be used prior to the conversion
+of signal to concentration. The cleaning filter should be understood
+as thresholding mask.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>baseline_images</strong> (<em>list</em><em> of </em><em>images</em>) – series of baseline_images; default: use
+internally available baseline images.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.read_cleaning_filter_from_file">
+<span class="sig-name descname"><span class="pre">read_cleaning_filter_from_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/concentrationanalysis.html#ConcentrationAnalysis.read_cleaning_filter_from_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.read_cleaning_filter_from_file" title="Link to this definition">#</a></dt>
+<dd><p>Read cleaning filter from file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>str</em><em> or </em><em>Path</em>) – path to cleaning filter array.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/concentrationanalysis.html#ConcentrationAnalysis.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.update" title="Link to this definition">#</a></dt>
+<dd><p>Update of the baseline image or parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>base</strong> (<em>Image</em><em>, </em><em>optional</em>) – image array</p></li>
+<li><p><strong>mask</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – boolean mask, detecting which pixels
+will be considered, all other will be ignored in the analysis.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.write_cleaning_filter_to_file">
+<span class="sig-name descname"><span class="pre">write_cleaning_filter_to_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_to_filter</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/concentrationanalysis.html#ConcentrationAnalysis.write_cleaning_filter_to_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.write_cleaning_filter_to_file" title="Link to this definition">#</a></dt>
+<dd><p>Store cleaning filter to file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path_to_filter</strong> (<em>str</em><em> or </em><em>Path</em>) – path for storage of the cleaning filter.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.balancing">
+<span class="sig-name descname"><span class="pre">balancing</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.balancing" title="Link to this definition">#</a></dt>
+<dd><p>Balancing for heterogeneous signals.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.base">
+<span class="sig-name descname"><span class="pre">base</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.base" title="Link to this definition">#</a></dt>
+<dd><p>Baseline image.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.first_restoration_then_model">
+<span class="sig-name descname"><span class="pre">first_restoration_then_model</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.first_restoration_then_model" title="Link to this definition">#</a></dt>
+<dd><p>Option for defining order of routines.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.labels">
+<span class="sig-name descname"><span class="pre">labels</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.labels" title="Link to this definition">#</a></dt>
+<dd><p>Indicator for heterogeneous image.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.mask">
+<span class="sig-name descname"><span class="pre">mask</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.mask" title="Link to this definition">#</a></dt>
+<dd><p>Mask.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.model">
+<span class="sig-name descname"><span class="pre">model</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.model" title="Link to this definition">#</a></dt>
+<dd><p>Signal to data conversion model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.restoration">
+<span class="sig-name descname"><span class="pre">restoration</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.restoration" title="Link to this definition">#</a></dt>
+<dd><p>Restoration model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.signal_reduction">
+<span class="sig-name descname"><span class="pre">signal_reduction</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.signal_reduction" title="Link to this definition">#</a></dt>
+<dd><p>Reduction to scalar signal.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.verbosity">
+<span class="sig-name descname"><span class="pre">verbosity</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.verbosity" title="Link to this definition">#</a></dt>
+<dd><p>Fetch verbosity. With increasing number, more intermediate results
+are displayed. Useful for parameter tuning.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">PriorPosteriorConcentrationAnalysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">signal_reduction</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">balancing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restoration</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prior_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">posterior_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/concentrationanalysis.html#PriorPosteriorConcentrationAnalysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis" title="darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConcentrationAnalysis</span></code></a></p>
+<p>Special case of the ConcentrationAnalysis performing a
+prior-posterior analysis, i.e., allowing to review the
+conversion performed through a prior model.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.find_cleaning_filter">
+<span class="sig-name descname"><span class="pre">find_cleaning_filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline_images</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.find_cleaning_filter" title="Link to this definition">#</a></dt>
+<dd><p>Determine structural noise by studying a series of baseline images.
+The resulting cleaning filter will be used prior to the conversion
+of signal to concentration. The cleaning filter should be understood
+as thresholding mask.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>baseline_images</strong> (<em>list</em><em> of </em><em>images</em>) – series of baseline_images; default: use
+internally available baseline images.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.read_cleaning_filter_from_file">
+<span class="sig-name descname"><span class="pre">read_cleaning_filter_from_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.read_cleaning_filter_from_file" title="Link to this definition">#</a></dt>
+<dd><p>Read cleaning filter from file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>str</em><em> or </em><em>Path</em>) – path to cleaning filter array.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.update" title="Link to this definition">#</a></dt>
+<dd><p>Update of the baseline image or parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>base</strong> (<em>Image</em><em>, </em><em>optional</em>) – image array</p></li>
+<li><p><strong>mask</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – boolean mask, detecting which pixels
+will be considered, all other will be ignored in the analysis.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.write_cleaning_filter_to_file">
+<span class="sig-name descname"><span class="pre">write_cleaning_filter_to_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_to_filter</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.write_cleaning_filter_to_file" title="Link to this definition">#</a></dt>
+<dd><p>Store cleaning filter to file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path_to_filter</strong> (<em>str</em><em> or </em><em>Path</em>) – path for storage of the cleaning filter.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.balancing">
+<span class="sig-name descname"><span class="pre">balancing</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.balancing" title="Link to this definition">#</a></dt>
+<dd><p>Balancing for heterogeneous signals.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.base">
+<span class="sig-name descname"><span class="pre">base</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.base" title="Link to this definition">#</a></dt>
+<dd><p>Baseline image.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.first_restoration_then_model">
+<span class="sig-name descname"><span class="pre">first_restoration_then_model</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.first_restoration_then_model" title="Link to this definition">#</a></dt>
+<dd><p>Option for defining order of routines.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.labels">
+<span class="sig-name descname"><span class="pre">labels</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.labels" title="Link to this definition">#</a></dt>
+<dd><p>Indicator for heterogeneous image.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.mask">
+<span class="sig-name descname"><span class="pre">mask</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.mask" title="Link to this definition">#</a></dt>
+<dd><p>Mask.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.model">
+<span class="sig-name descname"><span class="pre">model</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.model" title="Link to this definition">#</a></dt>
+<dd><p>Signal to data conversion model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.restoration">
+<span class="sig-name descname"><span class="pre">restoration</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.restoration" title="Link to this definition">#</a></dt>
+<dd><p>Restoration model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.signal_reduction">
+<span class="sig-name descname"><span class="pre">signal_reduction</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.signal_reduction" title="Link to this definition">#</a></dt>
+<dd><p>Reduction to scalar signal.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.verbosity">
+<span class="sig-name descname"><span class="pre">verbosity</span></span><a class="headerlink" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.verbosity" title="Link to this definition">#</a></dt>
+<dd><p>Fetch verbosity. With increasing number, more intermediate results
+are displayed. Useful for parameter tuning.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-darsia.multi_image_analysis.imageregistration">
+<span id="darsia-multi-image-analysis-imageregistration-module"></span><h2>darsia.multi_image_analysis.imageregistration module<a class="headerlink" href="#module-darsia.multi_image_analysis.imageregistration" title="Link to this heading">#</a></h2>
+<p>Module containing a diffeomorphic image registration tool.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DiffeomorphicImageRegistration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_dst</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#DiffeomorphicImageRegistration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to detect the deformation between different images.</p>
+<p>After all, DiffeomorphicImageRegistration is a wrapper using TranslationAnalysis.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.add">
+<span class="sig-name descname"><span class="pre">add</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diffeomorphic_image_registration</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#DiffeomorphicImageRegistration.add"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.add" title="Link to this definition">#</a></dt>
+<dd><p>Update the store translation by adding the translation
+of an external diffeomorphic image registration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>diffeomorphic_image_registration</strong> (<em>darsia.DiffeomorphicImageRegistration</em>) – Diffeomorphic image registraton object holding a translation analysis.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#DiffeomorphicImageRegistration.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.apply" title="Link to this definition">#</a></dt>
+<dd><p>Apply computed transformation onto arbitrary image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em><em> or </em><em>darsia.Image</em>) – image</p></li>
+<li><p><strong>reverse</strong> (<em>bool</em>) – flag whether the translation is understood as from the
+test image to the baseline image, or reversed. The default is the
+latter.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>transformed image, if input is array; no output otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.call_with_output">
+<span class="sig-name descname"><span class="pre">call_with_output</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_patch_translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_patch_translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#DiffeomorphicImageRegistration.call_with_output"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.call_with_output" title="Link to this definition">#</a></dt>
+<dd><p>Determine the deformation pattern and apply diffeomorphism to the image
+aiming at matching the reference/destination (dst) image.</p>
+<p>This in the end only a wrapper for the translation analysis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>darsia.Image</em>) – test image</p></li>
+<li><p><strong>reverse</strong> (<em>bool</em>) – flag whether the translation is understood as from the
+test image to the dst image, or reversed. The default is the
+former.</p></li>
+<li><p><strong>plot_patch_translation</strong> (<em>bool</em>) – flag controlling whether the displacement is also
+visualized as vector field.</p></li>
+<li><p><strong>return_patch_translation</strong> (<em>bool</em>) – flag controlling whether the displacement
+in the patch centers is returned in the sense of img to dst,
+complying to the plot; default is False.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.deduct">
+<span class="sig-name descname"><span class="pre">deduct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diffeomorphic_image_registration</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#DiffeomorphicImageRegistration.deduct"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.deduct" title="Link to this definition">#</a></dt>
+<dd><p>Effectviely copy from external DiffeomorphicImageRegistration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>diffeomorphic_image_registration</strong> (<em>darsia.DiffeomorphicImageRegistration</em>) – Diffeomorphic image registration object holding a translation analysis.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.displacement">
+<span class="sig-name descname"><span class="pre">displacement</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#DiffeomorphicImageRegistration.displacement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.displacement" title="Link to this definition">#</a></dt>
+<dd><p>Return displacement in metric units on all pixels.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.evaluate">
+<span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coords</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">units</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'metric'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#DiffeomorphicImageRegistration.evaluate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.evaluate" title="Link to this definition">#</a></dt>
+<dd><p>Evaluate diffeormorphism in arbitrary points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>coords</strong> (<em>np.ndarray</em><em>, or </em><em>darsia.Patches</em>) – coordinate array with shape num_pts x 2,
+or alternatively num_rows_pts x num_cols_pts x 2, identifying points in a
+mesh/patched image, or equivalently patch.</p></li>
+<li><p><strong>reverse</strong> (<em>bool</em>) – flag whether the translation is understood as from the
+test image to the baseline image, or reversed. The default is the
+former latter.</p></li>
+<li><p><strong>units</strong> (<em>str</em>) – input and output units; “metric” default; otherwise assumed
+to be “pixel”.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>deformation vectors for all coordinates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#DiffeomorphicImageRegistration.plot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.plot" title="Link to this definition">#</a></dt>
+<dd><p>Plots diffeomorphism.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scaling</strong> (<em>float</em>) – scaling for vectors.</p></li>
+<li><p><strong>mask</strong> (<em>darsia.Image</em><em>, </em><em>optional</em>) – active set.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.update_dst">
+<span class="sig-name descname"><span class="pre">update_dst</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_dst</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#DiffeomorphicImageRegistration.update_dst"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.update_dst" title="Link to this definition">#</a></dt>
+<dd><p>Update of dst image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dst</strong> (<em>np.ndarray</em>) – image array</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.ImageRegistration">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ImageRegistration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_dst</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#ImageRegistration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.ImageRegistration" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.ImageRegistration.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#ImageRegistration.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.ImageRegistration.apply" title="Link to this definition">#</a></dt>
+<dd><p>Apply computed transformation onto arbitrary image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em><em> or </em><em>darsia.Image</em>) – image</p></li>
+<li><p><strong>reverse</strong> (<em>bool</em>) – flag whether the translation is understood as from the
+test image to the baseline image, or reversed. The default is the
+latter.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>transformed image, if input is array; no output otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.ImageRegistration.evaluate">
+<span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coords</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">units</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'metric'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#ImageRegistration.evaluate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.ImageRegistration.evaluate" title="Link to this definition">#</a></dt>
+<dd><p>See evaluate in DiffeomorphicImageRegistration.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.ImageRegistration.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scaling</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#ImageRegistration.plot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.ImageRegistration.plot" title="Link to this definition">#</a></dt>
+<dd><p>Plot the dislacement stored in the current image registration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scaling</strong> (<em>float</em>) – scaling parameter to controll the length of the arrows.</p></li>
+<li><p><strong>mask</strong> (<em>np.ndarray</em>) – active mask</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultiscaleDiffeomorphicImageRegistration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_dst</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_dst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#MultiscaleDiffeomorphicImageRegistration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class for multiscale diffeomorphic image registration
+being capable of tracking larger deformations.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#MultiscaleDiffeomorphicImageRegistration.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration.apply" title="Link to this definition">#</a></dt>
+<dd><p>Apply computed transformation onto arbitrary image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em><em> or </em><em>darsia.Image</em>) – image</p></li>
+<li><p><strong>reverse</strong> (<em>bool</em>) – flag whether the translation is understood as from the
+test image to the baseline image, or reversed. The default is the
+latter.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>transformed image, if input is array; no output otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration.evaluate">
+<span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coords</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">units</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'metric'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#MultiscaleDiffeomorphicImageRegistration.evaluate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration.evaluate" title="Link to this definition">#</a></dt>
+<dd><p>See evaluate in DiffeomorphicImageRegistration.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scaling</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/imageregistration.html#MultiscaleDiffeomorphicImageRegistration.plot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration.plot" title="Link to this definition">#</a></dt>
+<dd><p>Plot the dislacement stored in the current image registration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scaling</strong> (<em>float</em>) – scaling parameter to controll the length of the arrows.</p></li>
+<li><p><strong>mask</strong> (<em>np.ndarray</em>) – active mask</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-darsia.multi_image_analysis.model_calibration">
+<span id="darsia-multi-image-analysis-model-calibration-module"></span><h2>darsia.multi_image_analysis.model_calibration module<a class="headerlink" href="#module-darsia.multi_image_analysis.model_calibration" title="Link to this heading">#</a></h2>
+<p>Calibration tools.</p>
+<p>In particular objective functions for calibration in
+ConcentrationAnalysis.calibrate_model()</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">AbsoluteVolumeModelObjectiveMixin</span></span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/model_calibration.html#AbsoluteVolumeModelObjectiveMixin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#darsia.multi_image_analysis.model_calibration.AbstractModelObjective" title="darsia.multi_image_analysis.model_calibration.AbstractModelObjective"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractModelObjective</span></code></a></p>
+<p>Calibration model based on matching injection rates.
+Has to be combined with ConcentrationAnalysis.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin.calibrate_model">
+<span class="sig-name descname"><span class="pre">calibrate_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_result</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin.calibrate_model" title="Link to this definition">#</a></dt>
+<dd><p>Utility for calibrating the model used in darsia.ConcentrationAnalysis.</p>
+<p>NOTE: Require to combine darsia.ConcentrationAnalysis with a calibration
+model mixin via multiple inheritance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>images</strong> (<em>list</em><em> of </em><em>darsia.Image</em>) – calibration images</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – container holding tuning information for the numerical
+calibration routine</p></li>
+<li><p><strong>plot_result</strong> (<em>bool</em>) – flag controlling whether the calibration is displayed
+in a plot.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>success of the calibration study.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin.define_objective_function">
+<span class="sig-name descname"><span class="pre">define_objective_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">images_diff</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/model_calibration.html#AbsoluteVolumeModelObjectiveMixin.define_objective_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin.define_objective_function" title="Link to this definition">#</a></dt>
+<dd><p>Define objective function such that the root is the min.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_images</strong> (<em>list</em><em> of </em><em>np.ndarray</em>) – input for _convert_signal</p></li>
+<li><p><strong>images_diff</strong> (<em>list</em><em> of </em><em>np.ndarray</em>) – plain differences wrt background image</p></li>
+<li><p><strong>times</strong> (<em>list</em><em> of </em><em>float</em>) – times</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – dictionary with objective value, here the injection rate</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>objetive function</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>callable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin.update_model_for_calibration">
+<span class="sig-name descname"><span class="pre">update_model_for_calibration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin.update_model_for_calibration" title="Link to this definition">#</a></dt>
+<dd><p>Wrapper for updating the model, depending on
+whether it is a single model or a combined model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>parameters</strong> (<em>np.ndarray</em>) – model parameters,</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – further tuning parameters and extra info;
+here, the key “dofs” is used to determine which dofs to
+update.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.model_calibration.AbstractModelObjective">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">AbstractModelObjective</span></span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/model_calibration.html#AbstractModelObjective"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.model_calibration.AbstractModelObjective" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Abstract class for defining an objective function
+to be called in ConcentrationAnalysis.calibrate_model().</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.model_calibration.AbstractModelObjective.calibrate_model">
+<span class="sig-name descname"><span class="pre">calibrate_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_result</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/model_calibration.html#AbstractModelObjective.calibrate_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.model_calibration.AbstractModelObjective.calibrate_model" title="Link to this definition">#</a></dt>
+<dd><p>Utility for calibrating the model used in darsia.ConcentrationAnalysis.</p>
+<p>NOTE: Require to combine darsia.ConcentrationAnalysis with a calibration
+model mixin via multiple inheritance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>images</strong> (<em>list</em><em> of </em><em>darsia.Image</em>) – calibration images</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – container holding tuning information for the numerical
+calibration routine</p></li>
+<li><p><strong>plot_result</strong> (<em>bool</em>) – flag controlling whether the calibration is displayed
+in a plot.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>success of the calibration study.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.model_calibration.AbstractModelObjective.define_objective_function">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">define_objective_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">images_diff</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/model_calibration.html#AbstractModelObjective.define_objective_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.model_calibration.AbstractModelObjective.define_objective_function" title="Link to this definition">#</a></dt>
+<dd><p>Abstract method to define an objective function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>objective function.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>callable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.model_calibration.AbstractModelObjective.update_model_for_calibration">
+<span class="sig-name descname"><span class="pre">update_model_for_calibration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/model_calibration.html#AbstractModelObjective.update_model_for_calibration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.model_calibration.AbstractModelObjective.update_model_for_calibration" title="Link to this definition">#</a></dt>
+<dd><p>Wrapper for updating the model, depending on
+whether it is a single model or a combined model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>parameters</strong> (<em>np.ndarray</em>) – model parameters,</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – further tuning parameters and extra info;
+here, the key “dofs” is used to determine which dofs to
+update.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">InjectionRateModelObjectiveMixin</span></span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/model_calibration.html#InjectionRateModelObjectiveMixin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#darsia.multi_image_analysis.model_calibration.AbstractModelObjective" title="darsia.multi_image_analysis.model_calibration.AbstractModelObjective"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractModelObjective</span></code></a></p>
+<p>Calibration model based on matching injection rates.
+Has to be combined with ConcentrationAnalysis.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.calibrate_model">
+<span class="sig-name descname"><span class="pre">calibrate_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_result</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.calibrate_model" title="Link to this definition">#</a></dt>
+<dd><p>Utility for calibrating the model used in darsia.ConcentrationAnalysis.</p>
+<p>NOTE: Require to combine darsia.ConcentrationAnalysis with a calibration
+model mixin via multiple inheritance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>images</strong> (<em>list</em><em> of </em><em>darsia.Image</em>) – calibration images</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – container holding tuning information for the numerical
+calibration routine</p></li>
+<li><p><strong>plot_result</strong> (<em>bool</em>) – flag controlling whether the calibration is displayed
+in a plot.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>success of the calibration study.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.define_objective_function">
+<span class="sig-name descname"><span class="pre">define_objective_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">images_diff</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/model_calibration.html#InjectionRateModelObjectiveMixin.define_objective_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.define_objective_function" title="Link to this definition">#</a></dt>
+<dd><p>Define objective function such that the root is the min.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_images</strong> (<em>list</em><em> of </em><em>np.ndarray</em>) – input for _convert_signal</p></li>
+<li><p><strong>images_diff</strong> (<em>list</em><em> of </em><em>np.ndarray</em>) – plain differences wrt background image</p></li>
+<li><p><strong>times</strong> (<em>list</em><em> of </em><em>float</em>) – times (units assumed to be compatible)</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – dictionary with objective value, here the injection rate</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>objective function</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>callable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.model_calibration_postanalysis">
+<span class="sig-name descname"><span class="pre">model_calibration_postanalysis</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/model_calibration.html#InjectionRateModelObjectiveMixin.model_calibration_postanalysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.model_calibration_postanalysis" title="Link to this definition">#</a></dt>
+<dd><p>Interpret calibration result.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>time (in seconds) at which the signal is zero (based on calibration)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.update_model_for_calibration">
+<span class="sig-name descname"><span class="pre">update_model_for_calibration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.update_model_for_calibration" title="Link to this definition">#</a></dt>
+<dd><p>Wrapper for updating the model, depending on
+whether it is a single model or a combined model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>parameters</strong> (<em>np.ndarray</em>) – model parameters,</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – further tuning parameters and extra info;
+here, the key “dofs” is used to determine which dofs to
+update.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-darsia.multi_image_analysis.segmentationcomparison">
+<span id="darsia-multi-image-analysis-segmentationcomparison-module"></span><h2>darsia.multi_image_analysis.segmentationcomparison module<a class="headerlink" href="#module-darsia.multi_image_analysis.segmentationcomparison" title="Link to this heading">#</a></h2>
+<p>Class for comparing segmented images.</p>
+<p>The object contain information about the different segmentations
+as well as methods for comparing them and visualizing the result.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">SegmentationComparison</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">number_of_segmented_images</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/segmentationcomparison.html#SegmentationComparison"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class for comparing segmented images.</p>
+<p>Routines for comparing segmentations and creating visualizations of the comparison.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.number_of_segmented_images">
+<span class="sig-name descname"><span class="pre">number_of_segmented_images</span></span><a class="headerlink" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.number_of_segmented_images" title="Link to this definition">#</a></dt>
+<dd><p>Number of segmented images that one compares</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.segmentation_names">
+<span class="sig-name descname"><span class="pre">segmentation_names</span></span><a class="headerlink" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.segmentation_names" title="Link to this definition">#</a></dt>
+<dd><p>list of names for each of the segmentations.
+Will affect legends in plots.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.components">
+<span class="sig-name descname"><span class="pre">components</span></span><a class="headerlink" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.components" title="Link to this definition">#</a></dt>
+<dd><p>list of values the different (active) components in the
+segmentations. As of now, up to two are allowed for and the default values
+are 1 and 2.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.component_names">
+<span class="sig-name descname"><span class="pre">component_names</span></span><a class="headerlink" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.component_names" title="Link to this definition">#</a></dt>
+<dd><p>list of names for each of the components. Will
+be visual in legends.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.gray_colors">
+<span class="sig-name descname"><span class="pre">gray_colors</span></span><a class="headerlink" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.gray_colors" title="Link to this definition">#</a></dt>
+<dd><p>array of base gray colors (in RGB space) that accounts
+for different overlapping segmentations of different components.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.colors">
+<span class="sig-name descname"><span class="pre">colors</span></span><a class="headerlink" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.colors" title="Link to this definition">#</a></dt>
+<dd><p>color values for the different unique segmentations.
+Default is created from a colormap (matplotlib) depending on the amount of
+present segmentations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.color_dictionary">
+<span class="sig-name descname"><span class="pre">color_dictionary</span></span><a class="headerlink" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.color_dictionary" title="Link to this definition">#</a></dt>
+<dd><p>dictionary relating all of the different colors to
+different overlapping segmentation situations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.color_fractions">
+<span class="sig-name descname"><span class="pre">color_fractions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">comparison_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depth_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/segmentationcomparison.html#SegmentationComparison.color_fractions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.color_fractions" title="Link to this definition">#</a></dt>
+<dd><p>Returns color fractions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>comparison_image</strong> (<em>np.ndarray</em>) – Comparison of segmentations</p></li>
+<li><p><strong>colors</strong> (<em>np.ndarray</em>) – array of color values in the comparison image</p></li>
+<li><p><strong>depth_map</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – depth map for the image</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Dictionary relating each color to the fraction of</dt><dd><p>the number of pixels that the color occupies and the
+total number of occupied pixels in the image.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(dict)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.compare_segmentations_binary_array">
+<span class="sig-name descname"><span class="pre">compare_segmentations_binary_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">segmentations</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/segmentationcomparison.html#SegmentationComparison.compare_segmentations_binary_array"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.compare_segmentations_binary_array" title="Link to this definition">#</a></dt>
+<dd><p>Compares segmentations and returns an an array
+with pixels that containing an array of 1s and 0s depending on
+which segmentations are present there. At the current state it
+does not distinguish between the different kind of components,</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*segmentations</strong> (<em>tuple</em><em>[</em><em>np.ndarray</em><em>, </em><em>...</em><em>]</em>) – The segmentations to be compared.</p></li>
+<li><p><strong>**kwargs</strong> – <p>Optional keyword arguments.
+roi (Union[tuple, np.ndarray]): roi where the segmentations should be</p>
+<blockquote>
+<div><p>compared, default is the maximal roi that fits in all segmentations.
+Should be provided in pixel coordinates using matrix indexing, either
+as a tuple of slices, or an array of corner points.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>components (tuple[int, …]): The components that should be recognized in</dt><dd><p>the segmentations, default is [1,2].</p>
+</dd>
+</dl>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.get_combinations">
+<span class="sig-name descname"><span class="pre">get_combinations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">segmentation_numbers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_segmentations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/segmentationcomparison.html#SegmentationComparison.get_combinations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.get_combinations" title="Link to this definition">#</a></dt>
+<dd><p>Returns a list of all possible combinations of segmentations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_segmentations</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of segmentations. Defaults to 5.</p></li>
+<li><p><strong>*segmentation_numbers</strong> (<em>tuple</em><em>[</em><em>int</em><em>, </em><em>...</em><em>]</em>) – The segmentation numbers that
+should be included in the combinations. Defaults to ().</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of all possible combinations of segmentations.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[list[int]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figure_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Comparison'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legend_anchor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.7,</span> <span class="pre">1)</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/segmentationcomparison.html#SegmentationComparison.plot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.plot" title="Link to this definition">#</a></dt>
+<dd><p>Plots the provided image (should be a comparison of segmentations) with
+matplotlib.pyplot’s imshow and prints a legend with colors from the image
+and dictionary</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>np.ndarray</em>) – image with comparison of segmentations.</p></li>
+<li><p><strong>figure_name</strong> (<em>str</em>) – Figure name.</p></li>
+<li><p><strong>legend_anchor</strong> (<em>tuple</em>) – tuple of coordinates (x,y) in Euclidean
+style that determines legend anchor.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.plot_overlay_segmentation">
+<span class="sig-name descname"><span class="pre">plot_overlay_segmentation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">comparison_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figure_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Comparison'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legend_anchor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">custom_legend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">custom_legend_text</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/segmentationcomparison.html#SegmentationComparison.plot_overlay_segmentation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.plot_overlay_segmentation" title="Link to this definition">#</a></dt>
+<dd><p>Plots a comparison image overlayed a base image using matplotlib.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>comparison_image</strong> (<em>np.ndarray</em>) – The image containing comparison of segmentations.</p></li>
+<li><p><strong>base_image</strong> (<em>np.ndarray</em>) – The base image that is to be overlayed.</p></li>
+<li><p><strong>figure_name</strong> (<em>str</em>) – Figure name.</p></li>
+<li><p><strong>opacity</strong> (<em>float</em>) – Tha opacity value for the comparison image.</p></li>
+<li><p><strong>legend_anchor</strong> (<em>tuple</em>) – tuple of coordinates (x,y) in euclidean style that
+determines legend anchor.</p></li>
+<li><p><strong>custom_legend</strong> (<em>Optional</em><em>[</em><em>list</em><em>[</em><em>mpatches.Patch</em><em>]</em><em>]</em>) – in case it is desirable to create
+a custom legend.</p></li>
+<li><p><strong>custom_legend_text</strong> (<em>Optional</em><em>[</em><em>list</em><em>[</em><em>str</em><em>]</em><em>]</em>) – in case it is desirable
+to customize legend.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-darsia.multi_image_analysis.translationanalysis">
+<span id="darsia-multi-image-analysis-translationanalysis-module"></span><h2>darsia.multi_image_analysis.translationanalysis module<a class="headerlink" href="#module-darsia.multi_image_analysis.translationanalysis" title="Link to this heading">#</a></h2>
+<p>Module containing class for translation analysis.</p>
+<p>This is relevant e.g. for studying compaction of porous media.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">TranslationAnalysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N_patches</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel_overlap</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">translation_estimator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/translationanalysis.html#TranslationAnalysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class for translation analysis.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.add_translation_analysis">
+<span class="sig-name descname"><span class="pre">add_translation_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">translation_analysis</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/translationanalysis.html#TranslationAnalysis.add_translation_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.add_translation_analysis" title="Link to this definition">#</a></dt>
+<dd><p>Add another translation analysis to the existing one.
+Modifies the interpolation object by redefinition.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>translation_analysis</strong> (<em>darsia.TranslationAnalysis</em>) – Translation analysis holding
+an interpolation object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.bc_x">
+<span class="sig-name descname"><span class="pre">bc_x</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">units</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/translationanalysis.html#TranslationAnalysis.bc_x"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.bc_x" title="Link to this definition">#</a></dt>
+<dd><p>Prescribed (boundary) conditions for the displacement in x direction.</p>
+<p>Can be overwritten. Here, tailored to FluidFlower scenarios, fix
+the displacement in x-direction at the vertical boundaries of the
+image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>units</strong> (<em>list</em><em> of </em><em>str</em>) – “metric” or “pixel”</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>coordinates
+list of float: translation in x direction</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list of np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.bc_y">
+<span class="sig-name descname"><span class="pre">bc_y</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">units</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/translationanalysis.html#TranslationAnalysis.bc_y"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.bc_y" title="Link to this definition">#</a></dt>
+<dd><p>Prescribed (boundary) conditions for the displacement in y direction.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>units</strong> (<em>list</em><em> of </em><em>str</em>) – “metric” or “pixel”</p>
+</dd>
+</dl>
+<p>Can be overwritten. Here, tailored to FluidFlower scenarios, fix
+the displacement in y-direction at the horizontal boundaries of the
+image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>coordinates
+list of float: translation in y direction</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list of np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.deduct_translation_analysis">
+<span class="sig-name descname"><span class="pre">deduct_translation_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">translation_analysis</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/translationanalysis.html#TranslationAnalysis.deduct_translation_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.deduct_translation_analysis" title="Link to this definition">#</a></dt>
+<dd><p>Overwrite translation analysis by deducting from external one.
+(Re)defines the interpolation object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>translation_analysis</strong> (<em>darsia.TranslationAnalysis</em>) – translation analysis
+holding an interpolation object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.find_translation">
+<span class="sig-name descname"><span class="pre">find_translation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">units</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['pixel',</span> <span class="pre">'pixel']</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/translationanalysis.html#TranslationAnalysis.find_translation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.find_translation" title="Link to this definition">#</a></dt>
+<dd><p>Find translation map as translation from image to baseline image such that
+these match as best as possible, measure on features.</p>
+<p>The final translation map will be stored as callable function. And it allows
+various input and output spaces (metric vs. pixel).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>units</strong> (<em>list</em><em> of </em><em>str</em>) – units for input (first entry) and output (second entry)
+ranges of the resulting translation map; accepts either “metric”
+or “pixel”.</p></li>
+<li><p><strong>mask</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – boolean mask marking all pixels to be considered;
+all if mask is None (default).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>translation map defined as interpolator
+bool: flag indicating on which patches the routine has been successful</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Callable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.load_image">
+<span class="sig-name descname"><span class="pre">load_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/translationanalysis.html#TranslationAnalysis.load_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.load_image" title="Link to this definition">#</a></dt>
+<dd><p>Load an image to be inspected in futher analysis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>Image</em>) – test image.</p></li>
+<li><p><strong>mask</strong> (<em>Image</em>) – mask to be considered in the analysis.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.plot_translation">
+<span class="sig-name descname"><span class="pre">plot_translation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/translationanalysis.html#TranslationAnalysis.plot_translation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.plot_translation" title="Link to this definition">#</a></dt>
+<dd><p>Translate centers of the test image and plot in terms of displacement arrows.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>reverse</strong> (<em>bool</em>) – flag whether the translation is understood as from the
+test image to the baseline image, or reversed. The default is the
+former latter.</p></li>
+<li><p><strong>scaling</strong> (<em>float</em>) – scaling factor for visual comfort.</p></li>
+<li><p><strong>mask</strong> (<em>Image</em>) – mask of interest for arrows.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.return_patch_translation">
+<span class="sig-name descname"><span class="pre">return_patch_translation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">units</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'metric'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/translationanalysis.html#TranslationAnalysis.return_patch_translation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.return_patch_translation" title="Link to this definition">#</a></dt>
+<dd><p>Translate patch centers of the test image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>reverse</strong> (<em>bool</em>) – flag whether the translation is understood as from the
+test image to the baseline image, or reversed. The default is the
+former latter.</p></li>
+<li><p><strong>units</strong> (<em>list</em><em> of </em><em>str</em>) – “metric” or “pixel”</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>deformation in patch centers</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.translate_image">
+<span class="sig-name descname"><span class="pre">translate_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/translationanalysis.html#TranslationAnalysis.translate_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.translate_image" title="Link to this definition">#</a></dt>
+<dd><p>Apply translation to an entire image by using piecwise perspective transformation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>reverse</strong> (<em>bool</em>) – flag whether the translation is understood as from the
+test image to the baseline image, or reversed. The default is the
+latter.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>translated image</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>darsia.Image</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.update_base">
+<span class="sig-name descname"><span class="pre">update_base</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/translationanalysis.html#TranslationAnalysis.update_base"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.update_base" title="Link to this definition">#</a></dt>
+<dd><p>Update baseline image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>base</strong> (<em>darsia.Image</em>) – baseline image</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.update_base_patches">
+<span class="sig-name descname"><span class="pre">update_base_patches</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/translationanalysis.html#TranslationAnalysis.update_base_patches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.update_base_patches" title="Link to this definition">#</a></dt>
+<dd><p>Update patches of baseline.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.update_params">
+<span class="sig-name descname"><span class="pre">update_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N_patches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel_overlap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/multi_image_analysis/translationanalysis.html#TranslationAnalysis.update_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.update_params" title="Link to this definition">#</a></dt>
+<dd><p>Routine allowing to update parameters for creating patches.</p>
+<p>If any of the parameters is changed, a new patch of the base image is created.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>N_patches</strong> (<em>list</em><em> of </em><em>two int</em>) – number of patches in x and y direction</p></li>
+<li><p><strong>rel_overlap</strong> (<em>float</em>) – relative overal related to patch size in each direction</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.N_patches">
+<span class="sig-name descname"><span class="pre">N_patches</span></span><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.N_patches" title="Link to this definition">#</a></dt>
+<dd><p>Number of patches in matrix indexing.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.have_translation">
+<span class="sig-name descname"><span class="pre">have_translation</span></span><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.have_translation" title="Link to this definition">#</a></dt>
+<dd><p>Mask of flags storing success of finding translations for patches.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.mask_base">
+<span class="sig-name descname"><span class="pre">mask_base</span></span><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.mask_base" title="Link to this definition">#</a></dt>
+<dd><p>Mask.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.rel_overlap">
+<span class="sig-name descname"><span class="pre">rel_overlap</span></span><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.rel_overlap" title="Link to this definition">#</a></dt>
+<dd><p>Relative overlap.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.translation">
+<span class="sig-name descname"><span class="pre">translation</span></span><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.translation" title="Link to this definition">#</a></dt>
+<dd><p>Cache of current translation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.translation_estimator">
+<span class="sig-name descname"><span class="pre">translation_estimator</span></span><a class="headerlink" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.translation_estimator" title="Link to this definition">#</a></dt>
+<dd><p>Translation estimator.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../measure/darsia.measure.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Measure tools (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.measure</span></code>)</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../presets/darsia.presets.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Presets (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.presets</span></code>)</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#submodules">Submodules</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.multi_image_analysis.balancing_calibration">darsia.multi_image_analysis.balancing_calibration module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration"><code class="docutils literal notranslate"><span class="pre">AbstractBalancingCalibration</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration.calibrate_balancing"><code class="docutils literal notranslate"><span class="pre">AbstractBalancingCalibration.calibrate_balancing()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration.optimize_balancing"><code class="docutils literal notranslate"><span class="pre">AbstractBalancingCalibration.optimize_balancing()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration.update_balancing_for_calibration"><code class="docutils literal notranslate"><span class="pre">AbstractBalancingCalibration.update_balancing_for_calibration()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin"><code class="docutils literal notranslate"><span class="pre">ContinuityBasedBalancingCalibrationMixin</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin.calibrate_balancing"><code class="docutils literal notranslate"><span class="pre">ContinuityBasedBalancingCalibrationMixin.calibrate_balancing()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin.optimize_balancing"><code class="docutils literal notranslate"><span class="pre">ContinuityBasedBalancingCalibrationMixin.optimize_balancing()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin.update_balancing_for_calibration"><code class="docutils literal notranslate"><span class="pre">ContinuityBasedBalancingCalibrationMixin.update_balancing_for_calibration()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.multi_image_analysis.concentrationanalysis">darsia.multi_image_analysis.concentrationanalysis module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.find_cleaning_filter"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis.find_cleaning_filter()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.read_cleaning_filter_from_file"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis.read_cleaning_filter_from_file()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.update"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis.update()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.write_cleaning_filter_to_file"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis.write_cleaning_filter_to_file()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.balancing"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis.balancing</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.base"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis.base</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.first_restoration_then_model"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis.first_restoration_then_model</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.labels"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis.labels</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.mask"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis.mask</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.model"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis.model</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.restoration"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis.restoration</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.signal_reduction"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis.signal_reduction</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.ConcentrationAnalysis.verbosity"><code class="docutils literal notranslate"><span class="pre">ConcentrationAnalysis.verbosity</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.find_cleaning_filter"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis.find_cleaning_filter()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.read_cleaning_filter_from_file"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis.read_cleaning_filter_from_file()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.update"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis.update()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.write_cleaning_filter_to_file"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis.write_cleaning_filter_to_file()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.balancing"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis.balancing</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.base"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis.base</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.first_restoration_then_model"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis.first_restoration_then_model</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.labels"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis.labels</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.mask"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis.mask</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.model"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis.model</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.restoration"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis.restoration</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.signal_reduction"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis.signal_reduction</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.concentrationanalysis.PriorPosteriorConcentrationAnalysis.verbosity"><code class="docutils literal notranslate"><span class="pre">PriorPosteriorConcentrationAnalysis.verbosity</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.multi_image_analysis.imageregistration">darsia.multi_image_analysis.imageregistration module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration"><code class="docutils literal notranslate"><span class="pre">DiffeomorphicImageRegistration</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.add"><code class="docutils literal notranslate"><span class="pre">DiffeomorphicImageRegistration.add()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.apply"><code class="docutils literal notranslate"><span class="pre">DiffeomorphicImageRegistration.apply()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.call_with_output"><code class="docutils literal notranslate"><span class="pre">DiffeomorphicImageRegistration.call_with_output()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.deduct"><code class="docutils literal notranslate"><span class="pre">DiffeomorphicImageRegistration.deduct()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.displacement"><code class="docutils literal notranslate"><span class="pre">DiffeomorphicImageRegistration.displacement()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.evaluate"><code class="docutils literal notranslate"><span class="pre">DiffeomorphicImageRegistration.evaluate()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.plot"><code class="docutils literal notranslate"><span class="pre">DiffeomorphicImageRegistration.plot()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.update_dst"><code class="docutils literal notranslate"><span class="pre">DiffeomorphicImageRegistration.update_dst()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.ImageRegistration"><code class="docutils literal notranslate"><span class="pre">ImageRegistration</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.ImageRegistration.apply"><code class="docutils literal notranslate"><span class="pre">ImageRegistration.apply()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.ImageRegistration.evaluate"><code class="docutils literal notranslate"><span class="pre">ImageRegistration.evaluate()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.ImageRegistration.plot"><code class="docutils literal notranslate"><span class="pre">ImageRegistration.plot()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration"><code class="docutils literal notranslate"><span class="pre">MultiscaleDiffeomorphicImageRegistration</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration.apply"><code class="docutils literal notranslate"><span class="pre">MultiscaleDiffeomorphicImageRegistration.apply()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration.evaluate"><code class="docutils literal notranslate"><span class="pre">MultiscaleDiffeomorphicImageRegistration.evaluate()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration.plot"><code class="docutils literal notranslate"><span class="pre">MultiscaleDiffeomorphicImageRegistration.plot()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.multi_image_analysis.model_calibration">darsia.multi_image_analysis.model_calibration module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin"><code class="docutils literal notranslate"><span class="pre">AbsoluteVolumeModelObjectiveMixin</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin.calibrate_model"><code class="docutils literal notranslate"><span class="pre">AbsoluteVolumeModelObjectiveMixin.calibrate_model()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin.define_objective_function"><code class="docutils literal notranslate"><span class="pre">AbsoluteVolumeModelObjectiveMixin.define_objective_function()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin.update_model_for_calibration"><code class="docutils literal notranslate"><span class="pre">AbsoluteVolumeModelObjectiveMixin.update_model_for_calibration()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.model_calibration.AbstractModelObjective"><code class="docutils literal notranslate"><span class="pre">AbstractModelObjective</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.model_calibration.AbstractModelObjective.calibrate_model"><code class="docutils literal notranslate"><span class="pre">AbstractModelObjective.calibrate_model()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.model_calibration.AbstractModelObjective.define_objective_function"><code class="docutils literal notranslate"><span class="pre">AbstractModelObjective.define_objective_function()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.model_calibration.AbstractModelObjective.update_model_for_calibration"><code class="docutils literal notranslate"><span class="pre">AbstractModelObjective.update_model_for_calibration()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin"><code class="docutils literal notranslate"><span class="pre">InjectionRateModelObjectiveMixin</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.calibrate_model"><code class="docutils literal notranslate"><span class="pre">InjectionRateModelObjectiveMixin.calibrate_model()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.define_objective_function"><code class="docutils literal notranslate"><span class="pre">InjectionRateModelObjectiveMixin.define_objective_function()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.model_calibration_postanalysis"><code class="docutils literal notranslate"><span class="pre">InjectionRateModelObjectiveMixin.model_calibration_postanalysis()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.update_model_for_calibration"><code class="docutils literal notranslate"><span class="pre">InjectionRateModelObjectiveMixin.update_model_for_calibration()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.multi_image_analysis.segmentationcomparison">darsia.multi_image_analysis.segmentationcomparison module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison"><code class="docutils literal notranslate"><span class="pre">SegmentationComparison</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.number_of_segmented_images"><code class="docutils literal notranslate"><span class="pre">SegmentationComparison.number_of_segmented_images</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.segmentation_names"><code class="docutils literal notranslate"><span class="pre">SegmentationComparison.segmentation_names</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.components"><code class="docutils literal notranslate"><span class="pre">SegmentationComparison.components</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.component_names"><code class="docutils literal notranslate"><span class="pre">SegmentationComparison.component_names</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.gray_colors"><code class="docutils literal notranslate"><span class="pre">SegmentationComparison.gray_colors</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.colors"><code class="docutils literal notranslate"><span class="pre">SegmentationComparison.colors</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.color_dictionary"><code class="docutils literal notranslate"><span class="pre">SegmentationComparison.color_dictionary</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.color_fractions"><code class="docutils literal notranslate"><span class="pre">SegmentationComparison.color_fractions()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.compare_segmentations_binary_array"><code class="docutils literal notranslate"><span class="pre">SegmentationComparison.compare_segmentations_binary_array()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.get_combinations"><code class="docutils literal notranslate"><span class="pre">SegmentationComparison.get_combinations()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.plot"><code class="docutils literal notranslate"><span class="pre">SegmentationComparison.plot()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.plot_overlay_segmentation"><code class="docutils literal notranslate"><span class="pre">SegmentationComparison.plot_overlay_segmentation()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.multi_image_analysis.translationanalysis">darsia.multi_image_analysis.translationanalysis module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.add_translation_analysis"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.add_translation_analysis()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.bc_x"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.bc_x()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.bc_y"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.bc_y()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.deduct_translation_analysis"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.deduct_translation_analysis()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.find_translation"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.find_translation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.load_image"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.load_image()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.plot_translation"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.plot_translation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.return_patch_translation"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.return_patch_translation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.translate_image"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.translate_image()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.update_base"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.update_base()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.update_base_patches"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.update_base_patches()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.update_params"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.update_params()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.N_patches"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.N_patches</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.have_translation"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.have_translation</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.mask_base"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.mask_base</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.rel_overlap"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.rel_overlap</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.translation"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.translation</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.multi_image_analysis.translationanalysis.TranslationAnalysis.translation_estimator"><code class="docutils literal notranslate"><span class="pre">TranslationAnalysis.translation_estimator</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

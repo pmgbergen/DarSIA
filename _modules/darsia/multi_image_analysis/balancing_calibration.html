@@ -1,0 +1,935 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>darsia.multi_image_analysis.balancing_calibration &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/darsia/multi_image_analysis/balancing_calibration';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">darsia.multi_image_analysis.balancing_calibration</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for darsia.multi_image_analysis.balancing_calibration</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Module collecting several calibration tools for models.</span>
+
+<span class="sd">In particular provided are objective functions for calibration in</span>
+<span class="sd">ConcentrationAnalysis.calibrate_balancing().</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">abc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">itertools</span><span class="w"> </span><span class="kn">import</span> <span class="n">combinations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">skimage</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">darsia</span>
+
+
+<div class="viewcode-block" id="AbstractBalancingCalibration">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AbstractBalancingCalibration</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract class for defining an objective function</span>
+<span class="sd">    to be called in ConcentrationAnalysis.calibrate_balancing().</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AbstractBalancingCalibration.optimize_balancing">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration.optimize_balancing">[docs]</a>
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimize_balancing</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_images</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">images_diff</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">relative_times</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+        <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Abstract method to define an objective function.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            callable: objective function.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="AbstractBalancingCalibration.update_balancing_for_calibration">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration.update_balancing_for_calibration">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_balancing_for_calibration</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Wrapper for updating the balancing (provided as a model),</span>
+<span class="sd">        depending on whether it is a single model or a combined model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            parameters (np.ndarray): model parameters,</span>
+<span class="sd">            options (dict): further tuning parameters and extra info.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check whether the balancing is part of a combined model,</span>
+        <span class="c1"># and possibly determine position of the model</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">balancing</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">CombinedModel</span><span class="p">):</span>
+            <span class="n">pos_balancing</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;balancing position&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">balancing</span><span class="o">.</span><span class="n">update_model_parameters</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">pos_balancing</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">balancing</span><span class="o">.</span><span class="n">update_model_parameters</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AbstractBalancingCalibration.calibrate_balancing">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.balancing_calibration.AbstractBalancingCalibration.calibrate_balancing">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calibrate_balancing</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">images</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">],</span>
+        <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Utility for calibrating the balancing used in darsia.ConcentrationAnalysis.</span>
+
+<span class="sd">        NOTE: Require to combine darsia.ConcentrationAnalysis with a calibration</span>
+<span class="sd">        model mixin via multiple inheritance.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            images (list of darsia.Image): calibration images</span>
+<span class="sd">            options (dict): container holding tuning information for the numerical</span>
+<span class="sd">                calibration routine</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: success of the calibration study.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Apply the same steps as in __call__ to all images, until before balancing is applied.</span>
+
+        <span class="c1"># Prepare calibration and determine fixed data</span>
+        <span class="n">images_diff</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_subtract_background</span><span class="p">(</span><span class="n">img</span><span class="p">)</span> <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]</span>
+
+        <span class="c1"># Extract monochromatic version and take difference wrt the baseline image</span>
+        <span class="n">images_signal</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_extract_scalar_information</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span> <span class="k">for</span> <span class="n">diff</span> <span class="ow">in</span> <span class="n">images_diff</span><span class="p">]</span>
+
+        <span class="c1"># Clean signal</span>
+        <span class="n">images_clean_signal</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_clean_signal</span><span class="p">(</span><span class="n">signal</span><span class="p">)</span> <span class="k">for</span> <span class="n">signal</span> <span class="ow">in</span> <span class="n">images_signal</span><span class="p">]</span>
+
+        <span class="c1"># The missing steps: balancing, restoration, and the model are not applied.</span>
+        <span class="c1"># Instead, the balancing and a lightweight restoration will be part of</span>
+        <span class="c1"># a calibration routine.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;optimize_balancing&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;The concentration analysis is not equipped with a calibration model</span>
+<span class="sd">                for balancing.&quot;&quot;&quot;</span>
+            <span class="p">)</span>
+        <span class="n">opt_result</span><span class="p">,</span> <span class="n">opt_success</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimize_balancing</span><span class="p">(</span><span class="n">images_clean_signal</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+
+        <span class="c1"># Report results</span>
+        <span class="k">if</span> <span class="n">opt_success</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Calibration successful with obtained model parameters </span><span class="si">{</span><span class="n">opt_result</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calibration not successful.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Update model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_balancing_for_calibration</span><span class="p">(</span><span class="n">opt_result</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">opt_success</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ContinuityBasedBalancingCalibrationMixin">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ContinuityBasedBalancingCalibrationMixin</span><span class="p">(</span><span class="n">AbstractBalancingCalibration</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calibration balancing based on reducing jumps over interfaces</span>
+<span class="sd">    for a given labeled image. Has to be combined with</span>
+<span class="sd">    ConcentrationAnalysis.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># ! ---- Main  routine</span>
+
+<div class="viewcode-block" id="ContinuityBasedBalancingCalibrationMixin.optimize_balancing">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.balancing_calibration.ContinuityBasedBalancingCalibrationMixin.optimize_balancing">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimize_balancing</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">images</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Define objective function such that the root is the min.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            input_images (list of np.ndarray): input for _convert_signal</span>
+<span class="sd">            images_diff (list of np.ndarray): plain differences wrt background image</span>
+<span class="sd">            relative_times (list of float): times</span>
+<span class="sd">            options (dict): dictionary with objective value, here the injection rate</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: optimized model parameters</span>
+<span class="sd">            bool: success flag</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># ! ---- Safety check</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">balancing</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">HeterogeneousLinearModel</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;Balancing optimization only</span>
+<span class="sd">                implemented for darsia.HeterogeneousModel.&quot;&quot;&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># ! ---- Perform (expensive) setup and cache</span>
+
+        <span class="c1"># Find thick contours</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scan_labeled_image</span><span class="p">(</span><span class="n">options</span><span class="p">)</span>
+
+        <span class="c1"># Find the balancing aiming by investigating interfaces</span>
+        <span class="c1"># and populate the answer to the segments.</span>
+        <span class="n">optimized_scaling</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_least_squares_minimizer</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+
+        <span class="c1"># Enhance parameters with the same offset as already set</span>
+        <span class="n">optimized_offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">balancing</span><span class="o">.</span><span class="n">_offset</span>
+
+        <span class="c1"># Collect results</span>
+        <span class="n">optimized_parameters</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">optimized_scaling</span><span class="p">,</span> <span class="n">optimized_offset</span><span class="p">))</span>
+        <span class="n">success</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="n">optimized_parameters</span><span class="p">,</span> <span class="n">success</span></div>
+
+
+    <span class="c1"># ! ---- Auxiliary routines.</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_scan_labeled_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Find thick contours of labeled image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            options (dict): dictionary with possibility to tune</span>
+<span class="sd">                the definition and detection of a thick contour.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Cache label info</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unique_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_labels</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unique_labels</span><span class="p">)</span>
+
+        <span class="c1"># Check if required information is stored already</span>
+        <span class="n">segmentation_contour_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span>
+            <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;contour path&quot;</span><span class="p">,</span> <span class="s2">&quot;cache/contours.npy&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">segmentation_contour_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="c1"># Read data from cache</span>
+            <span class="n">cached_segmentation_contour</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span>
+                <span class="n">segmentation_contour_path</span><span class="p">,</span> <span class="n">allow_pickle</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">contour_mask</span> <span class="o">=</span> <span class="n">cached_segmentation_contour</span><span class="p">[</span><span class="s2">&quot;contour_mask&quot;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">label_couplings</span> <span class="o">=</span> <span class="n">cached_segmentation_contour</span><span class="p">[</span><span class="s2">&quot;label_couplings&quot;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coupling_strength</span> <span class="o">=</span> <span class="n">cached_segmentation_contour</span><span class="p">[</span><span class="s2">&quot;coupling_strength&quot;</span><span class="p">]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Generate data from scratch</span>
+
+            <span class="c1"># Setup parameters</span>
+            <span class="n">contour_thickness</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;contour_thickness&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+            <span class="n">contour_overlap_threshold</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;contour_overlap_threshold&quot;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+
+            <span class="c1"># Final assignment of contours</span>
+            <span class="n">contour_mask</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unique_labels</span><span class="p">:</span>
+                <span class="n">contour_mask</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labeled_mask_to_contour_mask</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">labels</span> <span class="o">==</span> <span class="n">label</span><span class="p">,</span> <span class="n">contour_thickness</span>
+                <span class="p">)</span>
+
+            <span class="c1"># User interact. Provide possibility to hardcode label_couplings to be optimized.</span>
+            <span class="n">excluded_couplings</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;exclude couplings&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">only_couplings</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;only couplings&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+            <span class="c1"># Determine common intersection of thick contours shared by neighboring segments</span>
+            <span class="c1"># Find relevant couplings of masked labels.</span>
+            <span class="n">coupling_strength</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">label_couplings</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">label1</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unique_labels</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">label2</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unique_labels</span><span class="p">:</span>
+
+                    <span class="c1"># Consider only directed pairs</span>
+                    <span class="k">if</span> <span class="n">label1</span> <span class="o">&lt;</span> <span class="n">label2</span><span class="p">:</span>
+
+                        <span class="n">coupling</span> <span class="o">=</span> <span class="p">(</span><span class="n">label1</span><span class="p">,</span> <span class="n">label2</span><span class="p">)</span>
+
+                        <span class="c1"># User interaction. Possibilities:</span>
+                        <span class="c1"># 1. Restrict to a provided list of label couplings.</span>
+                        <span class="c1"># 2. Exclude particular couplings.</span>
+                        <span class="k">if</span> <span class="n">only_couplings</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="k">if</span> <span class="p">(</span>
+                                <span class="n">coupling</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">only_couplings</span>
+                                <span class="ow">and</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">coupling</span><span class="p">))</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">only_couplings</span>
+                            <span class="p">):</span>
+                                <span class="k">continue</span>
+                        <span class="k">elif</span> <span class="n">coupling</span> <span class="ow">in</span> <span class="n">excluded_couplings</span><span class="p">:</span>
+                            <span class="k">continue</span>
+
+                        <span class="c1"># Check if labeled regions share significant part of contour</span>
+                        <span class="k">elif</span> <span class="p">(</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span>
+                                <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span>
+                                    <span class="n">contour_mask</span><span class="p">[</span><span class="n">label1</span><span class="p">],</span> <span class="n">contour_mask</span><span class="p">[</span><span class="n">label2</span><span class="p">]</span>
+                                <span class="p">)</span>
+                            <span class="p">)</span>
+                            <span class="o">&gt;</span> <span class="n">contour_overlap_threshold</span>
+                        <span class="p">):</span>
+                            <span class="c1"># Track coupling</span>
+                            <span class="n">label_couplings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">coupling</span><span class="p">)</span>
+
+                            <span class="c1"># Determine the coupling strength depending on the size of the</span>
+                            <span class="c1"># overlap (later adjusted relatively to the global data).</span>
+                            <span class="c1"># Approximation of the size of the interface in terms of the</span>
+                            <span class="c1"># number of pixels for the thick contour.</span>
+                            <span class="n">coupling_strength</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                                <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span>
+                                    <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span>
+                                        <span class="n">contour_mask</span><span class="p">[</span><span class="n">label1</span><span class="p">],</span> <span class="n">contour_mask</span><span class="p">[</span><span class="n">label2</span><span class="p">]</span>
+                                    <span class="p">)</span>
+                                <span class="p">)</span>
+                            <span class="p">)</span>
+
+            <span class="c1"># Cache the central objects</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">contour_mask</span> <span class="o">=</span> <span class="n">contour_mask</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">label_couplings</span> <span class="o">=</span> <span class="n">label_couplings</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coupling_strength</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">cs</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">coupling_strength</span><span class="p">)</span> <span class="k">for</span> <span class="n">cs</span> <span class="ow">in</span> <span class="n">coupling_strength</span>
+            <span class="p">]</span>
+
+            <span class="c1"># Store to file</span>
+            <span class="n">segmentation_contour_path</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span>
+                <span class="n">segmentation_contour_path</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;contour_mask&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">contour_mask</span><span class="p">,</span>
+                    <span class="s2">&quot;label_couplings&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">label_couplings</span><span class="p">,</span>
+                    <span class="s2">&quot;coupling_strength&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">coupling_strength</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">)</span>
+
+    <span class="c1"># Define thick contours for all labels</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_labeled_mask_to_contour_mask</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">labeled_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        # Auxiliary method in _scan_labeled_image.</span>
+
+<span class="sd">        Starting from a boolean array identifying a region, find</span>
+<span class="sd">        the contours with a user-defined bandwidth.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            labeled_mask (np.ndarray): boolean array identifying a connected region.</span>
+<span class="sd">            thickness (int): contour thickness obtained through dilation</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: boolean array identifying a band width of the contours</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Determine the contours of the labeled mask</span>
+        <span class="n">contours</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">findContours</span><span class="p">(</span>
+            <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span><span class="n">labeled_mask</span><span class="p">),</span>
+            <span class="n">cv2</span><span class="o">.</span><span class="n">RETR_TREE</span><span class="p">,</span>
+            <span class="n">cv2</span><span class="o">.</span><span class="n">CHAIN_APPROX_NONE</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Extract the contour as mask</span>
+        <span class="n">contour_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">contours</span><span class="p">:</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="p">(</span><span class="n">c</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+            <span class="n">contour_mask</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># Dilate to generate a thick contour</span>
+        <span class="n">contour_mask</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">morphology</span><span class="o">.</span><span class="n">binary_dilation</span><span class="p">(</span>
+            <span class="n">contour_mask</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">thickness</span><span class="p">,</span> <span class="n">thickness</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Convert to boolean mask</span>
+        <span class="n">contour_mask</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_bool</span><span class="p">(</span><span class="n">contour_mask</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">contour_mask</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_least_squares_minimizer</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            images (list of np.ndarray): signals which in principle went</span>
+<span class="sd">                through ConcentrationAnalysis.__call__() including</span>
+<span class="sd">                ConcentrationAnalysis._convert_signal()</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: suggested heterogeneous scaling</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Strategy: Quantify the discontinuity jump of the signal at</span>
+        <span class="c1"># all boundaries between different segments. These are stored</span>
+        <span class="c1"># in interace_ratio_container. These ratios will be used to</span>
+        <span class="c1"># define a segment-wise scaling factor. To transfer the infos</span>
+        <span class="c1"># on interfaces to segments a least-squares problem is solved.</span>
+
+        <span class="c1"># ! ---- Initialization</span>
+
+        <span class="c1"># Initialize collection of interface ratios with empty lists,</span>
+        <span class="c1"># as well as flag of trustable information by identifying</span>
+        <span class="c1"># none of the coupling as trustworthy.</span>
+        <span class="n">interface_ratio_container</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">trustable_summary</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">coupling</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">label_couplings</span><span class="p">:</span>
+            <span class="n">interface_ratio_container</span><span class="p">[</span><span class="n">coupling</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">trustable_summary</span><span class="p">[</span><span class="n">coupling</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># ! ---- Interface analysis</span>
+
+        <span class="c1"># Read tuning parameters from options</span>
+        <span class="n">mean_thresh</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mean thresh&quot;</span><span class="p">)</span>
+        <span class="n">median_disk_radius</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;median disk radius&quot;</span><span class="p">)</span>
+
+        <span class="c1"># From the labels determine the region properties</span>
+        <span class="n">regionprops</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">regionprops</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">)</span>
+
+        <span class="c1"># Find a suitable segmentation_scaling vector for each separate image.</span>
+        <span class="k">for</span> <span class="n">signal</span> <span class="ow">in</span> <span class="n">images</span><span class="p">:</span>
+
+            <span class="c1"># Define the segment-wise median</span>
+            <span class="n">median</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">regionprop</span> <span class="ow">in</span> <span class="n">regionprops</span><span class="p">:</span>
+
+                <span class="c1"># Get mask</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">labels</span> <span class="o">==</span> <span class="n">regionprop</span><span class="o">.</span><span class="n">label</span>
+
+                <span class="c1"># determine bounding box for labels == label, from regionprops</span>
+                <span class="n">bbox</span> <span class="o">=</span> <span class="n">regionprop</span><span class="o">.</span><span class="n">bbox</span>
+
+                <span class="c1"># Define the bbox as roi</span>
+                <span class="n">roi</span> <span class="o">=</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="n">bbox</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">bbox</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="nb">slice</span><span class="p">(</span><span class="n">bbox</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">bbox</span><span class="p">[</span><span class="mi">3</span><span class="p">]))</span>
+
+                <span class="c1"># Extract image and mask in roi</span>
+                <span class="n">mask_roi</span> <span class="o">=</span> <span class="n">mask</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span>
+                <span class="n">signal_roi</span> <span class="o">=</span> <span class="n">signal</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span>
+
+                <span class="c1"># Determine median on roi</span>
+                <span class="n">median_label_roi</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">rank</span><span class="o">.</span><span class="n">median</span><span class="p">(</span>
+                    <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span><span class="n">signal_roi</span><span class="p">),</span>
+                    <span class="n">skimage</span><span class="o">.</span><span class="n">morphology</span><span class="o">.</span><span class="n">disk</span><span class="p">(</span><span class="n">median_disk_radius</span><span class="p">),</span>
+                    <span class="n">mask</span><span class="o">=</span><span class="n">mask_roi</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Remove signal outside the mask</span>
+                <span class="n">median_label_roi</span><span class="p">[</span><span class="o">~</span><span class="n">mask_roi</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+                <span class="c1"># Extend to full image</span>
+                <span class="n">median</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span> <span class="o">+=</span> <span class="n">median_label_roi</span>
+
+            <span class="c1"># Make discontinuity analysis and obtain interface ratios for this image.</span>
+            <span class="c1"># Find ratio of mean median values for each boundary.</span>
+            <span class="c1"># The idea will be that this ratio will be required</span>
+            <span class="c1"># for one-sided scaling in order to correct for</span>
+            <span class="c1"># discontinuities. Store the ratios in a dictionary.</span>
+            <span class="c1"># To keep track of orientation, consider sorted pairs</span>
+            <span class="c1"># of combinations. Also keep track which ratios are</span>
+            <span class="c1"># trustable or not (only if sufficient information</span>
+            <span class="c1"># provided).</span>
+
+            <span class="n">interface_ratio</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">trustable</span> <span class="o">=</span> <span class="p">{}</span>
+
+            <span class="k">for</span> <span class="n">coupling</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">label_couplings</span><span class="p">:</span>
+
+                <span class="c1"># Fetch the single labels</span>
+                <span class="n">label1</span><span class="p">,</span> <span class="n">label2</span> <span class="o">=</span> <span class="n">coupling</span>
+
+                <span class="c1"># Fetch the common boundary</span>
+                <span class="n">common_boundary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">contour_mask</span><span class="p">[</span><span class="n">label1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">contour_mask</span><span class="p">[</span><span class="n">label2</span><span class="p">]</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Restrict the common boundary to the separate subdomains</span>
+                <span class="n">roi1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">common_boundary</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">labels</span> <span class="o">==</span> <span class="n">label1</span><span class="p">)</span>
+                <span class="n">roi2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">common_boundary</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">labels</span> <span class="o">==</span> <span class="n">label2</span><span class="p">)</span>
+
+                <span class="c1"># Consider the mean of the median of the signal on the separate bands</span>
+                <span class="c1"># TODO Uniformly split contours in N segments and determine</span>
+                <span class="c1"># jump in an integral sense, instead of throwing away the spatial info.</span>
+                <span class="n">mean1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">median</span><span class="p">[</span><span class="n">roi1</span><span class="p">])</span>
+                <span class="n">mean2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">median</span><span class="p">[</span><span class="n">roi2</span><span class="p">])</span>
+
+                <span class="c1"># Check whether this result can be trusted - require sufficient signal.</span>
+                <span class="n">trustable</span><span class="p">[</span><span class="n">coupling</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">mean1</span><span class="p">,</span> <span class="n">mean2</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">mean_thresh</span>
+
+                <span class="c1"># Define the ratio / later scaling - if value not trustable (for</span>
+                <span class="c1"># better usability) choose ratio equal to 1</span>
+                <span class="n">interface_ratio</span><span class="p">[</span><span class="n">coupling</span><span class="p">]</span> <span class="o">=</span> <span class="n">mean1</span> <span class="o">/</span> <span class="n">mean2</span> <span class="k">if</span> <span class="n">trustable</span><span class="p">[</span><span class="n">coupling</span><span class="p">]</span> <span class="k">else</span> <span class="mi">1</span>
+
+            <span class="c1"># Keep only trustable information and collect.</span>
+            <span class="k">for</span> <span class="n">coupling</span><span class="p">,</span> <span class="n">ratio</span> <span class="ow">in</span> <span class="n">interface_ratio</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">trustable</span><span class="p">[</span><span class="n">coupling</span><span class="p">]:</span>
+                    <span class="n">interface_ratio_container</span><span class="p">[</span><span class="n">coupling</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ratio</span><span class="p">)</span>
+                    <span class="n">trustable_summary</span><span class="p">[</span><span class="n">coupling</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># ! ---- Summarize analysis</span>
+
+        <span class="c1"># Reduce multiple data points per interface to single data point</span>
+        <span class="c1"># by simply taking the mean.</span>
+        <span class="n">summarized_interface_ratio</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">coupling</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">label_couplings</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">trustable_summary</span><span class="p">[</span><span class="n">coupling</span><span class="p">]:</span>
+                <span class="n">summarized_interface_ratio</span><span class="p">[</span><span class="n">coupling</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">interface_ratio_container</span><span class="p">[</span><span class="n">coupling</span><span class="p">])</span>
+                <span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Aim at equalizing scaling parameters</span>
+                <span class="n">summarized_interface_ratio</span><span class="p">[</span><span class="n">coupling</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+        <span class="c1"># Fix the lowest trusted label - requires that the trusted interfaces</span>
+        <span class="c1"># define a connected graph.</span>
+        <span class="n">lowest_trusted_label</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">coupling</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">coupling</span> <span class="ow">in</span> <span class="n">trustable_summary</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># ! ---- Assembly: Define conditions combining the interfaces</span>
+
+        <span class="c1"># Based on the interface ratios, build a linear (overdetermined) system,</span>
+        <span class="c1"># which characterizes the optimal scaling.</span>
+        <span class="n">matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_labels</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">rhs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">num_constraints</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Four main contributions:</span>
+        <span class="c1"># 1. Constraint: Add weight on fixing one label</span>
+        <span class="c1"># 2. Constraint: Relate label groups</span>
+        <span class="c1"># 3. Regularization: Weak</span>
+        <span class="c1"># 4. Interface ratios</span>
+
+        <span class="c1">############################################################################</span>
+        <span class="c1"># 1. Fix reference labels, here chosen to be the label with lowest label id</span>
+        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="p">[</span><span class="n">lowest_trusted_label</span><span class="p">]:</span>
+            <span class="n">basis_vector</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_labels</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">basis_vector</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">matrix</span><span class="p">,</span> <span class="n">basis_vector</span><span class="p">))</span>
+            <span class="n">rhs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">rhs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">]])))</span>
+            <span class="n">num_constraints</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1">############################################################################</span>
+        <span class="c1"># 2. Add weak constraint and connect similar labels.</span>
+        <span class="n">label_groups</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;label groups&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">similarity_weight</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># NOTE: Other values could add more weight</span>
+        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">label_groups</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">coupling</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">combinations</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="mi">2</span><span class="p">)):</span>
+                    <span class="n">label1</span><span class="p">,</span> <span class="n">label2</span> <span class="o">=</span> <span class="n">coupling</span>
+                    <span class="n">similarity_balance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_labels</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+                    <span class="n">similarity_balance</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">label1</span><span class="p">]</span> <span class="o">=</span> <span class="n">similarity_weight</span>
+                    <span class="n">similarity_balance</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">label2</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">similarity_weight</span>
+                    <span class="n">matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">matrix</span><span class="p">,</span> <span class="n">similarity_balance</span><span class="p">))</span>
+                    <span class="n">rhs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">rhs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">])))</span>
+                    <span class="n">num_constraints</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1">############################################################################</span>
+        <span class="c1"># 3. Add a weak constraint on all parameters to stay close to 1</span>
+        <span class="c1"># removing possible singularity.</span>
+        <span class="n">regularization_parameter</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unique_labels</span><span class="p">:</span>
+            <span class="n">basis_vector</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_labels</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">basis_vector</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">regularization_parameter</span>
+            <span class="n">matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">matrix</span><span class="p">,</span> <span class="n">basis_vector</span><span class="p">))</span>
+            <span class="n">rhs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">rhs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">regularization_parameter</span><span class="p">]])))</span>
+            <span class="n">num_constraints</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1">############################################################################</span>
+        <span class="c1"># 4. Add trusted couplings and main information on interface ratios..</span>
+        <span class="k">for</span> <span class="n">coupling</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">label_couplings</span><span class="p">:</span>
+            <span class="n">label1</span><span class="p">,</span> <span class="n">label2</span> <span class="o">=</span> <span class="n">coupling</span>
+            <span class="n">scaling_balance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_labels</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">scaling_balance</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">label1</span><span class="p">]</span> <span class="o">=</span> <span class="n">summarized_interface_ratio</span><span class="p">[</span><span class="n">coupling</span><span class="p">]</span>
+            <span class="n">scaling_balance</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">label2</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="n">matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">matrix</span><span class="p">,</span> <span class="n">scaling_balance</span><span class="p">))</span>
+            <span class="n">rhs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">rhs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">])))</span>
+
+        <span class="c1"># Scale matrix and rhs with coupling strength to prioritize significant interfaces</span>
+        <span class="n">matrix</span><span class="p">[</span><span class="n">num_constraints</span><span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coupling_strength</span><span class="p">),</span> <span class="n">matrix</span><span class="p">[</span><span class="n">num_constraints</span><span class="p">:,</span> <span class="p">:]</span>
+        <span class="p">)</span>
+        <span class="n">rhs</span><span class="p">[</span><span class="n">num_constraints</span><span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coupling_strength</span><span class="p">),</span> <span class="n">rhs</span><span class="p">[</span><span class="n">num_constraints</span><span class="p">:]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># ! ---- Obtain parameters as least squares solution</span>
+
+        <span class="c1"># Determine suitable scaling by solving the overdetermined system using</span>
+        <span class="c1"># a least-squares approach.</span>
+        <span class="n">segmentation_scaling</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">lstsq</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">rhs</span><span class="p">),</span> <span class="n">rcond</span><span class="o">=</span><span class="kc">None</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># ! ---- User interaction</span>
+
+        <span class="n">verbosity</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;verbosity&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbosity</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Print the solution</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computed segmentation scaling: </span><span class="si">{</span><span class="n">segmentation_scaling</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">)</span>
+            <span class="n">scaling_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_labels</span><span class="p">):</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">labels</span> <span class="o">==</span> <span class="n">label</span>
+                <span class="n">scaling_image</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">segmentation_scaling</span><span class="p">[</span><span class="n">label</span><span class="p">]</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">scaling_image</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">segmentation_scaling</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

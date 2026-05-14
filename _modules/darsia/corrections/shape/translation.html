@@ -1,0 +1,799 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>darsia.corrections.shape.translation &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/darsia/corrections/shape/translation';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../../_static/searchtools.js"></script>
+    <script src="../../../../_static/language_data.js"></script>
+    <script src="../../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">darsia.corrections.shape.translation</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for darsia.corrections.shape.translation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Module defining estimator for translation between ROIs and corresponding correction.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">darsia</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">darsia.utils.features</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureDetection</span>
+
+
+<div class="viewcode-block" id="TranslationEstimator">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.translation.TranslationEstimator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TranslationEstimator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Estimator of translation to align images based on feature detection.</span>
+
+<span class="sd">    Estimation is performed by restriction to ROIs.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_features</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span> <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">keep_percent</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Setup of user-defined tuning parameters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            max_features (int): feature detection parameter</span>
+<span class="sd">            tol (float): tolerance used to detect whether matching transformation is a</span>
+<span class="sd">                translation</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_features</span> <span class="o">=</span> <span class="n">max_features</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_keep_percent</span> <span class="o">=</span> <span class="n">keep_percent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tol</span> <span class="o">=</span> <span class="n">tol</span>
+
+<div class="viewcode-block" id="TranslationEstimator.find_effective_translation">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.translation.TranslationEstimator.find_effective_translation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">find_effective_translation</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img_src</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">img_dst</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">roi_src</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">roi_dst</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">mask_src</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">mask_dst</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">plot_matches</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Find translation to align two images through feature matching.</span>
+
+<span class="sd">        All lengths are measured in number of pixels.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img_src (np.ndarray): source image</span>
+<span class="sd">            img_dst (np.ndarray): destination image</span>
+<span class="sd">            roi_src (tuple of slices): region of interested associated to the source image</span>
+<span class="sd">            roi_dst (tuple of slices): region of interested associated to the destination image</span>
+<span class="sd">            mask_src (np.ndarray, optional): boolean mask detecting considered pixels in</span>
+<span class="sd">                the analysis; if None, all pixels are considered.</span>
+<span class="sd">            mask_dst (np.ndarray, optional): boolean mask detecting considered pixels in</span>
+<span class="sd">                the analysis; if None, all pixels are considered.</span>
+<span class="sd">            plot_matches (bool): flag controlling whether the matching features are plotted;</span>
+<span class="sd">                useful for debugging; default value is False</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: transformation matrix operating on pixel coordinates using reverse</span>
+<span class="sd">                matrix indexing</span>
+<span class="sd">            bool: flag indicating whether the procedure was successful</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Make several attempts to find a matching transformation.</span>
+        <span class="c1"># First attempt to match both images, using a homography.</span>
+        <span class="c1"># Finding a homography is the preferred approach, as it</span>
+        <span class="c1"># allows for slightly more robustness control as transformation</span>
+        <span class="c1"># models with less DOFs; a homography has 8 DOFs. Robustness is</span>
+        <span class="c1"># later checked by comparing the linear contribution with the</span>
+        <span class="c1"># identity matrix.</span>
+        <span class="c1"># If the first attempt was not successful, try a second attempt.</span>
+        <span class="c1"># Here, not a homography will be set up, but a similarity transform, i.e.,</span>
+        <span class="c1"># an affine map describing scaling, rotation, and translation. This boils</span>
+        <span class="c1"># down to 4 DOFs. Thus, the robustness comparison is easier to trick</span>
+        <span class="c1"># compared to the first case.</span>
+        <span class="k">for</span> <span class="n">transformation_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;homography&quot;</span><span class="p">,</span> <span class="s2">&quot;partial_affine&quot;</span><span class="p">]:</span>
+            <span class="n">transformation</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">matches</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_matching_transformation</span><span class="p">(</span>
+                <span class="n">img_src</span><span class="p">,</span>
+                <span class="n">img_dst</span><span class="p">,</span>
+                <span class="n">roi_src</span><span class="p">,</span>
+                <span class="n">roi_dst</span><span class="p">,</span>
+                <span class="n">mask_src</span><span class="p">,</span>
+                <span class="n">mask_dst</span><span class="p">,</span>
+                <span class="n">transformation_type</span><span class="o">=</span><span class="n">transformation_type</span><span class="p">,</span>
+                <span class="n">keep_percent</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_keep_percent</span><span class="p">,</span>
+                <span class="n">return_matches</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">plot_matches</span><span class="o">=</span><span class="n">plot_matches</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Check whether the transformation is close to a translation and extract the</span>
+            <span class="c1"># effective translation (as affine map) as average translation between the</span>
+            <span class="c1"># matches.</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isclose_translation</span><span class="p">(</span><span class="n">transformation</span><span class="p">):</span>
+                <span class="p">(</span><span class="n">translation</span><span class="p">,</span> <span class="n">intact_translation</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_translation</span><span class="p">(</span><span class="n">matches</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">translation</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">intact_translation</span> <span class="o">=</span> <span class="kc">False</span>
+
+            <span class="c1"># Accept resulting transformation if it can be casted as translation</span>
+            <span class="k">if</span> <span class="n">intact_translation</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="k">return</span> <span class="n">translation</span><span class="p">,</span> <span class="n">intact_translation</span></div>
+
+
+<div class="viewcode-block" id="TranslationEstimator.match_roi">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.translation.TranslationEstimator.match_roi">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">match_roi</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img_src</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">],</span>
+        <span class="n">img_dst</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">],</span>
+        <span class="n">roi_src</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">roi_dst</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">plot_matches</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Align two images through feature matching in provided ROIs.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img_src (np.ndarray or darsia.Image): source image</span>
+<span class="sd">            img_dst (np.ndarray or darsia.Image): destination image</span>
+<span class="sd">            roi_src (tuple of slices): region of interested associated to the source image</span>
+<span class="sd">            roi_dst (tuple of slices): region of interested associated to the destination image</span>
+<span class="sd">                translation</span>
+<span class="sd">            plot_matches (bool): flag controlling whether the matching features are plotted;</span>
+<span class="sd">                useful for debugging; default value is False</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray, optional: aligned source image, if input of type array</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Determine effective translation</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img_src</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img_dst</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_match_roi_arrays</span><span class="p">(</span>
+                <span class="n">img_src</span><span class="p">,</span> <span class="n">img_dst</span><span class="p">,</span> <span class="n">roi_src</span><span class="p">,</span> <span class="n">roi_dst</span><span class="p">,</span> <span class="n">plot_matches</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img_src</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img_dst</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_match_roi_images</span><span class="p">(</span>
+                <span class="n">img_src</span><span class="p">,</span> <span class="n">img_dst</span><span class="p">,</span> <span class="n">roi_src</span><span class="p">,</span> <span class="n">roi_dst</span><span class="p">,</span> <span class="n">plot_matches</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Provide images either as numpy arrays or darsia Images.&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_match_roi_arrays</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img_src</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">img_dst</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">roi_src</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">],</span>
+        <span class="n">roi_dst</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">],</span>
+        <span class="n">plot_matches</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Align two images through feature matching in provided ROIs.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img_src (np.ndarray): source image</span>
+<span class="sd">            img_dst (np.ndarray): destination image</span>
+<span class="sd">            roi_src (tuple of slices): region of interested associated to the source image</span>
+<span class="sd">            roi_dst (tuple of slices): region of interested associated to the destination image</span>
+<span class="sd">                translation</span>
+<span class="sd">            plot_matches (bool): flag controlling whether the matching features are plotted;</span>
+<span class="sd">                useful for debugging; default value is False</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: aligned source image</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Determine effective translation</span>
+        <span class="n">translation</span><span class="p">,</span> <span class="n">intact_translation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_effective_translation</span><span class="p">(</span>
+            <span class="n">img_src</span><span class="p">,</span> <span class="n">img_dst</span><span class="p">,</span> <span class="n">roi_src</span><span class="p">,</span> <span class="n">roi_dst</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">plot_matches</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">intact_translation</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;ROIs cannot be aligned by translation.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Apply translation - Change the source and return it</span>
+        <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span> <span class="o">=</span> <span class="n">img_dst</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">aligned_img_src</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">warpAffine</span><span class="p">(</span><span class="n">img_src</span><span class="p">,</span> <span class="n">translation</span><span class="p">,</span> <span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">aligned_img_src</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_match_roi_images</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img_src</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">img_dst</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">roi_src</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">],</span>
+        <span class="n">roi_dst</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">],</span>
+        <span class="n">plot_matches</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Align two images through feature matching in provided ROIs.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img_src (image): source image, which will be modified and aligned</span>
+<span class="sd">            img_dst (image): destination image</span>
+<span class="sd">            roi_src (tuple of slices): region of interested associated to the source image</span>
+<span class="sd">            roi_dst (tuple of slices): region of interested associated to the destination image</span>
+<span class="sd">                translation</span>
+<span class="sd">            plot_matches (bool): flag controlling whether the matching features are plotted;</span>
+<span class="sd">                useful for debugging; default value is False</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Determine effective translation</span>
+        <span class="n">translation</span><span class="p">,</span> <span class="n">intact_translation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_effective_translation</span><span class="p">(</span>
+            <span class="n">img_src</span><span class="o">.</span><span class="n">img</span><span class="p">,</span> <span class="n">img_dst</span><span class="o">.</span><span class="n">img</span><span class="p">,</span> <span class="n">roi_src</span><span class="p">,</span> <span class="n">roi_dst</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">plot_matches</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">intact_translation</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;ROIs cannot be aligned by translation.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Apply translation - Modify image internally</span>
+        <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span> <span class="o">=</span> <span class="n">img_dst</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">aligned_img_src</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">warpAffine</span><span class="p">(</span><span class="n">img_src</span><span class="o">.</span><span class="n">img</span><span class="p">,</span> <span class="n">translation</span><span class="p">,</span> <span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">aligned_img_src</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_find_matching_transformation</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img_src</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">img_dst</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">roi_src</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">roi_dst</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">mask_src</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">mask_dst</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">transformation_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;homography&quot;</span><span class="p">,</span>
+        <span class="n">keep_percent</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+        <span class="n">return_matches</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">plot_matches</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determine matching map (homography or partial affine transformation).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img_src (np.ndarray): source image</span>
+<span class="sd">            img_dst (np.ndarry): destination image</span>
+<span class="sd">            roi_src (tuple of slices, optional): region of interest for the source image</span>
+<span class="sd">            roi_dst (tuple of slices, optional): region of interest for the destination image</span>
+<span class="sd">            mask_src (np.ndarray, optional): boolean mask detecting considered pixels in</span>
+<span class="sd">                the analysis; if None, all pixels are considered.</span>
+<span class="sd">            mask_dst (np.ndarray, optional): boolean mask detecting considered pixels in</span>
+<span class="sd">                the analysis; if None, all pixels are considered.</span>
+<span class="sd">            transformation_type (str): either &quot;homography&quot; or &quot;partial_affine&quot;</span>
+<span class="sd">            keep_percent (float): how much of the features should be considered for finding</span>
+<span class="sd">                the transformation</span>
+<span class="sd">            return_matches (bool): flag controlling whether the inliers among all matches</span>
+<span class="sd">                are returned</span>
+<span class="sd">            plot_matches (bool): flag controlling whether found matches are plotted;</span>
+<span class="sd">                default is False</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: transformation matrix operating on pixel coordinates using reverse</span>
+<span class="sd">                matrix indexing</span>
+<span class="sd">            bool: flag indicating whether the procedure was successful</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">transformation_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;homography&quot;</span><span class="p">,</span> <span class="s2">&quot;partial_affine&quot;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Transformation type </span><span class="si">{</span><span class="n">transformation_type</span><span class="si">}</span><span class="s2"> not supported.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Manage ROIs</span>
+        <span class="k">if</span> <span class="n">roi_src</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">roi_dst</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">roi_dst</span> <span class="o">=</span> <span class="n">roi_src</span>
+
+            <span class="c1"># Only cover the case of compatible ROIs for now.</span>
+            <span class="k">assert</span> <span class="n">img_src</span><span class="p">[</span><span class="n">roi_src</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">img_dst</span><span class="p">[</span><span class="n">roi_dst</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Only continue if images contain a sufficient amount of pixels.</span>
+        <span class="k">if</span> <span class="nb">min</span><span class="p">(</span><span class="n">img_src</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">have_features_src</span> <span class="o">=</span> <span class="n">have_features_dst</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Extract features for both images restricted to the ROI.</span>
+            <span class="c1"># Pixel coordinates are prescibed using reverse matrix indexing.</span>
+            <span class="n">features_src</span><span class="p">,</span> <span class="n">have_features_src</span> <span class="o">=</span> <span class="n">FeatureDetection</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span>
+                <span class="n">img_src</span><span class="p">,</span> <span class="n">roi_src</span><span class="p">,</span> <span class="n">mask_src</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_features</span>
+            <span class="p">)</span>
+            <span class="n">features_dst</span><span class="p">,</span> <span class="n">have_features_dst</span> <span class="o">=</span> <span class="n">FeatureDetection</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span>
+                <span class="n">img_dst</span><span class="p">,</span> <span class="n">roi_dst</span><span class="p">,</span> <span class="n">mask_dst</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_features</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Check whether features are valid</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">have_features_src</span> <span class="ow">and</span> <span class="n">have_features_dst</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">return_matches</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">False</span>
+
+        <span class="c1"># Determine matching points</span>
+        <span class="p">(</span><span class="n">pts_src</span><span class="p">,</span> <span class="n">pts_dst</span><span class="p">),</span> <span class="n">have_match</span><span class="p">,</span> <span class="n">matches</span> <span class="o">=</span> <span class="n">FeatureDetection</span><span class="o">.</span><span class="n">match_features</span><span class="p">(</span>
+            <span class="n">features_src</span><span class="p">,</span> <span class="n">features_dst</span><span class="p">,</span> <span class="n">keep_percent</span><span class="o">=</span><span class="n">keep_percent</span><span class="p">,</span> <span class="n">return_matches</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Determine matching transformation, operating on pixel coordinates using</span>
+        <span class="c1"># reverse matrix indexing. Allow for different models.</span>
+        <span class="n">transformation</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">have_match</span><span class="p">:</span>
+            <span class="c1"># Homography</span>
+            <span class="k">if</span> <span class="n">transformation_type</span> <span class="o">==</span> <span class="s2">&quot;homography&quot;</span><span class="p">:</span>
+                <span class="n">transformation</span><span class="p">,</span> <span class="n">mask</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">findHomography</span><span class="p">(</span>
+                    <span class="n">pts_src</span><span class="p">,</span> <span class="n">pts_dst</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">RANSAC</span>
+                <span class="p">)</span>
+            <span class="c1"># Affine map including merely scaling, rotation, and translation</span>
+            <span class="k">elif</span> <span class="n">transformation_type</span> <span class="o">==</span> <span class="s2">&quot;partial_affine&quot;</span><span class="p">:</span>
+                <span class="n">transformation</span><span class="p">,</span> <span class="n">mask</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">estimateAffinePartial2D</span><span class="p">(</span><span class="n">pts_src</span><span class="p">,</span> <span class="n">pts_dst</span><span class="p">)</span>
+
+        <span class="c1"># Monitor success</span>
+        <span class="n">intact_transformation</span> <span class="o">=</span> <span class="n">transformation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="c1"># Flag inliers</span>
+        <span class="n">inliers</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">pts_src</span><span class="p">[</span><span class="n">mask</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                <span class="n">pts_dst</span><span class="p">[</span><span class="n">mask</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">intact_transformation</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Plot matches in both images</span>
+        <span class="k">if</span> <span class="n">plot_matches</span> <span class="ow">and</span> <span class="n">intact_transformation</span><span class="p">:</span>
+            <span class="n">kps_src</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">features_src</span>
+            <span class="n">kps_dst</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">features_dst</span>
+
+            <span class="n">matchedVis</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">drawMatches</span><span class="p">(</span>
+                <span class="n">img_src</span><span class="p">,</span> <span class="n">kps_src</span><span class="p">,</span> <span class="n">img_dst</span><span class="p">,</span> <span class="n">kps_dst</span><span class="p">,</span> <span class="n">matches</span><span class="p">,</span> <span class="kc">None</span>
+            <span class="p">)</span>
+
+            <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">matchedVis</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">return_matches</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">transformation</span><span class="p">,</span> <span class="n">intact_transformation</span><span class="p">,</span> <span class="n">inliers</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">transformation</span><span class="p">,</span> <span class="n">intact_transformation</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_isclose_translation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transformation</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Checking whether a transformation is close to a translation.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            transformation (np.ndarray): transformation matrix, e.g., homography,</span>
+<span class="sd">                or affine map</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: flag whether transformation is close to a translation</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">transformation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span>
+            <span class="n">transformation</span><span class="p">[:</span><span class="mi">2</span><span class="p">,</span> <span class="p">:</span><span class="mi">2</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="n">atol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_tol</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_find_translation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">matches</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determine a translation as average translation between two sets of points.</span>
+
+<span class="sd">        NOTE: The average translation is identical to the least squares minimizer</span>
+<span class="sd">        among all translations. Including RANSAC would be optimal. However, in</span>
+<span class="sd">        all workflows this method will be combined with methods like</span>
+<span class="sd">        find_matching_transformation which involve RANSAC.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            matches (tuple of arrays): src and dst points, which are supposed to</span>
+<span class="sd">                be a translation from each other apart.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: translation matrix</span>
+<span class="sd">            bool: flag indicating whether the procedure was successful</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Extract the translation directly as average displacement from all</span>
+        <span class="c1"># provided matches - have to assume that the matches are well chosen.</span>
+        <span class="c1"># NOTE: As matches will result as output from cv2 routines, these use</span>
+        <span class="c1"># (col, row)-indexing, i.e., reverse matrix indexing.</span>
+        <span class="n">src</span><span class="p">,</span> <span class="n">dst</span> <span class="o">=</span> <span class="n">matches</span>
+        <span class="n">displacement</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">dst</span> <span class="o">-</span> <span class="n">src</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">affine_translation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="n">displacement</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">))))</span>
+
+        <span class="c1"># Procedure successful - return the translation</span>
+        <span class="k">return</span> <span class="n">affine_translation</span><span class="p">,</span> <span class="kc">True</span></div>
+
+
+
+<div class="viewcode-block" id="TranslationCorrection">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.translation.TranslationCorrection">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TranslationCorrection</span><span class="p">(</span><span class="n">darsia</span><span class="o">.</span><span class="n">BaseCorrection</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Translation correction based on user-input global translation.</span>
+
+<span class="sd">    Translation is provided as array or path to numpy array.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">translation</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Contructor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            translation (str or Path): path to predefined translation.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Read translation from file</span>
+        <span class="k">if</span> <span class="n">translation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">translation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">translation</span><span class="p">))</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Translation map/array.&quot;&quot;&quot;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Flag controlling whether the correction is active.&quot;&quot;&quot;</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="TranslationCorrection.correct_array">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.translation.TranslationCorrection.correct_array">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">correct_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Main routine. Perform translation.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (np.ndarray): image to be corrected.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            array: Corrected image</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">translated_img</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">warpAffine</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">translation</span><span class="p">,</span> <span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">translated_img</span></div>
+
+
+    <span class="c1"># ! ---- I/O ----</span>
+
+<div class="viewcode-block" id="TranslationCorrection.save">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.translation.TranslationCorrection.save">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Not implemented yet.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TranslationCorrection.load">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.translation.TranslationCorrection.load">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Not implemented yet.&quot;</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

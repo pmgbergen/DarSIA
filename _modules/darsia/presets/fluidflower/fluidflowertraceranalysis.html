@@ -1,0 +1,562 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>darsia.presets.fluidflower.fluidflowertraceranalysis &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/darsia/presets/fluidflower/fluidflowertraceranalysis';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../../_static/searchtools.js"></script>
+    <script src="../../../../_static/language_data.js"></script>
+    <script src="../../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">darsia.presets.fluidflower.fluidflowertraceranalysis</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for darsia.presets.fluidflower.fluidflowertraceranalysis</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Standardized tracer concentration analysis.</span>
+
+<span class="sd">Applicable for the tracer experiments in the FluidFlower (and other similar assets),</span>
+<span class="sd">allowing for heterogeneous media.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">darsia</span>
+
+
+<div class="viewcode-block" id="FluidFlowerTracerAnalysis">
+<a class="viewcode-back" href="../../../../source/presets/darsia.presets.fluidflower.html#darsia.presets.fluidflower.fluidflowertraceranalysis.FluidFlowerTracerAnalysis">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FluidFlowerTracerAnalysis</span><span class="p">(</span><span class="n">darsia</span><span class="o">.</span><span class="n">TracerAnalysis</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class for managing the well test of the FluidFlower benchmark.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># ! ---- Setup routines</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">baseline</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]],</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+        <span class="n">results</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+        <span class="n">update_setup</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">verbosity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Setup of analysis.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            baseline (str, Path or list of such): baseline images, used to</span>
+<span class="sd">                set up analysis tools and cleaning tools</span>
+<span class="sd">            config (str or Path): path to config dict</span>
+<span class="sd">            results (str or Path): path to results directory</span>
+<span class="sd">            update_setup (bool): flag controlling whether cache in setup</span>
+<span class="sd">                routines is emptied.</span>
+<span class="sd">            verbosity  (bool): flag controlling whether results of the post-analysis</span>
+<span class="sd">                are printed to screen; default is False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Assign tracer analysis</span>
+        <span class="n">darsia</span><span class="o">.</span><span class="n">TracerAnalysis</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">update_setup</span><span class="p">)</span>
+
+        <span class="c1"># Add labels</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;labels&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="c1"># Create folder for results if not existent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path_to_results</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path_to_results</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Store verbosity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span> <span class="o">=</span> <span class="n">verbosity</span>
+
+    <span class="c1"># ! ---- Analysis tools for detecting the tracer concentration</span>
+
+<div class="viewcode-block" id="FluidFlowerTracerAnalysis.define_tracer_analysis">
+<a class="viewcode-back" href="../../../../source/presets/darsia.presets.fluidflower.html#darsia.presets.fluidflower.fluidflowertraceranalysis.FluidFlowerTracerAnalysis.define_tracer_analysis">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">define_tracer_analysis</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">ConcentrationAnalysis</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Identify tracer concentration using a reduction to the grayscale space.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">########################################################################</span>
+        <span class="c1"># Define signal reduction</span>
+        <span class="n">signal_reduction</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">MonochromaticReduction</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;tracer&quot;</span><span class="p">])</span>
+
+        <span class="c1">########################################################################</span>
+        <span class="c1"># Balancing</span>
+        <span class="n">balancing</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">HeterogeneousLinearModel</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;balancing &quot;</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;tracer&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1">########################################################################</span>
+        <span class="c1"># Define restoration object - coarsen, tvd, resize</span>
+        <span class="n">original_shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">restoration</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">CombinedModel</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">darsia</span><span class="o">.</span><span class="n">Resize</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;restoration &quot;</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;tracer&quot;</span><span class="p">]),</span>
+                <span class="n">darsia</span><span class="o">.</span><span class="n">TVD</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;restoration &quot;</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;tracer&quot;</span><span class="p">]),</span>
+                <span class="n">darsia</span><span class="o">.</span><span class="n">Resize</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">original_shape</span><span class="p">),</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1">########################################################################</span>
+        <span class="c1"># Linear model for converting signals to data</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">CombinedModel</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">darsia</span><span class="o">.</span><span class="n">LinearModel</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;model &quot;</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;tracer&quot;</span><span class="p">]),</span>
+                <span class="n">darsia</span><span class="o">.</span><span class="n">ClipModel</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}),</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1">########################################################################</span>
+        <span class="c1"># Final concentration analysis with possibility for calibration</span>
+        <span class="c1"># of both the balancing and the model</span>
+        <span class="k">class</span><span class="w"> </span><span class="nc">TailoredConcentrationAnalysis</span><span class="p">(</span>
+            <span class="n">darsia</span><span class="o">.</span><span class="n">ConcentrationAnalysis</span><span class="p">,</span>
+            <span class="n">darsia</span><span class="o">.</span><span class="n">ContinuityBasedBalancingCalibrationMixin</span><span class="p">,</span>
+            <span class="n">darsia</span><span class="o">.</span><span class="n">InjectionRateModelObjectiveMixin</span><span class="p">,</span>
+        <span class="p">):</span>
+            <span class="k">pass</span>
+
+        <span class="n">verbosity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;tracer&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;verbosity&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">tracer_analysis</span> <span class="o">=</span> <span class="n">TailoredConcentrationAnalysis</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">,</span>
+            <span class="n">signal_reduction</span><span class="p">,</span>
+            <span class="n">balancing</span><span class="p">,</span>
+            <span class="n">restoration</span><span class="p">,</span>
+            <span class="n">model</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+            <span class="n">verbosity</span><span class="o">=</span><span class="n">verbosity</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">tracer_analysis</span></div>
+
+
+    <span class="c1"># ! ---- Calibration routines</span>
+
+<div class="viewcode-block" id="FluidFlowerTracerAnalysis.calibrate_balancing">
+<a class="viewcode-back" href="../../../../source/presets/darsia.presets.fluidflower.html#darsia.presets.fluidflower.fluidflowertraceranalysis.FluidFlowerTracerAnalysis.calibrate_balancing">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calibrate_balancing</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">calibration_images</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span> <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calibration routine aiming at decreasing the discontinuity modulus</span>
+<span class="sd">        across interfaces of the labeling.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            calibration_images (list of Path): calibration images.</span>
+<span class="sd">            options (dict): parameters for calibration.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Read and process the images</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calibration: Processing images...&quot;</span><span class="p">)</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_read</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">calibration_images</span><span class="p">]</span>
+
+        <span class="c1"># Calibrate the overall signal via a simple constant rescaling</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calibration: Balancing...&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tracer_analysis</span><span class="o">.</span><span class="n">calibrate_balancing</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FluidFlowerTracerAnalysis.calibrate_model">
+<a class="viewcode-back" href="../../../../source/presets/darsia.presets.fluidflower.html#darsia.presets.fluidflower.fluidflowertraceranalysis.FluidFlowerTracerAnalysis.calibrate_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calibrate_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">calibration_images</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span> <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calibration routine aiming at matching the injection rate</span>
+
+<span class="sd">        NOTE: Calling this routine will require the definition of</span>
+<span class="sd">        a geometry for data integration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            calibration_images (list of Path): calibration images.</span>
+<span class="sd">            options (dict): parameters for calibration.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Read and process the images</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calibration: Processing images...&quot;</span><span class="p">)</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_read</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">calibration_images</span><span class="p">]</span>
+
+        <span class="c1"># Calibrate the overall signal via a simple constant rescaling</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calibration: Model...&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tracer_analysis</span><span class="o">.</span><span class="n">calibrate_model</span><span class="p">(</span>
+            <span class="n">images</span><span class="p">,</span>
+            <span class="n">options</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="s2">&quot;model_position&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;geometry&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">geometry</span><span class="p">}),</span>
+        <span class="p">)</span></div>
+
+
+    <span class="c1"># ! ----- Analysis tools</span>
+
+<div class="viewcode-block" id="FluidFlowerTracerAnalysis.single_image_analysis">
+<a class="viewcode-back" href="../../../../source/presets/darsia.presets.fluidflower.html#darsia.presets.fluidflower.fluidflowertraceranalysis.FluidFlowerTracerAnalysis.single_image_analysis">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">single_image_analysis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Standard workflow to analyze the tracer concentration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (Path): path to single image.</span>
+<span class="sd">            kwargs: optional keyword arguments, see batch_analysis.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: tracer concentration map</span>
+<span class="sd">            dict: dictinary with all stored results from the post-analysis.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># ! ---- Extract concentration profile</span>
+
+        <span class="c1"># Load the current image</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">load_and_process_image</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+
+        <span class="c1"># Determine tracer concentration</span>
+        <span class="n">tracer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">determine_tracer</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">tracer</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

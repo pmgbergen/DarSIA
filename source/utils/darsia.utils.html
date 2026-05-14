@@ -1,0 +1,912 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Utilities (darsia.utils) &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'source/utils/darsia.utils';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="prev" title="Single image analysis (darsia.single_image_analysis)" href="../single_image_analysis/darsia.single_image_analysis.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item pst-sidebar-collapse"><button id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar"><svg class="pst-icon svg-inline--fa" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
+  </svg>
+  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
+  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
+</button></div>
+        <div class="sidebar-primary-item">
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../corrections/darsia.corrections.html">Shape and color corrections (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../image/darsia.image.html">Physical Images and I/O (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.image</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../manager/darsia.manager.html">Analysis managers (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.manager</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mathematics/darsia.mathematics.html">Mathematical algorithms (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.mathematics</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../measure/darsia.measure.html">Measure tools (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.measure</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../multi_image_analysis/darsia.multi_image_analysis.html">Multi-image comparisons (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.multi_image_analysis</span></code>)</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../presets/darsia.presets.html">Presets (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.presets</span></code>)</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../presets/darsia.presets.fluidflower.html">Heteroegenous media analysis workflows (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.presets.fluidflower</span></code>)</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../restoration/darsia.restoration.html">Restoration (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.restoration</span></code>)</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../signals/darsia.signals.html">Signals transformation (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.signals</span></code>)</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../signals/darsia.signals.models.html">Signal conversion models (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.signals.models</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../signals/darsia.signals.reduction.html">Dimensional reduction (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.signals.reduction</span></code>)</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../single_image_analysis/darsia.single_image_analysis.html">Single image analysis (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.single_image_analysis</span></code>)</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Utilities (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.utils</span></code>)</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../darsia.html" class="nav-link">DarSIA - Darcy Scale Image Analysis toolbox (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia</span></code>)</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Utilities (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.utils</span></code>)</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-darsia.utils">
+<span id="utilities-darsia-utils"></span><h1>Utilities (<a class="reference internal" href="#module-darsia.utils" title="darsia.utils"><code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.utils</span></code></a>)<a class="headerlink" href="#module-darsia.utils" title="Link to this heading">#</a></h1>
+<p>Utility functionalities.</p>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">#</a></h2>
+</section>
+<section id="module-darsia.utils.box">
+<span id="darsia-utils-box-module"></span><h2>darsia.utils.box module<a class="headerlink" href="#module-darsia.utils.box" title="Link to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.box.bounding_box">
+<span class="sig-name descname"><span class="pre">bounding_box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">voxels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/box.html#bounding_box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.box.bounding_box" title="Link to this definition">#</a></dt>
+<dd><p>Determine bounding box for a set of given coordinates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>voxels</strong> (<em>VoxelArray</em>) – voxel array of size N x dim, using matrix indexing in 2d.</p></li>
+<li><p><strong>padding</strong> (<em>int</em>) – padding to create a slightly larger bounding box. Might
+be of interest if the area that is prescribed in coords cover slightly less than
+strictly needed. Default is 0.</p></li>
+<li><p><strong>max_size</strong> (<em>list</em><em> or </em><em>tuple</em><em>, </em><em>optional</em>) – max size of bounding box in each dimension.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>slices with ranges from min to max value</dt><dd><p>per dimension.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple of slices</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.box.bounding_box_inverse">
+<span class="sig-name descname"><span class="pre">bounding_box_inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bounding_box</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/box.html#bounding_box_inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.box.bounding_box_inverse" title="Link to this definition">#</a></dt>
+<dd><p>Returns an array that would produce the same bounding box from the bounding_box()
+function above.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>slices</strong> (<em>tuple of</em>) – slices with ranges from min to max value
+per dimension.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>voxel array of size N x dim, using matrix indexing in 2d.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>voxels (VoxelArray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.box.perimeter">
+<span class="sig-name descname"><span class="pre">perimeter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">box</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/box.html#perimeter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.box.perimeter" title="Link to this definition">#</a></dt>
+<dd><p>Returns the perimeter of a box. Accepts both tuples of slices
+as well as arrays of coordinates as input.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>box</strong> (<em>tuple</em><em> of </em><em>slices</em><em> or </em><em>np.ndarray</em>) – definition of a box,
+either as tuple of slices, or coordinates (can also
+use metric units)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>perimeter</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float or int (depending on input)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.box.random_patches">
+<span class="sig-name descname"><span class="pre">random_patches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_patches</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/box.html#random_patches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.box.random_patches" title="Link to this definition">#</a></dt>
+<dd><p>Utility to extract random patches from a mask.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mask</strong> (<em>np.ndarray</em>) – binary mask to extract patches from.</p></li>
+<li><p><strong>width</strong> (<em>int</em>) – width of the patches.</p></li>
+<li><p><strong>num_patches</strong> (<em>int</em>) – number of patches to extract.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>patches as slices.
+None: if the mask is too small to extract patches.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list of tuples</p>
+</dd>
+</dl>
+<p>NOTE: The function utilizes randomness. For reproducibility, the seed is fixed.</p>
+</dd></dl>
+
+</section>
+<section id="module-darsia.utils.coloranalysis">
+<span id="darsia-utils-coloranalysis-module"></span><h2>darsia.utils.coloranalysis module<a class="headerlink" href="#module-darsia.utils.coloranalysis" title="Link to this heading">#</a></h2>
+<p>Module to assist in the analysis of color spectra.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.coloranalysis.hsv_spectrum">
+<span class="sig-name descname"><span class="pre">hsv_spectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/coloranalysis.html#hsv_spectrum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.coloranalysis.hsv_spectrum" title="Link to this definition">#</a></dt>
+<dd><p>Plot histograms for all HSV components present in a ROI of an image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em>) – image array in RGB space with matrix indexing</p></li>
+<li><p><strong>roi</strong> (<em>tuple</em><em> of </em><em>slices</em>) – slice for y-components, and slice for x-components,
+defining a region of interest, to be cropped from img</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-darsia.utils.features">
+<span id="darsia-utils-features-module"></span><h2>darsia.utils.features module<a class="headerlink" href="#module-darsia.utils.features" title="Link to this heading">#</a></h2>
+<p>Class for feature detection.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.utils.features.FeatureDetection">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">FeatureDetection</span></span><a class="reference internal" href="../../_modules/darsia/utils/features.html#FeatureDetection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.features.FeatureDetection" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class containing two class methods, once detecting features, and matching features.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.utils.features.FeatureDetection.extract_features">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">extract_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_features</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/features.html#FeatureDetection.extract_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.features.FeatureDetection.extract_features" title="Link to this definition">#</a></dt>
+<dd><p>Extract features from an image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em>) – image array</p></li>
+<li><p><strong>roi</strong> (<em>tuple</em><em> of </em><em>two slices</em><em>, </em><em>optional</em>) – region of interest; by default the
+entire image is considered</p></li>
+<li><p><strong>max_features</strong> (<em>int</em>) – maximal number of features to be extracted</p></li>
+<li><p><strong>mask</strong> (<em>np</em><em>,</em><em>ndarray</em><em>, </em><em>optional</em>) – region of interest for features to be considered
+or ignored; default is None which identifies all features as relevant.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl>
+<dt>tuple of</dt><dd><dl class="simple">
+<dt>kps: keypoints of the features; note keypoints come in (col, row),</dt><dd><p>i.e., reversed matrix indexing</p>
+</dd>
+</dl>
+<p>np.ndarray: descriptors of the features</p>
+</dd>
+</dl>
+<p>bool: flag indicating whether features have been found</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.utils.features.FeatureDetection.match_features">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">match_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">features_src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">features_dst</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_percent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_matches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/features.html#FeatureDetection.match_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.features.FeatureDetection.match_features" title="Link to this definition">#</a></dt>
+<dd><p>Match two sets of features via a homography.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>features_src</strong> (<em>tuple</em>) – source features given as tuple of keypoints and descriptors</p></li>
+<li><p><strong>features_dst</strong> (<em>tuple</em>) – destination features given as tuple of keypoints and
+descriptors</p></li>
+<li><p><strong>keep_percent</strong> (<em>float</em>) – number between 0 and 1 indicating how many features should
+be considered for finding a match; 0 denotes none, while 1 denotes all.</p></li>
+<li><p><strong>return_matches</strong> (<em>bool</em>) – flag controlling whether also the matches are returned,
+which could e.g. be used for plotting</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>homography matrix matching the features
+bool: flag indicating whether procedure has been successful
+matches (optional): matches between features # TODO type</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="darsia-utils-identity-module">
+<h2>darsia.utils.identity module<a class="headerlink" href="#darsia-utils-identity-module" title="Link to this heading">#</a></h2>
+</section>
+<section id="module-darsia.utils.interpolation">
+<span id="darsia-utils-interpolation-module"></span><h2>darsia.utils.interpolation module<a class="headerlink" href="#module-darsia.utils.interpolation" title="Link to this heading">#</a></h2>
+<p>Module containing interpolation functionality for scalar data.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.interpolation.illumination_interpolation">
+<span class="sig-name descname"><span class="pre">illumination_interpolation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measurements</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinate_system</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/interpolation.html#illumination_interpolation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.interpolation.illumination_interpolation" title="Link to this definition">#</a></dt>
+<dd><p>Determine a voxeled spatial map from measurements through polynomial interpolation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>measurements</strong> (<em>tuple</em><em>[</em><em>np.ndarray</em><em>, </em><em>...</em><em>]</em>) – tuple of x, y, and data measurements,
+providing the input for interpolation.</p></li>
+<li><p><strong>shape</strong> (<em>tuple</em><em> of </em><em>int</em>) – target shape of the output map.</p></li>
+<li><p><strong>coordinate_system</strong> (<em>darsia.CoordinateSystem</em>) – coordinate system of the
+correspoinding physical image.</p></li>
+<li><p><strong>degree</strong> (<em>int</em>) – degree of the polynomial interpolation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>map</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.interpolation.interpolate_measurements_2d">
+<span class="sig-name descname"><span class="pre">interpolate_measurements_2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measurements</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinate_system</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/interpolation.html#interpolate_measurements_2d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.interpolation.interpolate_measurements_2d" title="Link to this definition">#</a></dt>
+<dd><p>Determine a voxeled spatial map from measurements through RBF interpolation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>measurements</strong> – tuple of x, y, and data
+measurements, providing the input for interpolation.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>map</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.interpolation.interpolate_to_image">
+<span class="sig-name descname"><span class="pre">interpolate_to_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'rbf'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/interpolation.html#interpolate_to_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.interpolation.interpolate_to_image" title="Link to this definition">#</a></dt>
+<dd><p>Interpolate data to image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>np.ndarray</em>) – (x,y,measurements) data to be interpolated.</p></li>
+<li><p><strong>image</strong> (<em>darsia.Image</em>) – Image to which data shall be interpolated.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – Interpolation method to use. Options are:
+- “rbf”: Radial Basis Function interpolation (default).
+- “polynomial”: Polynomial interpolation.
+- “linear”: Linear interpolation.
+- “quadratic”: Quadratic interpolation.
+- “cubic”: Cubic interpolation.
+- “quartic”: Quartic interpolation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>interpolated image.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>darsia.Image</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.interpolation.interpolate_to_image_from_csv">
+<span class="sig-name descname"><span class="pre">interpolate_to_image_from_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">csv_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'rbf'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/interpolation.html#interpolate_to_image_from_csv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.interpolation.interpolate_to_image_from_csv" title="Link to this definition">#</a></dt>
+<dd><p>Interpolate data from CSV to image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>csv_file</strong> (<em>Path</em>) – Path to the CSV file containing the data.</p></li>
+<li><p><strong>key</strong> (<em>str</em>) – Key to identify the data in the CSV file.</p></li>
+<li><p><strong>image</strong> (<em>darsia.Image</em>) – Image to which data shall be interpolated.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – Interpolation method to use. Options are:
+- “rbf”: Radial Basis Function interpolation (default).
+- “polynomial”: Polynomial interpolation.
+- “linear”: Linear interpolation.
+- “quadratic”: Quadratic interpolation.
+- “cubic”: Cubic interpolation.
+- “quartic”: Quartic interpolation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Interpolated image.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>darsia.Image</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.interpolation.polynomial_interpolation">
+<span class="sig-name descname"><span class="pre">polynomial_interpolation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measurements</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinate_system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degree</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/interpolation.html#polynomial_interpolation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.interpolation.polynomial_interpolation" title="Link to this definition">#</a></dt>
+<dd><p>Determine a voxeled spatial map from measurements through polynomial interpolation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>measurements</strong> (<em>tuple</em><em>[</em><em>np.ndarray</em><em>, </em><em>...</em><em>]</em>) – tuple of x, y, and data measurements,
+providing the input for interpolation.</p></li>
+<li><p><strong>shape</strong> (<em>tuple</em><em> of </em><em>int</em>) – target shape of the output map.</p></li>
+<li><p><strong>coordinate_system</strong> (<em>darsia.CoordinateSystem</em>) – coordinate system of the
+correspoinding physical image.</p></li>
+<li><p><strong>degree</strong> (<em>int</em>) – degree of the polynomial interpolation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>map</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-darsia.utils.segmentation">
+<span id="darsia-utils-segmentation-module"></span><h2>darsia.utils.segmentation module<a class="headerlink" href="#module-darsia.utils.segmentation" title="Link to this heading">#</a></h2>
+<p>Module containing utils for segmentation of layered media.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.segmentation.group_labels">
+<span class="sig-name descname"><span class="pre">group_labels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groups</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/segmentation.html#group_labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.segmentation.group_labels" title="Link to this definition">#</a></dt>
+<dd><p>Unite labels in the given groups.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>labels</strong> (<em>darsia.Image</em>) – labeled image with integer labels.</p></li>
+<li><p><strong>group</strong> (<em>list</em><em>[</em><em>list</em><em>[</em><em>int</em><em>]</em><em>]</em>) – list of groups, where each group is a list of labels
+to be united. The first label in each group is the label to which all
+other labels in the group will be united.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.segmentation.label_image">
+<span class="sig-name descname"><span class="pre">label_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ctol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ensure_connectivity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expand_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">significance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/segmentation.html#label_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.segmentation.label_image" title="Link to this definition">#</a></dt>
+<dd><p>Segment an image based on colors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em><em> or </em><em>darsia.Image</em>) – input image in RGB color space</p></li>
+<li><p><strong>map</strong> (<em>dict</em><em>, </em><em>optional</em>) – <p>dictionary mapping color names to labels and RGB values;
+default is None, in which case a predefined map is used:
+map = {</p>
+<blockquote>
+<div><p>”white”: (0, (1, 1, 1)),
+“black”: (1, (0, 0, 0)),
+“red”: (2, (1, 0, 0)),
+“green”: (3, (0, 1, 0)),
+“blue”: (4, (0, 0, 1)),
+“cyan”: (5, (0, 1, 1)),
+“magenta”: (6, (1, 0, 1)),
+“yellow”: (7, (1, 1, 0)),</p>
+</div></blockquote>
+<p>}
+the keys are the color names (currently not used), the values are tuples
+containing the label (int) and the RGB value (tuple of floats in [0, 1]).</p>
+</p></li>
+<li><p><strong>ctol</strong> (<em>float</em>) – tolerance for color matching in float format; default is 0.1.</p></li>
+<li><p><strong>ensure_connectivity</strong> (<em>bool</em>) – whether to ensure that labels are connected regions
+(default: True).</p></li>
+<li><p><strong>expand_labels</strong> (<em>bool</em>) – whether to expand labels to fill unlabeled pixels
+(default: True).</p></li>
+<li><p><strong>significance</strong> (<em>float</em><em>, </em><em>optional</em>) – minimum significance of labels to be kept.</p></li>
+</ul>
+</dd>
+</dl>
+<p>The labeling is done by comparing the RGB values of the input image
+with the RGB values in the map. If the absolute difference is less than
+the tolerance, the corresponding label is assigned to the pixel. After the
+labeling is complete, the connected components are identified and labeled
+using skimage.measure.label.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>labeled regions in the same format as img.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray or darsia.Image</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.segmentation.make_consecutive">
+<span class="sig-name descname"><span class="pre">make_consecutive</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labels</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/segmentation.html#make_consecutive"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.segmentation.make_consecutive" title="Link to this definition">#</a></dt>
+<dd><p>Ensure that labels in the image are consecutive integers starting from 0.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.segmentation.reassign_labels">
+<span class="sig-name descname"><span class="pre">reassign_labels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mapping</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/segmentation.html#reassign_labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.segmentation.reassign_labels" title="Link to this definition">#</a></dt>
+<dd><p>Reassign labels according to the provided mapping.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>labels</strong> (<em>darsia.Image</em>) – labeled image with integer labels.</p></li>
+<li><p><strong>mapping</strong> (<em>dict</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em>) – dictionary mapping old labels to new labels.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.utils.segmentation.segment">
+<span class="sig-name descname"><span class="pre">segment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">markers_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gradient_based'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edges_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gradient_based'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbosity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/utils/segmentation.html#segment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.utils.segmentation.segment" title="Link to this definition">#</a></dt>
+<dd><p>Prededfined workflow for segmenting an image based on watershed segmentation.</p>
+<p>In addition, denoising is used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em><em>, or </em><em>darsia.Image</em>) – input image in RGB color space</p></li>
+<li><p><strong>markers_method</strong> (<em>str</em>) – “gradient_based” or “supervised”, deciding which algorithm
+is used for detecting markers; the former allows for less input, while the
+latter allows to explicitly address regions of interest.</p></li>
+<li><p><strong>edges_method</strong> (<em>str</em>) – “gradient_based” or “scharr”, deciding which algorithm
+is used for determining edges; the former uses gradient filtering while
+the latter uses the Scharr algorithm.</p></li>
+<li><p><strong>mask</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – binary array, only where true, segmentation is
+performed</p></li>
+<li><p><strong>verbosity</strong> (<em>bool</em>) – flag controlling whether relevant quantities are plotted
+which is useful in the tuning of the parameters; the default is False.</p></li>
+<li><p><strong>arguments</strong> (<em>keyword</em>) – <p>tuning parameters for the watershed algorithm
+“method” (str): ‘median’ or ‘tvd’, while the latter uses a anisotropic</p>
+<blockquote>
+<div><p>TVD with fixed settings.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>”median disk radius” (int): disk radius to be considered to smooth</dt><dd><p>the image using rank based median, before the analysis.</p>
+</dd>
+<dt>”rescaling factor” (float): factor how the image is scaled before</dt><dd><p>the actual watershed segmentation.</p>
+</dd>
+<dt>”monochromatic_color” (str): “gray”, “red”, “green”, “blue”, or “value”,</dt><dd><p>identifying the monochromatic color space to be used in the analysis;
+default is gray.</p>
+</dd>
+<dt>”boundaries” (list of str): containing elements among “top”, “bottom”,</dt><dd><p>”right”, “left”. These will be omitted in the cleaning routine.</p>
+</dd>
+</dl>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>labeled regions in the same format as img.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray or darsia.Image</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../single_image_analysis/darsia.single_image_analysis.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Single image analysis (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.single_image_analysis</span></code>)</p>
+      </div>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#submodules">Submodules</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.utils.box">darsia.utils.box module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.box.bounding_box"><code class="docutils literal notranslate"><span class="pre">bounding_box()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.box.bounding_box_inverse"><code class="docutils literal notranslate"><span class="pre">bounding_box_inverse()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.box.perimeter"><code class="docutils literal notranslate"><span class="pre">perimeter()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.box.random_patches"><code class="docutils literal notranslate"><span class="pre">random_patches()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.utils.coloranalysis">darsia.utils.coloranalysis module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.coloranalysis.hsv_spectrum"><code class="docutils literal notranslate"><span class="pre">hsv_spectrum()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.utils.features">darsia.utils.features module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.features.FeatureDetection"><code class="docutils literal notranslate"><span class="pre">FeatureDetection</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.features.FeatureDetection.extract_features"><code class="docutils literal notranslate"><span class="pre">FeatureDetection.extract_features()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.features.FeatureDetection.match_features"><code class="docutils literal notranslate"><span class="pre">FeatureDetection.match_features()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia-utils-identity-module">darsia.utils.identity module</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.utils.interpolation">darsia.utils.interpolation module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.interpolation.illumination_interpolation"><code class="docutils literal notranslate"><span class="pre">illumination_interpolation()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.interpolation.interpolate_measurements_2d"><code class="docutils literal notranslate"><span class="pre">interpolate_measurements_2d()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.interpolation.interpolate_to_image"><code class="docutils literal notranslate"><span class="pre">interpolate_to_image()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.interpolation.interpolate_to_image_from_csv"><code class="docutils literal notranslate"><span class="pre">interpolate_to_image_from_csv()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.interpolation.polynomial_interpolation"><code class="docutils literal notranslate"><span class="pre">polynomial_interpolation()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.utils.segmentation">darsia.utils.segmentation module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.segmentation.group_labels"><code class="docutils literal notranslate"><span class="pre">group_labels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.segmentation.label_image"><code class="docutils literal notranslate"><span class="pre">label_image()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.segmentation.make_consecutive"><code class="docutils literal notranslate"><span class="pre">make_consecutive()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.segmentation.reassign_labels"><code class="docutils literal notranslate"><span class="pre">reassign_labels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.utils.segmentation.segment"><code class="docutils literal notranslate"><span class="pre">segment()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

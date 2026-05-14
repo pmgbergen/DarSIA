@@ -1,0 +1,811 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>darsia.multi_image_analysis.model_calibration &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/darsia/multi_image_analysis/model_calibration';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">darsia.multi_image_analysis.model_calibration</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for darsia.multi_image_analysis.model_calibration</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Calibration tools.</span>
+
+<span class="sd">In particular objective functions for calibration in</span>
+<span class="sd">ConcentrationAnalysis.calibrate_model()</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">abc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">optimize</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">interpolate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.linear_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearRegression</span><span class="p">,</span> <span class="n">RANSACRegressor</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">darsia</span>
+
+
+<div class="viewcode-block" id="AbstractModelObjective">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.model_calibration.AbstractModelObjective">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AbstractModelObjective</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract class for defining an objective function</span>
+<span class="sd">    to be called in ConcentrationAnalysis.calibrate_model().</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AbstractModelObjective.define_objective_function">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.model_calibration.AbstractModelObjective.define_objective_function">[docs]</a>
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">define_objective_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_images</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">images_diff</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">times</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+        <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Abstract method to define an objective function.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            callable: objective function.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="AbstractModelObjective.update_model_for_calibration">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.model_calibration.AbstractModelObjective.update_model_for_calibration">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_model_for_calibration</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Wrapper for updating the model, depending on</span>
+<span class="sd">        whether it is a single model or a combined model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            parameters (np.ndarray): model parameters,</span>
+<span class="sd">            options (dict): further tuning parameters and extra info;</span>
+<span class="sd">                here, the key &quot;dofs&quot; is used to determine which dofs to</span>
+<span class="sd">                update.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dofs</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dofs&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">update_model_parameters</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">dofs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AbstractModelObjective.calibrate_model">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.model_calibration.AbstractModelObjective.calibrate_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calibrate_model</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">images</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">]],</span>
+        <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+        <span class="n">plot_result</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Utility for calibrating the model used in darsia.ConcentrationAnalysis.</span>
+
+<span class="sd">        NOTE: Require to combine darsia.ConcentrationAnalysis with a calibration</span>
+<span class="sd">        model mixin via multiple inheritance.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            images (list of darsia.Image): calibration images</span>
+<span class="sd">            options (dict): container holding tuning information for the numerical</span>
+<span class="sd">                calibration routine</span>
+<span class="sd">            plot_result (bool): flag controlling whether the calibration is displayed</span>
+<span class="sd">                in a plot.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: success of the calibration study.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Convert to list of images, if space time image provided.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="n">images</span><span class="o">.</span><span class="n">series</span>
+            <span class="n">image_series</span> <span class="o">=</span> <span class="n">images</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">image_series</span><span class="o">.</span><span class="n">time_slice</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">image_series</span><span class="o">.</span><span class="n">time_num</span><span class="p">)]</span>
+
+        <span class="c1"># Apply the same steps as in __call__ to all images.</span>
+
+        <span class="c1"># Prepare calibration and determine fixed data</span>
+        <span class="n">images_diff</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_subtract_background</span><span class="p">(</span><span class="n">img</span><span class="p">)</span> <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]</span>
+
+        <span class="c1"># Extract monochromatic version and take difference wrt the baseline image</span>
+        <span class="n">images_signal</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_reduce_signal</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span> <span class="k">for</span> <span class="n">diff</span> <span class="ow">in</span> <span class="n">images_diff</span><span class="p">]</span>
+
+        <span class="c1"># Clean signal</span>
+        <span class="n">images_clean_signal</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_clean_signal</span><span class="p">(</span><span class="n">signal</span><span class="p">)</span> <span class="k">for</span> <span class="n">signal</span> <span class="ow">in</span> <span class="n">images_signal</span><span class="p">]</span>
+
+        <span class="c1"># Balance signal (take into account possible heterogeneous effects)</span>
+        <span class="n">images_balanced_signal</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_balance_signal</span><span class="p">(</span><span class="n">clean_signal</span><span class="p">)</span> <span class="k">for</span> <span class="n">clean_signal</span> <span class="ow">in</span> <span class="n">images_clean_signal</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Smoothen/restore the signals</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">first_restoration_then_model</span>
+        <span class="p">),</span> <span class="s2">&quot;calibration only implemented for this&quot;</span>
+        <span class="n">images_smooth_signal</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_restore_signal</span><span class="p">(</span><span class="n">balanced_signal</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">balanced_signal</span> <span class="ow">in</span> <span class="n">images_balanced_signal</span>
+        <span class="p">]</span>
+
+        <span class="c1"># NOTE: The only step missing from __call__ is the conversion of the signal</span>
+        <span class="c1"># applying the provided model. This step will be used to tune the</span>
+        <span class="c1"># model -&gt; calibration. (This is not true when not self.first_restoration_then_model)</span>
+
+        <span class="c1"># Fetch calibration options - default option chosen if None provided.</span>
+        <span class="n">initial_guess</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s2">&quot;initial_guess&quot;</span><span class="p">]</span>
+        <span class="n">tol</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tol&quot;</span><span class="p">)</span>
+        <span class="n">maxiter</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;maxiter&quot;</span><span class="p">)</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;method&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Define reference time (not important which image serves as basis)</span>
+        <span class="n">times</span> <span class="o">=</span> <span class="p">[</span><span class="n">img</span><span class="o">.</span><span class="n">time</span> <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="n">time</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">time</span> <span class="ow">in</span> <span class="n">times</span><span class="p">]):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Provide images with well-defined reference time.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Double check an objective has been provided for calibration</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;define_objective_function&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;The defined concentration analysis is not equipped with the</span>
+<span class="sd">                functionality to calibrate a model.&quot;&quot;&quot;</span>
+            <span class="p">)</span>
+        <span class="n">calibration_objective</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">define_objective_function</span><span class="p">(</span>
+            <span class="n">images_smooth_signal</span><span class="p">,</span> <span class="n">images_diff</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">options</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Perform optimization step</span>
+        <span class="n">opt_result</span> <span class="o">=</span> <span class="n">optimize</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span>
+            <span class="n">calibration_objective</span><span class="p">,</span>
+            <span class="n">initial_guess</span><span class="p">,</span>
+            <span class="n">tol</span><span class="o">=</span><span class="n">tol</span><span class="p">,</span>
+            <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;maxiter&quot;</span><span class="p">:</span> <span class="n">maxiter</span><span class="p">,</span> <span class="s2">&quot;disp&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+            <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">opt_result</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Calibration successful with obtained model parameters </span><span class="si">{</span><span class="n">opt_result</span><span class="o">.</span><span class="n">x</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Calibration not successful with obtained model parameters </span><span class="si">{</span><span class="n">opt_result</span><span class="o">.</span><span class="n">x</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Update model (use functionality from calibration)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_model_for_calibration</span><span class="p">(</span><span class="n">opt_result</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+
+        <span class="c1"># Allow for post-analysis. Plot the result.</span>
+        <span class="k">if</span> <span class="n">plot_result</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_visualize_model_calibration</span><span class="p">(</span>
+                <span class="n">images_smooth_signal</span><span class="p">,</span> <span class="n">images_diff</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">options</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">opt_result</span><span class="o">.</span><span class="n">success</span></div>
+</div>
+
+
+
+<span class="c1"># Old approach using bisection only...</span>
+<span class="c1">#        def _scaling_vs_deviation(scaling: float) -&gt; float:</span>
+<span class="c1">#            return _deviation([scaling, 0.], input_images, images_diff, times)</span>
+<span class="c1">#</span>
+<span class="c1">#        st_time = time.time()</span>
+<span class="c1">#        # Perform bisection</span>
+<span class="c1">#        initial_guess = [1,10]</span>
+<span class="c1">#        xtol = 1e-1</span>
+<span class="c1">#        maxiter = 10</span>
+<span class="c1">#        calibrated_scaling = bisect(</span>
+<span class="c1">#            _scaling_vs_deviation,</span>
+<span class="c1">#            *initial_guess,</span>
+<span class="c1">#            xtol=xtol,</span>
+<span class="c1">#            maxiter=maxiter</span>
+<span class="c1">#        )</span>
+<span class="c1">#        print(calibrated_scaling)</span>
+<span class="c1">#        print(&quot;bisection&quot;, time.time() - st_time)</span>
+<span class="c1">#        self.model.update(scaling = calibrated_scaling)</span>
+
+
+<div class="viewcode-block" id="InjectionRateModelObjectiveMixin">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InjectionRateModelObjectiveMixin</span><span class="p">(</span><span class="n">AbstractModelObjective</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calibration model based on matching injection rates.</span>
+<span class="sd">    Has to be combined with ConcentrationAnalysis.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="InjectionRateModelObjectiveMixin.define_objective_function">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.define_objective_function">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">define_objective_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_images</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">images_diff</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">times</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+        <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Define objective function such that the root is the min.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            input_images (list of np.ndarray): input for _convert_signal</span>
+<span class="sd">            images_diff (list of np.ndarray): plain differences wrt background image</span>
+<span class="sd">            times (list of float): times (units assumed to be compatible)</span>
+<span class="sd">            options (dict): dictionary with objective value, here the injection rate</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            callable: objective function</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Fetch the injection rate and geometry</span>
+        <span class="n">injection_rate</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s2">&quot;injection_rate&quot;</span><span class="p">]</span>  <span class="c1"># in same units as geometry</span>
+        <span class="n">geometry</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s2">&quot;geometry&quot;</span><span class="p">]</span>
+        <span class="n">regression_type</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;regression_type&quot;</span><span class="p">,</span> <span class="s2">&quot;ransac&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">regression_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;ransac&quot;</span><span class="p">,</span> <span class="s2">&quot;linear&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Define the objective function</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">objective_function</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Compute the deviation between anticipated and expected injection rate.</span>
+
+<span class="sd">            Args:</span>
+<span class="sd">                params (np.ndarray): model parameters</span>
+<span class="sd">                args: concentration analysis based arguments.</span>
+
+<span class="sd">            &quot;&quot;&quot;</span>
+
+            <span class="c1"># Set the stage</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_model_for_calibration</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+
+            <span class="c1"># For each image, compute the total concentration, based on the currently</span>
+            <span class="c1"># set tuning parameters, and compute the relative time.</span>
+            <span class="n">volumes</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">geometry</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_convert_signal</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">diff</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">img</span><span class="p">,</span> <span class="n">diff</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">input_images</span><span class="p">,</span> <span class="n">images_diff</span><span class="p">)</span>
+            <span class="p">]</span>
+
+            <span class="c1"># Determine slope in time by linear regression. Allow for different</span>
+            <span class="c1"># regression types.</span>
+            <span class="k">if</span> <span class="n">regression_type</span> <span class="o">==</span> <span class="s2">&quot;ransac&quot;</span><span class="p">:</span>
+                <span class="n">ransac</span> <span class="o">=</span> <span class="n">RANSACRegressor</span><span class="p">()</span>
+                <span class="n">ransac</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">times</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">volumes</span><span class="p">))</span>
+                <span class="n">regression</span> <span class="o">=</span> <span class="n">ransac</span><span class="o">.</span><span class="n">estimator_</span>
+
+            <span class="k">elif</span> <span class="n">regression_type</span> <span class="o">==</span> <span class="s2">&quot;linear&quot;</span><span class="p">:</span>
+                <span class="n">regression</span> <span class="o">=</span> <span class="n">LinearRegression</span><span class="p">()</span>
+                <span class="n">regression</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">times</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">volumes</span><span class="p">))</span>
+
+            <span class="c1"># Extract the slope and convert to</span>
+            <span class="n">effective_injection_rate</span> <span class="o">=</span> <span class="n">regression</span><span class="o">.</span><span class="n">coef_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="c1"># Cache result for possible post-analysis</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_slope</span> <span class="o">=</span> <span class="n">regression</span><span class="o">.</span><span class="n">coef_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_reference_slope</span> <span class="o">=</span> <span class="n">injection_rate</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_intercept</span> <span class="o">=</span> <span class="n">regression</span><span class="o">.</span><span class="n">intercept_</span>
+
+            <span class="c1"># Measure relative defect</span>
+            <span class="n">defect</span> <span class="o">=</span> <span class="n">effective_injection_rate</span> <span class="o">-</span> <span class="n">injection_rate</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">injection_rate</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-15</span><span class="p">:</span>
+                <span class="n">defect</span> <span class="o">/=</span> <span class="n">injection_rate</span>
+            <span class="k">return</span> <span class="n">defect</span><span class="o">**</span><span class="mi">2</span>
+
+        <span class="k">return</span> <span class="n">objective_function</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_visualize_model_calibration</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_images</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">images_diff</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">times</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+        <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Illustrate result of calibration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            input_images (list of np.ndarray): input for _convert_signal</span>
+<span class="sd">            images_diff (list of np.ndarray): plain differences wrt background image</span>
+<span class="sd">            times (list of float): times (unit assumed to be compatible)</span>
+<span class="sd">            options (dict): dictionary with objective value, here the injection rate</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Fetch the injection rate and geometry</span>
+        <span class="n">geometry</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s2">&quot;geometry&quot;</span><span class="p">]</span>
+
+        <span class="c1"># For each image, compute the total concentration, based on the currently</span>
+        <span class="c1"># set tuning parameters, and compute the relative time.</span>
+        <span class="n">volumes</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">geometry</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_convert_signal</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">diff</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">img</span><span class="p">,</span> <span class="n">diff</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">input_images</span><span class="p">,</span> <span class="n">images_diff</span><span class="p">)</span>
+        <span class="p">]</span>
+
+        <span class="c1">## ! ---- Find intercept through RANSAC analysis</span>
+
+        <span class="c1"># Plot the evolution of the rescaled signal over time, and in addtion a dashed</span>
+        <span class="c1"># line corresponding to the reference injection rate.</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;Model calibration&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">volumes</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">times</span><span class="p">,</span>
+            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_intercept</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slope</span> <span class="o">*</span> <span class="n">time</span> <span class="k">for</span> <span class="n">time</span> <span class="ow">in</span> <span class="n">times</span><span class="p">],</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+            <span class="n">linestyle</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)),</span>
+        <span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">times</span><span class="p">,</span>
+            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_intercept</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reference_slope</span> <span class="o">*</span> <span class="n">time</span> <span class="k">for</span> <span class="n">time</span> <span class="ow">in</span> <span class="n">times</span><span class="p">],</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span>
+            <span class="n">linestyle</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)),</span>
+        <span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;time [s]&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;volume [m**3]&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s2">&quot;rescaled signal&quot;</span><span class="p">,</span> <span class="s2">&quot;regression&quot;</span><span class="p">,</span> <span class="s2">&quot;reference&quot;</span><span class="p">])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<div class="viewcode-block" id="InjectionRateModelObjectiveMixin.model_calibration_postanalysis">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.model_calibration.InjectionRateModelObjectiveMixin.model_calibration_postanalysis">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">model_calibration_postanalysis</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Interpret calibration result.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: time (in seconds) at which the signal is zero (based on calibration)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Interpret the results of the regression</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;The effective injection rate for the calibration images is &quot;&quot;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_slope</span><span class="si">}</span><span class="s2"> (in volumetric units per time compatible with images).&quot;&quot;&quot;</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;The signal at absolute time 0 is </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_intercept</span><span class="si">}</span><span class="s2"> (in volumetric &quot;&quot;&quot;</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;units compatible with images).&quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Determine the time of zero signal</span>
+        <span class="n">time_zero_signal</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_intercept</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slope</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;The time of zero signal is deducted to be </span><span class="si">{</span><span class="n">time_zero_signal</span><span class="si">}</span><span class="s2"> &quot;&quot;&quot;</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;(in time units compatible with images).&quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">time_zero_signal</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="AbsoluteVolumeModelObjectiveMixin">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AbsoluteVolumeModelObjectiveMixin</span><span class="p">(</span><span class="n">AbstractModelObjective</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calibration model based on matching injection rates.</span>
+<span class="sd">    Has to be combined with ConcentrationAnalysis.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AbsoluteVolumeModelObjectiveMixin.define_objective_function">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.model_calibration.AbsoluteVolumeModelObjectiveMixin.define_objective_function">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">define_objective_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_images</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">images_diff</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">times</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+        <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Define objective function such that the root is the min.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            input_images (list of np.ndarray): input for _convert_signal</span>
+<span class="sd">            images_diff (list of np.ndarray): plain differences wrt background image</span>
+<span class="sd">            times (list of float): times</span>
+<span class="sd">            options (dict): dictionary with objective value, here the injection rate</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            callable: objetive function</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Fetch the geometry for integration</span>
+        <span class="n">geometry</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;geometry&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Fetch input data</span>
+        <span class="n">input_times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;times&quot;</span><span class="p">))</span>
+        <span class="n">input_volumes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;volumes&quot;</span><span class="p">))</span>
+        <span class="n">input_data</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">input_times</span><span class="p">,</span> <span class="n">input_volumes</span><span class="p">)</span>
+
+        <span class="c1"># Sample data on time interval of interest</span>
+        <span class="n">time_interval</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;time_interval&quot;</span><span class="p">))</span>
+        <span class="n">total_time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">time_interval</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">time_interval</span><span class="p">)</span>
+        <span class="n">dt_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">input_times</span><span class="p">)))</span>
+        <span class="n">num_samples</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">total_time</span> <span class="o">/</span> <span class="n">dt_min</span><span class="p">)</span>
+        <span class="n">sampled_times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">time_interval</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_samples</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt_min</span>
+        <span class="n">sampled_input_volumes</span> <span class="o">=</span> <span class="n">input_data</span><span class="p">(</span><span class="n">sampled_times</span><span class="p">)</span>
+
+        <span class="c1"># Define the objective function</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">objective_function</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Compute the deviation between anticipated and expected evolution</span>
+<span class="sd">            of the volumes in the L2 sense.</span>
+
+<span class="sd">            Args:</span>
+<span class="sd">                params (np.ndarray): model parameters</span>
+<span class="sd">                args: concentration analysis based arguments.</span>
+
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="c1"># Set the stage</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_model_for_calibration</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+
+            <span class="c1"># For each image, compute the total concentration, based on the currently</span>
+            <span class="c1"># set tuning parameters, and compute the relative time.</span>
+            <span class="n">M3_TO_ML</span> <span class="o">=</span> <span class="mf">1e6</span>
+            <span class="n">volumes</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">geometry</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_convert_signal</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">diff</span><span class="p">))</span> <span class="o">*</span> <span class="n">M3_TO_ML</span>
+                <span class="k">for</span> <span class="n">img</span><span class="p">,</span> <span class="n">diff</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">input_images</span><span class="p">,</span> <span class="n">images_diff</span><span class="p">)</span>
+            <span class="p">]</span>
+
+            <span class="c1"># Create interpolation</span>
+            <span class="n">estimated_data</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">volumes</span><span class="p">)</span>
+
+            <span class="c1"># Sample data</span>
+            <span class="n">sampled_estimated_volumes</span> <span class="o">=</span> <span class="n">estimated_data</span><span class="p">(</span><span class="n">sampled_times</span><span class="p">)</span>
+
+            <span class="c1"># Measure defect - Compare the 1d functions</span>
+            <span class="n">defect</span> <span class="o">=</span> <span class="n">sampled_input_volumes</span> <span class="o">-</span> <span class="n">sampled_estimated_volumes</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">defect</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt_min</span>
+
+        <span class="k">return</span> <span class="n">objective_function</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

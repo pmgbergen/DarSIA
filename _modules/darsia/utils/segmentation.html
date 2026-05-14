@@ -1,0 +1,1082 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>darsia.utils.segmentation &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/darsia/utils/segmentation';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">darsia.utils.segmentation</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for darsia.utils.segmentation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Module containing utils for segmentation of layered media.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warnings</span><span class="w"> </span><span class="kn">import</span> <span class="n">warn</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">skimage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ndimage</span> <span class="k">as</span> <span class="n">ndi</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">darsia</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="segment">
+<a class="viewcode-back" href="../../../source/utils/darsia.utils.html#darsia.utils.segmentation.segment">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">segment</span><span class="p">(</span>
+    <span class="n">img</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">],</span>
+    <span class="n">markers_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gradient_based&quot;</span><span class="p">,</span>
+    <span class="n">edges_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gradient_based&quot;</span><span class="p">,</span>
+    <span class="n">mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">verbosity</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prededfined workflow for segmenting an image based on watershed segmentation.</span>
+
+<span class="sd">    In addition, denoising is used.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (np.ndarray, or darsia.Image): input image in RGB color space</span>
+<span class="sd">        markers_method (str): &quot;gradient_based&quot; or &quot;supervised&quot;, deciding which algorithm</span>
+<span class="sd">            is used for detecting markers; the former allows for less input, while the</span>
+<span class="sd">            latter allows to explicitly address regions of interest.</span>
+<span class="sd">        edges_method (str): &quot;gradient_based&quot; or &quot;scharr&quot;, deciding which algorithm</span>
+<span class="sd">            is used for determining edges; the former uses gradient filtering while</span>
+<span class="sd">            the latter uses the Scharr algorithm.</span>
+<span class="sd">        mask (np.ndarray, optional): binary array, only where true, segmentation is</span>
+<span class="sd">            performed</span>
+<span class="sd">        verbosity (bool): flag controlling whether relevant quantities are plotted</span>
+<span class="sd">            which is useful in the tuning of the parameters; the default is False.</span>
+<span class="sd">        keyword arguments (optional): tuning parameters for the watershed algorithm</span>
+<span class="sd">            &quot;method&quot; (str): &#39;median&#39; or &#39;tvd&#39;, while the latter uses a anisotropic</span>
+<span class="sd">                TVD with fixed settings.</span>
+<span class="sd">            &quot;median disk radius&quot; (int): disk radius to be considered to smooth</span>
+<span class="sd">                the image using rank based median, before the analysis.</span>
+<span class="sd">            &quot;rescaling factor&quot; (float): factor how the image is scaled before</span>
+<span class="sd">                the actual watershed segmentation.</span>
+<span class="sd">            &quot;monochromatic_color&quot; (str): &quot;gray&quot;, &quot;red&quot;, &quot;green&quot;, &quot;blue&quot;, or &quot;value&quot;,</span>
+<span class="sd">                identifying the monochromatic color space to be used in the analysis;</span>
+<span class="sd">                default is gray.</span>
+<span class="sd">            &quot;boundaries&quot; (list of str): containing elements among &quot;top&quot;, &quot;bottom&quot;,</span>
+<span class="sd">                &quot;right&quot;, &quot;left&quot;. These will be omitted in the cleaning routine.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray or darsia.Image: labeled regions in the same format as img.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># ! ---- Preprocessing of input image</span>
+
+    <span class="c1"># Extract numpy array from image</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="n">basis</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">):</span>
+        <span class="n">basis</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;img of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">img</span><span class="p">)</span><span class="si">}</span><span class="s2"> not supported.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># basis = skimage.exposure.adjust_gamma(basis, 1.3)</span>
+    <span class="n">basis</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">exposure</span><span class="o">.</span><span class="n">adjust_log</span><span class="p">(</span><span class="n">basis</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">basis</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">exposure</span><span class="o">.</span><span class="n">equalize_adapthist</span><span class="p">(</span><span class="n">basis</span><span class="p">)</span>
+
+    <span class="c1"># Require scalar representation - the most natural general choice is either to</span>
+    <span class="c1"># use a grayscale representation or the value component of the HSV version,</span>
+    <span class="c1"># when.</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">basis</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">monochromatic_basis</span> <span class="o">=</span> <span class="n">basis</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">monochromatic</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;monochromatic_color&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">monochromatic</span> <span class="o">==</span> <span class="s2">&quot;gray&quot;</span><span class="p">:</span>
+            <span class="n">monochromatic_basis</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span>
+                <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span><span class="n">basis</span><span class="p">),</span>  <span class="c1"># type: ignore[attr-defined]</span>
+                <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_RGB2GRAY</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">monochromatic</span> <span class="o">==</span> <span class="s2">&quot;red&quot;</span><span class="p">:</span>
+            <span class="n">monochromatic_basis</span> <span class="o">=</span> <span class="n">basis</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">monochromatic</span> <span class="o">==</span> <span class="s2">&quot;green&quot;</span><span class="p">:</span>
+            <span class="n">monochromatic_basis</span> <span class="o">=</span> <span class="n">basis</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">monochromatic</span> <span class="o">==</span> <span class="s2">&quot;blue&quot;</span><span class="p">:</span>
+            <span class="n">monochromatic_basis</span> <span class="o">=</span> <span class="n">basis</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">monochromatic</span> <span class="o">==</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span>
+            <span class="n">hsv</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">basis</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_RGB2HSV</span><span class="p">)</span>
+            <span class="n">monochromatic_basis</span> <span class="o">=</span> <span class="n">hsv</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Monochromatic color space </span><span class="si">{</span><span class="n">monochromatic</span><span class="si">}</span><span class="s2"> not supported.&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbosity</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;Monochromatic input image&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">monochromatic_basis</span><span class="p">)</span>
+
+    <span class="c1"># In order to surpress any warnings from skimage, reduce to ubyte data type</span>
+    <span class="n">basis_ubyte</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span><span class="n">monochromatic_basis</span><span class="p">)</span>  <span class="c1"># type: ignore[attr-defined]</span>
+
+    <span class="c1"># Smooth the image to get rid of sand grains</span>
+    <span class="n">smoothing_method</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;method&quot;</span><span class="p">,</span> <span class="s2">&quot;median&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">smoothing_method</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;median&quot;</span><span class="p">,</span> <span class="s2">&quot;tvd&quot;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">smoothing_method</span> <span class="o">==</span> <span class="s2">&quot;median&quot;</span><span class="p">:</span>
+        <span class="n">median_disk_radius</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;median disk radius&quot;</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+        <span class="n">denoised</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">rank</span><span class="o">.</span><span class="n">median</span><span class="p">(</span>
+            <span class="n">basis_ubyte</span><span class="p">,</span> <span class="n">skimage</span><span class="o">.</span><span class="n">morphology</span><span class="o">.</span><span class="n">disk</span><span class="p">(</span><span class="n">median_disk_radius</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">smoothing_method</span> <span class="o">==</span> <span class="s2">&quot;tvd&quot;</span><span class="p">:</span>
+        <span class="n">denoised</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">restoration</span><span class="o">.</span><span class="n">denoise_tv_bregman</span><span class="p">(</span>
+            <span class="n">basis_ubyte</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span> <span class="n">max_num_iter</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">isotropic</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbosity</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;Denoised input image&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">denoised</span><span class="p">)</span>
+
+    <span class="c1"># Resize image</span>
+    <span class="n">rescaling_factor</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rescaling factor&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">rescaled</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span>
+            <span class="n">denoised</span><span class="p">,</span>
+            <span class="kc">None</span><span class="p">,</span>
+            <span class="n">fx</span><span class="o">=</span><span class="n">rescaling_factor</span><span class="p">,</span>
+            <span class="n">fy</span><span class="o">=</span><span class="n">rescaling_factor</span><span class="p">,</span>
+            <span class="n">interpolation</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">INTER_NEAREST</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbosity</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;Rescaled input image&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">rescaled</span><span class="p">)</span>
+
+    <span class="c1"># ! ---- Determine markers</span>
+
+    <span class="k">if</span> <span class="n">markers_method</span> <span class="o">==</span> <span class="s2">&quot;gradient_based&quot;</span><span class="p">:</span>
+        <span class="c1"># Detect markers by thresholding the gradient and thereby detecting</span>
+        <span class="c1"># continuous regions.</span>
+        <span class="n">labeled_markers</span> <span class="o">=</span> <span class="n">_detect_markers_from_gradient</span><span class="p">(</span><span class="n">rescaled</span><span class="p">,</span> <span class="n">verbosity</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">markers_method</span> <span class="o">==</span> <span class="s2">&quot;supervised&quot;</span><span class="p">:</span>
+        <span class="c1"># Read markers from input, provided for the large scale image</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">basis</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">labeled_markers</span> <span class="o">=</span> <span class="n">_detect_markers_from_input</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Project onto the coarse image</span>
+        <span class="n">labeled_markers</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span>
+            <span class="n">labeled_markers</span><span class="p">,</span>
+            <span class="nb">tuple</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">rescaled</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])),</span>
+            <span class="n">interpolation</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">INTER_NEAREST</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Method </span><span class="si">{</span><span class="n">markers_method</span><span class="si">}</span><span class="s2"> for detecting markers not supported.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ! ---- Determine edges</span>
+
+    <span class="k">if</span> <span class="n">verbosity</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="n">labeled_markers_large</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span>
+                <span class="n">labeled_markers</span><span class="p">,</span>
+                <span class="nb">tuple</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])),</span>
+                <span class="n">interpolation</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">INTER_NEAREST</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">img_copy</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>  <span class="c1"># type: ignore[attr-defined]</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">):</span>
+            <span class="n">labeled_markers_large</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span>
+                <span class="n">labeled_markers</span><span class="p">,</span>
+                <span class="nb">tuple</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])),</span>
+                <span class="n">interpolation</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">INTER_NEAREST</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">img_copy</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="p">)</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">img_copy</span><span class="p">[</span><span class="n">labeled_markers_large</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">]</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;Original image with markers&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img_copy</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">edges_method</span> <span class="o">==</span> <span class="s2">&quot;gradient_based&quot;</span><span class="p">:</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="n">_detect_edges_from_gradient</span><span class="p">(</span><span class="n">rescaled</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">edges_method</span> <span class="o">==</span> <span class="s2">&quot;scharr&quot;</span><span class="p">:</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="n">_detect_edges_from_scharr</span><span class="p">(</span><span class="n">rescaled</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Method </span><span class="si">{</span><span class="n">edges_method</span><span class="si">}</span><span class="s2"> for detecting edges not supported.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbosity</span><span class="p">:</span>
+        <span class="n">edges_copy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span>
+        <span class="n">edges_copy</span><span class="p">[</span><span class="n">labeled_markers</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;Edges with markers&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">edges_copy</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="c1"># ! ---- Actual watershed algorithm</span>
+
+    <span class="c1"># Process the watershed algorithm</span>
+    <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">edges</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">labels_rescaled</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">skimage</span><span class="o">.</span><span class="n">segmentation</span><span class="o">.</span><span class="n">watershed</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">labeled_markers</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ! ---- Postprocessing of the labels</span>
+
+    <span class="n">labels_rescaled</span> <span class="o">=</span> <span class="n">_dilate_by_size</span><span class="p">(</span><span class="n">labels_rescaled</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="n">labels_rescaled</span> <span class="o">=</span> <span class="n">_dilate_by_size</span><span class="p">(</span><span class="n">labels_rescaled</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Resize to original size</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span>
+            <span class="n">labels_rescaled</span><span class="p">,</span>
+            <span class="nb">tuple</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">basis</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])),</span>
+            <span class="n">interpolation</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">INTER_NEAREST</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbosity</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;Segmentation after watershed algorithm&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+
+    <span class="c1"># Segmentation needs some cleaning, as some areas are just small,</span>
+    <span class="c1"># tiny lines, etc. Define some auxiliary methods for this.</span>
+    <span class="c1"># Simplify the segmentation drastically by removing small entities,</span>
+    <span class="c1"># and correct for boundary effects.</span>
+    <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cleanup&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">_cleanup</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbosity</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;Final result after clean up&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;Final result after clean up with original image&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">basis</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="c1"># Return data in the same format as the input data</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">labels</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">):</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">metadata</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="o">**</span><span class="n">meta</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ! ---- Auxiliary functions for segment</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_detect_markers_from_gradient</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">verbosity</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Routine to detect markers as continous regions, based on thresholding gradients.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (np.ndarray): input image, basis for gradient analysis.</span>
+<span class="sd">        verbosity (bool): flag controlling whether relevant quantities are plotted</span>
+<span class="sd">            which is useful in the tuning of the parameters; the default is False.</span>
+<span class="sd">        keyword arguments: tuning parameters for the watershed algorithm</span>
+<span class="sd">            &quot;markers disk radius&quot; (int): disk radius used to define continous</span>
+<span class="sd">                regions via gradients.</span>
+<span class="sd">            &quot;threshold&quot; (float): threshold value marking regions as either</span>
+<span class="sd">                continuous or edge.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Find continuous region, i.e., areas with low local gradient</span>
+    <span class="n">markers_disk_radius</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;markers disk radius&quot;</span><span class="p">)</span>
+    <span class="n">markers_basis</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">rank</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span>
+        <span class="n">img</span><span class="p">,</span> <span class="n">skimage</span><span class="o">.</span><span class="n">morphology</span><span class="o">.</span><span class="n">disk</span><span class="p">(</span><span class="n">markers_disk_radius</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Apply thresholding - requires fine tuning</span>
+    <span class="n">threshold</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;threshold&quot;</span><span class="p">)</span>
+    <span class="n">markers</span> <span class="o">=</span> <span class="n">markers_basis</span> <span class="o">&lt;</span> <span class="n">threshold</span>
+
+    <span class="c1"># Label the marked regions</span>
+    <span class="n">labeled_markers</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">markers</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbosity</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;Basis for finding continuous regions&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">markers_basis</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Labeled regions after applying thresholding with value </span><span class="si">{</span><span class="n">threshold</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">labeled_markers</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">labeled_markers</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_detect_markers_from_input</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Routine to transform user-defined points into markers.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        shape (tuple): shape of the original image, for which the marker</span>
+<span class="sd">            coordinates are defined.</span>
+<span class="sd">        keyword arguments (optional): tuning parameters for the watershed algorithm</span>
+<span class="sd">            patch (int): size of regions in each dimension to be marked.</span>
+<span class="sd">            marker_points (np.ndarray): array of coordinates for top left corner of</span>
+<span class="sd">                each marked region. Each point thereby is a representative point for</span>
+<span class="sd">                a unique region.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: labeled markers corresponding to provided image shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Fetch user-defined coordinates of markers</span>
+    <span class="n">patch</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;region_size&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">pts</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;marker_points&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">pts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+    <span class="c1"># Mark squares with points providing the top left corner.</span>
+    <span class="n">markers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">pt</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">:</span>
+        <span class="n">dx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">patch</span><span class="p">,</span> <span class="n">patch</span><span class="p">])</span>
+        <span class="n">corners</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">pt</span><span class="p">,</span> <span class="n">pt</span> <span class="o">+</span> <span class="n">dx</span><span class="p">])</span>
+        <span class="n">roi</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">bounding_box</span><span class="p">(</span><span class="n">corners</span><span class="p">)</span>
+        <span class="n">markers</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># Convert markers to labels assuming each point</span>
+    <span class="n">labeled_markers</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">markers</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">labeled_markers</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_detect_edges_from_gradient</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Routine determining edges via gradient filter from scikit-image.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (np.ndarray): input image, basis for determining the gradient.</span>
+<span class="sd">        keyword arguments (optional): tuning parameters for the watershed algorithm</span>
+<span class="sd">            &quot;gradient disk radius&quot; (int): disk radius to define edges via gradients.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">gradient_disk_radius</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gradient disk radius&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># Find edges</span>
+    <span class="n">edges</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">rank</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span>
+        <span class="n">img</span><span class="p">,</span> <span class="n">skimage</span><span class="o">.</span><span class="n">morphology</span><span class="o">.</span><span class="n">disk</span><span class="p">(</span><span class="n">gradient_disk_radius</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">edges</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_detect_edges_from_scharr</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Routine determining edges using the Scharr algorithm from scikit-image.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (np.ndarray): input image, basis for Scharr.</span>
+<span class="sd">        keyword arguments (optional): tuning parameters for the watershed algorithm</span>
+<span class="sd">            mask (np.ndarray): active mask to be considered in the Scharr routine.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">            np.ndarray: edge array in terms of intensity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Fetch mask from file</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scharr mask&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">))</span>
+
+    <span class="c1"># Resize mask if necessary</span>
+    <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">!=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_bool</span><span class="p">(</span>  <span class="c1"># type: ignore[attr-defined]</span>
+            <span class="n">skimage</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="n">edges</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">scharr</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span>
+
+    <span class="c1"># Take care of the boundary, which is left with values equal to zero</span>
+    <span class="n">entire_boundary</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="s2">&quot;right&quot;</span><span class="p">]</span>
+    <span class="n">edges</span> <span class="o">=</span> <span class="n">_boundary</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">entire_boundary</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">edges</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cleanup</span><span class="p">(</span><span class="n">labels</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Cleanup routine, taking care of small marked regions, boundary values etc.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        labels (np.ndarray): input labels/segentation.</span>
+<span class="sd">        keyword arguments (optional): tuning parameters for the watershed algorithm</span>
+<span class="sd">            &quot;dilation size&quot; (int): amount of pixels, used for dilation in the postprocessing</span>
+<span class="sd">            &quot;boundary size&quot; (int): amount of pixels normal to the boundary, for which the</span>
+<span class="sd">                segmentation will be assigned as extension of the nearby interior values.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: cleaned segmentation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Monitor number of labels prior and after the cleanup.</span>
+    <span class="n">num_labels_prior</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">dilation_size</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dilation size&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">boundary_size</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;boundary size&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">_reset_labels</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">_dilate_by_size</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">dilation_size</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">_reset_labels</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">_fill_holes</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">_reset_labels</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">_dilate_by_size</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">dilation_size</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">_reset_labels</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+    <span class="n">boundary</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;boundary&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="s2">&quot;right&quot;</span><span class="p">])</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">_boundary</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">boundary_size</span><span class="p">,</span> <span class="n">boundary</span><span class="p">)</span>
+
+    <span class="c1"># Inform the user if labels are removed - in particular, when using</span>
+    <span class="c1"># markers_method = &quot;supervised&quot;, this means that provided markers</span>
+    <span class="c1"># are ignored.</span>
+    <span class="n">num_labels_posterior</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">num_labels_prior</span> <span class="o">!=</span> <span class="n">num_labels_posterior</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Cleanup in the segmentation has removed labels.&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">labels</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_reset_labels</span><span class="p">(</span><span class="n">labels</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Rename labels, such that these are consecutive with step size 1,</span>
+<span class="sd">    starting from 0.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        labels (np.ndarray): labeled image</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: new labeled regions</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pre_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">pre_labels</span><span class="p">):</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">labels</span> <span class="o">==</span> <span class="n">label</span>
+        <span class="n">labels</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+    <span class="k">return</span> <span class="n">labels</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_fill_holes</span><span class="p">(</span><span class="n">labels</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Routine for filling holes in all labeled regions.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        labels (np.ndarray): labeled image</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: labels without holes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pre_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">pre_labels</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">labels</span> <span class="o">==</span> <span class="n">label</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">ndi</span><span class="o">.</span><span class="n">binary_fill_holes</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">labels</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">label</span>
+    <span class="k">return</span> <span class="n">labels</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_dilate_by_size</span><span class="p">(</span>
+    <span class="n">labels</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">footprint</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">decreasing_order</span><span class="p">:</span> <span class="nb">bool</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Dilate objects by prescribed size.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        labels (np.ndarray): labeled image</span>
+<span class="sd">        footprint (np.ndarray or int): foot print for dilation</span>
+<span class="sd">        descreasing_order (bool): flag controlling whether dilation</span>
+<span class="sd">            should be performed on objects with decreasing order</span>
+<span class="sd">            or not (increasing order then).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: labels after dilation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">footprint</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># Determine sizes of all marked areas</span>
+        <span class="n">pre_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+        <span class="n">sizes</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">labels</span> <span class="o">==</span> <span class="n">label</span><span class="p">)</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">pre_labels</span><span class="p">]</span>
+        <span class="c1"># Sort from small to large</span>
+        <span class="n">labels_sorted_sizes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">sizes</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">decreasing_order</span><span class="p">:</span>
+            <span class="n">labels_sorted_sizes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">labels_sorted_sizes</span><span class="p">)</span>
+        <span class="c1"># Erode for each label if still existent</span>
+        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels_sorted_sizes</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">labels</span> <span class="o">==</span> <span class="n">label</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">morphology</span><span class="o">.</span><span class="n">binary_dilation</span><span class="p">(</span>
+                <span class="n">mask</span><span class="p">,</span> <span class="n">skimage</span><span class="o">.</span><span class="n">morphology</span><span class="o">.</span><span class="n">disk</span><span class="p">(</span><span class="n">footprint</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">labels</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">label</span>
+    <span class="k">return</span> <span class="n">labels</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_boundary</span><span class="p">(</span><span class="n">labels</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">boundary</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Constant extenion in normal direction at the boundary of labeled image.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        labels (np.ndarray): labeled image</span>
+<span class="sd">        thickness (int): thickness of boundary which should be overwritten</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: updated labeled image</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">thickness</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;top&quot;</span> <span class="ow">in</span> <span class="n">boundary</span><span class="p">:</span>
+            <span class="c1"># Top</span>
+            <span class="n">labels</span><span class="p">[:</span><span class="n">thickness</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="n">thickness</span> <span class="p">:</span> <span class="n">thickness</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="k">if</span> <span class="s2">&quot;bottom&quot;</span> <span class="ow">in</span> <span class="n">boundary</span><span class="p">:</span>
+            <span class="c1"># Bottom</span>
+            <span class="n">labels</span><span class="p">[</span><span class="o">-</span><span class="n">thickness</span><span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="o">-</span><span class="n">thickness</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">:</span> <span class="o">-</span><span class="n">thickness</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="k">if</span> <span class="s2">&quot;left&quot;</span> <span class="ow">in</span> <span class="n">boundary</span><span class="p">:</span>
+            <span class="c1"># Left</span>
+            <span class="n">labels</span><span class="p">[:,</span> <span class="p">:</span><span class="n">thickness</span><span class="p">]</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[:,</span> <span class="n">thickness</span> <span class="p">:</span> <span class="n">thickness</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;right&quot;</span> <span class="ow">in</span> <span class="n">boundary</span><span class="p">:</span>
+            <span class="c1"># Right</span>
+            <span class="n">labels</span><span class="p">[:,</span> <span class="o">-</span><span class="n">thickness</span><span class="p">:]</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[:,</span> <span class="o">-</span><span class="n">thickness</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">:</span> <span class="o">-</span><span class="n">thickness</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">labels</span>
+
+
+<div class="viewcode-block" id="label_image">
+<a class="viewcode-back" href="../../../source/utils/darsia.utils.html#darsia.utils.segmentation.label_image">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">label_image</span><span class="p">(</span>
+    <span class="n">img</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">],</span>
+    <span class="nb">map</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ctol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
+    <span class="n">ensure_connectivity</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">expand_labels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">significance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Segment an image based on colors.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (np.ndarray or darsia.Image): input image in RGB color space</span>
+<span class="sd">        map (dict, optional): dictionary mapping color names to labels and RGB values;</span>
+<span class="sd">            default is None, in which case a predefined map is used:</span>
+<span class="sd">            map = {</span>
+<span class="sd">                &quot;white&quot;: (0, (1, 1, 1)),</span>
+<span class="sd">                &quot;black&quot;: (1, (0, 0, 0)),</span>
+<span class="sd">                &quot;red&quot;: (2, (1, 0, 0)),</span>
+<span class="sd">                &quot;green&quot;: (3, (0, 1, 0)),</span>
+<span class="sd">                &quot;blue&quot;: (4, (0, 0, 1)),</span>
+<span class="sd">                &quot;cyan&quot;: (5, (0, 1, 1)),</span>
+<span class="sd">                &quot;magenta&quot;: (6, (1, 0, 1)),</span>
+<span class="sd">                &quot;yellow&quot;: (7, (1, 1, 0)),</span>
+<span class="sd">            }</span>
+<span class="sd">            the keys are the color names (currently not used), the values are tuples</span>
+<span class="sd">            containing the label (int) and the RGB value (tuple of floats in [0, 1]).</span>
+<span class="sd">        ctol (float): tolerance for color matching in float format; default is 0.1.</span>
+<span class="sd">        ensure_connectivity (bool): whether to ensure that labels are connected regions</span>
+<span class="sd">            (default: True).</span>
+<span class="sd">        expand_labels (bool): whether to expand labels to fill unlabeled pixels</span>
+<span class="sd">            (default: True).</span>
+<span class="sd">        significance (float, optional): minimum significance of labels to be kept.</span>
+
+<span class="sd">    The labeling is done by comparing the RGB values of the input image</span>
+<span class="sd">    with the RGB values in the map. If the absolute difference is less than</span>
+<span class="sd">    the tolerance, the corresponding label is assigned to the pixel. After the</span>
+<span class="sd">    labeling is complete, the connected components are identified and labeled</span>
+<span class="sd">    using skimage.measure.label.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray or darsia.Image: labeled regions in the same format as img.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Work for now only with numpy arrays</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">):</span>
+        <span class="n">return_darsia_image</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">metadata</span><span class="p">()</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">img</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">return_darsia_image</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1"># Make sure the image is in RGB format</span>
+    <span class="k">assert</span> <span class="p">(</span>
+        <span class="n">img</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">and</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span>
+    <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Image must be in RGB format, but has shape </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span>
+
+    <span class="c1"># Initialize the labeled image with zeros. These are the unlabeled pixels.</span>
+    <span class="n">labeled_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+
+    <span class="c1"># Make sure the image is in float format</span>
+    <span class="k">if</span> <span class="n">img</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span> <span class="ow">and</span> <span class="n">img</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">:</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_float</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>  <span class="c1"># type: ignore[attr-defined]</span>
+
+    <span class="c1"># Pre-define colors for segmentation</span>
+    <span class="k">if</span> <span class="nb">map</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">map</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;white&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+            <span class="s2">&quot;black&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
+            <span class="s2">&quot;red&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
+            <span class="s2">&quot;green&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
+            <span class="s2">&quot;blue&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+            <span class="s2">&quot;cyan&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+            <span class="s2">&quot;magenta&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+            <span class="s2">&quot;yellow&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
+        <span class="p">}</span>
+
+    <span class="c1"># Ensure that the map does not contain zero labels.</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">label</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">map</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+        <span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;Map contains zero labels - zeros are also used to mark unlabeled regions.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">color_value</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">map</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="c1"># Create a mask for the current color</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">img</span> <span class="o">-</span> <span class="n">color_value</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">ctol</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Label the regions</span>
+        <span class="n">labeled_image</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">label</span>
+
+    <span class="c1"># Mark unlabeled pixels</span>
+    <span class="n">unlabeled_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">labeled_image</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># Relabel the image based on connectivity. Retain zero values for</span>
+    <span class="c1"># unlabeled pixels.</span>
+    <span class="k">if</span> <span class="n">ensure_connectivity</span><span class="p">:</span>
+        <span class="n">labeled_image</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">labeled_image</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># Ensure unlabeled pixels remain unlabeled</span>
+    <span class="n">labeled_image</span><span class="p">[</span><span class="n">unlabeled_mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c1"># If significance is provided, remove labels with less than the</span>
+    <span class="c1"># specified relative number of pixels.</span>
+    <span class="n">unsignificant_labels</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">significance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">label_counts</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">labeled_image</span> <span class="o">==</span> <span class="n">label</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labeled_image</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">label_counts</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">count</span> <span class="o">&lt;</span> <span class="n">significance</span> <span class="o">*</span> <span class="n">labeled_image</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                <span class="n">labeled_image</span><span class="p">[</span><span class="n">labeled_image</span> <span class="o">==</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">unsignificant_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+
+    <span class="c1"># Relabel the image to ensure that labels are consecutive integers</span>
+    <span class="n">unique_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labeled_image</span><span class="p">)</span>
+    <span class="n">current_label</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">labeled_image</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">unique_labels</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">label</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Skip background</span>
+            <span class="n">labels</span><span class="p">[</span><span class="n">labeled_image</span> <span class="o">==</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_label</span>
+            <span class="n">current_label</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="c1"># Expand labels and fill unlabeled pixels in labels.</span>
+    <span class="k">if</span> <span class="n">expand_labels</span><span class="p">:</span>
+        <span class="n">expanded_labels</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">segmentation</span><span class="o">.</span><span class="n">expand_labels</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+        <span class="n">unlabeled_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">labels</span><span class="p">[</span><span class="n">unlabeled_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">expanded_labels</span><span class="p">[</span><span class="n">unlabeled_mask</span><span class="p">]</span>
+
+    <span class="n">num_unlabeled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">num_unlabeled</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;Number of unlabeled pixels: </span><span class="si">{</span><span class="n">num_unlabeled</span><span class="si">}</span><span class="s2"> from total </span><span class="si">{</span><span class="n">labels</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2"> pixels.&quot;&quot;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot; (</span><span class="si">{</span><span class="n">num_unlabeled</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">labels</span><span class="o">.</span><span class="n">size</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> of the image)&quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Ensure that the labeled image is in the optimal format</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min_scalar_type</span><span class="p">(</span><span class="n">labels</span><span class="p">))</span>
+
+    <span class="c1"># Convert labeled image to the same format as input image</span>
+    <span class="k">if</span> <span class="n">return_darsia_image</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="o">**</span><span class="n">meta</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">labels</span></div>
+
+
+
+<div class="viewcode-block" id="group_labels">
+<a class="viewcode-back" href="../../../source/utils/darsia.utils.html#darsia.utils.segmentation.group_labels">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">group_labels</span><span class="p">(</span>
+    <span class="n">labels</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="n">groups</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span> <span class="n">values</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Unite labels in the given groups.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        labels (darsia.Image): labeled image with integer labels.</span>
+<span class="sd">        group (list[list[int]]): list of groups, where each group is a list of labels</span>
+<span class="sd">            to be united. The first label in each group is the label to which all</span>
+<span class="sd">            other labels in the group will be united.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reduced_labels</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">group_counter</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">groups</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">group</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+                <span class="n">reduced_labels</span><span class="o">.</span><span class="n">img</span><span class="p">[</span><span class="n">labels</span><span class="o">.</span><span class="n">img</span> <span class="o">==</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">group</span><span class="p">:</span>
+                <span class="n">reduced_labels</span><span class="o">.</span><span class="n">img</span><span class="p">[</span><span class="n">labels</span><span class="o">.</span><span class="n">img</span> <span class="o">==</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">group_counter</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">reduced_labels</span></div>
+
+
+
+<div class="viewcode-block" id="reassign_labels">
+<a class="viewcode-back" href="../../../source/utils/darsia.utils.html#darsia.utils.segmentation.reassign_labels">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">reassign_labels</span><span class="p">(</span><span class="n">labels</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="n">mapping</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reassign labels according to the provided mapping.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        labels (darsia.Image): labeled image with integer labels.</span>
+<span class="sd">        mapping (dict[int, int]): dictionary mapping old labels to new labels.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reassigned_labels</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">old_label</span><span class="p">,</span> <span class="n">new_label</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">reassigned_labels</span><span class="o">.</span><span class="n">img</span><span class="p">[</span><span class="n">labels</span><span class="o">.</span><span class="n">img</span> <span class="o">==</span> <span class="n">old_label</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_label</span>
+
+    <span class="k">return</span> <span class="n">reassigned_labels</span></div>
+
+
+
+<div class="viewcode-block" id="make_consecutive">
+<a class="viewcode-back" href="../../../source/utils/darsia.utils.html#darsia.utils.segmentation.make_consecutive">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_consecutive</span><span class="p">(</span><span class="n">labels</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ensure that labels in the image are consecutive integers starting from 0.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">unique_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="o">.</span><span class="n">img</span><span class="p">)</span>
+    <span class="n">consecutive_labels</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">unique_labels</span><span class="p">):</span>
+        <span class="n">consecutive_labels</span><span class="o">.</span><span class="n">img</span><span class="p">[</span><span class="n">labels</span><span class="o">.</span><span class="n">img</span> <span class="o">==</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+    <span class="k">return</span> <span class="n">consecutive_labels</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

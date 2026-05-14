@@ -1,0 +1,1400 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>darsia.corrections.shape.curvature &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/darsia/corrections/shape/curvature';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../../_static/searchtools.js"></script>
+    <script src="../../../../_static/language_data.js"></script>
+    <script src="../../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">darsia.corrections.shape.curvature</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for darsia.corrections.shape.curvature</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Module containing polynomical Curvature correction.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tomllib</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warnings</span><span class="w"> </span><span class="kn">import</span> <span class="n">warn</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">skimage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">map_coordinates</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">darsia</span>
+
+
+<div class="viewcode-block" id="load_curvature_correction_config_from_toml">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.load_curvature_correction_config_from_toml">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_curvature_correction_config_from_toml</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load curvature correction config from a toml file.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        path (Path): path to the toml file.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        config (dict): config dictionary for curvature correction.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">tomllib</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Fetch the main curvature section. Only continue if it exists.</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sec</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;curvature&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No &#39;curvature&#39; section found in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">config</span>
+
+    <span class="c1"># Fetch sub-sections:</span>
+    <span class="c1"># - init</span>
+    <span class="c1"># - crop</span>
+    <span class="c1"># - bulge</span>
+    <span class="c1"># - stretch</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sec_init</span> <span class="o">=</span> <span class="n">sec</span><span class="p">[</span><span class="s2">&quot;init&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">sec_init</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="s2">&quot;init&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;horizontal_bulge&quot;</span><span class="p">:</span> <span class="n">sec_init</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;horizontal_bulge&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s2">&quot;vertical_bulge&quot;</span><span class="p">:</span> <span class="n">sec_init</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_bulge&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+            <span class="p">}</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No &#39;curvature.init&#39; section found in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sec_crop</span> <span class="o">=</span> <span class="n">sec</span><span class="p">[</span><span class="s2">&quot;crop&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">sec_crop</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="s2">&quot;crop&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;pts_src&quot;</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">make_voxel</span><span class="p">(</span><span class="n">sec_crop</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pts_src&quot;</span><span class="p">,</span> <span class="p">[])),</span>
+                <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="n">sec_crop</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;width&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+                <span class="s2">&quot;height&quot;</span><span class="p">:</span> <span class="n">sec_crop</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;height&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+                <span class="s2">&quot;in meters&quot;</span><span class="p">:</span> <span class="n">sec_crop</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;in meters&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+            <span class="p">}</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No &#39;curvature.crop&#39; section found in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sec_bulge</span> <span class="o">=</span> <span class="n">sec</span><span class="p">[</span><span class="s2">&quot;bulge&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">sec_bulge</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="s2">&quot;bulge&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;horizontal_bulge&quot;</span><span class="p">:</span> <span class="n">sec_bulge</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;horizontal_bulge&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">:</span> <span class="n">sec_bulge</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                    <span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">,</span> <span class="mi">0</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;vertical_bulge&quot;</span><span class="p">:</span> <span class="n">sec_bulge</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_bulge&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">:</span> <span class="n">sec_bulge</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="p">}</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No &#39;curvature.bulge&#39; section found in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sec_stretch</span> <span class="o">=</span> <span class="n">sec</span><span class="p">[</span><span class="s2">&quot;stretch&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">sec_stretch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="s2">&quot;stretch&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;horizontal_stretch&quot;</span><span class="p">:</span> <span class="n">sec_stretch</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;horizontal_stretch&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">:</span> <span class="n">sec_stretch</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                    <span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">,</span> <span class="mi">0</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;vertical_stretch&quot;</span><span class="p">:</span> <span class="n">sec_stretch</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_stretch&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">:</span> <span class="n">sec_stretch</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="p">}</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No &#39;curvature.stretch&#39; section found in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">config</span></div>
+
+
+
+<div class="viewcode-block" id="load_curvature_correction_config_from_dict">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.load_curvature_correction_config_from_dict">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_curvature_correction_config_from_dict</span><span class="p">(</span><span class="n">sec</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load curvature correction config from a dictionary.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        path (Path): path to the toml file.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        config (dict): config dictionary for curvature correction.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Fetch sub-sections:</span>
+    <span class="c1"># - init</span>
+    <span class="c1"># - crop</span>
+    <span class="c1"># - bulge</span>
+    <span class="c1"># - stretch</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sec_init</span> <span class="o">=</span> <span class="n">sec</span><span class="p">[</span><span class="s2">&quot;init&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">sec_init</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="s2">&quot;init&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;horizontal_bulge&quot;</span><span class="p">:</span> <span class="n">sec_init</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;horizontal_bulge&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s2">&quot;vertical_bulge&quot;</span><span class="p">:</span> <span class="n">sec_init</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_bulge&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+            <span class="p">}</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No &#39;curvature.init&#39; section found in config.&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sec_crop</span> <span class="o">=</span> <span class="n">sec</span><span class="p">[</span><span class="s2">&quot;crop&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">sec_crop</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="s2">&quot;crop&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;pts_src&quot;</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">make_voxel</span><span class="p">(</span><span class="n">sec_crop</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pts_src&quot;</span><span class="p">,</span> <span class="p">[])),</span>
+                <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="n">sec_crop</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;width&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+                <span class="s2">&quot;height&quot;</span><span class="p">:</span> <span class="n">sec_crop</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;height&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+                <span class="s2">&quot;in meters&quot;</span><span class="p">:</span> <span class="n">sec_crop</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;in meters&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+            <span class="p">}</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No &#39;curvature.crop&#39; section found in config.&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sec_bulge</span> <span class="o">=</span> <span class="n">sec</span><span class="p">[</span><span class="s2">&quot;bulge&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">sec_bulge</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="s2">&quot;bulge&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;horizontal_bulge&quot;</span><span class="p">:</span> <span class="n">sec_bulge</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;horizontal_bulge&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">:</span> <span class="n">sec_bulge</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                    <span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">,</span> <span class="mi">0</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;vertical_bulge&quot;</span><span class="p">:</span> <span class="n">sec_bulge</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_bulge&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">:</span> <span class="n">sec_bulge</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="p">}</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No &#39;curvature.bulge&#39; section found in config.&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sec_stretch</span> <span class="o">=</span> <span class="n">sec</span><span class="p">[</span><span class="s2">&quot;stretch&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">sec_stretch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="s2">&quot;stretch&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;horizontal_stretch&quot;</span><span class="p">:</span> <span class="n">sec_stretch</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;horizontal_stretch&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">:</span> <span class="n">sec_stretch</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                    <span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">,</span> <span class="mi">0</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;vertical_stretch&quot;</span><span class="p">:</span> <span class="n">sec_stretch</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_stretch&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">:</span> <span class="n">sec_stretch</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="p">}</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No &#39;curvature.stretch&#39; section found in config.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">config</span></div>
+
+
+
+<div class="viewcode-block" id="CurvatureCorrection">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CurvatureCorrection</span><span class="p">(</span><span class="n">darsia</span><span class="o">.</span><span class="n">BaseCorrection</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Polynomial curvature correction.</span>
+
+<span class="sd">    Contains routines for setting up the curvature correction, as well as applying</span>
+<span class="sd">    it to images.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        config (dict): config dictionary for curvture correction.</span>
+
+<span class="sd">        Circumstantial attributes:</span>
+<span class="sd">            reference_image (np.ndarray): image matrix of the reference image.</span>
+<span class="sd">            current_image (np.ndarray): image matrix of the updated reference image.</span>
+<span class="sd">            width (float): physical width of reference image.</span>
+<span class="sd">            height (float): physical height of reference image.</span>
+<span class="sd">            in_meters (bool): True if width/height is in meters.</span>
+<span class="sd">            Ny (int): number of pixels in vertical direction in reference image.</span>
+<span class="sd">            Nx (int): number of pixels in horizontal direction in reference image.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructor of curvature correction class.</span>
+
+<span class="sd">        NOTE: CurvatureCorrection should be mostly initialized with a config file</span>
+<span class="sd">        which controls the correction routine. The possibility to define a curvature</span>
+<span class="sd">        correction using a path to an image (not a darsia.Image) should be however</span>
+<span class="sd">        only used for setting up the config file via CurvatureCorrection as</span>
+<span class="sd">        showcased in examples/notebooks/curvature_correction_walkthrough.ipynb</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            kwargs (Optional keyword arguments):</span>
+<span class="sd">                config (dict, str, Path): config dictionary; default is None. Either this</span>
+<span class="sd">                            or the image must be provided.</span>
+<span class="sd">                image (Path | np.ndarray): image source that either can</span>
+<span class="sd">                            be provided as a path to an image or an image matrix.</span>
+<span class="sd">                            Either this or the config must be provided.</span>
+<span class="sd">                width (float): physical width of the image. Only relevant if</span>
+<span class="sd">                            image is provided.</span>
+<span class="sd">                height (float): physical height of the image. Only relevant if</span>
+<span class="sd">                            image is provided.</span>
+<span class="sd">                in_meters (bool): returns True if width and height are given</span>
+<span class="sd">                            in terms of meters. Only relevant if image</span>
+<span class="sd">                            is provided.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Setup config from file if provided</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_config</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;image&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">im_source</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">im_source</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">reference_image</span> <span class="o">=</span> <span class="n">im_source</span>
+
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">im_source</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">reference_image</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">im_source</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">IMREAD_UNCHANGED</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">reference_image</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">reference_image</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2RGB</span>
+                <span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                    <span class="s2">&quot;Invalid image data. Provide either a path to an image or an image array.&quot;</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_image</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_image</span><span class="o">.</span><span class="n">dtype</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">in_meters</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;in_meters&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;width&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;height&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">warn</span><span class="p">(</span><span class="s2">&quot;No image provided. Please provide an image or a config file.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># The internally stored config file is tailored to when resize_factor is equal to 1.</span>
+        <span class="c1"># For other values, it has to be adapted.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resize_factor</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;resize_factor&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resize_factor</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_adapt_config</span><span class="p">()</span>
+
+        <span class="c1"># Initialize cache for precomputed transformed coordinates</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;config&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;use_cache&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_cache</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cache_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cache&quot;</span><span class="p">,</span> <span class="s2">&quot;./cache/curvature_transformation.npy&quot;</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cache_path</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use_cache</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Hardcode the interpolation order, used when mapping pixels to transformed</span>
+        <span class="c1"># coordinates</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interpolation_order</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interpolation_order&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CurvatureCorrection.setup_config">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.setup_config">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_config</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_read_from_single_file</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.json&quot;</span><span class="p">:</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">openfile</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">openfile</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.toml&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">load_curvature_correction_config_from_toml</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Read config directly from argument list</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="c1"># self.config = copy.deepcopy(config)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">load_curvature_correction_config_from_dict</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">_read_from_single_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">config</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_read_from_single_file</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="p">{}</span></div>
+
+
+    <span class="c1"># ! ---- I/O routines</span>
+
+<div class="viewcode-block" id="CurvatureCorrection.write_config_to_file">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.write_config_to_file">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">write_config_to_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Writes the config dictionary to a json-file.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            path (Path): path to the json file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">outfile</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CurvatureCorrection.read_config_from_file">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.read_config_from_file">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read_config_from_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reads a json-file to the config disctionary.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            path (Path): path to the json-file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">openfile</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">openfile</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CurvatureCorrection.save">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.save">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save the curvature correction to a file.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            path (Path): path to the file</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Make sure the parent directory exists</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Store color space and local scaling images as npz files</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span>
+            <span class="n">path</span><span class="p">,</span>
+            <span class="n">class_name</span><span class="o">=</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+            <span class="n">cache</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;cache&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Curvature correction saved to </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CurvatureCorrection.load">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.load">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load the curvature correction from a file.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            path (Path): path to the file</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Make sure the file exists</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> not found.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Load color space and local scaling images from npz file</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">allow_pickle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;config&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid file format.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;config&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="n">pre_cache</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cache&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pre_cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="o">=</span> <span class="n">pre_cache</span><span class="o">.</span><span class="n">item</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="CurvatureCorrection.return_image">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.return_image">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">return_image</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the current image as a darsia image width provided width and height.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temporary_image</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CurvatureCorrection.show_image">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.show_image">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">show_image</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Shows the current image using matplotlib.pyplot</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">skimage</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temporary_image</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">temporary_image</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">skimage</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">img_as_uint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_image</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">skimage</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_image</span><span class="p">)</span>
+
+    <span class="c1"># ! ---- Wrappers for single transformations</span>
+
+<div class="viewcode-block" id="CurvatureCorrection.pre_bulge_correction">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.pre_bulge_correction">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">pre_bulge_correction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the curvature correction by forcing all stright lines</span>
+<span class="sd">        to curve inwards and not outwards.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            kwargs (optional keyword arguments):</span>
+<span class="sd">                &quot;horizontal_bulge&quot; (float): parameter for the curvature correction related to</span>
+<span class="sd">                    the horizontal bulge of the image.</span>
+<span class="sd">                &quot;horizontal_center_offset&quot; (int): offset in terms of pixel of the image center</span>
+<span class="sd">                    in x-direction, as compared to the numerical center</span>
+<span class="sd">                vertical_bulge (float): parameter for the curvature correction related to the</span>
+<span class="sd">                    vertical bulge of the image.</span>
+<span class="sd">                &quot;vertical_center_offset&quot; (int): offset in terms of pixel of the image center in</span>
+<span class="sd">                    y-direction, as compared to the numerical center</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;init&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;horizontal_bulge&quot;</span><span class="p">:</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;horizontal_bulge&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">:</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;vertical_bulge&quot;</span><span class="p">:</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;verical_bulge&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">:</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simple_curvature_correction</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_image</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;init&quot;</span><span class="p">]</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CurvatureCorrection.crop">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.crop">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">crop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">corner_points</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">VoxelArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Crop the image along the corners of the image.</span>
+
+<span class="sd">        The four corner points of the image should be provided, and this method</span>
+<span class="sd">        will update the config file and modify the current image.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            corner_points (VoxelArray): list of the corner points. Preferably the list</span>
+<span class="sd">                        should be ordered starting from the upper left corner</span>
+<span class="sd">                        and going counter clockwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">corner_points</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">VoxelArray</span><span class="p">):</span>
+            <span class="n">corner_points</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">make_voxels</span><span class="p">(</span><span class="n">corner_points</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;crop&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;pts_src&quot;</span><span class="p">:</span> <span class="n">corner_points</span><span class="p">,</span>
+            <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span>
+            <span class="s2">&quot;height&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">,</span>
+            <span class="s2">&quot;in meters&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_meters</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_image</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">extract_quadrilateral_ROI</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_image</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;crop&quot;</span><span class="p">]</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CurvatureCorrection.bulge_correction">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.bulge_correction">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">bulge_correction</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">left</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">right</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">top</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">bottom</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Bulge correction</span>
+
+<span class="sd">        Corrects bulging of image, depending on the amount of pixels that the</span>
+<span class="sd">        image is bulged inwards on each side.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            left (int): amount of bulged pixels on the left side of the image.</span>
+<span class="sd">            right (int): amount of bulged pixels on the right side of the image.</span>
+<span class="sd">            top (int): amount of bulged pixels on the top of the image.</span>
+<span class="sd">            bottom (int): amount of bulged pixels on the bottom of the image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="p">(</span>
+            <span class="n">horizontal_bulge</span><span class="p">,</span>
+            <span class="n">horizontal_bulge_center_offset</span><span class="p">,</span>
+            <span class="n">vertical_bulge</span><span class="p">,</span>
+            <span class="n">vertical_bulge_center_offset</span><span class="p">,</span>
+        <span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_bulge</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="n">right</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="n">top</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="n">bottom</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;bulge&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;horizontal_bulge&quot;</span><span class="p">:</span> <span class="n">horizontal_bulge</span><span class="p">,</span>
+            <span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">:</span> <span class="n">horizontal_bulge_center_offset</span><span class="p">,</span>
+            <span class="s2">&quot;vertical_bulge&quot;</span><span class="p">:</span> <span class="n">vertical_bulge</span><span class="p">,</span>
+            <span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">:</span> <span class="n">vertical_bulge_center_offset</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simple_curvature_correction</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_image</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;bulge&quot;</span><span class="p">]</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CurvatureCorrection.stretch_correction">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.stretch_correction">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stretch_correction</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">point_source</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
+        <span class="n">point_destination</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
+        <span class="n">stretch_center</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stretch correction.</span>
+
+<span class="sd">        Stretches the image depending on the displacement of a</span>
+<span class="sd">        single point (point source &lt;--&gt; point_destination) and</span>
+<span class="sd">        an undisplaced point (stretch_center)</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            &quot;point_source&quot; (list): point that has been translated.</span>
+<span class="sd">            &quot;point_destination&quot; (list): the ought to be position.</span>
+<span class="sd">            &quot;stretch_center&quot; (list): the stretch center.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="p">(</span>
+            <span class="n">horizontal_stretch</span><span class="p">,</span>
+            <span class="n">horizontal_stretch_center_offset</span><span class="p">,</span>
+            <span class="n">vertical_stretch</span><span class="p">,</span>
+            <span class="n">vertical_stretch_center_offset</span><span class="p">,</span>
+        <span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_stretch</span><span class="p">(</span>
+            <span class="n">point_source</span><span class="o">=</span><span class="n">point_source</span><span class="p">,</span>
+            <span class="n">point_destination</span><span class="o">=</span><span class="n">point_destination</span><span class="p">,</span>
+            <span class="n">stretch_center</span><span class="o">=</span><span class="n">stretch_center</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;stretch&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;horizontal_stretch&quot;</span><span class="p">:</span> <span class="n">horizontal_stretch</span><span class="p">,</span>
+            <span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">:</span> <span class="n">horizontal_stretch_center_offset</span><span class="p">,</span>
+            <span class="s2">&quot;vertical_stretch&quot;</span><span class="p">:</span> <span class="n">vertical_stretch</span><span class="p">,</span>
+            <span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">:</span> <span class="n">vertical_stretch_center_offset</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simple_curvature_correction</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_image</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;stretch&quot;</span><span class="p">]</span>
+        <span class="p">)</span></div>
+
+
+    <span class="c1"># ! ---- Auxiliary routines for computing tuning parameters in the correction.</span>
+
+<div class="viewcode-block" id="CurvatureCorrection.compute_bulge">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.compute_bulge">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_bulge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the bulge parameters depending on the maximum number of pixels</span>
+<span class="sd">        that the image has been displaced on each side.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            img (np.ndarray, optional): image array, basis for the computation.</span>
+<span class="sd">            kwargs (optional keyword arguments):</span>
+<span class="sd">                &quot;left&quot; (int): the maximum number of pixels that the image</span>
+<span class="sd">                              has been displaced on the left side</span>
+<span class="sd">                &quot;right&quot; (int): the maximum number of pixels that the image</span>
+<span class="sd">                              has been displaced on the right side</span>
+<span class="sd">                &quot;top&quot; (int): the maximum number of pixels that the image</span>
+<span class="sd">                              has been displaced on the top</span>
+<span class="sd">                &quot;bottom&quot; (int): the maximum number of pixels that the image</span>
+<span class="sd">                              has been displaced on the bottom</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">left</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">right</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;right&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">top</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">bottom</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">img</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># Determine the center of the image</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">left</span> <span class="o">+</span> <span class="n">right</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">top</span> <span class="o">+</span> <span class="n">bottom</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">image_center</span> <span class="o">=</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="n">Nx</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span> <span class="nb">round</span><span class="p">(</span><span class="n">Ny</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)]</span>
+        <span class="k">elif</span> <span class="n">left</span> <span class="o">+</span> <span class="n">right</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">image_center</span> <span class="o">=</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="n">Nx</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span> <span class="nb">round</span><span class="p">(</span><span class="n">Ny</span> <span class="o">*</span> <span class="p">(</span><span class="n">top</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">top</span> <span class="o">+</span> <span class="n">bottom</span><span class="p">))]</span>
+        <span class="k">elif</span> <span class="n">top</span> <span class="o">+</span> <span class="n">bottom</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">image_center</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">Nx</span> <span class="o">*</span> <span class="p">(</span><span class="n">left</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">left</span> <span class="o">+</span> <span class="n">right</span><span class="p">)),</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">Ny</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span>
+            <span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">image_center</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">Nx</span> <span class="o">*</span> <span class="p">(</span><span class="n">left</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">left</span> <span class="o">+</span> <span class="n">right</span><span class="p">)),</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">Ny</span> <span class="o">*</span> <span class="p">(</span><span class="n">top</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">top</span> <span class="o">+</span> <span class="n">bottom</span><span class="p">)),</span>
+            <span class="p">]</span>
+
+        <span class="c1"># Determine the offset of the numerical center of the image</span>
+        <span class="n">horizontal_bulge_center_offset</span> <span class="o">=</span> <span class="n">image_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="nb">round</span><span class="p">(</span><span class="n">Nx</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">vertical_bulge_center_offset</span> <span class="o">=</span> <span class="n">image_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="nb">round</span><span class="p">(</span><span class="n">Ny</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Determine the bulge tuning coefficients as explained in the darsia notes</span>
+        <span class="c1"># Assume here that the maximum impressions are applied at the image center</span>
+        <span class="n">horizontal_bulge</span> <span class="o">=</span> <span class="n">left</span> <span class="o">/</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">left</span> <span class="o">-</span> <span class="n">image_center</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="n">image_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">Ny</span> <span class="o">-</span> <span class="n">image_center</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="p">)</span>
+        <span class="n">vertical_bulge</span> <span class="o">=</span> <span class="n">top</span> <span class="o">/</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">top</span> <span class="o">-</span> <span class="n">image_center</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="n">image_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">Nx</span> <span class="o">-</span> <span class="n">image_center</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">horizontal_bulge</span><span class="p">,</span>
+            <span class="n">horizontal_bulge_center_offset</span><span class="p">,</span>
+            <span class="n">vertical_bulge</span><span class="p">,</span>
+            <span class="n">vertical_bulge_center_offset</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CurvatureCorrection.compute_stretch">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.compute_stretch">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_stretch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the stretch parameters depending on the stretch center,</span>
+<span class="sd">        and a known translation.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            img (np.ndarray, optional): image array, basis for the computation.</span>
+<span class="sd">            kwargs (optional keyword arguments):</span>
+<span class="sd">                &quot;point_source&quot; (list): point that has been translated.</span>
+<span class="sd">                &quot;point_destination&quot; (list): the ought to be position.</span>
+<span class="sd">                &quot;stretch_center&quot; (list): the stretch center.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">img</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="n">pt_src</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;point_source&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span><span class="p">])</span>
+        <span class="n">pt_dst</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;point_destination&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span><span class="p">])</span>
+        <span class="n">stretch_center</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stretch_center&quot;</span><span class="p">,</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="n">Ny</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span> <span class="nb">round</span><span class="p">(</span><span class="n">Nx</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)])</span>
+
+        <span class="c1"># Update the offset to the center</span>
+        <span class="n">horizontal_stretch_center_offset</span> <span class="o">=</span> <span class="n">stretch_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="nb">round</span><span class="p">(</span><span class="n">Nx</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">vertical_stretch_center_offset</span> <span class="o">=</span> <span class="n">stretch_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="nb">round</span><span class="p">(</span><span class="n">Ny</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Check whether zero horizontal stretch should be applied</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pt_dst</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">pt_src</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">horizontal_stretch</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Check whether point is chosen too close to the center</span>
+        <span class="c1"># (within 5% of total pixels), and make warning</span>
+        <span class="k">elif</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pt_src</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">stretch_center</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&lt;</span> <span class="nb">round</span><span class="p">(</span><span class="mf">0.05</span> <span class="o">*</span> <span class="n">Nx</span><span class="p">):</span>
+            <span class="n">horizontal_stretch</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;point_source chosen too close to stretch center for correction&quot;</span>
+                <span class="s2">&quot; in horizontal direction (within 5&quot;</span>
+                <span class="s2">&quot;%&quot;</span>
+                <span class="s2">&quot; of pixels in horizontal&quot;</span>
+                <span class="s2">&quot; direction). Please choose points that are approximately 1/4th&quot;</span>
+                <span class="s2">&quot; away from the top or the left or right of the image. Horizontal stretch&quot;</span>
+                <span class="s2">&quot; is set to zero now.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pt_src</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">Nx</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">round</span><span class="p">(</span><span class="mf">0.05</span> <span class="o">*</span> <span class="n">Nx</span><span class="p">):</span>
+            <span class="n">horizontal_stretch</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;point_source chosen too close to the right edge of the image for correction&quot;</span>
+                <span class="s2">&quot; in horizontal direction (within 5&quot;</span>
+                <span class="s2">&quot;%&quot;</span>
+                <span class="s2">&quot; of pixels in horizontal&quot;</span>
+                <span class="s2">&quot; direction). Please choose points that are approximately 1/4th&quot;</span>
+                <span class="s2">&quot; away from the top or the left or right of the image. Horizontal stretch&quot;</span>
+                <span class="s2">&quot; is set to zero now.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">pt_src</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="nb">round</span><span class="p">(</span><span class="mf">0.05</span> <span class="o">*</span> <span class="n">Nx</span><span class="p">):</span>
+            <span class="n">horizontal_stretch</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;point_source chosen too close to the left edge of the image for correction&quot;</span>
+                <span class="s2">&quot; in horizontal direction (within 5&quot;</span>
+                <span class="s2">&quot;%&quot;</span>
+                <span class="s2">&quot; of pixels in horizontal&quot;</span>
+                <span class="s2">&quot; direction). Please choose points that are approximately 1/4th&quot;</span>
+                <span class="s2">&quot; away from the top or the left or right of the image. Horizontal stretch&quot;</span>
+                <span class="s2">&quot; is set to zero now.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Compute the tuning parameter as explained in the notes.</span>
+            <span class="n">horizontal_stretch</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">pt_dst</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">pt_src</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">pt_src</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">stretch_center</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="n">pt_src</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">Nx</span> <span class="o">-</span> <span class="n">pt_src</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Check whether zero vertical stretch should be applied</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pt_dst</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pt_src</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">vertical_stretch</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Check whether point is chosen too close to the center</span>
+        <span class="c1"># (within 5% of total pixels), and make warning</span>
+        <span class="k">elif</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pt_src</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">stretch_center</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">&lt;</span> <span class="nb">round</span><span class="p">(</span><span class="mf">0.05</span> <span class="o">*</span> <span class="n">Ny</span><span class="p">):</span>
+            <span class="n">vertical_stretch</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;point_source chosen too close to stretch center for correction&quot;</span>
+                <span class="s2">&quot; in vertical direction (within 5&quot;</span>
+                <span class="s2">&quot;%&quot;</span>
+                <span class="s2">&quot; of pixels in vertical&quot;</span>
+                <span class="s2">&quot; direction). Please choose points that are approximately 1/4th&quot;</span>
+                <span class="s2">&quot; away from the top or the bottom of the image. Vertical stretch&quot;</span>
+                <span class="s2">&quot; is set to zero now.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">pt_src</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="nb">round</span><span class="p">(</span><span class="mf">0.05</span> <span class="o">*</span> <span class="n">Ny</span><span class="p">):</span>
+            <span class="n">vertical_stretch</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;point_source chosen too close to the top of the image for correction&quot;</span>
+                <span class="s2">&quot; in vertical direction (within 5&quot;</span>
+                <span class="s2">&quot;%&quot;</span>
+                <span class="s2">&quot; of pixels in vertical&quot;</span>
+                <span class="s2">&quot; direction). Please choose points that are approximately 1/4th&quot;</span>
+                <span class="s2">&quot; away from the top or the bottom of the image. Vertical stretch&quot;</span>
+                <span class="s2">&quot; is set to zero now.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">abs</span><span class="p">(</span><span class="n">Ny</span> <span class="o">-</span> <span class="n">pt_src</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">&lt;</span> <span class="nb">round</span><span class="p">(</span><span class="mf">0.05</span> <span class="o">*</span> <span class="n">Ny</span><span class="p">):</span>
+            <span class="n">vertical_stretch</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;point_source chosen too close to the bottom of the image for correction&quot;</span>
+                <span class="s2">&quot; in vertical direction (within 5&quot;</span>
+                <span class="s2">&quot;%&quot;</span>
+                <span class="s2">&quot; of pixels in vertical&quot;</span>
+                <span class="s2">&quot; direction). Please choose points that are approximately 1/4th&quot;</span>
+                <span class="s2">&quot; away from the top or the bottom of the image. Vertical stretch&quot;</span>
+                <span class="s2">&quot; is set to zero now.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Compute the tuning parameter as explained in the notes.</span>
+            <span class="n">vertical_stretch</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">pt_dst</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pt_src</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">pt_src</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">stretch_center</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="n">pt_src</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">Ny</span> <span class="o">-</span> <span class="n">pt_src</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">horizontal_stretch</span><span class="p">,</span>
+            <span class="n">horizontal_stretch_center_offset</span><span class="p">,</span>
+            <span class="n">vertical_stretch</span><span class="p">,</span>
+            <span class="n">vertical_stretch_center_offset</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="c1"># ! ---- Main correction routines</span>
+
+    <span class="c1"># TODO add __call__ and change coordinate system?</span>
+
+<div class="viewcode-block" id="CurvatureCorrection.correct_array">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.correct_array">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">correct_array</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Call method of the curvature correction.</span>
+
+<span class="sd">        Applies the curvature correction to a provided image, and returns the</span>
+<span class="sd">        corrected image as an array. If set in the constructor, the image</span>
+<span class="sd">        will be resized in the first step.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            img (np.ndarray): image array</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: curvature corrected image.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Precompute transformed coordinates based on self.config, if required.</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">use_cache</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_path</span><span class="o">.</span><span class="n">exists</span><span class="p">())</span>
+            <span class="ow">and</span> <span class="s2">&quot;grid&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_precompute_transformed_coordinates</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+
+            <span class="c1"># Store in cache</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_cache</span><span class="p">:</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_cache</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="c1"># Reache cache from file</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_path</span><span class="p">,</span> <span class="n">allow_pickle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+
+        <span class="c1"># Fetch precomputed transformed coordinates and the shape of the transformed image.</span>
+        <span class="n">grid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="s2">&quot;grid&quot;</span><span class="p">]</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="s2">&quot;shape&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Determine the corrected image</span>
+        <span class="n">corrected_img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transform_image</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">corrected_img</span></div>
+
+
+    <span class="c1"># TODO: Add an automatic way (using e.g, gradient decent) to choose the parameters.</span>
+    <span class="c1"># OR determine manual tuning rules.</span>
+<div class="viewcode-block" id="CurvatureCorrection.simple_curvature_correction">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.simple_curvature_correction">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">simple_curvature_correction</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        General routine for applying stretch and bulge transforms. This routine</span>
+<span class="sd">        in contrast to __call__ does always use the keyword arguments and constructs</span>
+<span class="sd">        the transformation instead of using cached values.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (np.ndarray): image array</span>
+<span class="sd">            kwargs (optional keyword arguments): see _transform_coordinates for more details.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: corrected image</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Read size of image</span>
+        <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># Define coordinates</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">Nx</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">Ny</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="c1"># Construct associated meshgrid with Cartesian indexing</span>
+        <span class="n">X</span><span class="p">,</span> <span class="n">Y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+        <span class="c1"># Transform coordinates accoring to input</span>
+        <span class="n">X</span><span class="p">,</span> <span class="n">Y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transform_coordinates</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Create out grid as the corrected grid, use (row,col) format</span>
+        <span class="n">grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">Y</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">X</span><span class="o">.</span><span class="n">ravel</span><span class="p">()])</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># Determine the corrected image</span>
+        <span class="n">corrected_img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transform_image</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">corrected_img</span></div>
+
+
+    <span class="c1"># ! ---- Main auxiliary correction routines - dirctly called in the main routines</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_precompute_transformed_coordinates</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Definition of the standard coordinate transformation routine and the</span>
+<span class="sd">        order of transformation. Furthermore, this routine implicitly defines</span>
+<span class="sd">        hardcoded keywords addressing the single transformation.</span>
+
+<span class="sd">        The final result is stored in cache.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (np.ndarray)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Define the current pixel mesh before any transformation</span>
+        <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">X</span><span class="p">,</span> <span class="n">Y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">Nx</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">Ny</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Store references of the pixel coordinates in dict to easily iterate over both</span>
+        <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;X&quot;</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span>
+            <span class="s2">&quot;Y&quot;</span><span class="p">:</span> <span class="n">Y</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">pixels</span> <span class="ow">in</span> <span class="n">coords</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># Apply transformation in the (only) expected order</span>
+            <span class="k">if</span> <span class="s2">&quot;init&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+                <span class="n">pixels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simple_curvature_correction</span><span class="p">(</span><span class="n">pixels</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;init&quot;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="s2">&quot;crop&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+                <span class="n">pixels</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">extract_quadrilateral_ROI</span><span class="p">(</span><span class="n">pixels</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;crop&quot;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="s2">&quot;bulge&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+                <span class="n">pixels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simple_curvature_correction</span><span class="p">(</span>
+                    <span class="n">pixels</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;bulge&quot;</span><span class="p">]</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;stretch&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+                <span class="n">pixels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simple_curvature_correction</span><span class="p">(</span>
+                    <span class="n">pixels</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;stretch&quot;</span><span class="p">]</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Store the updated values</span>
+            <span class="n">coords</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">pixels</span>
+
+        <span class="c1"># Fetch the updated X, Y</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">coords</span><span class="p">[</span><span class="s2">&quot;X&quot;</span><span class="p">]</span>
+        <span class="n">Y</span> <span class="o">=</span> <span class="n">coords</span><span class="p">[</span><span class="s2">&quot;Y&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Create out grid as the corrected grid, use (row,col) format</span>
+        <span class="n">grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">Y</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">X</span><span class="o">.</span><span class="n">ravel</span><span class="p">()])</span>
+
+        <span class="c1"># Store grid and shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="s2">&quot;grid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">grid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="s2">&quot;shape&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_adapt_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adapt config file for resized images, assuming config is correct</span>
+<span class="sd">        for resize_factor = 1.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">mainkey</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;init&quot;</span><span class="p">,</span> <span class="s2">&quot;bulge&quot;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">mainkey</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span>
+                    <span class="s2">&quot;horizontal_bulge&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;vertical_bulge&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">,</span>
+                <span class="p">]:</span>
+                    <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">mainkey</span><span class="p">]:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">mainkey</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resize_factor</span>
+
+        <span class="k">if</span> <span class="s2">&quot;crop&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;crop&quot;</span><span class="p">][</span><span class="s2">&quot;pts_src&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">resize_factor</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;crop&quot;</span><span class="p">][</span><span class="s2">&quot;pts_src&quot;</span><span class="p">])</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="s2">&quot;stretch&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span>
+                <span class="s2">&quot;horizontal_stretch&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;vertical_stretch&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">,</span>
+            <span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;stretch&quot;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resize_factor</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_transform_coordinates</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Routine for applying stretch and bulge transformation of coordinates.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (np.ndarray): image array</span>
+<span class="sd">            kwargs (optional keyword arguments): see _transform_coordinates for more details.</span>
+<span class="sd">                &quot;horizontal_bulge&quot; (float): parameter for the curvature correction related</span>
+<span class="sd">                    to the horizontal bulge of the image.</span>
+<span class="sd">                &quot;horizontal_stretch&quot; (float): parameter for the curvature correction related</span>
+<span class="sd">                    to the horizontal stretch of the image</span>
+<span class="sd">                &quot;horizontal_center_offset&quot; (int): offset in terms of pixel of the image</span>
+<span class="sd">                    center in x-direction, as compared to the numerical center</span>
+<span class="sd">                vertical_bulge (float): parameter for the curvature correction related to</span>
+<span class="sd">                    the vertical bulge of the image.</span>
+<span class="sd">                &quot;vertical_stretch&quot; (float): parameter for the curvature correction related</span>
+<span class="sd">                    to the vertical stretch of the image</span>
+<span class="sd">                &quot;vertical_center_offset&quot; (int): offset in terms of pixel of the image center</span>
+<span class="sd">                    in y-direction, as compared to the numerical center</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple of arrays: the transformed coordinates; first x and second y.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Read in tuning parameters</span>
+        <span class="n">horizontal_bulge</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;horizontal_bulge&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">horizontal_stretch</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;horizontal_stretch&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">horizontal_center_offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;horizontal_center_offset&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">vertical_bulge</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_bulge&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">vertical_stretch</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_stretch&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">vertical_center_offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vertical_center_offset&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># Image center in pixels, but in (col, row) order</span>
+        <span class="n">image_center</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="nb">round</span><span class="p">(</span><span class="n">Nx</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">horizontal_center_offset</span><span class="p">,</span>
+            <span class="nb">round</span><span class="p">(</span><span class="n">Ny</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">vertical_center_offset</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Define coordinate system relative to image center, in terms of pixels</span>
+        <span class="n">X</span> <span class="o">-=</span> <span class="n">image_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">Y</span> <span class="o">-=</span> <span class="n">image_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># Warp the coordinate system nonlinearly, correcting for bulge and stretch effects.</span>
+        <span class="n">Xmod</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">X</span>
+            <span class="o">+</span> <span class="n">horizontal_bulge</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">Y</span><span class="p">)</span> <span class="o">-</span> <span class="n">Y</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">Y</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">Y</span><span class="p">)))</span>
+            <span class="o">+</span> <span class="n">horizontal_stretch</span> <span class="o">*</span> <span class="n">X</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">-</span> <span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">X</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">X</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="n">Ymod</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">Y</span>
+            <span class="o">+</span> <span class="n">vertical_bulge</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">Y</span><span class="p">,</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">-</span> <span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">X</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">X</span><span class="p">)))</span>
+            <span class="o">+</span> <span class="n">vertical_stretch</span> <span class="o">*</span> <span class="n">Y</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">Y</span><span class="p">)</span> <span class="o">-</span> <span class="n">Y</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">Y</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">Y</span><span class="p">))</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Map corrected grid back to positional arguments, i.e. invert the definition</span>
+        <span class="c1"># of the local coordinate system</span>
+        <span class="n">Xmod</span> <span class="o">+=</span> <span class="n">image_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">Ymod</span> <span class="o">+=</span> <span class="n">image_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">Xmod</span><span class="p">,</span> <span class="n">Ymod</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_transform_image</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">grid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Routine to transform an image based on transformed coordinates.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (np.ndarray): image array</span>
+<span class="sd">            grid (np.ndarray): array of x and y components of the transformed coordinates</span>
+<span class="sd">            shape (tuple): shape of the final image</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: transformed image</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Initialize the corrected image. To unify code, transform to 3d arrays and</span>
+        <span class="c1"># transform back in the end if needed.</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_3d</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+        <span class="n">corrected_img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="o">*</span><span class="n">shape</span><span class="p">,</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">img</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="c1"># Detemine the corrected image using interpolation based on the transformed</span>
+        <span class="c1"># coordinates.</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]):</span>
+            <span class="c1"># Consider each color channel separately</span>
+            <span class="n">in_data</span> <span class="o">=</span> <span class="n">img</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="c1"># Map image to new coordinates</span>
+            <span class="n">im_array_as_vector</span> <span class="o">=</span> <span class="n">map_coordinates</span><span class="p">(</span>
+                <span class="n">in_data</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">interpolation_order</span>
+            <span class="p">)</span>
+            <span class="c1"># Convert to correct shape and data type (if necessary)</span>
+            <span class="k">if</span> <span class="n">im_array_as_vector</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">img</span><span class="o">.</span><span class="n">dtype</span><span class="p">:</span>
+                <span class="n">corrected_img</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">im_array_as_vector</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">corrected_img</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">im_array_as_vector</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
+                    <span class="n">img</span><span class="o">.</span><span class="n">dtype</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">corrected_img</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CurvatureCorrection.correct_metadata">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.shape.html#darsia.corrections.shape.curvature.CurvatureCorrection.correct_metadata">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">correct_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{})</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract metadata from the config file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            metadata (dict, optional): metadata dictionary to be updated. Defaults to {}.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: metadata</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Initialize metadata</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Read physical dimensions from config file</span>
+        <span class="k">if</span> <span class="s2">&quot;crop&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+            <span class="c1"># Update the metadata</span>
+            <span class="k">if</span> <span class="nb">all</span><span class="p">([</span><span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;crop&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;width&quot;</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">]]):</span>
+                <span class="c1"># NOTE: Dimensions of Image uses matrix convention, i.e. (rows, cols).</span>
+                <span class="n">dimensions</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;crop&quot;</span><span class="p">][</span><span class="s2">&quot;height&quot;</span><span class="p">],</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;crop&quot;</span><span class="p">][</span><span class="s2">&quot;width&quot;</span><span class="p">],</span>
+                <span class="p">]</span>
+                <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;dimensions&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dimensions</span>
+                <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">CoordinateArray</span><span class="p">(</span>
+                    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;crop&quot;</span><span class="p">][</span><span class="s2">&quot;height&quot;</span><span class="p">]]</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">meta</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

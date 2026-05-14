@@ -1,0 +1,718 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>darsia.corrections.color.experimentalcolorcorrection &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/darsia/corrections/color/experimentalcolorcorrection';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../../_static/searchtools.js"></script>
+    <script src="../../../../_static/language_data.js"></script>
+    <script src="../../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">darsia.corrections.color.experimentalcolorcorrection</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for darsia.corrections.color.experimentalcolorcorrection</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Color corrections using ML-located color checker.</span>
+
+<span class="sd">Module containing the color correction based on the Classic</span>
+<span class="sd">Color Checker from calibrite / x-rite. The algorithms here</span>
+<span class="sd">heavily use code from colour-science (see their github).</span>
+<span class="sd">This includes some ML-based algorithms. Sometimes, the algorithms</span>
+<span class="sd">are not able to detect the color checker despite a rather precise</span>
+<span class="sd">user-input on the location of the color checker. Or the swatches</span>
+<span class="sd">are not extracted correcty. In such cases, darsia.ColorCorrection</span>
+<span class="sd">should be used which should always work. It is therefore recommended</span>
+<span class="sd">to double-check the results of the any of the color correction</span>
+<span class="sd">routines by setting verbosity to True once.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">skimage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">colour_checker_detection</span><span class="w"> </span><span class="kn">import</span> <span class="n">detect_colour_checkers_segmentation</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">darsia</span>
+
+
+<div class="viewcode-block" id="ClassicColorChecker">
+<a class="viewcode-back" href="../../../../source/corrections/generated/darsia.corrections.color.experimentalcolorcorrection.html#darsia.corrections.color.experimentalcolorcorrection.ClassicColorChecker">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ClassicColorChecker</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Definition of the classic color checker under default</span>
+<span class="sd">    illumination conditions.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="c1"># Fetch reference colourchecker data (in chromaticity coordinates),</span>
+        <span class="c1"># published by the manufacturer (X-Rite), latest data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">colorchecker</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">CCS_COLOURCHECKERS</span><span class="p">[</span>
+            <span class="s2">&quot;ColorChecker24 - After November 2014&quot;</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Fetch standard colour names and reference colors in CIE xyY format</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">color_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">colorchecker</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">colors_xyY</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">colorchecker</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+        <span class="c1"># Swatches of the Classic Colour Checker in RGB format, using the CIE standards</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reference_swatches</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">XYZ_to_RGB</span><span class="p">(</span>
+            <span class="n">colour</span><span class="o">.</span><span class="n">xyY_to_XYZ</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">colors_xyY</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">colorchecker</span><span class="o">.</span><span class="n">illuminant</span><span class="p">,</span>
+            <span class="n">colour</span><span class="o">.</span><span class="n">CCS_ILLUMINANTS</span><span class="p">[</span><span class="s2">&quot;CIE 1931 2 Degree Standard Observer&quot;</span><span class="p">][</span><span class="s2">&quot;D65&quot;</span><span class="p">],</span>
+            <span class="n">colour</span><span class="o">.</span><span class="n">RGB_COLOURSPACES</span><span class="p">[</span><span class="s2">&quot;sRGB&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">matrix_XYZ_to_RGB</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="EOTF">
+<a class="viewcode-back" href="../../../../source/corrections/generated/darsia.corrections.color.experimentalcolorcorrection.html#darsia.corrections.color.experimentalcolorcorrection.EOTF">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EOTF</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Electro-optical transfer function (EOTF),the standard transfer</span>
+<span class="sd">    function for sRGB, cf. https://en.wikipedia.org/wiki/SRGB</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Define look up table (LUT), representing the EOTF.&quot;&quot;&quot;</span>
+
+        <span class="c1"># Use the pre-defined EOTF implemented by colour and apply to any possible</span>
+        <span class="c1"># uint8 value.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">table_eotf</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">cctf_decoding</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span> <span class="o">/</span> <span class="mf">255.0</span><span class="p">)</span>
+
+        <span class="c1"># Define the inverse of EOTF, which acts on value in [0,1]. Here, the table</span>
+        <span class="c1"># translates to uint8 values, i.e., for before applying values of images</span>
+        <span class="c1"># with values in [0,1] have to be transformed accordingly to allow the application.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">table_eotf_inverse</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">colour</span><span class="o">.</span><span class="n">cctf_encoding</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span> <span class="o">/</span> <span class="mf">255.0</span><span class="p">)</span> <span class="o">*</span> <span class="mf">255.0</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;uint8&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EOTF.adjust">
+<a class="viewcode-back" href="../../../../source/corrections/generated/darsia.corrections.color.experimentalcolorcorrection.html#darsia.corrections.color.experimentalcolorcorrection.EOTF.adjust">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">adjust</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply EOTF using the look up table.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            image (np.ndarray): image in linear RGB (uint8) format.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: image with tranformed color space, with values in [0,1].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">cv2</span><span class="o">.</span><span class="n">LUT</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">table_eotf</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EOTF.inverse_approx">
+<a class="viewcode-back" href="../../../../source/corrections/generated/darsia.corrections.color.experimentalcolorcorrection.html#darsia.corrections.color.experimentalcolorcorrection.EOTF.inverse_approx">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">inverse_approx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply approximate of the inverse of EOTF using the look up table.</span>
+<span class="sd">        In order to apply the exact inverse, the expensive function colout.cctf_encoding</span>
+<span class="sd">        would have to be applied to all pixels (with values in [0,1]). By restricting the</span>
+<span class="sd">        allowed input values to uint8 values, allows for faster LUT.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            image (np.ndarray): image in gamma-corrected RGB format with values in [0,1].</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: image in linear RGB (uint8) format.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Need to transform values to uint8 first before applying the LUT.</span>
+        <span class="k">return</span> <span class="n">cv2</span><span class="o">.</span><span class="n">LUT</span><span class="p">(</span><span class="n">skimage</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span><span class="n">image</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">table_eotf_inverse</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ExperimentalColorCorrection">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.color.html#darsia.corrections.color.experimentalcolorcorrection.ExperimentalColorCorrection">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExperimentalColorCorrection</span><span class="p">(</span><span class="n">darsia</span><span class="o">.</span><span class="n">BaseCorrection</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">roi</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">verbosity</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">whitebalancing</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Constructor of converter, setting up a priori all data needed for fast conversion.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            config (dict, str, Path): config file for initialization of images. Can be</span>
+<span class="sd">                used instead of roi, but roi is always prefered if it is present.</span>
+<span class="sd">            roi (tuple of slices, np.ndarray, or None): ROI containing a colour checker,</span>
+<span class="sd">                provided either as intervals, corner points, or nothing.</span>
+<span class="sd">            verbosity (bool): displays corrected color checker on top of the reference one if</span>
+<span class="sd">                True, default is False</span>
+<span class="sd">            whitebalancing (bool): apply white balancing based on the third bottom left swatch</span>
+<span class="sd">                if True, default is True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Define config</span>
+        <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Check whether colorchecker active</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;active&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Define look up tables approximating the standard electro-optical</span>
+        <span class="c1"># transfer function for sRGB.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eotf</span> <span class="o">=</span> <span class="n">EOTF</span><span class="p">()</span>
+
+        <span class="c1"># Reference of the class color checker</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">colorchecker</span> <span class="o">=</span> <span class="n">ClassicColorChecker</span><span class="p">()</span>
+
+        <span class="c1"># Define ROI</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">roi</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="s2">&quot;roi&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">roi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;roi&quot;</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">roi</span> <span class="o">=</span> <span class="n">roi</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;roi&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">roi</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">roi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;roi&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">roi</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;An array of corner points is preferred.</span><span class="se">\</span>
+<span class="s2">                The tuple will not be stored in the config file.&quot;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">roi</span> <span class="o">=</span> <span class="n">roi</span>
+
+        <span class="c1"># Store flags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span> <span class="o">=</span> <span class="n">verbosity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">whitebalancing</span> <span class="o">=</span> <span class="n">whitebalancing</span>
+
+<div class="viewcode-block" id="ExperimentalColorCorrection.correct_array">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.color.html#darsia.corrections.color.experimentalcolorcorrection.ExperimentalColorCorrection.correct_array">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">correct_array</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply workflow from colour-science to match the colors of the color checker with the</span>
+<span class="sd">        corresponding color values, cf.</span>
+<span class="sd">        https://github.com/colour-science/colour-checker-detection/blob/master/colour_checker_detection/examples/examples_detection.ipynb</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            image (np.ndarray): image with uint8 value in (linear) RGB color space</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: corrected image with uint8 values in (linear) RGB color space,</span>
+<span class="sd">                with colors matched based on the color checker within the roi</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_float</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="c1"># Make sure that the image is in uint8 format</span>
+        <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Provide image in uint8 format.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Apply transfer function and convert to nonlinear RGB color space</span>
+        <span class="n">decoded_image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eotf</span><span class="o">.</span><span class="n">adjust</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+        <span class="c1"># Extract part of the image containing a color checker.</span>
+        <span class="n">colorchecker_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_restrict_to_roi</span><span class="p">(</span><span class="n">decoded_image</span><span class="p">)</span>
+
+        <span class="c1"># Retrieve swatch colors in transfered RGB format</span>
+        <span class="n">swatches_tmp</span> <span class="o">=</span> <span class="n">detect_colour_checkers_segmentation</span><span class="p">(</span><span class="n">colorchecker_image</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">swatches_tmp</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;Color checker not identified. Choose a better ROI.</span>
+<span class="sd">                Or in the worst case, provide pixels with reverse matrix indexing,</span>
+<span class="sd">                i.e. (col,row) format, for the corner landmarks of the colorchecker,</span>
+<span class="sd">                starting in the left upper corner and continuing counter-clockwise.&quot;&quot;&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">swatches_tmp</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+            <span class="n">swatches</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">swatches_tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span><span class="p">:</span>
+            <span class="n">swatches_img</span> <span class="o">=</span> <span class="n">swatches</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s2">&quot;C&quot;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">swatches_img</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="c1"># Apply color correction onto full image based on the swatch colors in comparison with</span>
+        <span class="c1"># the standard colors</span>
+        <span class="n">corrected_decoded_image</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">colour_correction</span><span class="p">(</span>
+            <span class="n">decoded_image</span><span class="p">,</span>
+            <span class="n">swatches</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">colorchecker</span><span class="o">.</span><span class="n">reference_swatches</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="s2">&quot;Cheung 2004&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Apply white balancing, such that the third bottom left swatch of the color checker</span>
+        <span class="c1"># is exact</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">whitebalancing</span><span class="p">:</span>
+            <span class="n">corrected_colorchecker_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_restrict_to_roi</span><span class="p">(</span>
+                <span class="n">corrected_decoded_image</span>
+            <span class="p">)</span>
+            <span class="n">swatches</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                <span class="n">detect_colour_checkers_segmentation</span><span class="p">(</span><span class="n">corrected_colorchecker_image</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="n">corrected_decoded_image</span> <span class="o">*=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">colorchecker</span><span class="o">.</span><span class="n">reference_swatches</span><span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span> <span class="o">/</span> <span class="n">swatches</span><span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="c1"># The correction may result in values outside the feasible range [0., 1.].</span>
+        <span class="c1"># Thus, simply clip the values for consistency.</span>
+        <span class="n">corrected_decoded_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">corrected_decoded_image</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># For debugging purposes (a pre/post analysis), the swatches are displayed on top</span>
+        <span class="c1"># of the reference color checker.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span><span class="p">:</span>
+
+            <span class="c1"># Standard D65 illuminant</span>
+            <span class="n">D65</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">CCS_ILLUMINANTS</span><span class="p">[</span><span class="s2">&quot;CIE 1931 2 Degree Standard Observer&quot;</span><span class="p">][</span><span class="s2">&quot;D65&quot;</span><span class="p">]</span>
+
+            <span class="c1"># NOTE: Mainly for debugging purposes, the visualize of the</span>
+            <span class="c1"># &#39;before&#39; and &#39;after&#39; of the color correction, is following.</span>
+            <span class="c1"># The &#39;before&#39; is commented out, but can be activated by uncommenting.</span>
+
+            <span class="c1"># Convert swatches from RGB to xyY</span>
+            <span class="c1"># swatches_xyY = colour.XYZ_to_xyY(</span>
+            <span class="c1">#     colour.RGB_to_XYZ(</span>
+            <span class="c1">#         swatches,</span>
+            <span class="c1">#         D65,</span>
+            <span class="c1">#         D65,</span>
+            <span class="c1">#         colour.RGB_COLOURSPACES[&quot;sRGB&quot;].matrix_RGB_to_XYZ,</span>
+            <span class="c1">#     )</span>
+            <span class="c1"># )</span>
+
+            <span class="c1"># Color correct swatches and also convert to xyY</span>
+            <span class="n">corrected_swatches</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">colour_correction</span><span class="p">(</span>
+                <span class="n">swatches</span><span class="p">,</span> <span class="n">swatches</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">colorchecker</span><span class="o">.</span><span class="n">reference_swatches</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">whitebalancing</span><span class="p">:</span>
+                <span class="n">corrected_swatches</span> <span class="o">*=</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">colorchecker</span><span class="o">.</span><span class="n">reference_swatches</span><span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span> <span class="o">/</span> <span class="n">corrected_swatches</span><span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span>
+                <span class="p">)</span>
+            <span class="n">corrected_swatches_xyY</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">XYZ_to_xyY</span><span class="p">(</span>
+                <span class="n">colour</span><span class="o">.</span><span class="n">RGB_to_XYZ</span><span class="p">(</span>
+                    <span class="n">corrected_swatches</span><span class="p">,</span>
+                    <span class="n">D65</span><span class="p">,</span>
+                    <span class="n">D65</span><span class="p">,</span>
+                    <span class="n">colour</span><span class="o">.</span><span class="n">RGB_COLOURSPACES</span><span class="p">[</span><span class="s2">&quot;sRGB&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">matrix_RGB_to_XYZ</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Define color checkers using the swatches pre and post color correction</span>
+            <span class="c1"># colour_checker_pre = colour.characterisation.ColourChecker(</span>
+            <span class="c1">#     &quot;pre&quot;, dict(zip(self.colorchecker.color_names, swatches_xyY)), D65</span>
+            <span class="c1"># )</span>
+
+            <span class="n">colour_checker_post</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">characterisation</span><span class="o">.</span><span class="n">ColourChecker</span><span class="p">(</span>
+                <span class="s2">&quot;post&quot;</span><span class="p">,</span>
+                <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">colorchecker</span><span class="o">.</span><span class="n">color_names</span><span class="p">,</span> <span class="n">corrected_swatches_xyY</span><span class="p">)),</span>
+                <span class="n">D65</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Plot the constructed color checkers on top of the reference classic</span>
+            <span class="c1"># color checker.</span>
+            <span class="c1"># colour.plotting.plot_multi_colour_checkers(</span>
+            <span class="c1">#    [self.colorchecker.colorchecker, colour_checker_pre])</span>
+
+            <span class="n">colour</span><span class="o">.</span><span class="n">plotting</span><span class="o">.</span><span class="n">plot_multi_colour_checkers</span><span class="p">(</span>
+                <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">colorchecker</span><span class="o">.</span><span class="n">colorchecker</span><span class="p">,</span> <span class="n">colour_checker_post</span><span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Convert to linear RGB by applying the inverse of the EOTF and return the</span>
+        <span class="c1"># corrected image</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">eotf</span><span class="o">.</span><span class="n">inverse_approx</span><span class="p">(</span><span class="n">corrected_decoded_image</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_restrict_to_roi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Auxiliary function to extract roi from image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (np.ndarray): input image</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: restricted image</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">roi</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">return_img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">img</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">roi</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">return_img</span> <span class="o">=</span> <span class="n">img</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">roi</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">roi</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">roi</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="c1"># Use width and height (in cm - irrelevant) as provided by the manufacturer Xrite.</span>
+            <span class="n">return_img</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">extract_quadrilateral_ROI</span><span class="p">(</span>
+                <span class="n">img</span><span class="p">,</span> <span class="n">pts_src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">roi</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mf">27.3</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mf">17.8</span>
+            <span class="p">)</span>
+
+        <span class="c1"># For debugging puposes provide the possibility to plot the extracted image.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">return_img</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">return_img</span>
+
+    <span class="c1"># ! ---- I/O ----</span>
+
+<div class="viewcode-block" id="ExperimentalColorCorrection.save">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.color.html#darsia.corrections.color.experimentalcolorcorrection.ExperimentalColorCorrection.save">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Not implemented yet.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ExperimentalColorCorrection.load">
+<a class="viewcode-back" href="../../../../source/corrections/darsia.corrections.color.html#darsia.corrections.color.experimentalcolorcorrection.ExperimentalColorCorrection.load">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Not implemented yet.&quot;</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

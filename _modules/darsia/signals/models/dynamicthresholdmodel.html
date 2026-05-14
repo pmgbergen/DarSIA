@@ -1,0 +1,939 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>darsia.signals.models.dynamicthresholdmodel &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/darsia/signals/models/dynamicthresholdmodel';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../../_static/searchtools.js"></script>
+    <script src="../../../../_static/language_data.js"></script>
+    <script src="../../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">darsia.signals.models.dynamicthresholdmodel</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for darsia.signals.models.dynamicthresholdmodel</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Module containing dynamic thresholding models.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">abc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ndi</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">skimage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.signal</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_peaks</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">darsia</span>
+
+
+<div class="viewcode-block" id="HistogrammBasedThresholding">
+<a class="viewcode-back" href="../../../../source/signals/darsia.signals.models.html#darsia.signals.models.dynamicthresholdmodel.HistogrammBasedThresholding">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HistogrammBasedThresholding</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Define tuning parameters for defining histograms,</span>
+        <span class="c1"># and smooth them. NOTE: They should be in general chosen</span>
+        <span class="c1"># tailored to the situation. However, these values should</span>
+        <span class="c1"># also work for most cases.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bins</span> <span class="o">=</span> <span class="mi">200</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sigma</span> <span class="o">=</span> <span class="mi">10</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">signal</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">roi</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Dynamic thresholding of signal in provided roi.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            signal (np.ndarray): signal</span>
+<span class="sd">            roi (np.ndarray): boolean array identifying the considered region</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: new threshold value.</span>
+<span class="sd">            bool: identifier for success.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Reduce the signal to the effective mask</span>
+        <span class="n">active_signal_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">signal</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">roi</span><span class="p">)]</span>
+
+        <span class="c1"># Continue by analysing the histogram corresponding to the active signal.</span>
+
+        <span class="c1"># Smooth the histogram of the signal, and compute derivates</span>
+        <span class="n">hist</span> <span class="o">=</span> <span class="n">ndi</span><span class="o">.</span><span class="n">gaussian_filter1d</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">active_signal_values</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_bins</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_sigma</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Run provided analysis</span>
+        <span class="n">new_threshold</span><span class="p">,</span> <span class="n">have_new_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analysis</span><span class="p">(</span><span class="n">active_signal_values</span><span class="p">,</span> <span class="n">hist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_threshold</span><span class="p">,</span> <span class="n">have_new_value</span>
+
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_analysis</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">active_signal_values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">hist</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Abstract method for some histogram analysis.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            active_signal_values (np.ndarray): 1d array with all signal values</span>
+<span class="sd">            hist (np.ndarray): 1d array, histogram</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float, optional: determined threshold value</span>
+<span class="sd">            bool: flag controlling whether the analysis has been successful.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="StandardOtsu">
+<a class="viewcode-back" href="../../../../source/signals/darsia.signals.models.html#darsia.signals.models.dynamicthresholdmodel.StandardOtsu">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StandardOtsu</span><span class="p">(</span><span class="n">HistogrammBasedThresholding</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Wrapper for standard Otsu thresholding.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_analysis</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">active_signal_values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">hist</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Standard Otsu method for provided histogram.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            active_signal_values (np.ndarray): 1d array with all signal values</span>
+<span class="sd">            hist (np.ndarray): 1d array, histogram</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float, optional: determined threshold value</span>
+<span class="sd">            bool: flag controlling whether the analysis has been successful.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">otsu_index</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">threshold_otsu</span><span class="p">(</span><span class="n">hist</span><span class="o">=</span><span class="n">hist</span><span class="p">)</span>
+        <span class="n">otsu_threshold</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">active_signal_values</span><span class="p">)</span> <span class="o">+</span> <span class="n">otsu_index</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bins</span> <span class="o">*</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">active_signal_values</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">active_signal_values</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">otsu_threshold</span><span class="p">,</span> <span class="kc">True</span></div>
+
+
+
+<div class="viewcode-block" id="TwoPeakHistogrammAnalysis">
+<a class="viewcode-back" href="../../../../source/signals/darsia.signals.models.html#darsia.signals.models.dynamicthresholdmodel.TwoPeakHistogrammAnalysis">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TwoPeakHistogrammAnalysis</span><span class="p">(</span><span class="n">HistogrammBasedThresholding</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class for histogramm analysis aiming at separating two signal peaks.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_analysis</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">active_signal_values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">hist</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Histogram analysis.</span>
+
+<span class="sd">        Return first local minimum after descending the first</span>
+<span class="sd">        peak, when moving from left to right. Provide global</span>
+<span class="sd">        minima if existing and local true minima as well.</span>
+
+<span class="sd">        Main goal:</span>
+<span class="sd">            Find separator of signal peaks.</span>
+
+<span class="sd">        Strategy:</span>
+<span class="sd">            1. Determine the minimum between two significant peaks.</span>
+<span class="sd">            2. If only one peak present or peaks not significant,</span>
+<span class="sd">                determine something like a &quot;first local min&quot; based</span>
+<span class="sd">                on relative criteria.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            active_signal_values (np.ndarray): 1d array with all signal values</span>
+<span class="sd">            hist (np.ndarray): 1d array, histogram</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float, optional: determined threshold value</span>
+<span class="sd">            bool: flag controlling whether the analysis has been successful.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Initialize output</span>
+        <span class="n">new_threshold</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">have_new_value</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="n">hist_1st_derivative</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">hist</span><span class="p">)</span>
+        <span class="n">hist_2nd_derivative</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">hist_1st_derivative</span><span class="p">)</span>
+
+        <span class="c1">## For tuning the parameters, plot the histogram and its derivatives</span>
+        <span class="c1"># if self.verbosity &gt;= 2:</span>
+        <span class="c1">#    plt.figure(&quot;Histogram analysis&quot;)</span>
+        <span class="c1">#    plt.plot(</span>
+        <span class="c1">#        np.linspace(</span>
+        <span class="c1">#            np.min(active_signal_values),</span>
+        <span class="c1">#            np.max(active_signal_values),</span>
+        <span class="c1">#            hist.shape[0],</span>
+        <span class="c1">#        ),</span>
+        <span class="c1">#        hist,</span>
+        <span class="c1">#        label=f&quot;Label {label}&quot;,</span>
+        <span class="c1">#    )</span>
+        <span class="c1">#    plt.legend()</span>
+
+        <span class="c1"># Prioritize global minima on the interval between the two</span>
+        <span class="c1"># largest peaks. If only a single peak exists, continue</span>
+        <span class="c1"># as in &#39;first local min&#39;.</span>
+
+        <span class="c1"># Define tuning parameters for defining histograms,</span>
+        <span class="c1"># To allow edge values being peaks as well, add low</span>
+        <span class="c1"># numbers to the sides of the smooth histogram.</span>
+        <span class="n">enriched_hist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">hist</span><span class="p">)]),</span>
+                <span class="n">hist</span><span class="p">,</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">hist</span><span class="p">)]),</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Peak analysis.</span>
+        <span class="c1"># Find all peaks of the enriched smooth histogram,</span>
+        <span class="c1"># allowing end values to be identified as peaks.</span>
+        <span class="n">peaks</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">find_peaks</span><span class="p">(</span><span class="n">enriched_hist</span><span class="p">)</span>
+
+        <span class="c1">##################################################################</span>
+        <span class="c1"># Only continue if at least one peak is present</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">peaks</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+
+            <span class="c1"># Relate the indices with the original histogram</span>
+            <span class="c1"># And continue analysis with the original one.</span>
+            <span class="n">peaks_indices</span> <span class="o">=</span> <span class="n">peaks</span> <span class="o">-</span> <span class="mi">1</span>
+
+            <span class="c1"># Cache the peak heights</span>
+            <span class="n">peaks_heights</span> <span class="o">=</span> <span class="n">hist</span><span class="p">[</span><span class="n">peaks_indices</span><span class="p">]</span>
+
+            <span class="c1">#            # Check whether peaks have passed</span>
+            <span class="c1">#            if self.threshold_safety == &quot;peaks passed&quot;:</span>
+            <span class="c1">#                self.pre_peaks_passed[label] = False</span>
+            <span class="c1">#                if (</span>
+            <span class="c1">#                    peaks_heights[0] &lt; np.max(peaks_heights)</span>
+            <span class="c1">#                    and not self.peaks_passed[label]</span>
+            <span class="c1">#                ):</span>
+            <span class="c1">#                    self.pre_peaks_passed[label] = True</span>
+
+            <span class="c1"># Fetch the modulus of the second derivative for all peaks</span>
+            <span class="n">peaks_2nd_derivative</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">hist_2nd_derivative</span><span class="p">[</span><span class="n">peaks_indices</span><span class="p">])</span>
+
+            <span class="c1">##################################################################</span>
+            <span class="c1"># Track the feasibility of peaks. Initialize all peaks as feasible.</span>
+            <span class="c1"># Feasibility is considered only in the presence of multiple peaks.</span>
+
+            <span class="c1"># Determine feasibility. A peak is considered feasible if</span>
+            <span class="c1"># it is sufficiently far away from the global minimum.</span>
+            <span class="n">min_height</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">hist</span><span class="p">)</span>
+            <span class="n">peaks_are_distinct</span> <span class="o">=</span> <span class="n">peaks_heights</span> <span class="o">-</span> <span class="n">min_height</span> <span class="o">&gt;</span> <span class="mf">0.2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span>
+                <span class="n">peaks_heights</span> <span class="o">-</span> <span class="n">min_height</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Determine feasibility. A peak is considered feasible if</span>
+            <span class="c1"># the modulus of the second derivative is sufficiently large,</span>
+            <span class="c1"># relatively to the most prominent peak.</span>
+            <span class="n">peaks_have_large_2nd_der</span> <span class="o">=</span> <span class="n">peaks_2nd_derivative</span> <span class="o">&gt;</span> <span class="mf">0.2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span>
+                <span class="n">peaks_2nd_derivative</span>
+            <span class="p">)</span>
+
+            <span class="n">peaks_are_feasible</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span>
+                <span class="n">peaks_are_distinct</span><span class="p">,</span> <span class="n">peaks_have_large_2nd_der</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Cache the number of feasible peaks</span>
+            <span class="n">num_feasible_peaks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">peaks_are_feasible</span><span class="p">)</span>
+
+            <span class="c1">##################################################################</span>
+            <span class="c1"># Determine the two feasible peaks with largest height.</span>
+            <span class="c1"># For this, first, restrict peaks to feasible ones.</span>
+            <span class="n">feasible_peaks_indices</span> <span class="o">=</span> <span class="n">peaks_indices</span><span class="p">[</span><span class="n">peaks_are_feasible</span><span class="p">]</span>
+            <span class="n">feasible_peaks_heights</span> <span class="o">=</span> <span class="n">peaks_heights</span><span class="p">[</span><span class="n">peaks_are_feasible</span><span class="p">]</span>
+
+            <span class="c1"># Sort the peak values from large to small, and restrict to</span>
+            <span class="c1"># the two largest</span>
+            <span class="n">relative_max_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">feasible_peaks_heights</span><span class="p">))[</span>
+                <span class="p">:</span> <span class="nb">min</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">num_feasible_peaks</span><span class="p">)</span>
+            <span class="p">]</span>
+            <span class="n">max_indices</span> <span class="o">=</span> <span class="n">feasible_peaks_indices</span><span class="p">[</span><span class="n">relative_max_indices</span><span class="p">]</span>
+            <span class="n">sorted_max_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">max_indices</span><span class="p">)</span>
+
+            <span class="c1">##################################################################</span>
+            <span class="c1"># Continue only if there exist two feasible peaks, and the peaks</span>
+            <span class="c1"># are of similar size.</span>
+            <span class="k">if</span> <span class="n">num_feasible_peaks</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+
+                <span class="c1">##################################################################</span>
+                <span class="c1"># Determine whether the two peaks are significant.</span>
+
+                <span class="c1"># Consider the restricted histogram</span>
+                <span class="n">restricted_hist</span> <span class="o">=</span> <span class="n">hist</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">*</span><span class="n">sorted_max_indices</span><span class="p">)]</span>
+
+                <span class="c1"># Identify the global minimum as separator of signals</span>
+                <span class="n">restricted_global_min_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">restricted_hist</span><span class="p">)</span>
+
+                <span class="c1"># Map the relative index from the restricted to the full</span>
+                <span class="c1"># (not-enriched) histogram.</span>
+                <span class="n">global_min_index</span> <span class="o">=</span> <span class="n">sorted_max_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">restricted_global_min_index</span>
+                <span class="n">min_value</span> <span class="o">=</span> <span class="n">hist</span><span class="p">[</span><span class="n">global_min_index</span><span class="p">]</span>
+
+                <span class="c1"># Check whether the both peaks values actually are sufficiently</span>
+                <span class="c1"># and relatively different from the min value. Discard the value</span>
+                <span class="c1"># otherwise.</span>
+                <span class="n">peaks_significant</span> <span class="o">=</span> <span class="p">(</span><span class="n">hist</span><span class="p">[</span><span class="n">max_indices</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">-</span> <span class="n">min_value</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="p">(</span>
+                    <span class="n">hist</span><span class="p">[</span><span class="n">max_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">-</span> <span class="n">min_value</span>
+                <span class="p">)</span>
+
+                <span class="c1">##################################################################</span>
+                <span class="c1"># Determine the global minimum (in terms of signal values),</span>
+                <span class="c1"># determining the candidate for the threshold value</span>
+                <span class="c1"># Thresh mapped onto range of values</span>
+
+                <span class="c1"># Cache some of the general variables needed for a two peak analysis.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_hist</span> <span class="o">=</span> <span class="n">hist</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_restricted_hist</span> <span class="o">=</span> <span class="n">restricted_hist</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_sorted_max_indices</span> <span class="o">=</span> <span class="n">sorted_max_indices</span>
+
+                <span class="c1"># Apply specific analysis.</span>
+                <span class="n">threshold_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_two_peak_analysis</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="n">peaks_significant</span><span class="p">:</span>
+                    <span class="n">new_threshold</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span>
+                        <span class="n">active_signal_values</span>
+                    <span class="p">)</span> <span class="o">+</span> <span class="n">threshold_index</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bins</span> <span class="o">*</span> <span class="p">(</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">active_signal_values</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">active_signal_values</span><span class="p">)</span>
+                    <span class="p">)</span>
+
+                    <span class="c1"># Identify success of the method</span>
+                    <span class="n">have_new_value</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="c1"># In case the above analysis has not been accepted (peaks not</span>
+            <span class="c1"># significant) there exists only one peak, perform an alternative</span>
+            <span class="c1"># step.</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">have_new_value</span> <span class="ow">and</span> <span class="n">num_feasible_peaks</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># Situation occurs when no peaks present.</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="n">have_new_value</span> <span class="ow">and</span> <span class="p">(</span>
+                <span class="n">num_feasible_peaks</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">or</span> <span class="ow">not</span> <span class="p">(</span><span class="n">peaks_significant</span><span class="p">)</span>
+            <span class="p">):</span>
+
+                <span class="c1"># Restrict analysis to the signal right from the most</span>
+                <span class="c1"># significant peak.</span>
+                <span class="c1"># restricted_hist = hist[max_indices[0] :]</span>
+                <span class="n">restricted_hist_1st_derivative</span> <span class="o">=</span> <span class="n">hist_1st_derivative</span><span class="p">[</span><span class="n">max_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">:]</span>
+                <span class="n">restricted_hist_2nd_derivative</span> <span class="o">=</span> <span class="n">hist_2nd_derivative</span><span class="p">[</span><span class="n">max_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">:]</span>
+
+                <span class="c1"># max_peak_value = np.max(restricted_hist)</span>
+                <span class="n">max_peak_derivative</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">restricted_hist_1st_derivative</span><span class="p">)</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Restrict to positive 2nd derivative and small 1st derivative</span>
+                <span class="n">max_value</span> <span class="o">=</span> <span class="mf">0.01</span> <span class="o">*</span> <span class="n">max_peak_derivative</span>
+                <span class="n">tol</span> <span class="o">=</span> <span class="mf">1e-6</span>
+                <span class="n">feasible_restricted_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span>
+                    <span class="o">-</span><span class="n">max_value</span> <span class="o">&lt;</span> <span class="n">restricted_hist_1st_derivative</span><span class="p">,</span>
+                    <span class="n">restricted_hist_2nd_derivative</span> <span class="o">&gt;</span> <span class="n">tol</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Only continue if non-empty</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">feasible_restricted_indices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+
+                    <span class="c1"># Pick the first value in the feasible interval</span>
+                    <span class="n">min_restricted_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">feasible_restricted_indices</span><span class="p">)</span>
+                    <span class="p">)</span>
+
+                    <span class="c1"># Relate to the full signal</span>
+                    <span class="n">min_index</span> <span class="o">=</span> <span class="n">max_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">min_restricted_index</span>
+
+                    <span class="c1"># Threshold value in the mapped onto range of values</span>
+                    <span class="n">new_threshold</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span>
+                        <span class="n">active_signal_values</span>
+                    <span class="p">)</span> <span class="o">+</span> <span class="n">min_index</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bins</span> <span class="o">*</span> <span class="p">(</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">active_signal_values</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">active_signal_values</span><span class="p">)</span>
+                    <span class="p">)</span>
+
+                    <span class="c1"># Identify success of the method</span>
+                    <span class="n">have_new_value</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="n">new_threshold</span><span class="p">,</span> <span class="n">have_new_value</span>
+
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_two_peak_analysis</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Abstract method for determining the index corresponding</span>
+<span class="sd">        to the full histogramm, to define the threshold value.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: index in histogram self._hist corresponding</span>
+<span class="sd">                to considered threshold value.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="GlobalMinTwoPeakHistogrammAnalysis">
+<a class="viewcode-back" href="../../../../source/signals/darsia.signals.models.html#darsia.signals.models.dynamicthresholdmodel.GlobalMinTwoPeakHistogrammAnalysis">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GlobalMinTwoPeakHistogrammAnalysis</span><span class="p">(</span><span class="n">TwoPeakHistogrammAnalysis</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class defining a two peak analysis for dynamically</span>
+<span class="sd">    determining a threshold parameter used on a global</span>
+<span class="sd">    minimum analysis of the signal histogram.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_two_peak_analysis</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Method to determine the threshold parameter based</span>
+<span class="sd">        on the global minimum attained between two peaks,</span>
+<span class="sd">        i.e., operating on the restricted histogram.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: index in histogram self._hist corresponding</span>
+<span class="sd">                to considered threshold value.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Identify the global minimum as separator of signals</span>
+        <span class="n">restricted_global_min_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_restricted_hist</span><span class="p">)</span>
+
+        <span class="c1"># Map the relative index from the restricted to the full</span>
+        <span class="c1"># (not-enriched) histogram.</span>
+        <span class="n">global_min_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sorted_max_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">restricted_global_min_index</span>
+
+        <span class="k">return</span> <span class="n">global_min_index</span></div>
+
+
+
+<div class="viewcode-block" id="OtsuTwoPeakHistogrammAnalysis">
+<a class="viewcode-back" href="../../../../source/signals/darsia.signals.models.html#darsia.signals.models.dynamicthresholdmodel.OtsuTwoPeakHistogrammAnalysis">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OtsuTwoPeakHistogrammAnalysis</span><span class="p">(</span><span class="n">TwoPeakHistogrammAnalysis</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class defining a two peak analysis for dynamically</span>
+<span class="sd">    determining a threshold parameter used on a Otsu</span>
+<span class="sd">    analysis of the signal histogram.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_two_peak_analysis</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Method to determine the threshold parameter based</span>
+<span class="sd">        on the global minimum attained between two peaks,</span>
+<span class="sd">        i.e., operating on the restricted histogram.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: index in histogram self._hist corresponding</span>
+<span class="sd">                to considered threshold value.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">otsu_index</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">threshold_otsu</span><span class="p">(</span><span class="n">hist</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_hist</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">otsu_index</span></div>
+
+
+
+<div class="viewcode-block" id="DynamicThresholdModel">
+<a class="viewcode-back" href="../../../../source/signals/darsia.signals.models.html#darsia.signals.models.dynamicthresholdmodel.DynamicThresholdModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DynamicThresholdModel</span><span class="p">(</span><span class="n">darsia</span><span class="o">.</span><span class="n">StaticThresholdModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class for dynamic thresholding.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">threshold_lower</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">threshold_upper</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">labels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructor of DynamicThresholdModel.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            method (str): method name</span>
+<span class="sd">            threshold_lower (float or list of float): lower threshold value boundary</span>
+<span class="sd">            threshold_upper (float or list of float): upper threshold value boundary</span>
+<span class="sd">            labels (array): labeled domain</span>
+<span class="sd">            key (str): prefix for options</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Determine threshold strategy and lower and upper bounds.</span>
+        <span class="n">threshold_method</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span> <span class="o">+</span> <span class="s2">&quot;threshold method&quot;</span><span class="p">,</span> <span class="s2">&quot;tailored global min&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">method</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">method</span>
+        <span class="p">)</span>
+
+        <span class="n">threshold_lower</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span> <span class="o">+</span> <span class="s2">&quot;threshold value min&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">threshold_lower</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">threshold_lower</span>
+        <span class="p">)</span>
+
+        <span class="n">threshold_upper</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span> <span class="o">+</span> <span class="s2">&quot;threshold value max&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">threshold_upper</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">threshold_upper</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Call the constructor if the static threshold model.</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">threshold_lower</span><span class="p">,</span> <span class="n">threshold_upper</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+
+        <span class="c1"># Identify method and define corresponding thresholding object</span>
+        <span class="k">if</span> <span class="n">threshold_method</span> <span class="o">==</span> <span class="s2">&quot;tailored global min&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">GlobalMinTwoPeakHistogrammAnalysis</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">threshold_method</span> <span class="o">==</span> <span class="s2">&quot;tailored otsu&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">OtsuTwoPeakHistogrammAnalysis</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">threshold_method</span> <span class="o">==</span> <span class="s2">&quot;otsu&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">StandardOtsu</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Method </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2"> not supported for dynamic thresholding&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Identify the provided thresholds as fixed bounds, allowing to modify the</span>
+        <span class="c1"># threshold values.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_threshold_lower_bound</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_threshold_lower</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_threshold_lower</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_threshold_upper_bound</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_threshold_upper</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_threshold_upper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Only allow for lower threshold values. Deactive upper thresholding</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_threshold_upper</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Verbosity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;verbosity&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Main method. Adapt thresholds and apply thresholding.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (np.ndarray): image</span>
+<span class="sd">            mask (np.ndarray, optional): boolean mask of interest</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: booelean mask identifying signal according to current threshold values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calibrate</span><span class="p">([</span><span class="n">img</span><span class="p">],</span> <span class="n">mask</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DynamicThresholdModel.calibrate">
+<a class="viewcode-back" href="../../../../source/signals/darsia.signals.models.html#darsia.signals.models.dynamicthresholdmodel.DynamicThresholdModel.calibrate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calibrate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adapt threshold values using a dynamic strategies.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_homogeneous</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_calibrate_homogeneous</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_calibrate_heterogeneous</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calibrate_homogeneous</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adapt threshold values globally using a dynamic stratgey.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (list of np.ndarray): image(s)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="s2">&quot;Currently the dynamic thresholding is only implemented for heterogeneous media.&quot;</span>
+        <span class="p">)</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calibrate_heterogeneous</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adapt threshold values for each label using a dynamic strategy.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (list of np.ndarray): image(s)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Extract main image for calibration</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">img</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="n">signal</span> <span class="o">=</span> <span class="n">img</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">label_count</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_labels</span><span class="p">)):</span>
+
+            <span class="c1"># Determine mask of interest, i.e., consider single label,</span>
+            <span class="c1"># the interval of interest and the provided mask.</span>
+            <span class="n">label_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labels</span> <span class="o">==</span> <span class="n">label</span>
+            <span class="n">effective_mask</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">label_mask</span> <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">label_mask</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Only continue if mask not empty</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">effective_mask</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+
+                <span class="n">new_threshold</span><span class="p">,</span> <span class="n">have_new_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="n">effective_mask</span><span class="p">)</span>
+
+                <span class="c1"># Setting values</span>
+                <span class="k">if</span> <span class="n">have_new_value</span><span class="p">:</span>
+
+                    <span class="c1"># Clip the new value to the appropriate interval</span>
+                    <span class="n">bounded_threshold_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+                        <span class="n">new_threshold</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_threshold_lower_bound</span><span class="p">[</span><span class="n">label_count</span><span class="p">],</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_threshold_upper_bound</span><span class="p">[</span><span class="n">label_count</span><span class="p">],</span>
+                    <span class="p">)</span>
+
+                    <span class="c1"># Set self.threshold_lower is used in self.__call__ as effective lower</span>
+                    <span class="c1"># threshold value</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_threshold_lower</span><span class="p">[</span><span class="n">label_count</span><span class="p">]</span> <span class="o">=</span> <span class="n">bounded_threshold_value</span>
+
+        <span class="c1"># Display the threshold value</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Threshold value: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_threshold_lower</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
