@@ -287,8 +287,13 @@ class WeightedGeometry(Geometry):
                 "Weight must have the same number of dimensions as the geometry."
             )
 
-        # Add weight
-        self.weight = weight.copy() if isinstance(weight, np.ndarray) else weight
+        # Add weight. # Convert nans to zeros, as they typically arise due to ROIs
+        # that remove signals.
+        self.weight = (
+            np.nan_to_num(weight.copy(), nan=0.0)
+            if isinstance(weight, np.ndarray)
+            else weight
+        )
         """Weight of the geometry, can be a scalar or an array."""
         self.voxel_volume = np.multiply(self.voxel_volume, weight)
         """Effective voxel volume in 3d."""
