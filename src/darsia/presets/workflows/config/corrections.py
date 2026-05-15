@@ -167,6 +167,43 @@ class ColorCorrectionConfig:
 
 
 @dataclass
+class RelativeColorCorrectionConfig:
+    """Configuration for relative color correction."""
+
+    path: Path | None = None
+    """Path to a precomputed relative color correction file."""
+    images: list[Path] = field(default_factory=list)
+    """Calibration images used to calibrate relative color correction."""
+    interactive: bool = False
+    """Whether interactive calibration is allowed."""
+    options: dict = field(default_factory=dict)
+    """Calibration options forwarded to RelativeColorCorrection."""
+
+    def load(self, sec: dict) -> "RelativeColorCorrectionConfig":
+        """Load relative color correction configuration from a dictionary."""
+        path = sec.get("path", self.path)
+        self.path = Path(path) if path is not None else None
+        self.images = [Path(p) for p in sec.get("images", self.images)]
+        self.interactive = sec.get("interactive", self.interactive)
+        if not isinstance(self.interactive, bool):
+            raise ValueError(
+                "corrections.relative_color.interactive must be a boolean."
+            )
+
+        known_keys = {"path", "images", "interactive"}
+        self.options = {
+            key: value for key, value in sec.items() if key not in known_keys
+        }
+
+        if self.path is None and len(self.images) == 0:
+            raise ValueError(
+                "corrections.relative_color must define either 'path' or 'images'."
+            )
+
+        return self
+
+
+@dataclass
 class IlluminationCorrectionConfig:
     """Configuration for illumination correction."""
 
@@ -266,7 +303,7 @@ class CorrectionsConfig:
     drift: DriftCorrectionConfig | None = None
     curvature: CurvatureCorrectionConfig | None = None
     color: ColorCorrectionConfig | None = None
-    relative_color: bool = False
+    relative_color: bool | RelativeColorCorrectionConfig = False
     illumination: IlluminationCorrectionConfig | None = None
 
     def load(self, path: Path | list[Path]) -> "CorrectionsConfig":
@@ -302,10 +339,16 @@ class CorrectionsConfig:
         if color_sec:
             self.color = ColorCorrectionConfig().load(color_sec)
 
-        self.relative_color = sec.get("relative_color", self.relative_color)
-        if not isinstance(self.relative_color, bool):
-            raise NotImplementedError(
-                "relative color correction is only implemented as boolean for now."
+        relative_color_sec = sec.get("relative_color", self.relative_color)
+        if isinstance(relative_color_sec, bool):
+            self.relative_color = relative_color_sec
+        elif isinstance(relative_color_sec, dict):
+            self.relative_color = RelativeColorCorrectionConfig().load(
+                relative_color_sec
+            )
+        else:
+            raise ValueError(
+                "corrections.relative_color must be a boolean or a configuration table."
             )
 
         illumination_sec = sec.get("illumination")
