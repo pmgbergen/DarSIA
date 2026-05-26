@@ -291,10 +291,10 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
             reset: bool = False,
         ) -> None:
             """
-            Use last caliration image to define support points.
+            Use last calibration image to define support points.
 
             Use all to fix the support points assignment.
-
+NOTE: This function is mostly a copy from `calibrate_from_image` and may allow for merging.
             Args:
                 calibration_image (Image): calibration image for extracting colors
                 mask (Image): boolean image-mask acting as mask for the calibration image
