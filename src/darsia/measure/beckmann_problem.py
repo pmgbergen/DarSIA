@@ -445,6 +445,9 @@ class BeckmannProblem(darsia.EMD):
         # Reshape the fluxes and pressure to grid format
         flux_img = darsia.face_to_cell(self.grid, flux)
         pressure_img = pressure.reshape(self.grid.shape, order="F")
+        if not hasattr(self, "face_reconstruction"):
+            self._setup_face_reconstruction()
+        flux_faces = self.face_reconstruction(flux)
 
         # Determine transport density
         transport_density = self.transport_density(flux, flatten=False)
@@ -461,6 +464,9 @@ class BeckmannProblem(darsia.EMD):
                     "grid": self.grid,
                     "mass_diff": mass_diff_img,
                     "flux": flux_img,
+                    "flux_cells": flux_img,
+                    "normal_flux_faces": flux,
+                    "flux_faces": flux_faces,
                     "weight": self.cell_weights,
                     "weight_inv": 1.0 / self.cell_weights,
                     "weighted_flux": weighted_flux_img,

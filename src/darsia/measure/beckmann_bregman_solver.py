@@ -142,6 +142,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                 np.zeros(1, dtype=float),
             ]
         )
+        self.integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
 
         # Initialize Newton iteration with Darcy solution for unitary mobility
         solution = np.zeros_like(rhs, dtype=float)
@@ -152,6 +153,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
         # Initialize container for storing the convergence history
         convergence_history = darsia.BeckmannConvergenceHistory()
+        self.convergence_history = convergence_history
 
         # Print header
         if self.verbose:
@@ -346,6 +348,9 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                     f"{relative_mass_residual:.6e}"
                 )
 
+            self.solution = solution
+            self.flux = flux
+            self.pressure = self.pressure_view(solution)
             if self.callbacks is not None:
                 for callback in self.callbacks:
                     callback(self)

@@ -257,6 +257,16 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
                     f"""{relative_residual:.6e}"""
                 )
 
+            # Publish live state for callbacks.
+            self.solution = solution
+            self.flux = self.flux_view(solution)
+            self.pressure = self.pressure_view(solution)
+
+            # Callbacks
+            if self.callbacks is not None:
+                for callback in self.callbacks:
+                    callback(self)
+
             # Check for convergence.
             convergence_status = self.convergence_criteria.check_convergence_status(
                 iter=iter,
@@ -269,11 +279,6 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
                 darsia.ConvergenceStatus.NOT_CONVERGED,
             ]:
                 break
-
-            # Callbacks
-            if self.callbacks is not None:
-                for callback in self.callbacks:
-                    callback(self)
 
         # Summarize profiling (time in seconds, memory in GB)
         total_timings = self._sum_timings(convergence_history.timings)
