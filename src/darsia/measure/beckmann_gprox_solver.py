@@ -38,10 +38,17 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
 
         self.weight = weight
         """Optional[darsia.Image]: weight"""
-        if weight is not None:
+        # Gprox solves the unweighted Beckmann problem. A weight is therefore only
+        # admissible if it is the uniform unit weight (equivalent to no weight), in
+        # any of the formats accepted by the other solvers: None, a scalar field of
+        # shape (rows, cols), or a diagonal tensor field of shape (rows, cols, dim).
+        if not self._is_unit_weight(weight):
             raise NotImplementedError(
-                "Weighted Gprox not implemented for anisotropic meshes"
+                "Weighted Gprox is not implemented: only a uniform unit weight "
+                "(equal to 1.0 everywhere) is supported."
             )
+        # Normalize the trivial weight to the unweighted path.
+        self.weight = None
 
         # Cache solver options
         self.options = options
@@ -59,6 +66,25 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         self._setup_variables()
         self._setup_l1_quadrature()
         self._setup_discretization()
+
+    @staticmethod
+    def _is_unit_weight(weight: Optional[darsia.Image]) -> bool:
+        """Check whether a weight is the trivial uniform unit weight.
+
+        Accepts the formats used by the other solvers: None, a scalar field
+        (rows, cols), or a (diagonal) tensor field (rows, cols, dim).
+
+        Args:
+            weight (Optional[darsia.Image]): weight to inspect.
+
+        Returns:
+            bool: True if the weight is equal to 1.0 everywhere (or None).
+
+        """
+        if weight is None:
+            return True
+        arr = np.asarray(weight.img, dtype=float)
+        return bool(np.allclose(arr, 1.0))
 
     def _setup_variables(self) -> None:
         # Allocate space for main and auxiliary variables
@@ -411,6 +437,9 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         # reshape the solution
         flux_cells = darsia.face_to_cell(self.grid, solution)
         transport_density_cells = np.linalg.norm(flux_cells, axis=-1)
+        if not hasattr(self, "face_reconstruction"):
+            self._setup_face_reconstruction()
+        flux_faces = self.face_reconstruction(solution)
 
         # Return solution
         return_info = self.options.get("return_info", False)
@@ -426,6 +455,9 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
                         self.grid, self.gradient_poisson_pressure
                     ),
                     "flux": flux_cells,
+                    "flux_cells": flux_cells,
+                    "normal_flux_faces": solution,
+                    "flux_faces": flux_faces,
                     "pressure": pressure,
                     # "pressure": pressure,
                     "transport_density": transport_density_cells,
