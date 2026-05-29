@@ -50,6 +50,9 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
         super().__init__(grid, weight, options)
 
+        self.kantorovich_potential = np.zeros(self.grid.num_cells, dtype=float)
+        """ Kantorovich potential, updated at the end of the Bregman iteration by solving a single Newton step."""
+
         self.L = options.get("L", 1.0)
         """Penalty parameter for the Bregman iteration, associated to face mobility."""
 
@@ -116,6 +119,64 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         )
 
         return l_scheme_mixed_darcy, weight, shrink_factor
+
+    def compute_kantorovich_potential(
+        self, flat_mass_diff: np.ndarray,
+        flux: np.ndarray,
+        kantorovich_potential: np.ndarray,
+        tol=1e-6
+        ):
+        """Compute the kantorovich potential from the normal flux
+
+        Args:
+            flat_mass_diff (np.ndarray): difference of mass distributions
+            flux (np.ndarray): flux on the faces
+            kantorovich_potential (np.ndarray): initial guess for the Kantorovich potential, updated in-place
+
+        Returns:
+            np.ndarray: kantorovich potential
+
+        """
+        _, face_weights_inv = self._compute_face_weight(flux)
+        transport_density_faces = self.transport_density_faces(flux)
+        Laplacian_matrix = (
+                    self.div
+                    * sps.diags(transport_density_faces)
+                    * self.inverse_weighted_mass_matrix_faces
+                    * self.div.T
+                )
+        rhs = self.mass_matrix_cells.dot(flat_mass_diff)
+
+        # detect the class of self.linear_solve and instantiate the appropriate linear solver for the Poisson problem
+        solver_class = self.linear_solve.__self__.__class__
+        if self.options.get("linear_solver") == "ksp" or self.options.get("linear_solver") == "kspfieldsplit":
+            unit_kernel = np.ones(self.grid.num_cells) / np.sqrt(self.grid.num_cells)
+            weighted_Poisson_solver = darsia.linalg.KSP(
+                Laplacian_matrix,
+                nullspace = [unit_kernel],
+                solver_prefix = "kantorovich_potential_solver_")
+            weighted_Poisson_solver.setup({
+                "ksp_type": "minres",
+                "ksp_rtol": tol,
+                "pc_type": "hypre",
+            })
+        else:
+            weighted_Poisson_solver = darsia.linalg.CG(
+                Laplacian_matrix,
+                tol=tol)
+            weighted_Poisson_solver.setup(rtol=tol)
+
+        # solve for the pressure
+        solution = weighted_Poisson_solver.solve(
+            rhs, x0=kantorovich_potential
+        )
+        kantorovich_potential[:] = solution[:]
+
+        # clean up the linear solver to free memory
+        if isinstance(weighted_Poisson_solver, darsia.linalg.KSP):
+            weighted_Poisson_solver.kill()
+        else:
+            weighted_Poisson_solver = None
 
     @override
     def solve_beckmann_problem(

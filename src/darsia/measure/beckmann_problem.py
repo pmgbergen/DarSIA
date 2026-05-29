@@ -314,6 +314,10 @@ class BeckmannProblem(darsia.EMD):
         self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
         """sps.csc_matrix: mass matrix on faces: flat fluxes -> flat fluxes"""
 
+        self.inverse_weighted_mass_matrix_faces = sps.diags(
+            1.0 / self.weighted_mass_matrix_faces_init.diagonal(), format="csc"
+        )
+
         self.broken_darcy = sps.bmat(
             [
                 [None, -self.div.T, None],
