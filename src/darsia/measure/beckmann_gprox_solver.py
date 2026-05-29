@@ -283,7 +283,6 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
                 grad_pressure = self.inverse_mass_matrix_faces.dot(
                     self.grad.dot(flat_pressure)
                 )
-                print(f"MAX GRAD {np.max(abs(grad_pressure))}")
 
             # Second step of the PDHG
             # new_p = argmax_{|p|\leq 1} (p, u_{n+1})_{L^2} + \frac{1}{2 sigma}|p-p_n|_{L^2}^2

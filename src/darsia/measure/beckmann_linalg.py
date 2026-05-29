@@ -258,8 +258,6 @@ class BeckmannKSPSolver(BeckmannLinearSolver):
         maxiter = linear_solver_options.get("maxiter", 100)
         approach = linear_solver_options.get("approach", "direct")
 
-        print(linear_solver_options)
-
         if approach == "direct":
             self.solver_options = {
                 "ksp_type": "preonly",

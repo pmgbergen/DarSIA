@@ -126,7 +126,6 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         solution, _ = self.linear_solve(
             self.darcy_init.copy(), beckmann_problem_rhs.copy(), solution
         )
-        print("Initialized solution with Darcy solution for unitary mobility.")
         # self.solution = solution
         # pointer created for callbacks and convergence history, updated in-place during iteration.
 
@@ -204,10 +203,6 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
             flux = self.flux_view(solution)
             pressure = self.pressure_view(solution)
             distance = self.l1_dissipation(flux)
-
-            print(f"pressure min={pressure.min():.2e} max={pressure.max():.2e}")
-            print(f"flux min={flux.min():.2e} max={flux.max():.2e}")
-
 
             # Update statistics
             timings["time_assemble"] = time_assemble
