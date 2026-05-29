@@ -14,7 +14,7 @@ dependencies:
   - numpy
   - scipy
   - pyamg
-  - matplotlib==3.8.0
+  - matplotlib
   - scikit-image
   - future
   - colour-science
@@ -32,3 +32,4 @@ dependencies:
     - largestinteriorrectangle
     - opencv-python
     - colour-checker-detection
+    - pyevtk
