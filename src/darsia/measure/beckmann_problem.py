@@ -304,12 +304,10 @@ class BeckmannProblem(darsia.EMD):
         """sps.csc_matrix: mass matrix on cells: flat pressures -> flat pressures"""
 
         lumping = self.options.get("lumping", True)
-        print(f"{self.face_weights.min()} <= face weights <= {self.face_weights.max()}")
-        
+
         self.weighted_mass_matrix_faces_init = sps.diags(
             self.face_weights, format="csc"
         ) @ (darsia.FVMass(self.grid, "faces", lumping).mat)
-        print(f"{self.weighted_mass_matrix_faces_init.diagonal().min()} <= weighted mass matrix on faces <= {self.weighted_mass_matrix_faces_init.diagonal().max()}")
         """sps.csc_matrix: weighted mass matrix on faces: flat fluxes -> flat fluxes"""
         self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
         """sps.csc_matrix: mass matrix on faces: flat fluxes -> flat fluxes"""
@@ -937,7 +935,6 @@ class BeckmannProblem(darsia.EMD):
             res = self.fully_reduced_matrix.dot(
                 solution[self.fully_reduced_system_indices_full]
             ) - self.fully_reduced_rhs
-            print(f"Pure pressure system residual: {np.linalg.norm(res)}")
 
             # 5. Compute lagrange multiplier - not required, as it is zero
             pass
@@ -1008,8 +1005,6 @@ class BeckmannProblem(darsia.EMD):
             assert hasattr(self, "jacobian_subblock")
 
         # Build Schur complement wrt flux-block
-        diag = jacobian.diagonal()[self.flux_slice]
-        print(f"Jacobian diagonal: {diag.min()=} - {diag.max()=}")
         J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
         schur_complement = self.D.dot(J_inv.dot(self.DT))
 
@@ -1060,7 +1055,6 @@ class BeckmannProblem(darsia.EMD):
         # ! ---- Eliminate flux block ----
 
         # Build Schur complement wrt. flux-flux block
-        print(f"Jacobian diagonal: {self.flux_view(jacobian.diagonal()).min()=} - {self.flux_view(jacobian.diagonal()).max()=}")
         J_inv = sps.diags(1.0 / self.flux_view(jacobian.diagonal()))
         schur_complement = D.dot(J_inv.dot(D.T))
 
