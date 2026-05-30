@@ -2021,7 +2021,7 @@ class WorkflowGUI:
         if action_flags["import_calibration"] and not import_bundle:
             self.messagebox.showerror(
                 "Invalid configuration",
-                "Import calibration requires an input bundle zip path.",
+                "Import calibration requires an input bundle zip or folder path.",
             )
             return
 
@@ -2122,9 +2122,13 @@ class WorkflowGUI:
 
     def _browse_utils_import_bundle(self) -> None:
         path = self.filedialog.askopenfilename(
-            title="Select calibration bundle zip",
+            title="Select calibration bundle zip or folder",
             filetypes=[("Zip files", "*.zip"), ("All files", "*.*")],
         )
+        if not path:
+            path = self.filedialog.askdirectory(
+                title="Select calibration bundle folder"
+            )
         if path:
             self.utils_import_bundle.set(path)
 

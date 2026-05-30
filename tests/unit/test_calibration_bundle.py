@@ -57,10 +57,10 @@ def test_export_calibration_bundle(tmp_path: Path):
     with zipfile.ZipFile(bundle, "r") as zf:
         names = set(zf.namelist())
         assert (
-            "calibration/my_colorpath/color_paths/from_labels/color_path_0.json"
+            "calibration/color/my_colorpath/color_paths/from_labels/color_path_0.json"
             in names
         )
-        manifest = json.loads(zf.read("calibration/manifest.json"))
+        manifest = json.loads(zf.read("calibration/color/manifest.json"))
         assert manifest["format_version"] == 2
         assert manifest["embeddings"] == ["my_colorpath"]
 
@@ -76,6 +76,58 @@ def test_import_calibration_bundle(tmp_path: Path):
     )
 
     assert (tmp_path / "imported" / "CONFIG_SNIPPET.toml").exists()
+    assert imported["my_colorpath"].exists()
+    assert (
+        tmp_path
+        / "imported"
+        / "my_colorpath"
+        / "color_paths"
+        / "from_labels"
+        / "metadata.json"
+    ).exists()
+
+
+def test_import_calibration_bundle_from_directory(tmp_path: Path):
+    config_path, _ = _create_calibration_artifacts(tmp_path)
+    source = tmp_path / "results" / "calibration"
+
+    imported = import_calibration_bundle(
+        config_path,
+        bundle=source,
+        target_folder=tmp_path / "imported",
+    )
+
+    assert imported["my_colorpath"].exists()
+    assert (
+        tmp_path
+        / "imported"
+        / "my_colorpath"
+        / "color_to_mass"
+        / "from_labels"
+        / "metadata.json"
+    ).exists()
+
+
+def test_import_calibration_bundle_accepts_legacy_zip(tmp_path: Path):
+    config_path, root = _create_calibration_artifacts(tmp_path)
+    legacy_bundle = tmp_path / "legacy_bundle.zip"
+
+    with zipfile.ZipFile(legacy_bundle, "w") as zf:
+        for file_path in root.rglob("*"):
+            if file_path.is_file():
+                arcname = (
+                    Path("calibration")
+                    / root.name
+                    / file_path.relative_to(root)
+                )
+                zf.write(file_path, arcname=str(arcname))
+
+    imported = import_calibration_bundle(
+        config_path,
+        bundle=legacy_bundle,
+        target_folder=tmp_path / "imported",
+    )
+
     assert imported["my_colorpath"].exists()
     assert (
         tmp_path
