@@ -117,7 +117,6 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
             [
                 np.zeros(self.grid.num_faces, dtype=float),
                 self.integrated_mass_diff,
-                np.zeros(1, dtype=float),
             ]
         )
 

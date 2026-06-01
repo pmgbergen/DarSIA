@@ -108,12 +108,12 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         weight = sps.diags(face_weights)
         shrink_factor = face_weights_inv
 
-        # Update the Darcy system
+        # Update the Darcy system (2x2 saddle-point; pressure is grounded at
+        # solve time via self._apply_pressure_grounding for non-KSP solvers).
         l_scheme_mixed_darcy = sps.bmat(
             [
-                [weight @ self.mass_matrix_faces, -self.div.T, None],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
+                [weight @ self.mass_matrix_faces, -self.div.T],
+                [self.div, None],
             ],
             format="csc",
         )
@@ -200,7 +200,6 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
             [
                 np.zeros(self.grid.num_faces, dtype=float),
                 self.mass_matrix_cells.dot(flat_mass_diff),
-                np.zeros(1, dtype=float),
             ]
         )
         self.integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
@@ -239,9 +238,8 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         # Initialize linear problem corresponding to Bregman regularization
         l_scheme_mixed_darcy = sps.bmat(
             [
-                [weight @ self.mass_matrix_faces, -self.div.T, None],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
+                [weight @ self.mass_matrix_faces, -self.div.T],
+                [self.div, None],
             ],
             format="csc",
         )

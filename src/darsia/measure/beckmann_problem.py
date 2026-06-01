@@ -109,10 +109,9 @@ class BeckmannProblem(darsia.EMD):
                     - "ksp": PETSc KSP solver
                 - formulation (str): formulation of the linear system. Defaults to
                     "pressure". Supported formulations are:
-                    - "full": full system
-                    - "flux_reduced": reduced system with fluxes eliminated
-                    - "pressure": reduced system with fluxes and lagrange multiplier
-                        eliminated
+                    - "full": full saddle-point system (flux + pressure)
+                    - "pressure": Schur-complement reduction to a pressure-only
+                        system (flux eliminated)
                 - linear_solver_options (dict): options for the linear solver. Defaults
                     to {}.
                 - amg_options (dict): options for the AMG solver. Defaults to {}.
@@ -168,15 +167,19 @@ class BeckmannProblem(darsia.EMD):
         The following degrees of freedom are considered (also in this order):
         - flat fluxes (normal fluxes on the faces)
         - flat pressures (pressures on the cells)
-        - lagrange multiplier (scalar variable) - Idea: Fix the pressure in the
-        center of the domain to zero via a constraint and a Lagrange multiplier.
+
+        The pressure is determined up to an additive constant. Instead of fixing
+        the constant with a global zero-mean Lagrange multiplier, the pressure
+        is grounded in a single cell (selected per problem instance as the
+        cell with the largest source value, see ``BeckmannProblem.__call__``).
+        For PETSc KSP solvers the singular system is solved with the constant
+        pressure nullspace passed to the Krylov solver instead.
 
         """
         # ! ---- Number of dofs ----
         num_flux_dofs = self.grid.num_faces
         num_pressure_dofs = self.grid.num_cells
-        num_lagrange_multiplier_dofs = 1
-        num_dofs = num_flux_dofs + num_pressure_dofs + num_lagrange_multiplier_dofs
+        num_dofs = num_flux_dofs + num_pressure_dofs
 
         # ! ---- Indices in global system ----
         self.flux_indices = np.arange(num_flux_dofs, dtype=np.int32)
@@ -187,11 +190,6 @@ class BeckmannProblem(darsia.EMD):
         )
         """np.ndarray: indices of the pressures"""
 
-        self.lagrange_multiplier_indices = np.array(
-            [num_flux_dofs + num_pressure_dofs], dtype=np.int32
-        )
-        """np.ndarray: indices of the lagrange multiplier"""
-
         # ! ---- Fast access to components through slices ----
         self.flux_slice = slice(0, num_flux_dofs)
         """slice: slice for the fluxes"""
@@ -199,14 +197,10 @@ class BeckmannProblem(darsia.EMD):
         self.pressure_slice = slice(num_flux_dofs, num_flux_dofs + num_pressure_dofs)
         """slice: slice for the pressures"""
 
-        self.lagrange_multiplier_slice = slice(
-            num_flux_dofs + num_pressure_dofs,
-            num_flux_dofs + num_pressure_dofs + num_lagrange_multiplier_dofs,
-        )
-        """slice: slice for the lagrange multiplier"""
-
-        self.reduced_system_slice = slice(num_flux_dofs, None)
-        """slice: slice for the reduced system (pressures and lagrange multiplier)"""
+        # After removal of the Lagrange multiplier the reduced (Schur-complement
+        # in the flux block) system contains only the pressure unknowns.
+        self.reduced_system_slice = self.pressure_slice
+        """slice: slice for the reduced (pressure-only) system"""
 
         # Embedding operators
         self.flux_embedding = sps.csc_matrix(
@@ -276,24 +270,13 @@ class BeckmannProblem(darsia.EMD):
     def _setup_discretization(self) -> None:
         """Setup of fixed discretization operators."""
 
-        # ! ---- Constraint for the pressure correpsonding to Lagrange multiplier ----
-
-        center_cell = np.array(self.grid.shape) // 2
-        self.constrained_cell_flat_index = np.ravel_multi_index(
-            center_cell, self.grid.shape
-        )
-        """int: flat index of the cell where the pressure is constrained to zero"""
-
-        num_pressure_dofs = self.grid.num_cells
-        self.pressure_constraint = sps.csc_matrix(
-            (
-                np.ones(1, dtype=float),
-                (np.zeros(1, dtype=int), np.array([self.constrained_cell_flat_index])),
-            ),
-            shape=(1, num_pressure_dofs),
-            dtype=float,
-        )
-        """sps.csc_matrix: effective constraint for the pressure"""
+        # ! ---- Grounding cell for the pressure ----
+        # The Beckmann saddle-point determines pressure only up to an additive
+        # constant. We fix the constant by grounding the pressure in a single
+        # cell (chosen per :meth:`__call__` as ``argmax(src)``). The actual
+        # index is rewritten in __call__ before each solve.
+        self.ground_cell = 0
+        """int: flat index of the cell where the pressure is grounded to zero"""
 
         # ! ---- Discretization operators ----
 
@@ -318,13 +301,14 @@ class BeckmannProblem(darsia.EMD):
 
         self.broken_darcy = sps.bmat(
             [
-                [None, -self.div.T, None],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
+                [None, -self.div.T],
+                [self.div, None],
             ],
             format="csc",
         )
-        """sps.csc_matrix: linear part of the Darcy operator with pressure constraint"""
+        """sps.csc_matrix: linear part of the Darcy operator (singular up to
+        constant pressure mode; the constant is fixed at solve time by
+        grounding self.ground_cell)"""
 
         L_init = self.options.get("L_init", 1.0)
 
@@ -347,9 +331,8 @@ class BeckmannProblem(darsia.EMD):
         """
         return sps.bmat(
             [
-                [flux_flux_block, -self.div.T, None],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
+                [flux_flux_block, -self.div.T],
+                [self.div, None],
             ],
             format="csc",
         )
@@ -436,6 +419,12 @@ class BeckmannProblem(darsia.EMD):
         # Determine difference of distributions and define corresponding rhs
         mass_diff_img = img_2.img - img_1.img
         mass_diff = self.flat_view(mass_diff_img)
+
+        # Pick the cell at which the pressure is grounded. The Beckmann
+        # saddle-point only fixes pressure up to an additive constant; we
+        # ground it at the cell carrying the largest source mass, which is
+        # always covered by the transport plan.
+        self.ground_cell = int(np.argmax(self.flat_view(img_1.img)))
 
         # Main method
         distance, solution, info = self.solve_beckmann_problem(mass_diff)
@@ -834,135 +823,101 @@ class BeckmannProblem(darsia.EMD):
 
         """
 
-        setup_linear_solver = not (reuse_solver) or not (hasattr(self, "linear_solver"))
+        setup_linear_solver = not reuse_solver or not hasattr(self, "linear_solver")
+
         if self.formulation == "full":
             assert isinstance(
                 self.linear_solver,
                 darsia.BeckmannDirectSolver | darsia.BeckmannKSPFieldSplitSolver,
-            ), "Only direct solver or ksp supported for full formulation."
+            ), "Only direct solver or kspfieldsplit supported for full formulation."
 
-            # Setup LU factorization for the full system
+            # The 2x2 saddle-point is singular along the constant pressure mode.
+            # For the direct solver we ground the pressure at self.ground_cell;
+            # KSPFieldSplit handles the singularity via the constant pressure
+            # nullspace passed at solver construction.
+            if isinstance(self.linear_solver, darsia.BeckmannDirectSolver):
+                matrix = self._ground_matrix(matrix, offset=self.flux_slice.stop)
+                rhs = self._ground_rhs(rhs, offset=self.flux_slice.stop)
+
             tic = time.time()
             if setup_linear_solver:
                 self.linear_solver.setup(matrix)
             time_setup = time.time() - tic
 
-            # Solve the full system
             tic = time.time()
             solution = self.linear_solver(rhs)
             time_solve = time.time() - tic
 
-        elif self.formulation == "flux_reduced":
-            # Solve flux-reduced / pressure-multiplier problem, following:
-            # 1. Eliminate flux block
-            # 2. Build linear solver for reduced system
-            # 3. Solve reduced system
-            # 4. Compute flux update
-
-            # Start timer to measure setup time
-            tic = time.time()
-
-            # Allocate memory for solution
-            solution = np.zeros_like(rhs)
-
-            # 1. Reduce flux block
-            (
-                self.reduced_matrix,
-                self.reduced_rhs,
-                self.matrix_flux_inv,
-            ) = self.eliminate_flux(matrix, rhs)
-
-            # 2. Build linear solver for reduced system
-            if setup_linear_solver:
-                self.linear_solver.setup(self.reduced_matrix)
-
-            # Stop timer to measure setup time
-            time_setup = time.time() - tic
-
-            # 3. Solve for the pressure and lagrange multiplier
-            tic = time.time()
-            solution[self.reduced_system_slice] = self.linear_solver(self.reduced_rhs)
-
-            # 4. Compute flux update
-            solution[self.flux_slice] = self._compute_flux_update(solution, rhs)
-            time_solve = time.time() - tic
-
         elif self.formulation == "pressure":
-            # Solve pure pressure problem ,following:
-            # 1. Eliminate flux block
-            # 2. Eliminate lagrange multiplier
-            # 3. Build linear solver for pure pressure system
-            # 4. Solve pure pressure system
-            # 5. Compute lagrange multiplier - not required, as it is zero
-            # 6. Compute flux update
-
-            # Start timer to measure setup time
+            # Eliminate the flux block to obtain a pressure-only Schur complement
+            # system, then ground the pressure at self.ground_cell (the system
+            # inherits the constant pressure nullspace).
             tic = time.time()
-
-            # Allocate memory for solution
             solution = np.zeros_like(rhs)
 
-            # NOTE: It is implicitly assumed that the lagrange multiplier is zero
-            # in the constrained cell. This is not checked here. And no update is
-            # performed.
-            if previous_solution is not None and (
-                abs(
-                    previous_solution[
-                        self.grid.num_faces + self.constrained_cell_flat_index
-                    ]
-                )
-                > 1e-6
-            ):
-                raise NotImplementedError(
-                    "Implementation requires solution satisfy the constraint."
-                )
-
-            # 1. Reduce flux block
+            # 1. Reduce flux block.
             if setup_linear_solver:
                 self.reduced_matrix, self.matrix_flux_inv = self.eliminate_flux_lhs(matrix)
             self.reduced_rhs = self.eliminate_flux_rhs(self.matrix_flux_inv, rhs)
-            
-            # 2. Reduce to pure pressure system
+
+            # 2. Ground the pressure-only system at self.ground_cell.
             if setup_linear_solver:
-                self.fully_reduced_matrix = self.eliminate_lagrange_multiplier_lhs(self.reduced_matrix)
-            self.fully_reduced_rhs = self.eliminate_lagrange_multiplier_rhs(
-                self.reduced_rhs,
-            )
-            
-            # 3. Build linear solver for pure pressure system
+                self.fully_reduced_matrix = self._ground_matrix(self.reduced_matrix, offset=0)
+            self.fully_reduced_rhs = self._ground_rhs(self.reduced_rhs, offset=0)
+
+            # 3. Build the linear solver on the grounded matrix.
             if setup_linear_solver:
                 self.linear_solver.setup(self.fully_reduced_matrix)
-
-            # Stop timer to measure setup time
             time_setup = time.time() - tic
 
-            # 4. Solve the pure pressure system
+            # 4. Solve and reconstruct the flux update.
             tic = time.time()
-            solution[self.fully_reduced_system_indices_full] = self.linear_solver(
-                self.fully_reduced_rhs
-            )
-            res = self.fully_reduced_matrix.dot(
-                solution[self.fully_reduced_system_indices_full]
-            ) - self.fully_reduced_rhs
-
-            # 5. Compute lagrange multiplier - not required, as it is zero
-            pass
-
-            # 6. Compute flux update
+            solution[self.pressure_slice] = self.linear_solver(self.fully_reduced_rhs)
             solution[self.flux_slice] = self._compute_flux_update(solution, rhs)
             time_solve = time.time() - tic
 
-        # Define solver statistics
-        stats = {
-            "time_setup": time_setup,
-            "time_solve": time_solve,
-        }
+        else:
+            raise NotImplementedError(
+                f"Formulation '{self.formulation}' not supported. "
+                "Use 'full' or 'pressure'."
+            )
+
+        stats = {"time_setup": time_setup, "time_solve": time_solve}
         if self.linear_solver_type in ["amg_flux_reduced", "amg_pressure"]:
             stats["amg num iterations"] = len(self.res_history_amg)
             stats["amg residual"] = self.res_history_amg[-1]
             stats["amg residuals"] = self.res_history_amg
 
         return solution, stats
+
+    # ! ---- Pressure grounding helpers ----
+
+    def _grounding_index(self, offset: int = 0) -> int:
+        """Index of the grounded pressure DOF.
+
+        Args:
+            offset: 0 for a pressure-only reduced system, ``flux_slice.stop``
+                for the full saddle-point system.
+        """
+        return offset + int(self.ground_cell)
+
+    def _ground_matrix(self, matrix: sps.csc_matrix, offset: int = 0) -> sps.csc_matrix:
+        """Return ``matrix`` with the row and column at the grounded pressure
+        DOF replaced by the identity equation ``p[ground_cell] = 0``.
+        """
+        n = matrix.shape[0]
+        g = self._grounding_index(offset)
+        diag_keep = np.ones(n)
+        diag_keep[g] = 0.0
+        D = sps.diags(diag_keep, format="csc")
+        e = sps.csc_matrix(([1.0], ([g], [g])), shape=(n, n))
+        return (D @ matrix @ D + e).tocsc()
+
+    def _ground_rhs(self, rhs: np.ndarray, offset: int = 0) -> np.ndarray:
+        """Return ``rhs`` with the grounded pressure DOF set to zero."""
+        rhs_g = rhs.copy()
+        rhs_g[self._grounding_index(offset)] = 0.0
+        return rhs_g
 
     def eliminate_flux(self, jacobian: sps.csc_matrix, residual: np.ndarray) -> tuple:
         """Eliminate the flux block from the jacobian and residual.
@@ -1050,10 +1005,10 @@ class BeckmannProblem(darsia.EMD):
         # Cache divergence matrix together with Lagrange multiplier
         D = jacobian[self.reduced_system_slice, self.flux_slice].copy()
         self.D = D.copy()
-        """sps.csc_matrix: divergence + lagrange multiplier matrix"""
+        """sps.csc_matrix: divergence operator (flux -> pressure)"""
 
         self.DT = self.D.T.copy()
-        """sps.csc_matrix: transposed divergence + lagrange multiplier  matrix"""
+        """sps.csc_matrix: transposed divergence operator (pressure -> flux)"""
 
         # Cache (constant) jacobian subblock
         self.jacobian_subblock = jacobian[
@@ -1071,203 +1026,6 @@ class BeckmannProblem(darsia.EMD):
         # Cache the reduced jacobian
         self.reduced_jacobian = self.jacobian_subblock + schur_complement
         """sps.csc_matrix: reduced jacobian incl. Schur complement"""
-
-    def eliminate_lagrange_multiplier(
-        self, reduced_jacobian, reduced_residual
-    ) -> tuple:
-        """Eliminate the lagrange multiplier from the reduced system.
-
-        Employ a Schur complement/block Gauss elimination approach.
-
-        Args:
-            reduced_jacobian (sps.csc_matrix): reduced jacobian
-            reduced_residual (np.ndarray): reduced residual
-
-        Returns:
-            tuple: fully reduced jacobian, fully reduced residual
-
-        """
-        # Make sure the setup routine has been called
-        if not hasattr(self, "fully_reduced_jacobian"):
-            self._setup_eliminate_lagrange_multiplier()
-            assert hasattr(self, "fully_reduced_jacobian")
-
-        # Make sure the jacobian is a CSC matrix
-        assert isinstance(
-            reduced_jacobian, sps.csc_matrix
-        ), "Jacobian should be a CSC matrix."
-
-        # Effective Gauss-elimination for the particular case of the lagrange multiplier
-        self.fully_reduced_jacobian.data[:] = np.delete(
-            reduced_jacobian.data.copy(), self.rm_indices
-        )
-        # NOTE: The indices have to be restored if the LU factorization is to be used
-        # FIXME omit if not required
-        self.fully_reduced_jacobian.indices = self.fully_reduced_jacobian_indices.copy()
-
-        # Rhs is not affected by Gauss elimination as it is assumed that the residual
-        # is zero in the constrained cell, and the pressure is zero there as well.
-        # If not, we need to do a proper Gauss elimination on the right hand side!
-        if abs(reduced_residual[-1]) > 1e-6:
-            raise NotImplementedError("Implementation requires residual to be zero.")
-        fully_reduced_residual = reduced_residual[
-            self.fully_reduced_system_indices
-        ].copy()
-
-        return self.fully_reduced_jacobian, fully_reduced_residual
-    
-    def eliminate_lagrange_multiplier_lhs(
-        self, reduced_jacobian
-    ) -> tuple:
-        """Eliminate the lagrange multiplier from the reduced system.
-
-        Employ a Schur complement/block Gauss elimination approach.
-
-        Args:
-            reduced_jacobian (sps.csc_matrix): reduced jacobian
-            reduced_residual (np.ndarray): reduced residual
-
-        Returns:
-            tuple: fully reduced jacobian, fully reduced residual
-
-        """
-        # Make sure the setup routine has been called
-        if not hasattr(self, "fully_reduced_jacobian"):
-            self._setup_eliminate_lagrange_multiplier()
-            assert hasattr(self, "fully_reduced_jacobian")
-
-        # Make sure the jacobian is a CSC matrix
-        assert isinstance(
-            reduced_jacobian, sps.csc_matrix
-        ), "Jacobian should be a CSC matrix."
-
-        # Effective Gauss-elimination for the particular case of the lagrange multiplier
-        self.fully_reduced_jacobian.data[:] = np.delete(
-            reduced_jacobian.data.copy(), self.rm_indices
-        )
-        # NOTE: The indices have to be restored if the LU factorization is to be used
-        # FIXME omit if not required
-        self.fully_reduced_jacobian.indices = self.fully_reduced_jacobian_indices.copy()
-        return self.fully_reduced_jacobian
-    
-    def eliminate_lagrange_multiplier_rhs(
-        self, reduced_residual
-        ) -> np.ndarray:
-        # Rhs is not affected by Gauss elimination as it is assumed that the residual
-        # is zero in the constrained cell, and the pressure is zero there as well.
-        # If not, we need to do a proper Gauss elimination on the right hand side!
-        if abs(reduced_residual[-1]) > 1e-6:
-            raise NotImplementedError("Implementation requires residual to be zero.")
-        fully_reduced_residual = reduced_residual[
-            self.fully_reduced_system_indices
-        ].copy()
-        return fully_reduced_residual
-
-    def _setup_eliminate_lagrange_multiplier(self) -> None:
-        """Additional setup of infrastructure for fully reduced systems.
-
-        Here, the Lagrange multiplier is eliminated through Gauss elimination. It is
-        implicitly assumed, that the flux block is eliminated already.
-
-        """
-        # Make sure the setup routine has been called
-        assert hasattr(
-            self, "reduced_jacobian"
-        ), "Need to call setup_eliminate_flux() first."
-
-        # Find row entries to be removed
-        rm_row_entries = np.arange(
-            self.reduced_jacobian.indptr[self.constrained_cell_flat_index],
-            self.reduced_jacobian.indptr[self.constrained_cell_flat_index + 1],
-        )
-
-        # Find column entries to be removed
-        rm_col_entries = np.where(
-            self.reduced_jacobian.indices == self.constrained_cell_flat_index
-        )[0]
-
-        # Collect all entries to be removes
-        rm_indices = np.unique(
-            np.concatenate((rm_row_entries, rm_col_entries)).astype(int)
-        )
-        # Cache for later use in eliminate_lagrange_multiplier
-        self.rm_indices = rm_indices
-        """np.ndarray: indices to be removed in the reduced system"""
-
-        # Identify rows to be reduced
-        rm_rows = [
-            np.max(np.where(self.reduced_jacobian.indptr <= index)[0])
-            for index in rm_indices
-        ]
-
-        # Reduce data - simply remove
-        fully_reduced_jacobian_data = np.delete(self.reduced_jacobian.data, rm_indices)
-
-        # Reduce indices - remove and shift
-        fully_reduced_jacobian_indices = np.delete(
-            self.reduced_jacobian.indices, rm_indices
-        )
-        fully_reduced_jacobian_indices[
-            fully_reduced_jacobian_indices > self.constrained_cell_flat_index
-        ] -= 1
-
-        # Reduce indptr - shift and remove
-        # NOTE: As only a few entries should be removed, this is not too expensive
-        # and a for loop is used
-        fully_reduced_jacobian_indptr = self.reduced_jacobian.indptr.copy()
-        for row in rm_rows:
-            fully_reduced_jacobian_indptr[row + 1 :] -= 1
-        fully_reduced_jacobian_indptr = np.unique(fully_reduced_jacobian_indptr)
-
-        # Make sure two rows are removed and deduce shape of reduced jacobian
-        assert (
-            len(fully_reduced_jacobian_indptr) == len(self.reduced_jacobian.indptr) - 2
-        ), "Two rows should be removed."
-        fully_reduced_jacobian_shape = (
-            len(fully_reduced_jacobian_indptr) - 1,
-            len(fully_reduced_jacobian_indptr) - 1,
-        )
-
-        # Cache the fully reduced jacobian
-        self.fully_reduced_jacobian = sps.csc_matrix(
-            (
-                fully_reduced_jacobian_data,
-                fully_reduced_jacobian_indices,
-                fully_reduced_jacobian_indptr,
-            ),
-            shape=fully_reduced_jacobian_shape,
-        )
-        """sps.csc_matrix: fully reduced jacobian"""
-
-        # Cache the indices and indptr
-        self.fully_reduced_jacobian_indices = fully_reduced_jacobian_indices.copy()
-        """np.ndarray: indices of the fully reduced jacobian"""
-
-        self.fully_reduced_jacobian_indptr = fully_reduced_jacobian_indptr.copy()
-        """np.ndarray: indptr of the fully reduced jacobian"""
-
-        self.fully_reduced_jacobian_shape = fully_reduced_jacobian_shape
-        """tuple: shape of the fully reduced jacobian"""
-
-        # ! ---- Identify inclusions (index arrays) ----
-
-        # Define reduced system indices wrt full system
-        reduced_system_indices = np.concatenate(
-            [self.pressure_indices, self.lagrange_multiplier_indices]
-        )
-
-        # Define fully reduced system indices wrt reduced system - need to remove cell
-        # (and implicitly lagrange multiplier)
-        self.fully_reduced_system_indices = np.delete(
-            np.arange(self.grid.num_cells), self.constrained_cell_flat_index
-        )
-        """np.ndarray: indices of the fully reduced system in terms of reduced system"""
-
-        # Define fully reduced system indices wrt full system
-        self.fully_reduced_system_indices_full = reduced_system_indices[
-            self.fully_reduced_system_indices
-        ]
-        """np.ndarray: indices of the fully reduced system in terms of full system"""
 
     def _compute_flux_update(self, solution: np.ndarray, rhs: np.ndarray) -> np.ndarray:
         """Compute the flux update from the solution.
@@ -1323,7 +1081,7 @@ class BeckmannProblem(darsia.EMD):
             int: total number of degrees of freedom
 
         """
-        return self.grid.num_faces + self.grid.num_cells + 1
+        return self.grid.num_faces + self.grid.num_cells
 
     def flat_view(self, img: np.ndarray) -> np.ndarray:
         """Flatten the image to a vector.
@@ -1349,11 +1107,11 @@ class BeckmannProblem(darsia.EMD):
         """
         assert len(vector) in [
             self.grid.num_faces + self.grid.num_cells,
-            self.grid.num_faces + self.grid.num_cells + 1,
+            self.grid.num_faces + self.grid.num_cells,
         ], (
             f"Vector has wrong length {len(vector)} instead of "
             f"{self.grid.num_faces + self.grid.num_cells} or "
-            f"{self.grid.num_faces + self.grid.num_cells + 1}."
+            f"{self.grid.num_faces + self.grid.num_cells}."
         )
         return vector[self.flux_slice]
 
@@ -1369,6 +1127,6 @@ class BeckmannProblem(darsia.EMD):
         """
         assert len(vector) in [
             self.grid.num_faces + self.grid.num_cells,
-            self.grid.num_faces + self.grid.num_cells + 1,
+            self.grid.num_faces + self.grid.num_cells,
         ], "Vector has wrong length."
         return vector[self.pressure_slice]
