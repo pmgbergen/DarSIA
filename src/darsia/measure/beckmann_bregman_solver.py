@@ -349,7 +349,9 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
             # Update distance and flux norm for reference
             distance = self.l1_dissipation(flux)
-            flux_norm = np.linalg.norm(flux, 2)
+            # Safeguard against division by zero when normalising the increment
+            # (in particular at iteration 0, where flux may be identically zero).
+            flux_norm = max(np.linalg.norm(flux, 2), 1e-16)
 
             # Catch nan values
             if np.isnan(distance):
