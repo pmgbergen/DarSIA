@@ -767,6 +767,10 @@ class BeckmannProblem(darsia.EMD):
 
             # Average over the subcells using harmonic averaging
             flat_weighted_flux_norm = hmean(subcell_flux_norm, axis=1)
+            # Avoid division by zero
+            flat_weighted_flux_norm = np.maximum(
+                flat_weighted_flux_norm, self.regularization
+            )
 
             # Combine weights**2 / |weight * flux| on faces
             face_weights = harm_avg_face_weights**2 / flat_weighted_flux_norm
@@ -790,6 +794,11 @@ class BeckmannProblem(darsia.EMD):
                 harm_avg_face_weights, full_face_flux
             )
             norm_weighted_face_flux = np.linalg.norm(weighted_face_flux, 2, axis=1)
+            # Avoid division by zero (this safeguard existed in the pre-refactor code
+            # and was lost in the split into beckmann_problem.py).
+            norm_weighted_face_flux = np.maximum(
+                norm_weighted_face_flux, self.regularization
+            )
 
             # Combine weights**2 / |weight * flux| on faces
             face_weights = harm_avg_face_weights**2 / norm_weighted_face_flux
