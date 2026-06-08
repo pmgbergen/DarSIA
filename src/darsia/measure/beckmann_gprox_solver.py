@@ -63,6 +63,33 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         self.norm_mode = self.options.get("norm_mode", "l2")
         """str: mode for computing the norm: l2 or manhattan"""
 
+        # ``update_kantorovich_potential`` controls whether the Kantorovich
+        # potential is refreshed inside the PDHG loop by re-solving the
+        # transport-density-weighted Poisson problem. Supported modes:
+        #   "none"     : never update (default; matches the historical loop).
+        #   "adaptive" : update only when the relative residual of the current
+        #                potential against the current weighted Laplacian
+        #                exceeds ``update_kantorovich_potential_tol`` (default
+        #                1e-1).
+        #   "all"      : update at every iteration.
+        # The wall-clock time spent on these updates is collected in the
+        # convergence history under ``time_kantorovich_potential`` and is
+        # intentionally excluded from the run-time totals.
+        self.update_kantorovich_potential_mode = self.options.get(
+            "update_kantorovich_potential", "none"
+        )
+        assert self.update_kantorovich_potential_mode in (
+            "none",
+            "adaptive",
+            "all",
+        ), (
+            "update_kantorovich_potential must be one of 'none', 'adaptive', 'all';"
+            f" got {self.update_kantorovich_potential_mode!r}"
+        )
+        self.update_kantorovich_potential_tol = self.options.get(
+            "update_kantorovich_potential_tol", 1e-1
+        )
+
         self._setup_variables()
         self._setup_l1_quadrature()
         self._setup_discretization()
@@ -211,7 +238,11 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         mass_conservation_residual = self.div.dot(self.flux) - self.integrated_mass_diff
 
         time_extra = time.time() - tic
-        stats_i = {"time_poisson": time_poisson, "time_extra": time_extra}
+        stats_i = {
+            "time_poisson": time_poisson,
+            "time_extra": time_extra,
+            "time_kantorovich_potential": 0.0,
+        }
 
         # Initialize container for storing the convergence history
         self.convergence_history = {
@@ -222,6 +253,7 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
             "primal": [],
             "dual": [],
             "run_time": [time_poisson + time_extra],
+            "time_kantorovich_potential": [0.0],
             "mass_conservation_residual": [
                 np.linalg.norm(mass_conservation_residual, 2) / mass_ref
             ],
@@ -289,12 +321,17 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
             # new flux
             self.flux[:] = u[:] + self.gradient_poisson_pressure[:]
 
-            update_kantorovich_potential = False
-            if update_kantorovich_potential:
-                flat_pressure = self.compute_pressure(self.flux, flat_mass_diff)
-                grad_pressure = self.inverse_mass_matrix_faces.dot(
-                    self.grad.dot(flat_pressure)
-                )
+            # Optionally refresh the Kantorovich potential by solving the
+            # transport-density-weighted Poisson with the current flux.
+            tic_kp = time.time()
+            if self.update_kantorovich_potential_mode == "all":
+                self.compute_kantorovich_potential(flat_mass_diff, self.flux)
+            elif self.update_kantorovich_potential_mode == "adaptive":
+                if self._weighted_poisson_relative_residual(flat_mass_diff) > (
+                    self.update_kantorovich_potential_tol
+                ):
+                    self.compute_kantorovich_potential(flat_mass_diff, self.flux)
+            time_kantorovich_potential = time.time() - tic_kp
 
             # Second step of the PDHG
             # new_p = argmax_{|p|\leq 1} (p, u_{n+1})_{L^2} + \frac{1}{2 sigma}|p-p_n|_{L^2}^2
@@ -342,7 +379,11 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
             stats_i = {
                 "time_poisson": time_poisson,
                 "time_extra": time_extra,
+                "time_kantorovich_potential": time_kantorovich_potential,
             }
+            convergence_history["time_kantorovich_potential"].append(
+                time_kantorovich_potential
+            )
 
             new_distance = self.primal_value
 
@@ -677,6 +718,28 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
 
         return Poisson_solver
 
+    def _weighted_poisson_relative_residual(
+        self, flat_mass_diff: np.ndarray
+    ) -> float:
+        """Relative residual of the current Kantorovich potential against the
+        transport-density-weighted Poisson problem at the current flux.
+
+        Cheap (a few sparse mat-vec products) — used to decide whether the
+        potential is stale enough to be worth resolving when
+        ``update_kantorovich_potential == "adaptive"``.
+        """
+        full_flux = self.full_flux_reconstructor(self.flux)
+        transport_density_faces = np.linalg.norm(full_flux, axis=1) + 1e-8
+        Ap = self.div.dot(
+            transport_density_faces
+            * self.inverse_mass_matrix_faces.dot(
+                self.grad.dot(self.kantorovich_potential)
+            )
+        )
+        integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
+        ref = max(float(np.linalg.norm(integrated_mass_diff)), 1e-16)
+        return float(np.linalg.norm(Ap - integrated_mass_diff)) / ref
+
     def leray_projection(self, p: np.ndarray) -> np.ndarray:
         """Leray projection of a vector fiels
 
@@ -708,7 +771,13 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         total_timings = {
             "poisson": sum([t["time_poisson"] for t in timings]),
             "extra": sum([t["time_extra"] for t in timings]),
+            "kantorovich_potential": sum(
+                t.get("time_kantorovich_potential", 0.0) for t in timings
+            ),
         }
+        # Note: ``total`` intentionally excludes ``kantorovich_potential`` so
+        # the diagnostic K-potential updates are not charged to the PDHG run
+        # time. The K-potential time is available as its own key.
         total_timings["total"] = total_timings["poisson"] + total_timings["extra"]
 
         return total_timings
