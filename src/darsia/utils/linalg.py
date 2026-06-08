@@ -24,10 +24,10 @@ class CG:
         self.scipy_options = scipy_options
 
     def solve(self, b: np.ndarray, **kwargs) -> np.ndarray:
-        if len(kwargs) > 0:
-            options = kwargs
-        else:
-            options = self.scipy_options
+        # Merge setup-time options with per-call kwargs so callers can pass
+        # ``x0=`` (or any other per-call override) without losing the
+        # preconditioner / tolerance / maxiter set up at construction.
+        options = {**self.scipy_options, **kwargs}
         return cg(self.A, b, **options)[0]
 
 
