@@ -372,6 +372,11 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
                 abs(self.dual_value - self.primal_value) / self.primal_value
             )
             time_extra += time.time() - tic
+            # ``time_extra`` is measured over the whole iteration body and so
+            # already includes the K-potential refresh interval. Subtract it
+            # here so each second of wall time is charged to exactly one
+            # bucket (gprox time_extra vs. diagnostic K-potential).
+            time_extra -= time_kantorovich_potential
 
             convergence_history["primal"].append(self.primal_value)
             convergence_history["dual"].append(self.dual_value)
@@ -775,9 +780,15 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
                 t.get("time_kantorovich_potential", 0.0) for t in timings
             ),
         }
-        # Note: ``total`` intentionally excludes ``kantorovich_potential`` so
-        # the diagnostic K-potential updates are not charged to the PDHG run
-        # time. The K-potential time is available as its own key.
-        total_timings["total"] = total_timings["poisson"] + total_timings["extra"]
+        # ``total`` accounts for every solver-side wall-clock cost, including
+        # the optional diagnostic Kantorovich-potential refresh. Consumers
+        # that want a gprox-only timing can subtract
+        # ``kantorovich_potential`` (or read the dedicated key in the
+        # convergence history).
+        total_timings["total"] = (
+            total_timings["poisson"]
+            + total_timings["extra"]
+            + total_timings["kantorovich_potential"]
+        )
 
         return total_timings
