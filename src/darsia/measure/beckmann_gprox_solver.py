@@ -145,10 +145,22 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         """sps.csc_matrix: inverse of the (diagonal) of mass matrix on faces:"""
         """flat fluxes -> flat fluxes"""
 
-        linear_solver_options = self.options.get("linear_solver_options", {})
-        rtol = linear_solver_options.get("rtol", 1e-6)
-        self.Poisson_solver = self.setup_poisson_solver("pure_poisson", rtol=rtol)
-        """ sps.linalg.KSP: Poisson solver"""
+        # Read the gprox-specific Poisson solver options. Note that gprox uses
+        # ``poisson_solver``/``poisson_solver_options`` for the unweighted
+        # Poisson solved every PDHG iteration, and ``tdens_poisson_solver``
+        # for the transport-density-weighted Poisson (used inside
+        # :meth:`compute_kantorovich_potential`).
+        poisson_solver_type = self.options.get("poisson_solver", "cg")
+        poisson_solver_options = self.options.get("poisson_solver_options", {})
+        rtol = poisson_solver_options.get("rtol", 1e-6)
+        maxiter = poisson_solver_options.get("maxiter", 100)
+        self.Poisson_solver = self.setup_poisson_solver(
+            "pure_poisson",
+            linear_solver_type=poisson_solver_type,
+            linear_solver_rtol=rtol,
+            linear_solver_maxiter=maxiter,
+        )
+        """sps.linalg.KSP: Poisson solver for the inner PDHG Leray projection"""
 
         self.full_flux_reconstructor = darsia.FVFullFaceReconstruction(self.grid)
         """darsia.FVFullFaceReconstruction: full flux reconstructor"""
@@ -485,10 +497,20 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         """
         full_flux = self.full_flux_reconstructor(flux)
         transport_density_faces = np.linalg.norm(full_flux, axis=1)
+        # The transport-density-weighted Poisson uses its own option keys.
+        tdens_solver_type = self.options.get("tdens_poisson_solver", "cg")
+        tdens_solver_options = self.options.get("tdens_poisson_solver_options", {})
+        rtol = tdens_solver_options.get("rtol", tdens_solver_options.get("tol", tol))
+        maxiter = tdens_solver_options.get("maxiter", 100)
+        # Floor the transport density so faces with zero flux still yield a
+        # well-defined Laplacian (otherwise hypre returns an indefinite PC).
+        min_tdens = 1e-8
         weighted_Poisson_solver = self.setup_poisson_solver(
             "transport_density_weighted_poisson",
-            rtol=tol,
-            permeability_faces=transport_density_faces,
+            linear_solver_type=tdens_solver_type,
+            linear_solver_rtol=rtol,
+            linear_solver_maxiter=maxiter,
+            permeability_faces=transport_density_faces + min_tdens,
         )
         integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
         pressure = weighted_Poisson_solver.solve(
@@ -557,55 +579,67 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         user_defined_amg_options = self.options.get("amg_options", {})
         self.amg_options.update(user_defined_amg_options)
 
-    def setup_poisson_solver(self, solver_prefix, rtol=1e-6, permeability_faces=None):
-        """Return the Poisson solver.
+    def setup_poisson_solver(
+        self,
+        solver_prefix: str,
+        linear_solver_type: str = "cg",
+        linear_solver_rtol: float = 1e-6,
+        linear_solver_maxiter: int = 100,
+        permeability_faces: Optional[np.ndarray] = None,
+    ):
+        """Return a Poisson solver of the requested type.
 
         Args:
-            permeability_faces (np.ndarray, optional): permeability faces. Defaults to None.
+            solver_prefix (str): name used by the KSP backend.
+            linear_solver_type (str): one of "cg", "ksp", "dct". The caller is
+                responsible for reading the right option key from
+                ``self.options`` (``poisson_solver`` for the unweighted Poisson
+                set up at problem construction, ``tdens_poisson_solver`` for
+                the transport-density-weighted Poisson solved in
+                :meth:`compute_kantorovich_potential`).
+            linear_solver_rtol (float): relative tolerance.
+            linear_solver_maxiter (int): maximum iterations.
+            permeability_faces (np.ndarray, optional): face permeabilities for
+                the weighted Poisson problem. Defaults to None (unweighted).
 
         Returns:
-            darsia.linalg.KSP: Poisson solver
+            Poisson solver
 
         """
-
-        self.linear_solver_type = self.options.get("linear_solver", "cg")
-        """str: type of linear solver"""
-
         # Safety checks
-        assert self.linear_solver_type in [
+        assert linear_solver_type in [
             "cg",
             "ksp",
             "dct",
-        ], f"Linear solver {self.linear_solver_type} not supported."
-        linear_solver_options = self.options.get("linear_solver_options", {})
+        ], f"Linear solver {linear_solver_type} not supported."
 
-        if permeability_faces is not None and self.linear_solver_type == "dct":
+        if permeability_faces is not None and linear_solver_type == "dct":
             raise ValueError(
                 "DCT solver does not support permeability faces. Use CG or KSP instead."
             )
 
-        # Define CG solver
+        if linear_solver_type == "dct":
+            # dct is matrix-free
+            from darsia.utils.linear_solvers.dct import DCTSolver
+            Poisson_solver = DCTSolver(self.grid)
+            return Poisson_solver
+
+        # Pressure nullspace for the CG/KSP solvers (constant mode).
         kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(
             self.grid.num_cells
         )
 
-        if self.linear_solver_type == "dct":
-            # dct is matrix-free
-            pass
+        if permeability_faces is None:
+            Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad
         else:
-            if permeability_faces is None:
-                Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad
-            else:
-                Laplacian_matrix = (
-                    self.div
-                    * sps.diags(permeability_faces)
-                    * self.inverse_mass_matrix_faces
-                    * self.grad
-                )
+            Laplacian_matrix = (
+                self.div
+                * sps.diags(permeability_faces)
+                * self.inverse_mass_matrix_faces
+                * self.grad
+            )
 
-        #
-        if self.linear_solver_type == "cg":
-            # Define CG solver
+        if linear_solver_type == "cg":
             Poisson_solver = darsia.linalg.CG(Laplacian_matrix)
 
             # Define AMG preconditioner
@@ -618,33 +652,27 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
                     Laplacian_matrix, **self.amg_options
                 ).aspreconditioner(cycle="V")
 
-            # Define solver options
-            maxiter = linear_solver_options.get("maxiter", 100)
             solver_options = {
-                "rtol": rtol,
+                "rtol": linear_solver_rtol,
                 "atol": 1e-15,
-                "maxiter": maxiter,
+                "maxiter": linear_solver_maxiter,
                 "M": amg,
             }
             Poisson_solver.setup(solver_options)
 
-        elif self.linear_solver_type == "ksp":
+        elif linear_solver_type == "ksp":
             Poisson_solver = darsia.linalg.KSP(
                 Laplacian_matrix,
                 nullspace=[kernel],
                 appctx={},
                 solver_prefix=solver_prefix,
             )
-            maxiter = linear_solver_options.get("maxiter", 100)
             ksp_ctrl = {
                 "ksp_type": "cg",
-                "ksp_rtol": rtol,
-                "ksp_max_it": maxiter,
+                "ksp_rtol": linear_solver_rtol,
+                "ksp_max_it": linear_solver_maxiter,
                 "pc_type": "hypre",
-                # "ksp_monitor_true_residual" : None
             }
-            # if permeability_faces is not None:
-            #    ksp_ctrl["ksp_monitor_true_residual"] = None
             Poisson_solver.setup(ksp_ctrl)
 
         return Poisson_solver
