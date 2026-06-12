@@ -1,0 +1,14 @@
+[slider_settings]
+value1 = 8
+value2 = 5
+value3 = 6
+
+[input_settings]
+value1 = 8
+value2 = 1
+value3 = 6
+
+[menu_settings]
+value1 = "Option 3"
+value2 = "Option 2"
+value3 = "Option 3"
