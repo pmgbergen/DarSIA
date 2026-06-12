@@ -281,20 +281,21 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
         self.calibrate(self.characteristic_colors, self.concentrations)
 
     def calibrate_from_samples(
-            self,
-            counter,
-            calibration_image,
-            calib_points,
-            mask: Optional[darsia.Image] = None,
-            width: int = 25,
-            num_clusters: int = 5,
-            reset: bool = False,
-        ) -> None:
-            """
-            Use last calibration image to define support points.
+        self,
+        counter,
+        calibration_image,
+        calib_points,
+        mask: Optional[darsia.Image] = None,
+        width: int = 25,
+        num_clusters: int = 5,
+        reset: bool = False,
+    ) -> None:
+        """
+                    Use last calibration image to define support points.
 
-            Use all to fix the support points assignment.
-NOTE: This function is mostly a copy from `calibrate_from_image` and may allow for merging.
+                    Use all to fix the support points assignment.
+        NOTE: This function is mostly a copy from `calibrate_from_image` and may allow
+        for merging.
             Args:
                 calibration_image (Image): calibration image for extracting colors
                 mask (Image): boolean image-mask acting as mask for the calibration image
@@ -305,86 +306,86 @@ NOTE: This function is mostly a copy from `calibrate_from_image` and may allow f
                     the calibration is appended, allowing multi-step calibration, based on
                     different images.
 
-            """
-            # TODO include possibility to deactivate untrustful support points
+        """
+        # TODO include possibility to deactivate untrustful support points
 
-            # ! ---- STEP 0: Deactivate model and restoration
+        # ! ---- STEP 0: Deactivate model and restoration
 
-            model_cache = self.model
-            restoration_cache = self.restoration
-            self.model = None
-            self.restoration = None
+        model_cache = self.model
+        restoration_cache = self.restoration
+        self.model = None
+        self.restoration = None
 
-            # ! ---- STEP 1: Calibrate the support points (x) based on some images
+        # ! ---- STEP 1: Calibrate the support points (x) based on some images
 
-            # Initialize data collections
-            if reset:
-                self.characteristic_colors = []
-                self.concentrations = []
-            
-            
-            for i, mask in enumerate(darsia.Masks(self.labels)):
+        # Initialize data collections
+        if reset:
+            self.characteristic_colors = []
+            self.concentrations = []
 
-                #hardcodes the location of the samples instead of asking the user to click on the image
-                samples = calib_points[i]["samples"] 
+        for i, mask in enumerate(darsia.Masks(self.labels)):
 
-                concentrations = calib_points[i]["concentration"][counter]   
-                # counter accounts for the number of the image getting processed
+            # hardcodes the location of the samples instead of asking the
+            # user to click on the image
+            samples = calib_points[i]["samples"]
+
+            concentrations = calib_points[i]["concentration"][counter]
+            # counter accounts for the number of the image getting processed
+
+            # Fetch characteristic colors from samples
+            # Apply concentration analysis modulo the model and the restoration
+            pre_concentration = super().__call__(calibration_image)
+
+            characteristic_colors = darsia.extract_characteristic_data(
+                signal=pre_concentration.img,
+                mask=mask.img if mask is not None else None,
+                samples=samples,
+                show_plot=self.show_plot,
+                num_clusters=num_clusters,
+            )
+
+            # Use baseline image to collect 0-data
+            if self.relative:
+                # Define zero data
+                concentrations_base = len(samples) * [0]
+
+                # Apply concentration analysis modulo the model and the restoration
+                pre_concentration_base = self(self.base)
 
                 # Fetch characteristic colors from samples
-                # Apply concentration analysis modulo the model and the restoration
-                pre_concentration = super().__call__(calibration_image)
-
-                characteristic_colors = darsia.extract_characteristic_data(
-                    signal=pre_concentration.img,
+                characteristic_colors_base = darsia.extract_characteristic_data(
+                    signal=pre_concentration_base.img,
                     mask=mask.img if mask is not None else None,
                     samples=samples,
                     show_plot=self.show_plot,
                     num_clusters=num_clusters,
                 )
 
-                # Use baseline image to collect 0-data
-                if self.relative:
-                    # Define zero data
-                    concentrations_base = len(samples) * [0]
-
-                    # Apply concentration analysis modulo the model and the restoration
-                    pre_concentration_base = self(self.base)
-
-                    # Fetch characteristic colors from samples
-                    characteristic_colors_base = darsia.extract_characteristic_data(
-                        signal=pre_concentration_base.img,
-                        mask=mask.img if mask is not None else None,
-                        samples=samples,
-                        show_plot=self.show_plot,
-                        num_clusters=num_clusters,
+                # Collect data and add zero vector
+                characteristic_colors = np.vstack(
+                    (
+                        np.zeros((1, 3), dtype=characteristic_colors.dtype),
+                        characteristic_colors_base,
+                        characteristic_colors,
                     )
+                )
+                concentrations = np.array([0] + concentrations_base + concentrations)
 
-                    # Collect data and add zero vector
-                    characteristic_colors = np.vstack(
-                        (
-                            np.zeros((1, 3), dtype=characteristic_colors.dtype),
-                            characteristic_colors_base,
-                            characteristic_colors,
-                        )
-                    )
-                    concentrations = np.array([0] + concentrations_base + concentrations)
+            # Cache data or append if already existing
+            if len(self.characteristic_colors) > i:
+                self.characteristic_colors[i] = np.vstack(
+                    (characteristic_colors, self.characteristic_colors[i])
+                )
+                self.concentrations[i] = np.hstack(
+                    (concentrations, self.concentrations[i])
+                )
+            else:
+                self.characteristic_colors.append(characteristic_colors)
+                self.concentrations.append(concentrations)
 
-                # Cache data or append if already existing
-                if len(self.characteristic_colors) > i:
-                    self.characteristic_colors[i] = np.vstack(
-                        (characteristic_colors, self.characteristic_colors[i])
-                    )
-                    self.concentrations[i] = np.hstack(
-                        (concentrations, self.concentrations[i])
-                    )
-                else:
-                    self.characteristic_colors.append(characteristic_colors)
-                    self.concentrations.append(concentrations)
+        # Reinstall the model and the restoration
+        self.model = model_cache
+        self.restoration = restoration_cache
 
-            # Reinstall the model and the restoration
-            self.model = model_cache
-            self.restoration = restoration_cache
-
-            # Update kernel interpolation
-            self.calibrate(self.characteristic_colors, self.concentrations)
+        # Update kernel interpolation
+        self.calibrate(self.characteristic_colors, self.concentrations)
