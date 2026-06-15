@@ -1,0 +1,77 @@
+# Common configuration for all runs in the glass beads project
+
+# Dimensions of the rig
+[rig]
+dim = 2       # dimension of the model
+width = 2.745 # width of the model in m
+height = 1.5  # height of the model in m
+
+# Depth measurements
+[depth]
+measurements = "./data_example/depth_measurements.csv"
+
+# Labels based on segmentation of the reference image (e.g., obtained from manual annotation or from a segmentation routine)
+[labeling]
+colored_image = "./data_example/refined_segmented_DSC00160_a.png"
+#colored_image = "./data/clean_segmented_DSC00160.png"
+
+# Facies properties and mapping to labels in the segmented image
+[facies]
+props = "./data_example/facies.xlsx" # excel file with facies properties
+id = [0, 1, 2, 3, 4, 5, 6, 7]
+[facies.0] # Facies (id as in the excel file)
+labels = [0] # labels in the label image obtained from segmentation
+[facies.1]
+labels = [1]
+[facies.2]
+labels = [2]
+[facies.3]
+labels = [3]
+[facies.4]
+labels = [4]
+[facies.5]
+labels = [5]
+[facies.6]
+labels = [6]
+[facies.7]
+labels = [7]
+
+# Active and inactive corrections
+[corrections]
+# TODO: allow to control which corrections are active and which are not, e.g., for testing purposes
+#active = [
+#    "type",
+#    "resize",
+#    "drift",
+#    "curvature",
+#] #, "drift", "color_correction", "illumination_correction"]
+
+# Type and size correction (for speed)
+[corrections.type]
+type = "float32"
+
+# TODO: Not supported for now!
+#[corrections.resize]
+#scale = 0.5
+
+[corrections.drift]
+colorchecker = "upper_left"
+
+# Calibration of curvature
+[corrections.curvature.init]
+horizontal_bulge = 1e-9
+vertical_bulge = 0.0
+[corrections.curvature.crop]
+pts_src = [[381, 158], [4920, 137], [4938, 7732], [425, 7734]]
+width = 2.745
+height = 1.5
+[corrections.curvature.bulge]
+horizontal_bulge = -1.3244902496792662e-09
+vertical_bulge = -4.637586886784494e-09
+horizontal_center_offset = 153
+vertical_center_offset = -342
+[corrections.curvature.stretch]
+horizontal_stretch = -3.606015332647378e-09
+horizontal_center_offset = -579
+vertical_stretch = -0.0
+vertical_center_offset = 405
