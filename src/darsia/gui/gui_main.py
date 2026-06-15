@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (QScrollArea,QMainWindow, QApplication, QLabel, QW
                                QHBoxLayout)
 from PySide6.QtCore import Qt
 import toml
+import ast
 
 
 class MainWindow(QMainWindow):
@@ -83,8 +84,10 @@ class MainWindow(QMainWindow):
             for key, value in inp_val.items():
                 self.get_save_dict(key, value, path + [inp_key], total_dict)
         else:
-            set_dict_value(total_dict, path+[inp_key], inp_val.text())
-
+            try:
+                set_dict_value(total_dict, path+[inp_key], ast.literal_eval(inp_val.text()))
+            except (ValueError, SyntaxError):
+                set_dict_value(total_dict, path+[inp_key], inp_val.text())
 
 
 
