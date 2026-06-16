@@ -75,9 +75,7 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         r_mean, g_mean, b_mean = [], [], []
 
         for i in range(n_baseline_images):
-            ri, gi, bi = self.extract_color_values_patches(
-                self.baseline_images[i]
-            )
+            ri, gi, bi = self.extract_color_values_patches(self.baseline_images[i])
             r.append(ri)
             g.append(gi)
             b.append(bi)
@@ -134,7 +132,7 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
                 roi = image[y0:y1, x0:x1]
 
                 mean_color = cv2.mean(roi)
-                
+
                 # TODO: Consider what if colors are in int.
                 r[i, j] = mean_color[0]
                 g[i, j] = mean_color[1]
@@ -187,9 +185,10 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
             avg_top = np.mean(corr[:lim, col])
             new_corr[:, col] = avg_top
         full_corr = np.vstack((new_corr, corr))
-        extended_corr = cv2.resize(full_corr.astype(np.float32), 
-        (self.width, self.height),
-        interpolation=cv2.INTER_LINEAR,
+        extended_corr = cv2.resize(
+            full_corr.astype(np.float32),
+            (self.width, self.height),
+            interpolation=cv2.INTER_LINEAR,
         )
         return extended_corr
 
@@ -217,9 +216,7 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         g_new = g / self.g_diff
         b_new = b / self.b_diff
 
-        image_calib = cv2.merge(
-            (r_new, g_new, b_new)
-        )
+        image_calib = cv2.merge((r_new, g_new, b_new))
 
         return image_calib
 
@@ -245,7 +242,6 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
                 "dw": self.dw,
                 "height": self.height,
                 "width": self.width,
-
             },
         )
         print(f"Correction coefficients saved to {path}")

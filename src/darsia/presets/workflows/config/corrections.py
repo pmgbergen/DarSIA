@@ -1153,6 +1153,12 @@ class CorrectionsConfig:
             else:
                 self.inactive[name] = parsed
 
+        patchwise_illumination_sec = sec.get("patchwise_illumination")
+        if patchwise_illumination_sec:
+            self.patchwise_illumination = PatchwiseIlluminationCorrectionConfig().load(
+                patchwise_illumination_sec
+            )
+
         # Identify active corrections
         active_corrections = sec.get("active_corrections", None)
         if active_corrections is not None:
