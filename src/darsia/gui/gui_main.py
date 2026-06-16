@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (QScrollArea,QMainWindow, QApplication, QLabel, QWidget, QVBoxLayout, QPushButton,
                                QLineEdit, QTextEdit, QSlider, QProgressBar, QComboBox, QListWidget, QRadioButton,
-                               QHBoxLayout)
+                               QHBoxLayout, QTabWidget)
 from PySide6.QtCore import Qt
 import toml
 import ast
@@ -11,51 +11,58 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Darsia")
 
-        # Create main container for scroll area
+        # Create main container that will hold settings
         main_container = QWidget()
         main_layout = QVBoxLayout(main_container)
+        tabs = QTabWidget()
+        setup_container = QWidget()
+        calibration_container = QWidget()
+        analysis_container = QWidget()
+        tabs.addTab(setup_container, "Setup")
+        tabs.addTab(calibration_container, "Calibration")
+        tabs.addTab(analysis_container, "Analysis")
 
+
+        first_layout = QVBoxLayout(setup_container)
         label = QLabel("Settings:")
-        main_layout.addWidget(label)
+        first_layout.addWidget(label)
         self.subsections = {}
 
         for key, value in config_dict.items():
-            #local_container = QWidget()
-            #local_layout = QVBoxLayout(local_container)
-            #label = QLabel(key)
-            #local_layout.addWidget(label)
-
             self.subsections[key] = {}
-            self.unravel_settings(key, value, [], main_layout)
-            """
-            for loc_key, loc_value in value.items():
-                setting_container = QWidget()
-                setting_layout = QHBoxLayout(setting_container)
-                input_label = QLabel(loc_key)
-                line_edit = QLineEdit()
-                line_edit.setText(str(loc_value))
-                self.subsections[key][loc_key] = line_edit
-                setting_layout.addWidget(input_label)
-                setting_layout.addWidget(line_edit)
-                local_layout.addWidget(setting_container)
-            """
-            #main_layout.addWidget(local_container)
+            self.unravel_settings(key, value, [], first_layout)
 
-        # Add scroll area
+
+        # Add scroll area for settings
         scroll_area = QScrollArea()
-        scroll_area.setWidget(main_container)
+        scroll_area.setWidget(tabs)
         scroll_area.setWidgetResizable(True)
 
-        # Create central widget and set scroll area
-        container = QWidget()
-        self.setCentralWidget(container)
-        layout = QVBoxLayout(container)
-        layout.addWidget(scroll_area)
+        # Create logging container with its own scroll area
+        log_container = QWidget()
+        log_layout = QVBoxLayout(log_container)
+        log_label = QLabel("Logging:")
+        log_layout.addWidget(log_label)
+
+        # Add a text edit for logging output
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        log_layout.addWidget(self.log_text)
+
+        log_scroll_area = QScrollArea()
+        log_scroll_area.setWidget(log_container)
+        log_scroll_area.setWidgetResizable(True)
+        log_scroll_area.setMaximumHeight(150)
 
         button = QPushButton("Save Settings")
         button.clicked.connect(self.saveSettings)
 
-        layout.addWidget(button)
+        # Create central widget with all components
+        self.setCentralWidget(main_container)
+        main_layout.addWidget(scroll_area)  # Settings scroll area
+        main_layout.addWidget(button)     # Save button
+        main_layout.addWidget(log_scroll_area)  # Logging scroll area (separate)
+
 
 
     def saveSettings(self):
@@ -73,7 +80,7 @@ class MainWindow(QMainWindow):
 
         with open("test.toml", "w") as f:
             toml.dump(total_dict, f)
-        print("Settings saved")
+        self.print_log("Settings saved")
 
     def get_save_dict(self, inp_key, inp_val, path, total_dict):
         if type(inp_val) == dict:
@@ -120,6 +127,10 @@ class MainWindow(QMainWindow):
             setting_layout.addWidget(input_label)
             setting_layout.addWidget(line_edit)
             parent_layout.addWidget(setting_container)
+
+    def print_log(self, text):
+        self.log_text.append(text)
+        print(text)
 
 
 def set_dict_value(inp_dict, path, value):
