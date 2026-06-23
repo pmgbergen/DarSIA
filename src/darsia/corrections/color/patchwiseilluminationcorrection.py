@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 
 class PatchwiseIlluminationCorrection:
+    """Class for performing patchwise illumination correction on images using baseline images."""
 
     def __init__(
         self,
@@ -12,23 +13,25 @@ class PatchwiseIlluminationCorrection:
         limit: int = 1450,
         show_images: bool = True,
         saving_path: str = "./correction_coefficients.npz", 
+        eps: float = 1e-6
     ):
 
         self.nw = nw
         self.limit = limit
         self.saving_path = saving_path
+        self.eps = eps
 
         self.img = cv2.imread(image_path)
         if self.img is None:
-            raise ValueError(f"Image introuvable : {image_path}")
+            raise ValueError(f"Image not found : {image_path}")
 
         self.baseline1 = cv2.imread(baseline_path1)
         if self.baseline1 is None:
-            raise ValueError(f"Image introuvable : {baseline_path1}")
+            raise ValueError(f"Image not found : {baseline_path1}")
 
         self.baseline2 = cv2.imread(baseline_path2)
         if self.baseline2 is None:
-            raise ValueError(f"Image introuvable : {baseline_path2}")
+            raise ValueError(f"Image not found : {baseline_path2}")
 
         
         self.height, self.width = self.img.shape[:2]
@@ -53,7 +56,7 @@ class PatchwiseIlluminationCorrection:
     def extract_color_values_patches(self, image: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Extract RGB values from image patches.
-
+ 
         Returns:
             Tuple containing R, G, B matrices.
         """
@@ -82,8 +85,9 @@ class PatchwiseIlluminationCorrection:
         return np.array(r), np.array(g), np.array(b)
 
      
-    def correction_coefficient(self, r1, g1, b1, r2, g2, b2):
-        eps = 1e-6
+    def correction_coefficient(self, r1: np.ndarray, g1: np.ndarray, b1: np.ndarray, r2: np.ndarray, g2: np.ndarray, b2: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Calculate correction coefficients based on baseline images."""
+        eps = self.eps
         r_m1 = np.mean(r1)
         g_m1 = np.mean(g1)
         b_m1 = np.mean(b1)
@@ -95,7 +99,8 @@ class PatchwiseIlluminationCorrection:
         b_diff2 = 1 / ((b1**2)/(b1**2+b2**2+eps) * b_m1/(b1+eps) + (b2**2)/(b1**2+b2**2+eps) * b_m2/(b2+eps)+eps)
         return r_diff2, g_diff2, b_diff2
 
-    def correct_array(self, img):
+    def correct_array(self, img: np.ndarray) -> np.ndarray:
+        """Apply patchwise illumination correction to the input image."""
 
         r, g, b = self.extract_color_values_patches(img)
         
@@ -103,21 +108,18 @@ class PatchwiseIlluminationCorrection:
         g_new = g/self.g_diff
         b_new = b/self.b_diff
 
-        image_calib = np.zeros((self.nh, self.nw, 3), dtype=np.uint8)
-        for i in range (self.nh):
-            for j in range(self.nw):
-                image_calib[i, j] = [b_new[i][j], g_new[i][j], r_new[i][j]]
-
-
+        image_calib = cv2.merge((b_new.astype(np.uint8), g_new.astype(np.uint8), r_new.astype(np.uint8)))
         img_rebuilt = cv2.resize(image_calib, (self.width, self.height-self.limit), interpolation=cv2.INTER_LINEAR)
 
         return img_rebuilt
 
     def save(self):
+        """Save correction coefficients to a file."""
         np.savez(self.saving_path, r_diff=self.r_diff, g_diff=self.g_diff, b_diff=self.b_diff)
         print(f"Correction coefficients saved to {self.saving_path}")
 
     def load(self):
+        """Load correction coefficients from a file."""
         data = np.load(self.saving_path)
         self.r_diff = data['r_diff']
         self.g_diff = data['g_diff']

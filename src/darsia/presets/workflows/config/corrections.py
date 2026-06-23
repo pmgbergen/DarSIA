@@ -253,6 +253,8 @@ class PatchwiseIlluminationCorrectionConfig:
     """Whether to show the corrected image during patchwise illumination correction."""
     saving_path: Path = Path("./correction_coefficients.npz")
     """Path to save correction coefficients for patchwise illumination correction."""
+    eps: float = 1e-6
+    """Small constant to avoid division by zero in patchwise illumination correction."""
 
 
 
@@ -273,7 +275,7 @@ class PatchwiseIlluminationCorrectionConfig:
         self.nw = sec.get("nw", self.nw)
         self.show_images = sec.get("show_images", self.show_images)
         self.saving_path = sec.get("saving_path", self.saving_path)
-
+        self.eps = sec.get("eps", self.eps)
         return self
 
       
