@@ -368,10 +368,15 @@ class BeckmannProblem(darsia.EMD):
         self.linear_solver_type = linear_solver_type
         """str: type of linear solver"""
 
-        self.linear_solver = darsia.BeckmannLinearSolverFactory.create(
-            linear_solver_type, self.options, 
-            # arguments used only by the ksp solver, but passed to all for simplicity
-            flux_indices=self.flux_indices, pressure_indices=self.pressure_indices
+        if linear_solver_type == "dct" and self.options.get("formulation") == "flux_reduced":
+            # used only by bregman with fixed relaxation
+            from darsia.utils.linear_solvers.dct import DCTSolver
+            self.linear_solver = DCTSolver(self.grid)
+        else:
+            self.linear_solver = darsia.BeckmannLinearSolverFactory.create(
+                linear_solver_type, self.options, 
+                # arguments used only by the ksp solver, but passed to all for simplicity
+                flux_indices=self.flux_indices, pressure_indices=self.pressure_indices
             )
     
     def _setup_schur_complement_reduction(self) -> None:
@@ -873,7 +878,7 @@ class BeckmannProblem(darsia.EMD):
             ) = self.eliminate_flux(matrix, rhs)
 
             # 2. Build linear solver for reduced system
-            if setup_linear_solver:
+            if setup_linear_solver and self.linear_solver_type != "dct":
                 self.linear_solver.setup(self.reduced_matrix)
 
             # Stop timer to measure setup time
@@ -881,7 +886,14 @@ class BeckmannProblem(darsia.EMD):
 
             # 3. Solve for the pressure and lagrange multiplier
             tic = time.time()
-            solution[self.reduced_system_slice] = self.linear_solver(self.reduced_rhs)
+            if self.linear_solver_type == "dct":
+                # solve removing lagrange multiplier
+                solution_pressure = self.linear_solver.solve(self.reduced_rhs[:-1])
+                solution[self.pressure_slice] = solution_pressure
+                solution[self.lagrange_multiplier_slice] = 0.0
+            else:
+                # solve without removing lagrange multiplier
+                solution[self.reduced_system_slice] = self.linear_solver.solve(self.reduced_rhs)
 
             # 4. Compute flux update
             solution[self.flux_slice] = self._compute_flux_update(solution, rhs)
