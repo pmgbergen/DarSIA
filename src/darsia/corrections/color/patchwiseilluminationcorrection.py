@@ -1,8 +1,12 @@
+"""Patchwise illumination correction module for images."""
+
 import cv2
 import numpy as np
 
+import darsia
 
-class PatchwiseIlluminationCorrection:
+
+class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
     """Class for performing patchwise illumination correction on images."""
 
     def __init__(
