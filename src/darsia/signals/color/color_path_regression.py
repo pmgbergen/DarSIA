@@ -3,7 +3,7 @@
 import copy
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -133,6 +133,7 @@ class LabelColorPathMapRegression:
         ignore: darsia.LabelColorSpectrumMap | darsia.ColorSpectrum | None = None,
         threshold_zero: float = 0.0,
         threshold_significant: float = 0.0,
+        path: Optional[Path] = None,
         verbose: bool = False,
     ) -> darsia.LabelColorSpectrumMap:
         """Get the color spectrum for each label in the image.
@@ -150,6 +151,7 @@ class LabelColorPathMapRegression:
                 ignore in the spectrum.
             threshold_zero (float): The threshold for zeroing out insignificant colors.
             threshold_significant (float): The threshold for significant colors.
+            path (Path): Folder to store images.
             verbose (bool): Whether to print verbose output.
 
         Returns:
@@ -323,6 +325,15 @@ class LabelColorPathMapRegression:
                 )
                 origin[tuple(origin_index)] = True
                 ax.voxels(origin, facecolors="red")
+                if path is not None:
+                    path.mkdir(parents=True, exist_ok=True)
+                    plt.savefig(
+                        path / f"spectrum_{label}",
+                        dpi=500,
+                        bbox_inches="tight",
+                        pad_inches=0,
+                    )
+                    logger.info(f"Spectrum saved for label {label} to {path}")
                 plt.show()
 
         logger.info("Done. Color spectrum analysis.")
