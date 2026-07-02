@@ -108,36 +108,7 @@ class PatchwiseIlluminationCorrection:
 
         return np.array(r), np.array(g), np.array(b)
 
-    """
-    def extract_color_values_patches_no_limit(self, image: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        
-        Extract RGB values from image patches on the full image.
 
-        Returns:
-            Tuple containing R, G, B matrices.
-        
-        nh = self.nh + int(self.limit / self.dh)
-        r = np.zeros((nh, self.nw), dtype=np.float32)
-        g = np.zeros((nh, self.nw), dtype=np.float32)
-        b = np.zeros((nh, self.nw), dtype=np.float32)
-
-        for i in range(nh):
-            y0 = max(int(round((i - 0.5) * self.dh)), 0)
-            y1 = min(int(round((i + 0.5) * self.dh)), self.height)
-
-            for j in range(self.nw):
-                x0 = max(int(round((j - 0.5) * self.dw)), 0)
-                x1 = min(int(round((j + 0.5) * self.dw)), self.width)
-                
-                roi = image[y0:y1, x0:x1]
-                mean_color = cv2.mean(roi)
-
-                r[i, j] = int(mean_color[2])
-                g[i, j] = int(mean_color[1])
-                b[i, j] = int(mean_color[0])
-
-        return np.array(r), np.array(g), np.array(b)
-    """
     def compute_correction(
         self,
         coefficient_list: list[np.ndarray],
@@ -190,15 +161,3 @@ class PatchwiseIlluminationCorrection:
         self.g_diff = data['g_diff']
         self.b_diff = data['b_diff']
         print(f"Correction coefficients loaded from {self.saving_path}")
-
-
-if __name__ == "__main__":
-
-    correction = PatchwiseIlluminationCorrection(
-        image_path="./results/cropping/DSC34806.jpg",
-        baseline_paths=["./results/cropping/DSC00420.jpg", "./results/cropping/DSC22892.jpg"],
-        nw=1000,
-        limit=1450,
-        show_images=True,
-        saving_path="./DarSIA_Thibault/my_correction_results/correction_coefficient/correction_coefficients.npz"
-    )
