@@ -11,8 +11,8 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
 
     def __init__(
         self,
-        image_path: str,
-        baseline_paths: list[str],
+        image: str | darsia.Image,
+        baseline_images: list[str] | list[darsia.Image],
         nw: int = 1000,
         limit: int = 1450,
         show_images: bool = True,
@@ -24,15 +24,21 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         self.saving_path = saving_path
         self.eps = eps
 
-        self.img = cv2.imread(image_path)
-        if self.img is None:
-            raise ValueError(f"Image not found : {image_path}")
+        if isinstance(image, str):
+            self.img = cv2.imread(image)
+            if self.img is None:
+                raise ValueError(f"Image not found : {image}")
+        else:
+            self.img = image.img
 
         self.baseline_images = []
-        for path in baseline_paths:
-            baseline = cv2.imread(path)
-            if baseline is None:
-                raise ValueError(f"Image not found : {path}")
+        for baseline in baseline_images:
+            if isinstance(baseline, str):
+                baseline = cv2.imread(baseline)
+                if baseline is None:
+                    raise ValueError(f"Image not found : {baseline}")
+            else:
+                baseline = baseline.img
             self.baseline_images.append(baseline)
 
         n_baseline_images = len(self.baseline_images)
