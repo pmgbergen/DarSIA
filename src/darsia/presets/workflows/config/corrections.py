@@ -241,10 +241,8 @@ class PatchwiseIlluminationCorrectionConfig:
 
     image_path: Path
     """Path to image for patchwise illumination correction."""
-    baseline_path1: Path
-    """Path to first baseline image for patchwise illumination correction."""
-    baseline_path2: Path
-    """Path to second baseline image for patchwise illumination correction."""
+    baseline_paths: list[Path]
+    """Paths to baseline images for patchwise illumination correction."""
     limit: int = 1450
     """Limit in pixels to exclude from top of image for patch sampling."""
     nw: int = 1000
@@ -269,8 +267,7 @@ class PatchwiseIlluminationCorrectionConfig:
 
         """
         self.image_path = sec.get("image_path", self.image_path)
-        self.baseline_path1 = sec.get("baseline_path1", self.baseline_path1)
-        self.baseline_path2 = sec.get("baseline_path2", self.baseline_path2)
+        self.baseline_paths = sec.get("baseline_paths", self.baseline_paths)
         self.limit = sec.get("limit", self.limit)
         self.nw = sec.get("nw", self.nw)
         self.show_images = sec.get("show_images", self.show_images)
