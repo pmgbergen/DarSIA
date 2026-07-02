@@ -876,7 +876,6 @@ class IlluminationCorrectionConfig:
         },
     )
     """Number of patches to use for interpolation."""
-<<<<<<< HEAD
     seed: int = field(
         default=42,
         metadata={
@@ -884,8 +883,6 @@ class IlluminationCorrectionConfig:
             "help": "Random seed for reproducible patch sampling.",
         },
     )
-=======
->>>>>>> c41de0c8 (STY: black, flake8)
     """Random seed for patch sampling."""
     sigma: float = field(
         default=100.0,
@@ -1046,7 +1043,6 @@ class PatchwiseIlluminationCorrectionConfig:
         self.eps = sec.get("eps", self.eps)
         return self
 
-<<<<<<< HEAD
 
 _CORRECTION_CLASSES: dict[str, type] = {
     "type": TypeCorrectionConfig,
@@ -1059,8 +1055,6 @@ _CORRECTION_CLASSES: dict[str, type] = {
     "patchwise_illumination": PatchwiseIlluminationCorrectionConfig,
 }
 
-=======
->>>>>>> c41de0c8 (STY: black, flake8)
 
 @dataclass
 class CorrectionsConfig:
