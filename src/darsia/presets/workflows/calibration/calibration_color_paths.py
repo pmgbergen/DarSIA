@@ -175,6 +175,7 @@ def calibration_color_paths_from_context(
         baseline=fluidflower.baseline,
         ignore=ignore_spectrum,
         threshold_significant=embedding.threshold_calibration,
+        path=embedding.color_paths_folder,
         verbose=show,
     )
     preview_calibration_image = calibration_images[0] if calibration_images else None
