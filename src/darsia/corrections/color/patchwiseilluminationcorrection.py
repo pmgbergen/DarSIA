@@ -42,7 +42,7 @@ class PatchwiseIlluminationCorrection:
         r_mean, g_mean, b_mean = [], [], []
 
         for i in range(n_baseline_images):
-            ri, gi, bi = self.extract_color_values_patches(self.baseline_images[i])
+            ri, gi, bi = self.extract_color_values_patches(self.baseline_images[i], full=False)
             r.append(ri)
             g.append(gi)
             b.append(bi)
@@ -70,21 +70,28 @@ class PatchwiseIlluminationCorrection:
             cv2.imwrite("calibrated image.png", image_calibrated)        
 
 
-    def extract_color_values_patches(self, image: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def extract_color_values_patches(self, image: np.ndarray, full: bool) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Extract RGB values from image patches.
  
         Returns:
             Tuple containing R, G, B matrices.
         """
-        r = np.zeros((self.nh, self.nw), dtype=np.float32)
-        g = np.zeros((self.nh, self.nw), dtype=np.float32)
-        b = np.zeros((self.nh, self.nw), dtype=np.float32)
+        if full:
+            nh = self.nh + int(self.limit / self.dh)
+            limit = 0
+        else :
+            nh = self.nh
+            limit = self.limit
+        
+        r = np.zeros((nh, self.nw), dtype=np.float32)
+        g = np.zeros((nh, self.nw), dtype=np.float32)
+        b = np.zeros((nh, self.nw), dtype=np.float32)
 
-        for i in range(self.nh):
+        for i in range(nh):
 
-            y0 = max(self.limit + int(round((i - 0.5) * self.dh)), 0)
-            y1 = min(self.limit + int(round((i + 0.5) * self.dh)), self.height)
+            y0 = max(limit + int(round((i - 0.5) * self.dh)), 0)
+            y1 = min(limit + int(round((i + 0.5) * self.dh)), self.height)
 
             for j in range(self.nw):
 
@@ -101,13 +108,14 @@ class PatchwiseIlluminationCorrection:
 
         return np.array(r), np.array(g), np.array(b)
 
+    """
     def extract_color_values_patches_no_limit(self, image: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
+        
         Extract RGB values from image patches on the full image.
 
         Returns:
             Tuple containing R, G, B matrices.
-        """
+        
         nh = self.nh + int(self.limit / self.dh)
         r = np.zeros((nh, self.nw), dtype=np.float32)
         g = np.zeros((nh, self.nw), dtype=np.float32)
@@ -129,7 +137,7 @@ class PatchwiseIlluminationCorrection:
                 b[i, j] = int(mean_color[0])
 
         return np.array(r), np.array(g), np.array(b)
-     
+    """
     def compute_correction(
         self,
         coefficient_list: list[np.ndarray],
@@ -159,7 +167,7 @@ class PatchwiseIlluminationCorrection:
     def correct_array(self, img: np.ndarray) -> np.ndarray:
         """Apply patchwise illumination correction to the input image."""
 
-        r, g, b = self.extract_color_values_patches_no_limit(img)
+        r, g, b = self.extract_color_values_patches(img, full=True)
         
         r_new = r/self.r_diff
         g_new = g/self.g_diff
@@ -182,3 +190,15 @@ class PatchwiseIlluminationCorrection:
         self.g_diff = data['g_diff']
         self.b_diff = data['b_diff']
         print(f"Correction coefficients loaded from {self.saving_path}")
+
+
+if __name__ == "__main__":
+
+    correction = PatchwiseIlluminationCorrection(
+        image_path="./results/cropping/DSC34806.jpg",
+        baseline_paths=["./results/cropping/DSC00420.jpg", "./results/cropping/DSC22892.jpg"],
+        nw=1000,
+        limit=1450,
+        show_images=True,
+        saving_path="./DarSIA_Thibault/my_correction_results/correction_coefficient/correction_coefficients.npz"
+    )
