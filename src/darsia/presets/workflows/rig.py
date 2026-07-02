@@ -16,6 +16,7 @@ from darsia.presets.analysis.porosity import patched_porosity_analysis
 from darsia.presets.workflows.config.corrections import (
     CorrectionsConfig,
     IlluminationCorrectionConfig,
+    PatchwiseIlluminationCorrectionConfig,
 )
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.facies_props import FaciesProps
@@ -276,6 +277,17 @@ class Rig:
             self.illumination_correction = self.setup_illumination_correction(
                 corrections_config.illumination,
                 log=log,
+                show_plot=show_plot,
+            )
+            self.color_corrections.append(self.illumination_correction)
+
+        # 1b) patchwise illumination correction.
+        if corrections_config.patchwise_illumination:
+            assert (
+                not corrections_config.illumination
+            ), "Can only use a single illumination correction method at a time."
+            self.illumination_correction = self.setup_patchwise_illumination_correction(
+                corrections_config.patchwise_illumination,
                 show_plot=show_plot,
             )
             self.color_corrections.append(self.illumination_correction)
@@ -579,6 +591,35 @@ class Rig:
 
         return illumination_correction
 
+    # ! ---- ILLUMINATION CORRECTION ----
+    def setup_patchwise_illumination_correction(
+        self,
+        config: PatchwiseIlluminationCorrectionConfig | None,
+        show_plot: bool = False,
+    ) -> darsia.PatchwiseIlluminationCorrection:
+        """Setup and return illumination correction.
+
+        Args:
+            config (PatchwiseIlluminationCorrectionConfig | None): Configuration for
+                the illumination correction. If provided, it will set up the illumination
+                correction based on this configuration.
+
+        Notes:
+            Illumination calibration in Rig intentionally uses the shape-corrected
+            baseline as setup input.
+
+        """
+        illumination_correction = darsia.PatchwiseIlluminationCorrection(
+            image_path=config.image_path,
+            baseline_paths=config.baseline_paths,
+            nw=config.nw,
+            limit=config.limit,
+            show_images=show_plot,
+            saving_path=config.saving_path,
+            eps=config.eps,
+        )
+        return illumination_correction
+
     # ! ---- POROSITY ----
 
     def setup_image_porosity(
@@ -784,12 +825,10 @@ class Rig:
         # Define geometry for integration
         self.setup_geometry()
 
-        # Setup porosity based on baseline
+        # Pre-setup image and boolean porosity based on baseline (redo after color correction)
         self.setup_image_porosity(
             log=log, config=image_porosity_config, show_plot=show_plot
         )
-
-        # Define boolean image porosity
         self.setup_boolean_image_porosity(log=log, show_plot=show_plot)
 
         # Setup color corrections (wait until here to use label and porosity information)
@@ -798,6 +837,13 @@ class Rig:
             log=log,
             show_plot=show_plot,
         )
+
+        # Redo the porosity setup after color corrections, as the latter can change the image.
+        if len(self.color_corrections) > 0:
+            self.setup_image_porosity(
+                log=log, config=image_porosity_config, show_plot=show_plot
+            )
+            self.setup_boolean_image_porosity(log=log, show_plot=show_plot)
 
         # TODO Setup concentration analysis and transformations?
         # self.co2_analysis = ...
