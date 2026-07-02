@@ -182,6 +182,7 @@ class IlluminationCorrectionConfig:
     """Width of patches to use for interpolation."""
     num_samples: int = 30
     """Number of patches to use for interpolation."""
+    seed: int = 42
     """Random seed for patch sampling."""
     sigma: float = 100.0
     """Sigma for Gaussian smoothing of the illumination correction map."""
@@ -246,8 +247,6 @@ class PatchwiseIlluminationCorrectionConfig:
     """Limit in pixels to exclude from top of image for patch sampling."""
     nw: int = 1000
     """Number of patches in width direction for patchwise illumination correction."""
-    show_images: bool = True
-    """Whether to show the corrected image during patchwise illumination correction."""
     saving_path: Path = Path("./correction_coefficients.npz")
     """Path to save correction coefficients for patchwise illumination correction."""
     eps: float = 1e-6
@@ -267,7 +266,6 @@ class PatchwiseIlluminationCorrectionConfig:
         self.baseline_paths = sec.get("baseline_paths", self.baseline_paths)
         self.limit = sec.get("limit", self.limit)
         self.nw = sec.get("nw", self.nw)
-        self.show_images = sec.get("show_images", self.show_images)
         self.saving_path = sec.get("saving_path", self.saving_path)
         self.eps = sec.get("eps", self.eps)
         return self
