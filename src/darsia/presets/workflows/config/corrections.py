@@ -182,7 +182,6 @@ class IlluminationCorrectionConfig:
     """Width of patches to use for interpolation."""
     num_samples: int = 30
     """Number of patches to use for interpolation."""
-    seed: int = 42
     """Random seed for patch sampling."""
     sigma: float = 100.0
     """Sigma for Gaussian smoothing of the illumination correction map."""
@@ -254,8 +253,6 @@ class PatchwiseIlluminationCorrectionConfig:
     eps: float = 1e-6
     """Small constant to avoid division by zero in patchwise illumination correction."""
 
-
-
     def load(self, sec: dict) -> "PatchwiseIlluminationCorrectionConfig":
         """Load patchwise illumination correction configuration from a dictionary.
 
@@ -274,8 +271,6 @@ class PatchwiseIlluminationCorrectionConfig:
         self.saving_path = sec.get("saving_path", self.saving_path)
         self.eps = sec.get("eps", self.eps)
         return self
-
-      
 
 
 @dataclass
@@ -300,8 +295,9 @@ class CorrectionsConfig:
         relative_color: Enable relative color correction based on color checker
             (default: False). Boolean flag for enabling/disabling.
         illumination: Enable illumination correction.
-        patchwise_illumination: PatchwiseIlluminationCorrectionConfig for patchwise illumination correction (default: None).
-             Corrects illumination variations across the image using patchwise interpolation.
+        patchwise_illumination: PatchwiseIlluminationCorrectionConfig for patchwise
+            illumination correction (default: None). Corrects illumination variations
+            across the image using patchwise interpolation.
 
     """
 
@@ -360,8 +356,11 @@ class CorrectionsConfig:
 
         patchwise_illumination_sec = sec.get("patchwise_illumination")
         if patchwise_illumination_sec:
-            self.patchwise_illumination = PatchwiseIlluminationCorrectionConfig().load(patchwise_illumination_sec)
-            
+            self.patchwise_illumination = PatchwiseIlluminationCorrectionConfig().load(
+                patchwise_illumination_sec
+            )
+
+        print(self.patchwise_illumination)
 
         # Identify active corrections
         active_corrections = sec.get("active_corrections", None)
