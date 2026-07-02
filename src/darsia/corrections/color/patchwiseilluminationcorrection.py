@@ -125,6 +125,9 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
             y0 = max(limit + int(round((i - 0.5) * self.dh)), 0)
             y1 = min(limit + int(round((i + 0.5) * self.dh)), self.height)
 
+            y0 = max(self.limit + int(round((i - 0.5) * self.dh)), 0)
+            y1 = min(self.limit + int(round((i + 0.5) * self.dh)), self.height)
+
             for j in range(self.nw):
                 x0 = max(int(round((j - 0.5) * self.dw)), 0)
                 x1 = min(int(round((j + 0.5) * self.dw)), self.width)
