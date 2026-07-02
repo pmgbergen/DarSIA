@@ -17,9 +17,24 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         baseline_images: list[str] | list[darsia.Image],
         nw: int = 1000,
         limit: int = 1450,
-        show_images: bool = True,
         eps: float = 1e-6,
+        show_images: bool = True,
     ):
+        """Initialize the PatchwiseIlluminationCorrection class.
+
+        Args:
+            image (str | darsia.Image): Input image for correction.
+            baseline_images (list[str] | list[darsia.Image]): List of baseline images for
+                correction.
+            nw (int): Number of patches in width direction for patchwise illumination
+                correction. Default is 1000.
+            limit (int): Limit in pixels to exclude from top of image for patch sampling.
+                Default is 1450.
+            eps (float): Small constant to avoid division by zero in patchwise illumination
+                correction. Default is 1e-6.
+            show_images (bool): Flag to control whether to display the calibrated image.
+
+        """
         self.nw = nw
         self.limit = limit
         self.eps = eps
@@ -87,6 +102,11 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         """
         Extract RGB values from image patches.
 
+        Args:
+            image (np.ndarray): Input image.
+            full (bool): Flag to determine whether to extract full image or only the
+                region below the limit.
+
         Returns:
             Tuple containing R, G, B matrices.
         """
@@ -124,7 +144,18 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         coefficient_list: list[np.ndarray],
         coefficient_mean_list: list[np.ndarray],
     ) -> np.ndarray:
-        """Calculate correction coefficients based on baseline images."""
+        """Calculate correction coefficients based on baseline images.
+
+        Args:
+            coefficient_list (list[np.ndarray]): List of coefficient matrices for each
+                baseline image.
+            coefficient_mean_list (list[np.ndarray]): List of mean coefficient values for
+                each baseline image.
+
+        Returns:
+            np.ndarray: Array of correction coefficients.
+
+        """
 
         sum_sq = np.sum([r**2 for r in coefficient_list], axis=0)
 
@@ -137,7 +168,16 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         return 1.0 / (correction + self.eps)
 
     def extend_correction_coefficients(self, corr: np.ndarray) -> np.ndarray:
-        """Extend correction coefficients to the upper part of the image."""
+        """Extend correction coefficients to the upper part of the image.
+
+        Args:
+            corr (np.ndarray): Array of correction coefficients for the lower part of the
+                image.
+
+        Returns:
+            np.ndarray: Extended array of correction coefficients for the entire image.
+
+        """
         new_corr = np.zeros((int(self.limit / self.dh), self.nw))
         lim = int(self.nh / 3)
         for col in range(self.nw):
@@ -146,7 +186,15 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         return np.vstack((new_corr, corr))
 
     def correct_array(self, img: np.ndarray) -> np.ndarray:
-        """Apply patchwise illumination correction to the input image."""
+        """Apply patchwise illumination correction to the input image.
+
+        Args:
+            img (np.ndarray): Input image to be corrected.
+
+        Returns:
+            np.ndarray: Corrected image after applying patchwise illumination correction.
+
+        """
 
         r, g, b = self.extract_color_values_patches(img, full=True)
 
@@ -163,7 +211,7 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
 
         return img_rebuilt
 
-    def save(self, path: Path):
+    def save(self, path: Path) -> None:
         """Save correction coefficients to a file.
 
         Args:
@@ -173,7 +221,7 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         np.savez(path, r_diff=self.r_diff, g_diff=self.g_diff, b_diff=self.b_diff)
         print(f"Correction coefficients saved to {path}")
 
-    def load(self, path: Path):
+    def load(self, path: Path) -> None:
         """Load correction coefficients from a file.
 
         Args:
