@@ -15,7 +15,11 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         self,
         image: str | darsia.Image | None = None,
         baseline_images: list[str] | list[darsia.Image] | None = None,
+<<<<<<< HEAD
         nw: int = 100,
+=======
+        nw: int = 1000,
+>>>>>>> 8c32bb8b (MAINT: Enable empty patchwise illumination correction)
         limit: int = 1450,
         eps: float = 1e-6,
         show_images: bool = True,
