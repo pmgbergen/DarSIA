@@ -609,9 +609,13 @@ class Rig:
             baseline as setup input.
 
         """
+        # Preload image
+        image = self.read_image(config.image_path)
+        baseline_images = [self.read_image(path) for path in config.baseline_paths]
+
         illumination_correction = darsia.PatchwiseIlluminationCorrection(
-            image_path=config.image_path,
-            baseline_paths=config.baseline_paths,
+            image=image,
+            baseline_images=baseline_images,
             nw=config.nw,
             limit=config.limit,
             show_images=show_plot,
