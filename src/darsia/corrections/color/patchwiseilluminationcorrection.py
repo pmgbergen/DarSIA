@@ -13,8 +13,8 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
 
     def __init__(
         self,
-        image: str | darsia.Image,
-        baseline_images: list[str] | list[darsia.Image],
+        image: str | darsia.Image | None = None,
+        baseline_images: list[str] | list[darsia.Image] | None = None,
         nw: int = 1000,
         limit: int = 1450,
         eps: float = 1e-6,
@@ -35,6 +35,12 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
             show_images (bool): Flag to control whether to display the calibrated image.
 
         """
+        if image is None or baseline_images is None:
+            self.r_diff = None
+            self.g_diff = None
+            self.b_diff = None
+            return
+
         self.nw = nw
         self.limit = limit
         self.eps = eps
@@ -195,6 +201,11 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
             np.ndarray: Corrected image after applying patchwise illumination correction.
 
         """
+        if self.r_diff is None or self.g_diff is None or self.b_diff is None:
+            raise ValueError(
+                "Correction coefficients are not initialized. Please provide baseline "
+                "images to compute correction coefficients."
+            )
 
         r, g, b = self.extract_color_values_patches(img, full=True)
 
@@ -218,7 +229,15 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
             path (Path): Path to the file where coefficients will be saved.
 
         """
-        np.savez(path, r_diff=self.r_diff, g_diff=self.g_diff, b_diff=self.b_diff)
+        np.savez(
+            path,
+            class_name=type(self).__name__,
+            correction={
+                "r_diff": self.r_diff,
+                "g_diff": self.g_diff,
+                "b_diff": self.b_diff,
+            },
+        )
         print(f"Correction coefficients saved to {path}")
 
     def load(self, path: Path) -> None:
@@ -228,7 +247,12 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
             path (Path): Path to the file from which coefficients will be loaded.
 
         """
-        data = np.load(path)
+        data = np.load(path, allow_pickle=True)["correction"].item()
+        if "r_diff" not in data or "g_diff" not in data or "b_diff" not in data:
+            raise ValueError(
+                f"Invalid correction coefficients file: {path}. "
+                "Expected keys 'r_diff', 'g_diff', and 'b_diff' not found."
+            )
         self.r_diff = data["r_diff"]
         self.g_diff = data["g_diff"]
         self.b_diff = data["b_diff"]
