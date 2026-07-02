@@ -1,5 +1,7 @@
 """Patchwise illumination correction module for images."""
 
+from pathlib import Path
+
 import cv2
 import numpy as np
 
@@ -16,12 +18,10 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         nw: int = 1000,
         limit: int = 1450,
         show_images: bool = True,
-        saving_path: str = "./correction_coefficients.npz",
         eps: float = 1e-6,
     ):
         self.nw = nw
         self.limit = limit
-        self.saving_path = saving_path
         self.eps = eps
 
         if isinstance(image, str):
@@ -163,17 +163,25 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
 
         return img_rebuilt
 
-    def save(self):
-        """Save correction coefficients to a file."""
-        np.savez(
-            self.saving_path, r_diff=self.r_diff, g_diff=self.g_diff, b_diff=self.b_diff
-        )
-        print(f"Correction coefficients saved to {self.saving_path}")
+    def save(self, path: Path):
+        """Save correction coefficients to a file.
 
-    def load(self):
-        """Load correction coefficients from a file."""
-        data = np.load(self.saving_path)
+        Args:
+            path (Path): Path to the file where coefficients will be saved.
+
+        """
+        np.savez(path, r_diff=self.r_diff, g_diff=self.g_diff, b_diff=self.b_diff)
+        print(f"Correction coefficients saved to {path}")
+
+    def load(self, path: Path):
+        """Load correction coefficients from a file.
+
+        Args:
+            path (Path): Path to the file from which coefficients will be loaded.
+
+        """
+        data = np.load(path)
         self.r_diff = data["r_diff"]
         self.g_diff = data["g_diff"]
         self.b_diff = data["b_diff"]
-        print(f"Correction coefficients loaded from {self.saving_path}")
+        print(f"Correction coefficients loaded from {path}")

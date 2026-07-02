@@ -247,8 +247,6 @@ class PatchwiseIlluminationCorrectionConfig:
     """Limit in pixels to exclude from top of image for patch sampling."""
     nw: int = 1000
     """Number of patches in width direction for patchwise illumination correction."""
-    saving_path: Path = Path("./correction_coefficients.npz")
-    """Path to save correction coefficients for patchwise illumination correction."""
     eps: float = 1e-6
     """Small constant to avoid division by zero in patchwise illumination correction."""
 
@@ -262,11 +260,11 @@ class PatchwiseIlluminationCorrectionConfig:
             self with loaded configuration
 
         """
-        self.image_path = sec.get("image_path", self.image_path)
-        self.baseline_paths = sec.get("baseline_paths", self.baseline_paths)
+        self.image_path = Path(sec.get("image_path", self.image_path))
+        _baseline_paths = sec.get("baseline_paths", self.baseline_paths)
+        self.baseline_paths = [Path(p) for p in _baseline_paths]
         self.limit = sec.get("limit", self.limit)
         self.nw = sec.get("nw", self.nw)
-        self.saving_path = sec.get("saving_path", self.saving_path)
         self.eps = sec.get("eps", self.eps)
         return self
 
