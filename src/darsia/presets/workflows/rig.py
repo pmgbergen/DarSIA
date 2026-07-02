@@ -618,9 +618,8 @@ class Rig:
             baseline_images=baseline_images,
             nw=config.nw,
             limit=config.limit,
-            show_images=show_plot,
-            saving_path=config.saving_path,
             eps=config.eps,
+            show_images=show_plot,
         )
         return illumination_correction
 
