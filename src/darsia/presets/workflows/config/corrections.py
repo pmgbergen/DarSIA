@@ -238,9 +238,9 @@ class IlluminationCorrectionConfig:
 class PatchwiseIlluminationCorrectionConfig:
     """Configuration for patchwise illumination correction."""
 
-    image_path: Path
+    image_path: Path = Path()
     """Path to image for patchwise illumination correction."""
-    baseline_paths: list[Path]
+    baseline_paths: list[Path] = field(default_factory=list)
     """Paths to baseline images for patchwise illumination correction."""
     limit: int = 1450
     """Limit in pixels to exclude from top of image for patch sampling."""
