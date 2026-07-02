@@ -75,7 +75,9 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         r_mean, g_mean, b_mean = [], [], []
 
         for i in range(n_baseline_images):
-            ri, gi, bi = self.extract_color_values_patches(self.baseline_images[i])
+            ri, gi, bi = self.extract_color_values_patches(
+                self.baseline_images[i], full=False
+            )
             r.append(ri)
             g.append(gi)
             b.append(bi)
