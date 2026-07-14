@@ -1,6 +1,6 @@
-from PySide6.QtWidgets import (QScrollArea,QMainWindow, QApplication, QLabel, QWidget, QVBoxLayout, QPushButton,
+from PySide6.QtWidgets import (QScrollArea, QMainWindow, QApplication, QLabel, QWidget, QVBoxLayout, QPushButton,
                                QLineEdit, QTextEdit, QSlider, QProgressBar, QComboBox, QListWidget, QRadioButton,
-                               QHBoxLayout, QTabWidget)
+                               QHBoxLayout, QTabWidget, QSplitter)
 from PySide6.QtCore import Qt
 import toml
 import ast
@@ -10,10 +10,9 @@ class MainWindow(QMainWindow):
     def __init__(self, config_dict={}):
         super().__init__()
         self.setWindowTitle("Darsia")
+        self.showMaximized()
 
-        # Create main container that will hold settings
-        main_container = QWidget()
-        main_layout = QVBoxLayout(main_container)
+
         tabs = QTabWidget()
         setup_container = QWidget()
         calibration_container = QWidget()
@@ -23,14 +22,14 @@ class MainWindow(QMainWindow):
         tabs.addTab(analysis_container, "Analysis")
 
 
-        first_layout = QVBoxLayout(setup_container)
+        setup_layout = QVBoxLayout(setup_container)
         label = QLabel("Settings:")
-        first_layout.addWidget(label)
+        setup_layout.addWidget(label)
         self.subsections = {}
 
         for key, value in config_dict.items():
             self.subsections[key] = {}
-            self.unravel_settings(key, value, [], first_layout)
+            self.unravel_settings(key, value, [], setup_layout)
 
 
         # Add scroll area for settings
@@ -52,17 +51,44 @@ class MainWindow(QMainWindow):
         log_scroll_area = QScrollArea()
         log_scroll_area.setWidget(log_container)
         log_scroll_area.setWidgetResizable(True)
-        log_scroll_area.setMaximumHeight(150)
 
+
+        # Fixing the save button just below the tabs where we adjust the settings
+        settings_container = QWidget()
+        settings_layout = QVBoxLayout(settings_container)
+        settings_layout.addWidget(scroll_area)
         button = QPushButton("Save Settings")
         button.clicked.connect(self.saveSettings)
+        settings_layout.addWidget(button)
+
+
+
+        # Creating the area to the right of the settings
+        calibration_button = QPushButton("Calibrate")
+        calibration_button.clicked.connect(self.calibrate)
+
+        upper_right_container = QWidget()
+        upper_right_layout = QVBoxLayout(upper_right_container)
+        upper_right_layout.addWidget(calibration_button)
+
+        # Container for the upper half of the GUI
+        upper_splitter = QSplitter(Qt.Horizontal)
+        upper_splitter.addWidget(settings_container)
+        upper_splitter.addWidget(upper_right_container)
+
+        content_splitter = QSplitter(Qt.Vertical)
+        content_splitter.addWidget(upper_splitter)
+        content_splitter.addWidget(log_scroll_area)
+        content_splitter.setStretchFactor(0, 3)
+        content_splitter.setStretchFactor(1, 1)
+
+
 
         # Create central widget with all components
+        main_container = QWidget()
+        main_layout = QVBoxLayout(main_container)
         self.setCentralWidget(main_container)
-        main_layout.addWidget(scroll_area)  # Settings scroll area
-        main_layout.addWidget(button)     # Save button
-        main_layout.addWidget(log_scroll_area)  # Logging scroll area (separate)
-
+        main_layout.addWidget(content_splitter)
 
 
     def saveSettings(self):
@@ -81,6 +107,9 @@ class MainWindow(QMainWindow):
         with open("test.toml", "w") as f:
             toml.dump(total_dict, f)
         self.print_log("Settings saved")
+
+    def calibrate(self):
+        self.print_log("Calibration initiated")
 
     def get_save_dict(self, inp_key, inp_val, path, total_dict):
         if type(inp_val) == dict:
