@@ -5,17 +5,19 @@ from PySide6.QtCore import Qt
 import toml
 import ast
 import os
+import subprocess
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, config_dict={}):
+    def __init__(self):
         super().__init__()
         self.setWindowTitle("Darsia")
         self.showMaximized()
 
         # Setting up the three upper layouts
-        upper_left_container = QWidget()
-        upper_left_layout = QVBoxLayout(upper_left_container)
+        upper_container = QWidget()
+        upper_layout = QVBoxLayout(upper_container)
+        upper_container.setFixedHeight(100)
 
         upper_mid_container = QWidget()
         upper_mid_layout = QVBoxLayout(upper_mid_container)
@@ -24,7 +26,7 @@ class MainWindow(QMainWindow):
         upper_right_layout = QVBoxLayout(upper_right_container)
 
         # Setting up the left upper layout
-        upper_left_layout.addWidget(QLabel("Choose experiment files"))
+        upper_layout.addWidget(QLabel("Choose experiment files"))
         
         # Initialize file chooser storage
         self.chosen_files = {}
@@ -34,41 +36,14 @@ class MainWindow(QMainWindow):
         self.baseline_layout.setContentsMargins(0, 0, 0, 0)
         
         # Add config file chooser first
-        self.create_file_chooser(upper_left_layout, "Config File", "TOML Files (*.toml);;All Files (*)", False)
-        upper_left_layout.addSpacing(10)
-        
-        # Define file chooser items: (display_name, file_type, is_directory)
-        # Note: Baseline Image is handled separately for multiple selections
-        file_chooser_items = [
-            ("Segmented Image", "Image Files (*.jpg *.jpeg *.png);;All Files (*)", False),
-            ("Depth Measurements", "CSV Files (*.csv);;All Files (*)", False),
-            ("Facies Properties", "CSV Files (*.csv);;All Files (*)", False),
-            ("Results Folder", "", True),
-            ("Data Images Folder", "", True),
-        ]
-        
-        # Create baseline images section (with add/remove capability)
-        baseline_title = QLabel("Baseline Image(s)")
-        baseline_title.setStyleSheet("font-weight: bold;")
-        upper_left_layout.addWidget(baseline_title)
-        upper_left_layout.addWidget(self.baseline_container)
-        
-        # Add initial baseline image
-        self.add_baseline_image()
-        
-        # Add baseline image button
-        add_baseline_button = QPushButton("+ Add Baseline Image")
-        add_baseline_button.clicked.connect(self.add_baseline_image)
-        upper_left_layout.addWidget(add_baseline_button)
-        
-        upper_left_layout.addSpacing(10)
-        
-        # Create file chooser UI for each item
-        for display_name, file_filter, is_directory in file_chooser_items:
-            self.create_file_chooser(upper_left_layout, display_name, file_filter, is_directory)
-        
+        config_file_chooser_container, _ = self.create_file_chooser("Config File", "TOML Files (*.toml);;All Files (*)", False)
+        upper_layout.addWidget(config_file_chooser_container)
+        load_config_button = QPushButton("Load Config")
+        load_config_button.clicked.connect(self.load_config)
+        upper_layout.addWidget(load_config_button)
+
         # Add stretch to push file choosers to top
-        upper_left_layout.addStretch()
+        upper_layout.addStretch()
 
 
         # Setting up the middle upper layout
@@ -84,13 +59,6 @@ class MainWindow(QMainWindow):
         tabs.addTab(calibration_container, "Calibration")
         tabs.addTab(analysis_container, "Analysis")
         upper_mid_layout.addWidget(tabs)
-
-        # Initialize checkbox storage with IDs for settings mapping
-        self.action_checkboxes = {
-            "setup": [],
-            "calibration": [],
-            "analysis": []
-        }
 
         # Creating the setup-tab
         setup_items = [
@@ -109,9 +77,14 @@ class MainWindow(QMainWindow):
             self.setup_checkboxes.append((checkbox_id, checkbox))
             setup_layout.addWidget(checkbox)
 
-        setup_button = QPushButton("Setup")
+        setup_button = QPushButton("Open Setup settings")
         setup_button.clicked.connect(self.setup)
         setup_layout.addWidget(setup_button)
+
+        run_setup_button = QPushButton("Run Setup")
+        run_setup_button.clicked.connect(self.run_setup)
+        setup_layout.addWidget(run_setup_button)
+
         setup_layout.addStretch()
 
         # Creating the calibration-tab
@@ -126,9 +99,14 @@ class MainWindow(QMainWindow):
             self.calibration_checkboxes.append((checkbox_id, checkbox))
             calibration_layout.addWidget(checkbox)
         
-        calibration_button = QPushButton("Calibrate")
+        calibration_button = QPushButton("Open Calibration settings")
         calibration_button.clicked.connect(self.calibrate)
         calibration_layout.addWidget(calibration_button)
+
+        run_calibration_button = QPushButton("Run Calibration")
+        run_calibration_button.clicked.connect(self.run_calibration)
+        calibration_layout.addWidget(run_calibration_button)
+
         calibration_layout.addStretch()
 
         # Creating the analysis-tab
@@ -144,9 +122,14 @@ class MainWindow(QMainWindow):
             self.analysis_checkboxes.append((checkbox_id, checkbox))
             analysis_layout.addWidget(checkbox)
         
-        analysis_button = QPushButton("Analysis")
+        analysis_button = QPushButton("Open Analysis settings")
         analysis_button.clicked.connect(self.analysis)
         analysis_layout.addWidget(analysis_button)
+
+        run_analysis_button = QPushButton("Run Analysis")
+        run_analysis_button.clicked.connect(self.run_analysis)
+        analysis_layout.addWidget(run_analysis_button)
+
         analysis_layout.addStretch()
 
 
@@ -168,7 +151,8 @@ class MainWindow(QMainWindow):
         upper_right_layout.addWidget(save_button)
         
         # Store config and load settings mapping
-        self.config_dict = config_dict
+        self.config_file = ""
+        self.config_dict = {}
         self.settings_mapping = self.load_settings_mapping()
         self.settings_inputs = {}  # Store setting input widgets
 
@@ -192,7 +176,6 @@ class MainWindow(QMainWindow):
 
         # Splitter for the upper half of the GUI
         upper_splitter = QSplitter(Qt.Horizontal)
-        upper_splitter.addWidget(upper_left_container)
         upper_splitter.addWidget(upper_mid_container)
         upper_splitter.addWidget(upper_right_container)
 
@@ -207,6 +190,7 @@ class MainWindow(QMainWindow):
         main_container = QWidget()
         main_layout = QVBoxLayout(main_container)
         self.setCentralWidget(main_container)
+        main_layout.addWidget(upper_container)
         main_layout.addWidget(content_splitter)
 
     def load_settings_mapping(self):
@@ -220,15 +204,28 @@ class MainWindow(QMainWindow):
     def save_settings(self):
         for key, value in self.settings_inputs.items():
             try:
-                self.set_value(self.config_dict, key, ast.literal_eval(value.text()))
+                if type(value) == QLineEdit:
+                    self.set_value(self.config_dict, key, ast.literal_eval(value.text()))
+                elif type(value) == QComboBox:
+                    self.set_value(self.config_dict, key, value.currentText())
+                elif type(value) == list:
+                    if len(value) > 0:
+                        if type(value[0]) == QCheckBox:
+                            self.set_value(self.config_dict, key, [item.text() for item in value if item.isChecked()])
+                        elif type(value[0]) == QLineEdit:
+                            self.set_value(self.config_dict, key, [item.text() for item in value if item.text().strip()])
             except (ValueError, SyntaxError):
-                self.set_value(self.config_dict, key, value.text())
-        with open("test.toml", "w") as f:
-            toml.dump(self.config_dict, f)
-        self.print_log("Settings saved")
+                if hasattr(value, "text"):
+                    self.set_value(self.config_dict, key, value.text())
+        if self.config_file != "":
+            with open(self.config_file, "w") as f:
+                toml.dump(self.config_dict, f)
+            self.print_log(f"Settings saved to {self.config_file}")
+        else:
+            self.print_log(f"Settings not saved, please choose a config file")
 
 
-    def create_file_chooser(self, parent_layout, display_name, file_filter, is_directory):
+    def create_file_chooser(self, display_name, file_filter, is_directory):
         """Create a file/folder chooser UI element (button + path label)."""
         chooser_container = QWidget()
         chooser_layout = QHBoxLayout(chooser_container)
@@ -239,7 +236,7 @@ class MainWindow(QMainWindow):
         browse_button.setMinimumWidth(200)
         
         # Path label to display selected path
-        path_label = QLabel("No file chosen")
+        path_label = QLineEdit("No file chosen")
         path_label.setStyleSheet("color: white;")
         
         # Store label reference for updating
@@ -252,8 +249,8 @@ class MainWindow(QMainWindow):
         chooser_layout.addWidget(browse_button)
         chooser_layout.addWidget(path_label)
         chooser_layout.addStretch()
-        
-        parent_layout.addWidget(chooser_container)
+        return chooser_container, path_label
+        #parent_layout.addWidget(chooser_container)
 
     def add_baseline_image(self):
         """Add a new baseline image chooser row."""
@@ -351,22 +348,6 @@ class MainWindow(QMainWindow):
             file_info["label"].setStyleSheet("color: white;")
             self.print_log(f"Selected {key}: {selected_path}")
 
-    def saveSettings(self):
-        total_dict = {}
-        """
-        for key, value in self.subsections.items():
-            local_dict = {}
-            for loc_key, line_edit in value.items():
-                local_dict[loc_key] = int(line_edit.text())
-            total_dict[key] = local_dict"""
-        for key, value in self.subsections.items():
-            #total_dict[key] = {}
-            self.get_save_dict(key, value, [], total_dict)
-
-
-        with open("test.toml", "w") as f:
-            toml.dump(total_dict, f)
-        self.print_log("Settings saved")
 
     def get_checked_checkbox_ids(self, checkboxes):
         checked_ids = []
@@ -381,7 +362,7 @@ class MainWindow(QMainWindow):
             try:
                 settings += self.settings_mapping['settings'][action][checked_id]["content"]
             except KeyError:
-                self.print_log(f"No settings found for {action} with id {checked_id}")
+                    self.print_log(f"No settings found for {action} with id {checked_id}")
         return settings
 
 
@@ -400,19 +381,10 @@ class MainWindow(QMainWindow):
         self.settings_inputs = {}
 
         for setting in relevant_settings:
-            # Add each setting to the layout
-            value = self.get_value(self.config_dict, setting)
-            setting_container = QWidget()
-            setting_layout = QHBoxLayout(setting_container)
-            setting_label = QLabel(setting)
-            setting_edit = QLineEdit()
-            if value is not None:
-                setting_edit.setText(str(value))
-            setting_layout.addWidget(setting_label)
-            setting_layout.addWidget(setting_edit)
-            self.settings_layout.addWidget(setting_container)
+            setting_container, setting_edit = self.create_setting_edit(setting)
 
-            self.settings_inputs[setting] = setting_edit
+            self.settings_layout.addWidget(setting_container)
+            self.settings_inputs[setting["key"]] = setting_edit
 
         self.settings_layout.addStretch()
 
@@ -436,22 +408,25 @@ class MainWindow(QMainWindow):
         self.display_settings("analysis", checked_ids)
         self.print_log(f"Analysis: Checked specifics - {checked_ids}")
 
+    def run_setup(self):
+        #subprocess.run(["python", "setup_protocol"])
+        pass
 
-    def get_save_dict(self, inp_key, inp_val, path, total_dict):
-        if type(inp_val) == dict:
-            local_dict = total_dict
-            for key in path:
-                local_dict = local_dict[key]
-            local_dict[inp_key] = {}
-            for key, value in inp_val.items():
-                self.get_save_dict(key, value, path + [inp_key], total_dict)
-        else:
-            try:
-                set_dict_value(total_dict, path+[inp_key], ast.literal_eval(inp_val.text()))
-            except (ValueError, SyntaxError):
-                set_dict_value(total_dict, path+[inp_key], inp_val.text())
+    def run_calibration(self):
+        #subprocess.run(...)
+        pass
+
+    def run_analysis(self):
+        #subprocess.run(...)
+        pass
 
 
+    def load_config(self):
+        file = self.chosen_files["config_file"]["path"]
+        with open(file, "r") as f:
+            self.config_dict = toml.load(f)
+        self.config_file = file
+        self.print_log("Config loaded")
 
 
     def unravel_settings(self, inp_key, inp_val, path, parent_layout):
@@ -508,6 +483,179 @@ class MainWindow(QMainWindow):
             current = current[key]
         current[keys[-1]] = value
 
+    def create_setting_edit(self, setting_dict):
+        setting_type = setting_dict["type"]
+
+        if setting_type == "int":
+            return self.create_simple_input(setting_dict)
+        elif setting_type == "float":
+            return self.create_simple_input(setting_dict)
+        elif setting_type == "string":
+            return self.create_string_input(setting_dict)
+        elif setting_type == "bool":
+            setting_dict["options"] = ["true", "false"]
+            return self.create_string_input(setting_dict)
+        elif setting_type == "fixed_list" and setting_dict["list_type"] == "string":
+            return self.create_fixed_list_string_input(setting_dict)
+        elif setting_type == "file":
+            return self.create_file_chooser(setting_dict["key"], None, False)
+        elif setting_type == "folder":
+            return self.create_file_chooser(setting_dict["key"], None, True)
+        elif setting_type == "multi_file":
+            return self.create_multi_file_input(setting_dict)
+
+        else:
+            self.print_log(f"Setting type {setting_type} not supported yet, using simple input")
+            return self.create_simple_input(setting_dict)
+
+    def create_simple_input(self, setting_dict):
+        setting = setting_dict["key"]
+
+        value = self.get_value(self.config_dict, setting)
+        setting_container = QWidget()
+        setting_layout = QHBoxLayout(setting_container)
+        setting_label = QLabel(setting)
+        setting_edit = QLineEdit()
+        if value is not None:
+           setting_edit.setText(str(value))
+        if setting_dict['type'] == 'list':
+            type_label = QLabel(f"({setting_dict['type']}, {setting_dict['list_type']})")
+        else:
+            type_label = QLabel(f"({setting_dict['type']})")
+        setting_layout.addWidget(setting_label)
+        setting_layout.addWidget(setting_edit)
+        setting_layout.addWidget(type_label)
+        return setting_container, setting_edit
+
+    def create_string_input(self, setting_dict):
+        setting = setting_dict["key"]
+        value = self.get_value(self.config_dict, setting)
+        setting_container = QWidget()
+        setting_layout = QHBoxLayout(setting_container)
+        setting_label = QLabel(setting)
+        options = setting_dict["options"]
+        setting_combo = QComboBox()
+        setting_combo.addItems([str(option) for option in options])
+
+        if value is not None:
+            value = str(value)
+            index = setting_combo.findText(value)
+            if index >= 0:
+                setting_combo.setCurrentIndex(index)
+
+        setting_layout.addWidget(setting_label)
+        setting_layout.addWidget(setting_combo)
+
+        return setting_container, setting_combo
+
+    def create_fixed_list_string_input(self, setting_dict):
+        setting = setting_dict["key"]
+        values = self.get_value(self.config_dict, setting)
+        setting_container = QWidget()
+        setting_layout = QHBoxLayout(setting_container)
+        setting_label = QLabel(setting)
+        setting_layout.addWidget(setting_label)
+        options = setting_dict["options"]
+        check_boxes = []
+        for option in options:
+            check_box = QCheckBox(option)
+            check_boxes.append(check_box)
+            if values is not None:
+                if option in values:
+                    check_box.setChecked(True)
+            setting_layout.addWidget(check_box)
+        return setting_container, check_boxes
+
+    def create_multi_file_input(self, setting_dict):
+        setting = setting_dict["key"]
+        values = self.get_value(self.config_dict, setting)
+
+        setting_container = QWidget()
+        setting_layout = QVBoxLayout(setting_container)
+        setting_layout.setContentsMargins(0, 0, 0, 0)
+
+        header_container = QWidget()
+        header_layout = QHBoxLayout(header_container)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        setting_label = QLabel(setting)
+        add_button = QPushButton("Add file")
+        header_layout.addWidget(setting_label)
+        header_layout.addStretch()
+        header_layout.addWidget(add_button)
+        setting_layout.addWidget(header_container)
+
+        rows_container = QWidget()
+        rows_layout = QVBoxLayout(rows_container)
+        rows_layout.setContentsMargins(0, 0, 0, 0)
+        setting_layout.addWidget(rows_container)
+
+        file_edits = []
+        file_rows = []
+
+        def refresh_remove_buttons():
+            show_remove = len(file_rows) > 1
+            for row in file_rows:
+                row["remove_button"].setVisible(show_remove)
+
+        def add_row(initial_value=""):
+            row_container = QWidget()
+            row_layout = QHBoxLayout(row_container)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+
+            browse_button = QPushButton("Browse")
+            browse_button.setMinimumWidth(100)
+            path_edit = QLineEdit()
+            path_edit.setPlaceholderText("Select a file or type a path")
+            if initial_value:
+                path_edit.setText(str(initial_value))
+            remove_button = QPushButton("Remove")
+            remove_button.setMaximumWidth(80)
+
+            def browse():
+                selected_path, _ = QFileDialog.getOpenFileName(
+                    self,
+                    f"Select file for {setting}",
+                    path_edit.text() if path_edit.text() else "",
+                    "All Files (*)",
+                )
+                if selected_path:
+                    path_edit.setText(selected_path)
+
+            def remove():
+                row_container.deleteLater()
+                if row_data in file_rows:
+                    file_rows.remove(row_data)
+                if path_edit in file_edits:
+                    file_edits.remove(path_edit)
+                refresh_remove_buttons()
+
+            browse_button.clicked.connect(browse)
+            remove_button.clicked.connect(remove)
+
+            row_layout.addWidget(browse_button)
+            row_layout.addWidget(path_edit)
+            row_layout.addWidget(remove_button)
+
+            rows_layout.addWidget(row_container)
+
+            row_data = {
+                "container": row_container,
+                "remove_button": remove_button,
+            }
+            file_rows.append(row_data)
+            file_edits.append(path_edit)
+            refresh_remove_buttons()
+
+        add_button.clicked.connect(lambda: add_row())
+
+        if isinstance(values, list) and values:
+            for value in values:
+                add_row(value)
+        else:
+            add_row("")
+
+        return setting_container, file_edits
+
 
 def set_dict_value(inp_dict, path, value):
     local_dict = inp_dict
@@ -517,11 +665,11 @@ def set_dict_value(inp_dict, path, value):
 
 if __name__ == '__main__':
 
-    with open("test.toml", "r") as f:
-        config = toml.load(f)
+    #with open("test.toml", "r") as f:
+    #    config = toml.load(f)
 
 
     app = QApplication()
-    window = MainWindow(config_dict=config)
+    window = MainWindow()
     window.show()
     app.exec()

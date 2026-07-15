@@ -1,136 +1,16 @@
-# Settings Mapping Configuration
-# Maps GUI actions and specifics to relevant TOML parameters to display
-
-##################################################
-# FILE CHOOSERS (Upper-Left)
-##################################################
-
-# Single-file parameters (browse & select one file)
-[file_choosers.single_file]
-# Format: display_name = "toml.key.path"
-baseline = "data.baseline"
-segmented_image = "labeling.colored_image"
-depth_measurements = "depth.measurements"
-facies_properties = "facies.props"
-
-# Single-folder parameters (browse & select one folder)
-[file_choosers.single_folder]
-results_folder = "data.results"
-
-# Multi-file folder parameters (browse folder, then select files)
-# Format: display_name = { folder_key = "path.to.folder", file_key = "path.to.file_list" }
-[file_choosers.multi_file]
-# Example: images = { folder_key = "data.folders", file_key = "data.path.baseline" }
-
-##################################################
-# ACTIONS AND SPECIFICS
-##################################################
-
-# Setup Action
-[actions.setup]
-label = "Setup"
-specifics = [
-  { id = "all", label = "All" },
-  { id = "depth", label = "Depth" },
-  { id = "segmentation", label = "Segmentation" },
-  { id = "facies", label = "Facies" },
-  { id = "protocol", label = "Protocol" },
-  { id = "rig", label = "Rig" },
-  { id = "show_plots", label = "Show plots" }
-]
-
-# Calibration Action
-[actions.calibration]
-label = "Calibration"
-specifics = [
-  { id = "color", label = "Color Path" },
-  { id = "mass", label = "Mass" }
-]
-
-# Analysis Action
-[actions.analysis]
-label = "Analysis"
-specifics = [
-  { id = "fingers", label = "Fingers" },
-  { id = "mass", label = "Mass" },
-  { id = "segmentation", label = "Segmentation" }
-]
-
-##################################################
-# SETTINGS DISPLAY MAPPING
-##################################################
-# Format: [settings.ACTION.SPECIFIC_ID]
-# content = [ list of TOML keys to display as editable settings ]
 
 [settings.setup.all]
 content = [
-  "rig.dim",
-  "rig.width",
-  "rig.height"
+    {key = "rig.test.int", type = "int"},
+    {key = "rig.test.float", type = "float"},
+    {key = "rig.test.string", type = "string", options = ["option1", "option2", "option3"]},
+    {key = "rig.test.bool", type = "bool"},
+    {key = "rig.test.fixed_list_string", type = "fixed_list", list_type="string", options = ["item1", "item2", "item3"]},
+    {key = "rig.test.fixed_list_int", type = "list", list_type="int"},
+    {key = "rig.test.list", type = "list", list_type = "float"},
+    {key = "rig.test.single_file", type = "file"},
+    {key = "rig.test.single_folder", type = "folder"},
+    {key = "rig.test.multi_file", type = "multi_file"}
+
 ]
 
-[settings.setup.depth]
-content = [
-  "depth.measurements"
-]
-
-[settings.setup.segmentation]
-content = [
-  "labeling.colored_image"
-]
-
-[settings.setup.facies]
-content = [
-  "facies.props"
-]
-
-[settings.setup.protocol]
-content = [
-  "protocols.injection",
-  "protocols.pressure_temperature",
-  "protocols.imaging_mode"
-]
-
-[settings.setup.rig]
-content = [
-  "rig.dim",
-  "rig.width",
-  "rig.height"
-]
-
-[settings.setup.show_plots]
-content = []
-
-[settings.calibration.color]
-content = [
-  "color.path.color_path.mode",
-  "color.path.color_path.calibration_mode",
-  "color.path.color_path.histogram_weighting",
-  "color.path.color_path.resolution",
-  "color.path.color_path.num_segments"
-]
-
-[settings.calibration.mass]
-content = [
-  "calibration.mass.color"
-]
-
-[settings.analysis.fingers]
-content = [
-  "analysis.fingers.mode",
-  "analysis.fingers.threshold",
-  "analysis.fingers.reduce_to_main_contour",
-  "analysis.fingers.fill_holes"
-]
-
-[settings.analysis.mass]
-content = [
-  "analysis.mass.color",
-  "analysis.mass.export"
-]
-
-[settings.analysis.segmentation]
-content = [
-  "analysis.segmentation.aqueous.thresholds",
-  "analysis.segmentation.gas.thresholds"
-]
