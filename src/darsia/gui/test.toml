@@ -1,14 +1,192 @@
-[slider_settings]
-value1 = 8
-value2 = 5
-value3 = 6
+[depth]
+measurements = "./data/constant_depth_measurements.csv"
 
-[input_settings]
-value1 = 8
-value2 = 1
-value3 = 6
+[facies]
+props = "./data/facies.csv"
 
-[menu_settings]
-value1 = "Option 3"
-value2 = "Option 2"
-value3 = "Option 3"
+[rig]
+dim = 2
+width = 0.92
+height = 0.55
+
+[image_porosity]
+mode = "from_image"
+tol = 0.9
+patches = [ 10, 10,]
+num_clusters = 5
+sample_width = 50
+tol_color_distance = 0.1
+tol_color_gradient = 0.02
+
+[restoration]
+method = "volume_average"
+
+[calibration]
+data = [ "calibration",]
+
+[analysis]
+data = [ "injection", "analysis",]
+formats = [ "jpg",]
+
+[labeling]
+colored_image = ""
+
+[protocols]
+injection = ""
+pressure_temperature = ""
+imaging_mode = ""
+
+[facies.0]
+labels = [ 1, 2,]
+
+[facies.1]
+labels = [ 3,]
+
+[facies.2]
+labels = [ 0,]
+
+[restoration.options]
+rev_size = 0.005
+
+[roi.full]
+name = "Full Domain"
+corner_1 = [ 0.0, 0.0,]
+corner_2 = [ 0.92, 0.55,]
+
+[roi.calibration]
+name = "full domain without cc"
+corner_1 = [ 0.01, 0.45,]
+corner_2 = [ 0.9, 0.0,]
+
+[roi.fingers]
+name = "Fingers in the left storage container associated with port 1"
+corner_1 = [ 0.05, 0.15,]
+corner_2 = [ 0.3, 0.0,]
+
+[roi.storage]
+name = "storage"
+corner_1 = [ 0.0, 0.39,]
+corner_2 = [ 0.65, 0.0,]
+
+[calibration.color]
+color = "color_path"
+
+[calibration.mass]
+data = "calibration"
+color = "color_path"
+
+[analysis.fingers]
+mode = "concentration_aq"
+threshold = 0.1
+roi = [ "storage",]
+
+[analysis.mass]
+color = "color_path"
+export = [ "mass", "extensive_rescaled_mass", "rescaled_saturation_g", "rescaled_concentration_aq",]
+
+[helper.roi]
+data = "calibration"
+
+[helper.roi_viewer]
+data = "calibration"
+
+[helper.results]
+data = "calibration"
+mode = "extensive_rescaled_mass"
+format = "csv"
+
+[video.source]
+folder = "segmentation/jpg"
+recursive = false
+sorting = "name"
+
+[video.output]
+formats = [ "mp4",]
+fps = 6.0
+codec = "mp4v"
+quality = 100
+
+[video.overlay]
+show_elapsed_time = false
+elapsed_time_format = "Elapsed: {:.2f} h"
+show_note = true
+note = "FluidFlower BC02"
+font_scale = 0.5
+thickness = 2
+text_color = [ 255, 255, 255,]
+position = [ 20, 20,]
+box_enabled = true
+box_color = [ 0, 0, 0,]
+box_alpha = 0.4
+box_padding = 10
+
+[data.time.calibration]
+times = [ "00:30:00", "01:30:00", "05:00:00", "12:00:00",]
+
+[data.interval.injection]
+start = "00:00:00"
+end = "00:55:00"
+num = 12
+tol = "00:05:00"
+
+[data.interval.analysis]
+start = "01:00:00"
+end = "72:00:00"
+num = 72
+tol = "00:05:00"
+
+[color.path.color_path]
+mode = "relative"
+basis = "facies"
+calibration_mode = "manual"
+data = [ "calibration",]
+baseline = "baseline"
+rois = [ "calibration",]
+ignore_baseline_spectrum = "none"
+histogram_weighting = "wls"
+ignore_labels = [ 0,]
+reference_label = 2
+resolution = 21
+num_segments = 3
+threshold_baseline = 0.0
+threshold_calibration = 0.001
+
+[analysis.segmentation.aqueous]
+label = "CO2(aq)"
+mode = "concentration_aq"
+thresholds = [ 0.1, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,]
+color = [ 120, 210, 255,]
+alpha = [ 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,]
+linewidth = 16
+show_values = false
+value_color = [ 255, 255, 255,]
+value_size = 4
+value_alpha = 0.5
+value_density = 0.5
+value_min_distance_px = 35
+value_max_per_contour = 4
+value_format = "{:.2f}"
+
+[analysis.segmentation.gas]
+label = "CO2(g)"
+mode = "rescaled_saturation_g"
+thresholds = [ 0.01, 0.3, 0.6, 0.9,]
+color = [ 0, 0, 150,]
+alpha = [ 0.25, 0.5, 0.75, 1.0,]
+linewidth = 16
+
+[format.jpg.jpg]
+resolution = [ 1080, 4,]
+keep_ratio = true
+name = "spatial_map_HH:MM"
+cmap = "color_path.from_facies.7"
+quality = 100
+
+[format.csv.csv]
+resolution = [ 220, 368,]
+keep_ratio = false
+float_format = "{:.3e}"
+name = "spatial_map_HH:MM"
+
+[format.npz.npz]
+name = "spatial_map_HH:MM"
