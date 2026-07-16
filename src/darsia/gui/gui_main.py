@@ -1,11 +1,25 @@
-from PySide6.QtWidgets import (QScrollArea, QMainWindow, QApplication, QLabel, QWidget, QVBoxLayout, QPushButton,
-                               QLineEdit, QTextEdit, QSlider, QProgressBar, QComboBox, QListWidget, QRadioButton,
-                               QHBoxLayout, QTabWidget, QSplitter, QCheckBox, QFileDialog)
-from PySide6.QtCore import Qt
-import toml
 import ast
 import os
-import subprocess
+
+import toml
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QPushButton,
+    QScrollArea,
+    QSplitter,
+    QTabWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class MainWindow(QMainWindow):
@@ -27,16 +41,18 @@ class MainWindow(QMainWindow):
 
         # Setting up the left upper layout
         upper_layout.addWidget(QLabel("Choose experiment files"))
-        
+
         # Initialize file chooser storage
         self.chosen_files = {}
         self.baseline_images = []
         self.baseline_container = QWidget()
         self.baseline_layout = QVBoxLayout(self.baseline_container)
         self.baseline_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Add config file chooser first
-        config_file_chooser_container, _ = self.create_file_chooser("Config File", "TOML Files (*.toml);;All Files (*)", False)
+        config_file_chooser_container, _ = self.create_file_chooser(
+            "Config File", "TOML Files (*.toml);;All Files (*)", False
+        )
         upper_layout.addWidget(config_file_chooser_container)
         load_config_button = QPushButton("Load Config")
         load_config_button.clicked.connect(self.load_config)
@@ -44,7 +60,6 @@ class MainWindow(QMainWindow):
 
         # Add stretch to push file choosers to top
         upper_layout.addStretch()
-
 
         # Setting up the middle upper layout
         # Creating tabs
@@ -68,9 +83,9 @@ class MainWindow(QMainWindow):
             ("Facies", "facies"),
             ("Protocol", "protocol"),
             ("Rig", "rig"),
-            ("Show plots", "show_plots")
+            ("Show plots", "show_plots"),
         ]
-        
+
         self.setup_checkboxes = []
         for label, checkbox_id in setup_items:
             checkbox = QCheckBox(label)
@@ -88,17 +103,14 @@ class MainWindow(QMainWindow):
         setup_layout.addStretch()
 
         # Creating the calibration-tab
-        calibration_items = [
-            ("Color Path", "color"),
-            ("Mass", "mass")
-        ]
-        
+        calibration_items = [("Color Path", "color"), ("Mass", "mass")]
+
         self.calibration_checkboxes = []
         for label, checkbox_id in calibration_items:
             checkbox = QCheckBox(label)
             self.calibration_checkboxes.append((checkbox_id, checkbox))
             calibration_layout.addWidget(checkbox)
-        
+
         calibration_button = QPushButton("Open Calibration settings")
         calibration_button.clicked.connect(self.calibrate)
         calibration_layout.addWidget(calibration_button)
@@ -113,15 +125,15 @@ class MainWindow(QMainWindow):
         analysis_items = [
             ("Fingers", "fingers"),
             ("Mass", "mass"),
-            ("Segmentation", "segmentation")
+            ("Segmentation", "segmentation"),
         ]
-        
+
         self.analysis_checkboxes = []
         for label, checkbox_id in analysis_items:
             checkbox = QCheckBox(label)
             self.analysis_checkboxes.append((checkbox_id, checkbox))
             analysis_layout.addWidget(checkbox)
-        
+
         analysis_button = QPushButton("Open Analysis settings")
         analysis_button.clicked.connect(self.analysis)
         analysis_layout.addWidget(analysis_button)
@@ -132,31 +144,28 @@ class MainWindow(QMainWindow):
 
         analysis_layout.addStretch()
 
-
         # Setting up the right upper layout
         # Create settings container with scroll area
         self.settings_container = QWidget()
         self.settings_layout = QVBoxLayout(self.settings_container)
         self.settings_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Add scroll area for settings
         self.settings_scroll_area = QScrollArea()
         self.settings_scroll_area.setWidget(self.settings_container)
         self.settings_scroll_area.setWidgetResizable(True)
         upper_right_layout.addWidget(self.settings_scroll_area)
-        
+
         # Save Settings button
         save_button = QPushButton("Save Settings")
         save_button.clicked.connect(self.save_settings)
         upper_right_layout.addWidget(save_button)
-        
+
         # Store config and load settings mapping
         self.config_file = ""
         self.config_dict = {}
         self.settings_mapping = self.load_settings_mapping()
         self.settings_inputs = {}  # Store setting input widgets
-
-
 
         # Create logging container with its own scroll area
         log_container = QWidget()
@@ -172,7 +181,6 @@ class MainWindow(QMainWindow):
         log_scroll_area = QScrollArea()
         log_scroll_area.setWidget(log_container)
         log_scroll_area.setWidgetResizable(True)
-
 
         # Splitter for the upper half of the GUI
         upper_splitter = QSplitter(Qt.Horizontal)
@@ -200,20 +208,29 @@ class MainWindow(QMainWindow):
             return toml.load(mapping_file)
         return {}
 
-
     def save_settings(self):
         for key, value in self.settings_inputs.items():
             try:
-                if type(value) == QLineEdit:
-                    self.set_value(self.config_dict, key, ast.literal_eval(value.text()))
-                elif type(value) == QComboBox:
+                if type(value) is QLineEdit:
+                    self.set_value(
+                        self.config_dict, key, ast.literal_eval(value.text())
+                    )
+                elif type(value) is QComboBox:
                     self.set_value(self.config_dict, key, value.currentText())
-                elif type(value) == list:
+                elif type(value) is list:
                     if len(value) > 0:
-                        if type(value[0]) == QCheckBox:
-                            self.set_value(self.config_dict, key, [item.text() for item in value if item.isChecked()])
-                        elif type(value[0]) == QLineEdit:
-                            self.set_value(self.config_dict, key, [item.text() for item in value if item.text().strip()])
+                        if type(value[0]) is QCheckBox:
+                            self.set_value(
+                                self.config_dict,
+                                key,
+                                [item.text() for item in value if item.isChecked()],
+                            )
+                        elif type(value[0]) is QLineEdit:
+                            self.set_value(
+                                self.config_dict,
+                                key,
+                                [item.text() for item in value if item.text().strip()],
+                            )
             except (ValueError, SyntaxError):
                 if hasattr(value, "text"):
                     self.set_value(self.config_dict, key, value.text())
@@ -224,55 +241,59 @@ class MainWindow(QMainWindow):
         else:
             self.print_log(f"Settings not saved, please choose a config file")
 
-
     def create_file_chooser(self, display_name, file_filter, is_directory):
         """Create a file/folder chooser UI element (button + path label)."""
         chooser_container = QWidget()
         chooser_layout = QHBoxLayout(chooser_container)
         chooser_layout.setContentsMargins(0, 5, 0, 5)
-        
+
         # Browse button
         browse_button = QPushButton(f"Browse {display_name}")
         browse_button.setMinimumWidth(200)
-        
+
         # Path label to display selected path
         path_label = QLineEdit("No file chosen")
         path_label.setStyleSheet("color: white;")
-        
+
         # Store label reference for updating
         key = display_name.lower().replace(" ", "_")
-        self.chosen_files[key] = {"path": "", "label": path_label, "is_directory": is_directory, "filter": file_filter}
-        
+        self.chosen_files[key] = {
+            "path": "",
+            "label": path_label,
+            "is_directory": is_directory,
+            "filter": file_filter,
+        }
+
         # Connect button to file dialog
         browse_button.clicked.connect(lambda: self.browse_file(key))
-        
+
         chooser_layout.addWidget(browse_button)
         chooser_layout.addWidget(path_label)
         chooser_layout.addStretch()
         return chooser_container, path_label
-        #parent_layout.addWidget(chooser_container)
+        # parent_layout.addWidget(chooser_container)
 
     def add_baseline_image(self):
         """Add a new baseline image chooser row."""
         baseline_index = len(self.baseline_images)
-        
+
         chooser_container = QWidget()
         chooser_layout = QHBoxLayout(chooser_container)
         chooser_layout.setContentsMargins(0, 5, 0, 5)
-        
+
         # Browse button
         browse_button = QPushButton(f"Browse Baseline {baseline_index + 1}")
         browse_button.setMinimumWidth(200)
-        
+
         # Path label to display selected path
         path_label = QLabel("No file chosen")
         path_label.setStyleSheet("color: white;")
-        
+
         # Remove button (only show if 2+ baselines)
         remove_button = QPushButton("Remove")
         remove_button.setMaximumWidth(80)
         remove_button.setVisible(len(self.baseline_images) >= 1)
-        
+
         # Store baseline info
         baseline_info = {
             "index": baseline_index,
@@ -280,21 +301,25 @@ class MainWindow(QMainWindow):
             "label": path_label,
             "browse_button": browse_button,
             "remove_button": remove_button,
-            "container": chooser_container
+            "container": chooser_container,
         }
         self.baseline_images.append(baseline_info)
-        
+
         # Connect buttons
-        browse_button.clicked.connect(lambda: self.browse_baseline_image(baseline_index))
-        remove_button.clicked.connect(lambda: self.remove_baseline_image(baseline_index))
-        
+        browse_button.clicked.connect(
+            lambda: self.browse_baseline_image(baseline_index)
+        )
+        remove_button.clicked.connect(
+            lambda: self.remove_baseline_image(baseline_index)
+        )
+
         chooser_layout.addWidget(browse_button)
         chooser_layout.addWidget(path_label)
         chooser_layout.addWidget(remove_button)
         chooser_layout.addStretch()
-        
+
         self.baseline_layout.addWidget(chooser_container)
-        
+
         # Update all remove buttons visibility
         self.update_baseline_remove_buttons()
 
@@ -304,12 +329,12 @@ class MainWindow(QMainWindow):
             baseline_info = self.baseline_images[index]
             baseline_info["container"].deleteLater()
             self.baseline_images.pop(index)
-            
+
             # Reindex remaining baselines
             for i, info in enumerate(self.baseline_images):
                 info["index"] = i
                 info["browse_button"].setText(f"Browse Baseline {i + 1}")
-            
+
             # Update remove buttons visibility
             self.update_baseline_remove_buttons()
             self.print_log(f"Removed baseline image {index + 1}")
@@ -323,8 +348,10 @@ class MainWindow(QMainWindow):
     def browse_baseline_image(self, index):
         """Open file dialog for baseline image and store selected path."""
         file_filter = "Image Files (*.jpg *.jpeg *.png);;All Files (*)"
-        selected_path, _ = QFileDialog.getOpenFileName(self, f"Select Baseline Image {index + 1}", "", file_filter)
-        
+        selected_path, _ = QFileDialog.getOpenFileName(
+            self, f"Select Baseline Image {index + 1}", "", file_filter
+        )
+
         if selected_path and index < len(self.baseline_images):
             baseline_info = self.baseline_images[index]
             baseline_info["path"] = selected_path
@@ -336,18 +363,21 @@ class MainWindow(QMainWindow):
         file_info = self.chosen_files[key]
         is_directory = file_info["is_directory"]
         file_filter = file_info["filter"]
-        
+
         if is_directory:
-            selected_path = QFileDialog.getExistingDirectory(self, f"Select {key.replace('_', ' ')}")
+            selected_path = QFileDialog.getExistingDirectory(
+                self, f"Select {key.replace('_', ' ')}"
+            )
         else:
-            selected_path, _ = QFileDialog.getOpenFileName(self, f"Select {key.replace('_', ' ')}", "", file_filter)
-        
+            selected_path, _ = QFileDialog.getOpenFileName(
+                self, f"Select {key.replace('_', ' ')}", "", file_filter
+            )
+
         if selected_path:
             self.chosen_files[key]["path"] = selected_path
             file_info["label"].setText(selected_path)
             file_info["label"].setStyleSheet("color: white;")
             self.print_log(f"Selected {key}: {selected_path}")
-
 
     def get_checked_checkbox_ids(self, checkboxes):
         checked_ids = []
@@ -360,11 +390,12 @@ class MainWindow(QMainWindow):
         settings = []
         for checked_id in checked_ids:
             try:
-                settings += self.settings_mapping['settings'][action][checked_id]["content"]
+                settings += self.settings_mapping["settings"][action][checked_id][
+                    "content"
+                ]
             except KeyError:
-                    self.print_log(f"No settings found for {action} with id {checked_id}")
+                self.print_log(f"No settings found for {action} with id {checked_id}")
         return settings
-
 
     def display_settings(self, action, checked_ids):
         # Clearing the settings panel
@@ -388,7 +419,6 @@ class MainWindow(QMainWindow):
 
         self.settings_layout.addStretch()
 
-
     def setup(self):
         """Setup action: get checked specifics and display relevant settings."""
         checked_ids = self.get_checked_checkbox_ids(self.setup_checkboxes)
@@ -409,17 +439,16 @@ class MainWindow(QMainWindow):
         self.print_log(f"Analysis: Checked specifics - {checked_ids}")
 
     def run_setup(self):
-        #subprocess.run(["python", "setup_protocol"])
+        # subprocess.run(["python", "setup_protocol"])
         pass
 
     def run_calibration(self):
-        #subprocess.run(...)
+        # subprocess.run(...)
         pass
 
     def run_analysis(self):
-        #subprocess.run(...)
+        # subprocess.run(...)
         pass
-
 
     def load_config(self):
         file = self.chosen_files["config_file"]["path"]
@@ -428,9 +457,8 @@ class MainWindow(QMainWindow):
         self.config_file = file
         self.print_log("Config loaded")
 
-
     def unravel_settings(self, inp_key, inp_val, path, parent_layout):
-        if type(inp_val) == dict:
+        if type(inp_val) is dict:
             local_container = QWidget()
             local_layout = QVBoxLayout(local_container)
             label = QLabel(inp_key)
@@ -505,7 +533,9 @@ class MainWindow(QMainWindow):
             return self.create_multi_file_input(setting_dict)
 
         else:
-            self.print_log(f"Setting type {setting_type} not supported yet, using simple input")
+            self.print_log(
+                f"Setting type {setting_type} not supported yet, using simple input"
+            )
             return self.create_simple_input(setting_dict)
 
     def create_simple_input(self, setting_dict):
@@ -517,9 +547,11 @@ class MainWindow(QMainWindow):
         setting_label = QLabel(setting)
         setting_edit = QLineEdit()
         if value is not None:
-           setting_edit.setText(str(value))
-        if setting_dict['type'] == 'list':
-            type_label = QLabel(f"({setting_dict['type']}, {setting_dict['list_type']})")
+            setting_edit.setText(str(value))
+        if setting_dict["type"] == "list":
+            type_label = QLabel(
+                f"({setting_dict['type']}, {setting_dict['list_type']})"
+            )
         else:
             type_label = QLabel(f"({setting_dict['type']})")
         setting_layout.addWidget(setting_label)
@@ -663,11 +695,11 @@ def set_dict_value(inp_dict, path, value):
         local_dict = local_dict[key]
     local_dict[path[-1]] = value
 
-if __name__ == '__main__':
 
-    #with open("test.toml", "r") as f:
+if __name__ == "__main__":
+
+    # with open("test.toml", "r") as f:
     #    config = toml.load(f)
-
 
     app = QApplication()
     window = MainWindow()
