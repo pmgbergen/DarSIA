@@ -1,5 +1,5 @@
 import ast
-import os
+from pathlib import Path
 
 import toml
 from PySide6.QtCore import Qt
@@ -204,8 +204,8 @@ class MainWindow(QMainWindow):
 
     def load_settings_mapping(self):
         """Load the settings_mapping.toml file."""
-        mapping_file = os.path.join(os.path.dirname(__file__), "settings_mapping.toml")
-        if os.path.exists(mapping_file):
+        mapping_file = Path(__file__).parent/"settings_mapping.toml"
+        if mapping_file.exists():
             return toml.load(mapping_file)
         return {}
 
