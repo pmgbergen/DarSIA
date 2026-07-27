@@ -4,7 +4,6 @@ from pathlib import Path
 import toml
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QApplication,
     QCheckBox,
     QComboBox,
     QFileDialog,
@@ -694,12 +693,3 @@ def set_dict_value(inp_dict, path, value):
     local_dict[path[-1]] = value
 
 
-if __name__ == "__main__":
-
-    # with open("test.toml", "r") as f:
-    #    config = toml.load(f)
-
-    app = QApplication()
-    window = MainWindow()
-    window.show()
-    app.exec()
