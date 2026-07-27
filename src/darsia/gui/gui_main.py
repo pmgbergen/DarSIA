@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 
 
 class MainWindow(QMainWindow):
+    """The main class containing the window and most of the relevant methods for the visualization."""
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Darsia")
@@ -209,6 +210,7 @@ class MainWindow(QMainWindow):
         return {}
 
     def save_settings(self):
+        """Method to save the settings set in the gui to the settings_mapping.toml file."""
         for key, value in self.settings_inputs.items():
             try:
                 if type(value) is QLineEdit:
@@ -380,6 +382,9 @@ class MainWindow(QMainWindow):
             self.print_log(f"Selected {key}: {selected_path}")
 
     def get_checked_checkbox_ids(self, checkboxes):
+        """
+        Function to get the ids of checked checkboxes from a list of (id, checkbox) tuples.
+        """
         checked_ids = []
         for checkbox_id, checkbox in checkboxes:
             if checkbox.isChecked():
@@ -387,6 +392,19 @@ class MainWindow(QMainWindow):
         return checked_ids
 
     def get_relevant_settings(self, action, checked_ids):
+        """
+        Method that gets the relevant settings based on the action being used, and the checkboxes that are checked.
+
+        Parameters
+        ----------
+        action : str
+        checked_ids : list
+
+        Returns
+        -------
+        list
+            List of lists, where each list contains both the name and the type of the setting.
+        """
         settings = []
         for checked_id in checked_ids:
             try:
@@ -398,7 +416,7 @@ class MainWindow(QMainWindow):
         return settings
 
     def display_settings(self, action, checked_ids):
-        # Clearing the settings panel
+        """Method that displays the relevant settings based on the action being used, and the checkboxes that are checked."""
         while self.settings_layout.count():
             child = self.settings_layout.takeAt(0)
             if child.widget():
@@ -451,42 +469,16 @@ class MainWindow(QMainWindow):
         pass
 
     def load_config(self):
+        """Method that loads the config file chosen in the GUI."""
         file = self.chosen_files["config_file"]["path"]
         with open(file, "r") as f:
             self.config_dict = toml.load(f)
         self.config_file = file
         self.print_log("Config loaded")
 
-    def unravel_settings(self, inp_key, inp_val, path, parent_layout):
-        if type(inp_val) is dict:
-            local_container = QWidget()
-            local_layout = QVBoxLayout(local_container)
-            label = QLabel(inp_key)
-            local_layout.addWidget(label)
-            parent_layout.addWidget(local_container)
-            loc_dict = self.subsections
-            for key in path:
-                loc_dict = loc_dict[key]
-            loc_dict[inp_key] = {}
-
-            for key, value in inp_val.items():
-                self.unravel_settings(key, value, path + [inp_key], local_layout)
-        else:
-            setting_container = QWidget()
-            setting_layout = QHBoxLayout(setting_container)
-            input_label = QLabel(inp_key)
-            line_edit = QLineEdit()
-            line_edit.setText(str(inp_val))
-
-            loc_dict = self.subsections
-            for key in path:
-                loc_dict = loc_dict[key]
-            loc_dict[inp_key] = line_edit
-            setting_layout.addWidget(input_label)
-            setting_layout.addWidget(line_edit)
-            parent_layout.addWidget(setting_container)
 
     def print_log(self, text):
+        """Method that prints to the console and to the log window."""
         self.log_text.append(text)
         print(text)
 
@@ -512,6 +504,7 @@ class MainWindow(QMainWindow):
         current[keys[-1]] = value
 
     def create_setting_edit(self, setting_dict):
+        """Create a new setting edit based on the setting type."""
         setting_type = setting_dict["type"]
 
         if setting_type == "int":
@@ -539,6 +532,7 @@ class MainWindow(QMainWindow):
             return self.create_simple_input(setting_dict)
 
     def create_simple_input(self, setting_dict):
+        """Creates a new input as a line edit."""
         setting = setting_dict["key"]
 
         value = self.get_value(self.config_dict, setting)
@@ -560,6 +554,7 @@ class MainWindow(QMainWindow):
         return setting_container, setting_edit
 
     def create_string_input(self, setting_dict):
+        """Creates a new input as a combobox with predefined options."""
         setting = setting_dict["key"]
         value = self.get_value(self.config_dict, setting)
         setting_container = QWidget()
@@ -581,6 +576,7 @@ class MainWindow(QMainWindow):
         return setting_container, setting_combo
 
     def create_fixed_list_string_input(self, setting_dict):
+        """Creates a new input as checkboxes with predefined options."""
         setting = setting_dict["key"]
         values = self.get_value(self.config_dict, setting)
         setting_container = QWidget()
@@ -599,6 +595,7 @@ class MainWindow(QMainWindow):
         return setting_container, check_boxes
 
     def create_multi_file_input(self, setting_dict):
+        """Creates a new input as a variable number of files."""
         setting = setting_dict["key"]
         values = self.get_value(self.config_dict, setting)
 
@@ -690,6 +687,7 @@ class MainWindow(QMainWindow):
 
 
 def set_dict_value(inp_dict, path, value):
+    """Function that sets the value of a dict where path is a list of keys."""
     local_dict = inp_dict
     for key in path[:-1]:
         local_dict = local_dict[key]
