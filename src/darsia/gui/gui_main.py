@@ -26,7 +26,7 @@ class MainWindow(QMainWindow):
     """The main class containing the window and most of the relevant methods for the visualization."""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Darsia")
+        self.setWindowTitle("DarSIA")
         self.showMaximized()
 
         # Setting up the three upper layouts
