@@ -212,21 +212,21 @@ class MainWindow(QMainWindow):
         """Method to save the settings set in the gui to the settings_mapping.toml file."""
         for key, value in self.settings_inputs.items():
             try:
-                if type(value) is QLineEdit:
-                    self.set_value(
-                        self.config_dict, key, ast.literal_eval(value.text())
-                    )
-                elif type(value) is QComboBox:
+                if isinstance(value, QLineEdit):
+                    self.set_value(self.config_dict, key, ast.literal_eval(value.text()))
+                elif isinstance(value, QComboBox):
                     self.set_value(self.config_dict, key, value.currentText())
-                elif type(value) is list:
+                elif isinstance(value, QCheckBox):
+                    self.set_value(self.config_dict, key, value.isChecked())
+                elif isinstance(value, list):
                     if len(value) > 0:
-                        if type(value[0]) is QCheckBox:
+                        if isinstance(value[0], QCheckBox):
                             self.set_value(
                                 self.config_dict,
                                 key,
                                 [item.text() for item in value if item.isChecked()],
                             )
-                        elif type(value[0]) is QLineEdit:
+                        elif isinstance(value[0], QLineEdit):
                             self.set_value(
                                 self.config_dict,
                                 key,
@@ -242,28 +242,31 @@ class MainWindow(QMainWindow):
         else:
             self.print_log(f"Settings not saved, please choose a config file")
 
-    def create_file_chooser(self, display_name, file_filter, is_directory):
-        """Create a file/folder chooser UI element (button + path label)."""
-        chooser_container = QWidget()
-        chooser_layout = QHBoxLayout(chooser_container)
-        chooser_layout.setContentsMargins(0, 5, 0, 5)
+def create_file_chooser(self, display_name, file_filter, is_directory):
+    """Create a file/folder chooser UI element (button + path label)."""
+    if not file_filter:
+        file_filter = "All Files (*)"
 
-        # Browse button
-        browse_button = QPushButton(f"Browse {display_name}")
-        browse_button.setMinimumWidth(200)
+    chooser_container = QWidget()
+    chooser_layout = QHBoxLayout(chooser_container)
+    chooser_layout.setContentsMargins(0, 5, 0, 5)
 
-        # Path label to display selected path
-        path_label = QLineEdit("No file chosen")
-        path_label.setStyleSheet("color: white;")
+    # Browse button
+    browse_button = QPushButton(f"Browse {display_name}")
+    browse_button.setMinimumWidth(200)
 
-        # Store label reference for updating
-        key = display_name.lower().replace(" ", "_")
-        self.chosen_files[key] = {
-            "path": "",
-            "label": path_label,
-            "is_directory": is_directory,
-            "filter": file_filter,
-        }
+    # Path label to display selected path
+    path_label = QLineEdit("No file chosen")
+    path_label.setStyleSheet("color: white;")
+
+    # Store label reference for updating
+    key = display_name.lower().replace(" ", "_")
+    self.chosen_files[key] = {
+        "path": "",
+        "label": path_label,
+        "is_directory": is_directory,
+        "filter": file_filter,
+    }
 
         # Connect button to file dialog
         browse_button.clicked.connect(lambda: self.browse_file(key))
