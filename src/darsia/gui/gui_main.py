@@ -22,7 +22,8 @@ from PySide6.QtWidgets import (
 
 
 class MainWindow(QMainWindow):
-    """The main class containing the window and most of the relevant methods for the visualization."""
+    """The main class containing the window and the relevant methods for the visualization."""
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("DarSIA")
@@ -50,8 +51,10 @@ class MainWindow(QMainWindow):
         self.baseline_layout.setContentsMargins(0, 0, 0, 0)
 
         # Add config file chooser first
-        config_file_chooser_container, self.config_path_label = self.create_file_chooser(
-            "Config File", "TOML Files (*.toml);;All Files (*)", False
+        config_file_chooser_container, self.config_path_label = (
+            self.create_file_chooser(
+                "Config File", "TOML Files (*.toml);;All Files (*)", False
+            )
         )
         upper_layout.addWidget(config_file_chooser_container)
         load_config_button = QPushButton("Load Config")
@@ -203,7 +206,7 @@ class MainWindow(QMainWindow):
 
     def load_settings_mapping(self):
         """Load the settings_mapping.toml file."""
-        mapping_file = Path(__file__).parent/"settings_mapping.toml"
+        mapping_file = Path(__file__).parent / "settings_mapping.toml"
         if mapping_file.exists():
             return toml.load(mapping_file)
         return {}
@@ -213,7 +216,9 @@ class MainWindow(QMainWindow):
         for key, value in self.settings_inputs.items():
             try:
                 if isinstance(value, QLineEdit):
-                    self.set_value(self.config_dict, key, ast.literal_eval(value.text()))
+                    self.set_value(
+                        self.config_dict, key, ast.literal_eval(value.text())
+                    )
                 elif isinstance(value, QComboBox):
                     self.set_value(self.config_dict, key, value.currentText())
                 elif isinstance(value, QCheckBox):
@@ -395,7 +400,8 @@ class MainWindow(QMainWindow):
 
     def get_relevant_settings(self, action, checked_ids):
         """
-        Method that gets the relevant settings based on the action being used, and the checkboxes that are checked.
+        Method that gets the relevant settings based on the action being used,
+        and the checkboxes that are checked.
 
         Parameters
         ----------
@@ -418,7 +424,7 @@ class MainWindow(QMainWindow):
         return settings
 
     def display_settings(self, action, checked_ids):
-        """Method that displays the relevant settings based on the action being used, and the checkboxes that are checked."""
+        """Method that displays the relevant settings based on the action being used."""
         while self.settings_layout.count():
             child = self.settings_layout.takeAt(0)
             if child.widget():
@@ -485,7 +491,6 @@ class MainWindow(QMainWindow):
             return
         self.config_file = file
         self.print_log("Config loaded")
-
 
     def print_log(self, text):
         """Method that prints to the console and to the log window."""
@@ -716,5 +721,3 @@ def set_dict_value(inp_dict, path, value):
     for key in path[:-1]:
         local_dict = local_dict[key]
     local_dict[path[-1]] = value
-
-
