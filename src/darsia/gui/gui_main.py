@@ -242,31 +242,31 @@ class MainWindow(QMainWindow):
         else:
             self.print_log(f"Settings not saved, please choose a config file")
 
-def create_file_chooser(self, display_name, file_filter, is_directory):
-    """Create a file/folder chooser UI element (button + path label)."""
-    if not file_filter:
-        file_filter = "All Files (*)"
+    def create_file_chooser(self, display_name, file_filter, is_directory):
+        """Create a file/folder chooser UI element (button + path label)."""
+        if not file_filter:
+            file_filter = "All Files (*)"
 
-    chooser_container = QWidget()
-    chooser_layout = QHBoxLayout(chooser_container)
-    chooser_layout.setContentsMargins(0, 5, 0, 5)
+        chooser_container = QWidget()
+        chooser_layout = QHBoxLayout(chooser_container)
+        chooser_layout.setContentsMargins(0, 5, 0, 5)
 
-    # Browse button
-    browse_button = QPushButton(f"Browse {display_name}")
-    browse_button.setMinimumWidth(200)
+        # Browse button
+        browse_button = QPushButton(f"Browse {display_name}")
+        browse_button.setMinimumWidth(200)
 
-    # Path label to display selected path
-    path_label = QLineEdit("No file chosen")
-    path_label.setStyleSheet("color: white;")
+        # Path label to display selected path
+        path_label = QLineEdit("No file chosen")
+        path_label.setStyleSheet("color: white;")
 
-    # Store label reference for updating
-    key = display_name.lower().replace(" ", "_")
-    self.chosen_files[key] = {
-        "path": "",
-        "label": path_label,
-        "is_directory": is_directory,
-        "filter": file_filter,
-    }
+        # Store label reference for updating
+        key = display_name.lower().replace(" ", "_")
+        self.chosen_files[key] = {
+            "path": "",
+            "label": path_label,
+            "is_directory": is_directory,
+            "filter": file_filter,
+        }
 
         # Connect button to file dialog
         browse_button.clicked.connect(lambda: self.browse_file(key))
@@ -516,8 +516,7 @@ def create_file_chooser(self, display_name, file_filter, is_directory):
         elif setting_type == "string":
             return self.create_string_input(setting_dict)
         elif setting_type == "bool":
-            setting_dict["options"] = ["true", "false"]
-            return self.create_string_input(setting_dict)
+            return self.create_bool_input(setting_dict)
         elif setting_type == "fixed_list" and setting_dict["list_type"] == "string":
             return self.create_fixed_list_string_input(setting_dict)
         elif setting_type == "file":
@@ -554,6 +553,21 @@ def create_file_chooser(self, display_name, file_filter, is_directory):
         setting_layout.addWidget(setting_edit)
         setting_layout.addWidget(type_label)
         return setting_container, setting_edit
+
+    def create_bool_input(self, setting_dict):
+        """Creates a new input as a checkbox."""
+        setting = setting_dict["key"]
+        value = self.get_value(self.config_dict, setting)
+        setting_container = QWidget()
+        setting_layout = QHBoxLayout(setting_container)
+        setting_label = QLabel(setting)
+        setting_checkbox = QCheckBox()
+        if value is not None:
+            setting_checkbox.setChecked(bool(value))
+        setting_layout.addWidget(setting_label)
+        setting_layout.addWidget(setting_checkbox)
+        setting_layout.addWidget(QLabel("(bool)"))
+        return setting_container, setting_checkbox
 
     def create_string_input(self, setting_dict):
         """Creates a new input as a combobox with predefined options."""
