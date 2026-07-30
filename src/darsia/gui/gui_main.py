@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
         self.baseline_layout.setContentsMargins(0, 0, 0, 0)
 
         # Add config file chooser first
-        config_file_chooser_container, _ = self.create_file_chooser(
+        config_file_chooser_container, self.config_path_label = self.create_file_chooser(
             "Config File", "TOML Files (*.toml);;All Files (*)", False
         )
         upper_layout.addWidget(config_file_chooser_container)
@@ -472,9 +472,17 @@ class MainWindow(QMainWindow):
 
     def load_config(self):
         """Method that loads the config file chosen in the GUI."""
-        file = self.chosen_files["config_file"]["path"]
-        with open(file, "r") as f:
-            self.config_dict = toml.load(f)
+        # file = self.chosen_files["config_file"]["path"]
+        file = self.config_path_label.text()
+        if not file:
+            self.print_log(f"No config file selected.")
+            return
+        try:
+            with open(file, "r") as f:
+                self.config_dict = toml.load(f)
+        except Exception as e:
+            self.print_log(f"Error loading config file: {e}")
+            return
         self.config_file = file
         self.print_log("Config loaded")
 
