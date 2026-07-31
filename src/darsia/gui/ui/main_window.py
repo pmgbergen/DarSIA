@@ -21,6 +21,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .help import HelpButton
+
 
 class MainWindow(QMainWindow):
     """The main class containing the window and the relevant methods for the visualization."""
@@ -435,6 +437,35 @@ class MainWindow(QMainWindow):
                 self.print_log(f"No settings found for {action} with id {checked_id}")
         return settings
 
+    def wrap_setting_with_help(self, setting_container, setting_dict):
+        """Wrap a setting container with a dedicated help button column."""
+        help_text = setting_dict.get("help")
+        link_url = setting_dict.get("link")
+
+        wrapper = QWidget()
+        wrapper_layout = QHBoxLayout(wrapper)
+        wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        wrapper_layout.setSpacing(8)
+
+        # Left: setting container with stretch
+        wrapper_layout.addWidget(setting_container, stretch=1)
+
+        # Right: fixed-width column for help button (or empty space)
+        right_column = QWidget()
+        right_layout = QHBoxLayout(right_column)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+
+        if help_text:
+            help_button = HelpButton(help_text, link_url)
+            right_layout.addWidget(help_button)
+        else:
+            right_layout.addStretch()
+
+        right_column.setFixedWidth(40)
+        wrapper_layout.addWidget(right_column)
+
+        return wrapper
+
     def display_settings(self, action, checked_ids):
         """Method that displays the relevant settings based on the action being used."""
         while self.settings_layout.count():
@@ -451,8 +482,9 @@ class MainWindow(QMainWindow):
 
         for setting in relevant_settings:
             setting_container, setting_edit = self.create_setting_edit(setting)
+            wrapped_container = self.wrap_setting_with_help(setting_container, setting)
 
-            self.settings_layout.addWidget(setting_container)
+            self.settings_layout.addWidget(wrapped_container)
             self.settings_inputs[setting["key"]] = setting_edit
 
         self.settings_layout.addStretch()
