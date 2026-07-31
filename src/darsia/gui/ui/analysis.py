@@ -44,7 +44,9 @@ class AnalysisTab:
 
     def on_settings_clicked(self):
         """Handle settings button click."""
-        checked_ids = self.main_window.get_checked_checkbox_ids(self.analysis_checkboxes)
+        checked_ids = self.main_window.get_checked_checkbox_ids(
+            self.analysis_checkboxes
+        )
         self.main_window.display_settings("analysis", checked_ids)
         self.main_window.print_log(f"Analysis: Checked specifics - {checked_ids}")
 
@@ -59,7 +61,9 @@ class AnalysisTab:
             self.main_window.print_log("Please select a config file first.")
             return
 
-        checked_ids = self.main_window.get_checked_checkbox_ids(self.analysis_checkboxes)
+        checked_ids = self.main_window.get_checked_checkbox_ids(
+            self.analysis_checkboxes
+        )
         if not checked_ids:
             self.main_window.print_log("Please select at least one analysis option.")
             return
@@ -68,9 +72,9 @@ class AnalysisTab:
         available_options = self.get_available_options()
         options = {
             "all": "all" in checked_ids,
-            "cropping": "cropping" in checked_ids
-            if "cropping" in available_options
-            else False,
+            "cropping": (
+                "cropping" in checked_ids if "cropping" in available_options else False
+            ),
             "segmentation": "segmentation" in checked_ids,
             "fingers": "fingers" in checked_ids,
             "mass": "mass" in checked_ids,
@@ -84,7 +88,9 @@ class AnalysisTab:
         # Run workflow in a separate thread to avoid blocking the GUI
         def run_workflow():
             try:
-                from darsia.presets.workflows.user_interface_analysis import run_analysis
+                from darsia.presets.workflows.user_interface_analysis import (
+                    run_analysis,
+                )
                 from darsia.presets.workflows.rig import Rig
 
                 config_paths = [Path(config_file)]
