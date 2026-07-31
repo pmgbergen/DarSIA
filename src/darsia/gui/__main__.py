@@ -9,8 +9,9 @@ Run the GUI using one of the following methods:
     python __main__.py
 """
 
-from .gui_main import MainWindow
 from PySide6.QtWidgets import QApplication
+
+from .gui_main import MainWindow
 
 if __name__ == "__main__":
     app = QApplication()
