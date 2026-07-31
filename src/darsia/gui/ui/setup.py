@@ -83,7 +83,8 @@ class SetupTab:
         }
 
         self.main_window.print_log(
-            f"Starting setup with options: {[k for k, v in options.items() if v and k != 'force']}"
+            """Starting setup with options: """
+            f"""{[k for k, v in options.items() if v and k != "force"]}"""
         )
 
         # Run workflow in a separate thread to avoid blocking the GUI
