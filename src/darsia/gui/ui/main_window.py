@@ -3,6 +3,7 @@ from pathlib import Path
 
 import toml
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -27,7 +28,14 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("DarSIA")
-        self.showMaximized()
+
+        # Set window icon
+        logo_path = (
+            Path(__file__).parent
+            / "../../presets/workflows/interface/DarSIA_Horisontal_Positiv_part.png"
+        )
+        if logo_path.exists():
+            self.setWindowIcon(QIcon(str(logo_path)))
 
         # Setting up the three upper layouts
         upper_container = QWidget()
