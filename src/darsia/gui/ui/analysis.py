@@ -88,10 +88,10 @@ class AnalysisTab:
         # Run workflow in a separate thread to avoid blocking the GUI
         def run_workflow():
             try:
+                from darsia.presets.workflows.rig import Rig
                 from darsia.presets.workflows.user_interface_analysis import (
                     run_analysis,
                 )
-                from darsia.presets.workflows.rig import Rig
 
                 config_paths = [Path(config_file)]
 
