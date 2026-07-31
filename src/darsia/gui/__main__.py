@@ -11,7 +11,7 @@ Run the GUI using one of the following methods:
 
 from PySide6.QtWidgets import QApplication
 
-from .gui_main import MainWindow
+from .ui.main_window import MainWindow
 
 if __name__ == "__main__":
     app = QApplication()

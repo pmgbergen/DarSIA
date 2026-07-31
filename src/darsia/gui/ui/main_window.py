@@ -206,13 +206,13 @@ class MainWindow(QMainWindow):
 
     def load_settings_mapping(self):
         """Load the settings_mapping.toml file."""
-        mapping_file = Path(__file__).parent / "settings_mapping.toml"
+        mapping_file = Path(__file__).parent / "../config" / "settings.toml"
         if mapping_file.exists():
             return toml.load(mapping_file)
         return {}
 
     def save_settings(self):
-        """Method to save the settings set in the gui to the settings_mapping.toml file."""
+        """Method to save the settings set in the gui to the settings.toml file."""
         for key, value in self.settings_inputs.items():
             try:
                 if isinstance(value, QLineEdit):
@@ -245,7 +245,7 @@ class MainWindow(QMainWindow):
                 toml.dump(self.config_dict, f)
             self.print_log(f"Settings saved to {self.config_file}")
         else:
-            self.print_log(f"Settings not saved, please choose a config file")
+            self.print_log("Settings not saved, please choose a config file")
 
     def create_file_chooser(self, display_name, file_filter, is_directory):
         """Create a file/folder chooser UI element (button + path label)."""
@@ -481,7 +481,7 @@ class MainWindow(QMainWindow):
         # file = self.chosen_files["config_file"]["path"]
         file = self.config_path_label.text()
         if not file:
-            self.print_log(f"No config file selected.")
+            self.print_log("No config file selected.")
             return
         try:
             with open(file, "r") as f:
