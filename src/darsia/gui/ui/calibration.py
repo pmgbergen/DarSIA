@@ -79,11 +79,11 @@ class CalibrationTab:
                 from darsia.presets.workflows.analysis.analysis_context import (
                     prepare_analysis_context,
                 )
-                from darsia.presets.workflows.calibration.calibration_color_paths import (
-                    calibration_color_paths_from_context,
-                )
                 from darsia.presets.workflows.calibration import (
                     calibration_color_to_mass_analysis as c2m_analysis_module,
+                )
+                from darsia.presets.workflows.calibration.calibration_color_paths import (
+                    calibration_color_paths_from_context,
                 )
                 from darsia.presets.workflows.rig import Rig
 

@@ -90,6 +90,7 @@ class SetupTab:
         # Run workflow in a separate thread to avoid blocking the GUI
         def run_workflow():
             try:
+                from darsia.presets.workflows.rig import Rig
                 from darsia.presets.workflows.setup.setup_depth import setup_depth_map
                 from darsia.presets.workflows.setup.setup_facies import setup_facies
                 from darsia.presets.workflows.setup.setup_labeling import (
@@ -99,7 +100,6 @@ class SetupTab:
                     setup_imaging_protocol,
                 )
                 from darsia.presets.workflows.setup.setup_rig import setup_rig
-                from darsia.presets.workflows.rig import Rig
 
                 config_paths = [Path(config_file)]
                 show = options["show"]
