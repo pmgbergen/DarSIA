@@ -197,6 +197,8 @@ class MainWindow(QMainWindow):
         upper_splitter = QSplitter(Qt.Horizontal)
         upper_splitter.addWidget(upper_mid_container)
         upper_splitter.addWidget(upper_right_container)
+        upper_splitter.setStretchFactor(0, 1)  # left panel: 1/7 of space
+        upper_splitter.setStretchFactor(1, 7)  # right panel: 6/7 of space
 
         # Vertical splitter between the log-window and the rest of the GUI
         content_splitter = QSplitter(Qt.Vertical)
@@ -211,6 +213,8 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(main_container)
         main_layout.addWidget(upper_container)
         main_layout.addWidget(content_splitter)
+
+        self.showMaximized()
 
     def load_settings_mapping(self):
         """Load the settings_mapping.toml file."""
