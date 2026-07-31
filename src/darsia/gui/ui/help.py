@@ -9,7 +9,6 @@ from PySide6.QtWidgets import (
 )
 
 
-
 class HelpPopup(QFrame):
     """Custom styled help popup that appears on hover."""
 
