@@ -16,24 +16,69 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  build-with-petsc:
+  static-checks:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
 
-    # https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#specifying-a-python-version
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.12"
+        architecture: x64
+
+    - name: Install static analysis tools
+      run: pip install black==24.10.0 flake8 isort
+
+    - name: black
+      run: black --check src
+
+    - name: flake8
+      run: flake8 src
+
+    - name: isort
+      run: isort --check src
+
+  pytest-without-petsc:
+    runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        python-version:  ["3.12"]
-      # Complete all versions in matrix even if one fails.
+        python-version: ["3.12", "3.13", "3.14"]
       fail-fast: false
 
     steps:
     - uses: actions/checkout@v2
 
-    - name: Setup Python ${{ matrix.python-version}}
+    - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version}}
+        python-version: ${{ matrix.python-version }}
+        architecture: x64
+
+    - name: Install DarSIA
+      run: pip install .[dev]
+
+    - name: pytest
+      run: pytest
+
+  pytest-with-petsc:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
         architecture: x64
 
     - name: Install uv
@@ -56,6 +101,7 @@ jobs:
       if: github.event_name != 'push'
       run: uv sync --extra dev
 
+<<<<<<< HEAD
     - name: black
       if: ${{ always() }}
       run: uv run black --check src
@@ -122,3 +168,7 @@ jobs:
     - name: pytest
       if: ${{always()}}
       run: uv run pytest
+=======
+    - name: pytest
+      run: pytest
+>>>>>>> 902f956d (MAINT: Expand github workflows for testing)
