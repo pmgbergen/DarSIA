@@ -21,7 +21,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .analysis import AnalysisTab
+from .calibration import CalibrationTab
 from .help import HelpButton
+from .setup import SetupTab
 
 
 class MainWindow(QMainWindow):
@@ -74,88 +77,20 @@ class MainWindow(QMainWindow):
         # Add stretch to push file choosers to top
         upper_layout.addStretch()
 
-        # Setting up the middle upper layout
-        # Creating tabs
+        # Setting up the middle upper layout with tabs
         tabs = QTabWidget()
-        setup_container = QWidget()
-        setup_layout = QVBoxLayout(setup_container)
-        calibration_container = QWidget()
-        calibration_layout = QVBoxLayout(calibration_container)
-        analysis_container = QWidget()
-        analysis_layout = QVBoxLayout(analysis_container)
-        tabs.addTab(setup_container, "Setup")
-        tabs.addTab(calibration_container, "Calibration")
-        tabs.addTab(analysis_container, "Analysis")
+
+        # Initialize tab managers
+        self.setup_tab = SetupTab(self)
+        self.calibration_tab = CalibrationTab(self)
+        self.analysis_tab = AnalysisTab(self)
+
+        # Add tabs
+        tabs.addTab(self.setup_tab.create_tab(), "Setup")
+        tabs.addTab(self.calibration_tab.create_tab(), "Calibration")
+        tabs.addTab(self.analysis_tab.create_tab(), "Analysis")
+
         upper_mid_layout.addWidget(tabs)
-
-        # Creating the setup-tab
-        setup_items = [
-            ("All", "all"),
-            ("Depth", "depth"),
-            ("Segmentation", "segmentation"),
-            ("Facies", "facies"),
-            ("Protocol", "protocol"),
-            ("Rig", "rig"),
-            ("Show plots", "show_plots"),
-        ]
-
-        self.setup_checkboxes = []
-        for label, checkbox_id in setup_items:
-            checkbox = QCheckBox(label)
-            self.setup_checkboxes.append((checkbox_id, checkbox))
-            setup_layout.addWidget(checkbox)
-
-        setup_button = QPushButton("Open Setup settings")
-        setup_button.clicked.connect(self.setup)
-        setup_layout.addWidget(setup_button)
-
-        run_setup_button = QPushButton("Run Setup")
-        run_setup_button.clicked.connect(self.run_setup)
-        setup_layout.addWidget(run_setup_button)
-
-        setup_layout.addStretch()
-
-        # Creating the calibration-tab
-        calibration_items = [("Color Path", "color"), ("Mass", "mass")]
-
-        self.calibration_checkboxes = []
-        for label, checkbox_id in calibration_items:
-            checkbox = QCheckBox(label)
-            self.calibration_checkboxes.append((checkbox_id, checkbox))
-            calibration_layout.addWidget(checkbox)
-
-        calibration_button = QPushButton("Open Calibration settings")
-        calibration_button.clicked.connect(self.calibrate)
-        calibration_layout.addWidget(calibration_button)
-
-        run_calibration_button = QPushButton("Run Calibration")
-        run_calibration_button.clicked.connect(self.run_calibration)
-        calibration_layout.addWidget(run_calibration_button)
-
-        calibration_layout.addStretch()
-
-        # Creating the analysis-tab
-        analysis_items = [
-            ("Fingers", "fingers"),
-            ("Mass", "mass"),
-            ("Segmentation", "segmentation"),
-        ]
-
-        self.analysis_checkboxes = []
-        for label, checkbox_id in analysis_items:
-            checkbox = QCheckBox(label)
-            self.analysis_checkboxes.append((checkbox_id, checkbox))
-            analysis_layout.addWidget(checkbox)
-
-        analysis_button = QPushButton("Open Analysis settings")
-        analysis_button.clicked.connect(self.analysis)
-        analysis_layout.addWidget(analysis_button)
-
-        run_analysis_button = QPushButton("Run Analysis")
-        run_analysis_button.clicked.connect(self.run_analysis)
-        analysis_layout.addWidget(run_analysis_button)
-
-        analysis_layout.addStretch()
 
         # Setting up the right upper layout
         # Create settings container with scroll area
@@ -488,37 +423,6 @@ class MainWindow(QMainWindow):
             self.settings_inputs[setting["key"]] = setting_edit
 
         self.settings_layout.addStretch()
-
-    def setup(self):
-        """Setup action: get checked specifics and display relevant settings."""
-        checked_ids = self.get_checked_checkbox_ids(self.setup_checkboxes)
-        self.print_log(f"Setup: Checked specifics - {checked_ids}")
-        self.print_log(f"Settings mapping loaded: {bool(self.settings_mapping)}")
-        self.display_settings("setup", checked_ids)
-
-    def calibrate(self):
-        """Calibration action: get checked specifics and display relevant settings."""
-        checked_ids = self.get_checked_checkbox_ids(self.calibration_checkboxes)
-        self.display_settings("calibration", checked_ids)
-        self.print_log(f"Calibration: Checked specifics - {checked_ids}")
-
-    def analysis(self):
-        """Analysis action: get checked specifics and display relevant settings."""
-        checked_ids = self.get_checked_checkbox_ids(self.analysis_checkboxes)
-        self.display_settings("analysis", checked_ids)
-        self.print_log(f"Analysis: Checked specifics - {checked_ids}")
-
-    def run_setup(self):
-        # subprocess.run(["python", "setup_protocol"])
-        pass
-
-    def run_calibration(self):
-        # subprocess.run(...)
-        pass
-
-    def run_analysis(self):
-        # subprocess.run(...)
-        pass
 
     def load_config(self):
         """Method that loads the config file chosen in the GUI."""
