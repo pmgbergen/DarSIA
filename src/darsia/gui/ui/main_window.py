@@ -114,10 +114,9 @@ class MainWindow(QMainWindow):
         save_button.clicked.connect(self.save_settings)
         upper_right_layout.addWidget(save_button)
 
-        # Store config and load settings mapping
+        # Store config
         self.config_file = ""
         self.config_dict = {}
-        self.settings_mapping = self.load_settings_mapping()
         self.settings_inputs = {}  # Store setting input widgets
 
         # Create logging container with its own scroll area
@@ -158,15 +157,9 @@ class MainWindow(QMainWindow):
 
         self.showMaximized()
 
-    def load_settings_mapping(self):
-        """Load the settings_mapping.toml file."""
-        mapping_file = Path(__file__).parent / "../config" / "settings.toml"
-        if mapping_file.exists():
-            return toml.load(mapping_file)
-        return {}
 
     def save_settings(self):
-        """Method to save the settings set in the gui to the settings.toml file."""
+        """Save the current settings to the loaded config file."""
         for key, value in self.settings_inputs.items():
             try:
                 if isinstance(value, QLineEdit):
@@ -337,17 +330,41 @@ class MainWindow(QMainWindow):
         )
         self.settings_inputs = {}
 
-        for setting in relevant_settings:
-            setting_container, setting_edit = self.settings_factory.create_setting_edit(
-                setting
-            )
-            wrapped_container = self.settings_factory.wrap_setting_with_help(
-                setting_container, setting
-            )
+        # If no sections, add a message and return
+        if not relevant_settings:
+            self.settings_layout.addWidget(QLabel("No settings available"))
+            self.settings_layout.addStretch()
+            return
 
-            self.settings_layout.addWidget(wrapped_container)
-            self.settings_inputs[setting["key"]] = setting_edit
+        # Create a tabbed interface with one tab per section
+        tabs = QTabWidget()
 
+        # Iterate through sections in order (dict preserves insertion order in Python 3.7+)
+        for section, settings_list in relevant_settings.items():
+            # Create a scroll area and container for this section's fields
+            tab_content = QWidget()
+            tab_layout = QVBoxLayout(tab_content)
+            tab_layout.setContentsMargins(0, 0, 0, 0)
+
+            # Add each setting in this section
+            for setting in settings_list:
+                setting_container, setting_edit = (
+                    self.settings_factory.create_setting_edit(setting)
+                )
+                wrapped_container = self.settings_factory.wrap_setting_with_help(
+                    setting_container, setting
+                )
+
+                tab_layout.addWidget(wrapped_container)
+                self.settings_inputs[setting["key"]] = setting_edit
+
+            # Add stretch at the end of the section
+            tab_layout.addStretch()
+
+            # Add this section as a tab (capitalize section name for display)
+            tabs.addTab(tab_content, section.capitalize())
+
+        self.settings_layout.addWidget(tabs)
         self.settings_layout.addStretch()
 
     def load_config(self):
