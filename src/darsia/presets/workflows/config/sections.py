@@ -1,4 +1,4 @@
-"""Decorators and utilities for declaring GUI-required config sections in workflow entry points.
+"""Decorators and utilities for declaring GUI-required config sections in workflow.
 
 This module provides a single source of truth for which FluidFlowerConfig sections each
 workflow entry point requires. The decorator both:
