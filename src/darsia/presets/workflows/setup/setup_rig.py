@@ -18,6 +18,9 @@ from darsia.presets.workflows.rig import Rig
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+# Sections required by GUI when "setup.rig" checkbox is selected
+REQUIRED_SECTIONS = ("data", "depth", "labeling", "protocol")
+
 
 def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> None:
     """Setup and store rig object.

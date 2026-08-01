@@ -26,6 +26,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Sections required by GUI when any analysis checkbox (fingers, mass, segmentation) is selected
+REQUIRED_SECTIONS = ("analysis", "protocol", "data", "rig")
+
 
 def infer_require_color_to_mass_from_config(
     path: Path | list[Path],

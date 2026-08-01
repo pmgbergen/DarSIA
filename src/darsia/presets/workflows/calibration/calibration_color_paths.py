@@ -21,6 +21,9 @@ from darsia.utils.standard_images import roi_to_mask
 
 logger = logging.getLogger(__name__)
 
+# Sections required by GUI when "calibration.color" checkbox is selected
+REQUIRED_SECTIONS = ("rig", "data", "protocol", "color", "calibration.color")
+
 
 def calibration_color_paths_from_context(
     ctx: AnalysisContext, show: bool = False

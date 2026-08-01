@@ -19,6 +19,9 @@ from darsia.signals.color import ColorPathEmbedding
 
 logger = logging.getLogger(__name__)
 
+# Sections required by GUI when "calibration.mass" checkbox is selected
+REQUIRED_SECTIONS = ("color", "rig", "data", "protocol", "calibration.mass")
+
 
 def _load_baseline_color_spectrum_for_color_to_mass(
     *,

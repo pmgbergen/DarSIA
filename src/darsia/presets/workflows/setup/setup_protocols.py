@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 _SUPPORTED_MODES = {"exif", "ctime"}
 
+# Sections required by GUI when "setup.protocol" checkbox is selected
+REQUIRED_SECTIONS = ("data", "protocol")
+
 
 def get_modification_time(filepath: Path) -> datetime:
     """Get file modification time as datetime."""
