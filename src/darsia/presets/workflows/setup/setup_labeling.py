@@ -8,8 +8,8 @@ import numpy as np
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.sections import (
-    required_sections,
     list_required_sections,
+    required_sections,
 )
 from darsia.presets.workflows.setup.illustrations import save_discrete_map_illustration
 
