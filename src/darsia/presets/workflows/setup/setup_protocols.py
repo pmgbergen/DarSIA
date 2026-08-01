@@ -14,8 +14,8 @@ from PIL.ExifTags import TAGS
 
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.sections import (
-    required_sections,
     list_required_sections,
+    required_sections,
 )
 
 logger = logging.getLogger(__name__)
