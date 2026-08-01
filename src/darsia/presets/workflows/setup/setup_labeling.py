@@ -7,21 +7,23 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    required_sections,
+    list_required_sections,
+)
 from darsia.presets.workflows.setup.illustrations import save_discrete_map_illustration
 
 logger = logging.getLogger(__name__)
 
-# Sections required by GUI when "setup.segmentation" checkbox is selected
-REQUIRED_SECTIONS = ("labeling", "rig")
 
-
+@required_sections("labeling", "rig")
 def segment_colored_image(path: Path, show: bool = False):
     """Segment colored image based on config file."""
 
     logger.info("\033[92mSegmenting colored image...\033[0m")
 
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
-    config.check("labeling", "rig")
+    config.check(*list_required_sections(segment_colored_image))
 
     # Mypy type checking
     for c in [

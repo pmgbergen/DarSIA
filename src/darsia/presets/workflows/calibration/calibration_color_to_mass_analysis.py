@@ -11,6 +11,10 @@ from darsia.presets.workflows.calibration.metadata import (
     validate_basis_metadata,
 )
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    required_sections,
+    list_required_sections,
+)
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
@@ -18,9 +22,6 @@ from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.signals.color import ColorPathEmbedding
 
 logger = logging.getLogger(__name__)
-
-# Sections required by GUI when "calibration.mass" checkbox is selected
-REQUIRED_SECTIONS = ("color", "rig", "data", "protocol", "calibration.mass")
 
 
 def _load_baseline_color_spectrum_for_color_to_mass(
@@ -67,6 +68,7 @@ def _load_baseline_color_spectrum_for_color_to_mass(
     return baseline_color_spectrum
 
 
+@required_sections("color", "rig", "data", "protocol", "calibration.mass", "analysis")
 def calibration_color_to_mass_analysis_from_context(
     ctx: AnalysisContext,
     ref_path: Path | None = None,
@@ -97,7 +99,9 @@ def calibration_color_to_mass_analysis_from_context(
     calibration_image_paths = ctx.image_paths
 
     # Mypy type checking
-    config.check("color", "rig", "data", "protocol", "calibration.mass")
+    config.check(
+        *list_required_sections(calibration_color_to_mass_analysis_from_context)
+    )
     assert config.data is not None
     assert config.protocol is not None
     assert config.color is not None
