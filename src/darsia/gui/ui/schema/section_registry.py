@@ -1,37 +1,42 @@
 """Registry mapping GUI checkbox IDs to their required config sections.
 
-Each entry points to either:
-- A module and the REQUIRED_SECTIONS constant that lives next to that module's
-  workflow entry point's config.check() call (leaf mapping).
-- A composite list of other (action, checkbox_id) keys whose sections should be
-  unioned together (composite mapping).
+Each leaf entry points to a workflow entry-point function decorated with
+@required_sections(...). The decorator is the single source of truth for what
+sections that function requires — both for GUI schema and for the function's own
+config.check() enforcement.
+
+Composite entries are lists of other (action, checkbox_id) keys whose sections should
+be unioned together.
 """
 
-# Mapping: (action, checkbox_id) -> (module_path, const_name) | list[(action, checkbox_id)]
+# Mapping: (action, checkbox_id) -> (module_path, function_name) | list[(action, checkbox_id)]
 #
-# Leaf entries: (module_path, const_name) — resolves a REQUIRED_SECTIONS constant
+# Leaf entries: (module_path, function_name) — resolves a function decorated with
+#   @required_sections(...)
 # Composite entries: list of (action, checkbox_id) keys — union of those checkboxes'
 #   sections (in order, deduplicated)
 CHECKBOX_TO_SECTIONS = {
-    # Setup leaf mappings
+    # Setup leaf mappings — point to the functions the GUI's setup.py::run_setup() calls
     ("setup", "protocol"): (
         "darsia.presets.workflows.setup.setup_protocols",
-        "REQUIRED_SECTIONS",
+        "setup_imaging_protocol",
     ),
     ("setup", "depth"): (
         "darsia.presets.workflows.setup.setup_depth",
-        "REQUIRED_SECTIONS",
+        "setup_depth_map",
     ),
     ("setup", "segmentation"): (
         "darsia.presets.workflows.setup.setup_labeling",
-        "REQUIRED_SECTIONS",
+        "segment_colored_image",
     ),
     ("setup", "facies"): (
         "darsia.presets.workflows.setup.setup_facies",
-        "REQUIRED_SECTIONS",
+        "setup_facies",
     ),
-    ("setup", "rig"): ("darsia.presets.workflows.setup.setup_rig", "REQUIRED_SECTIONS"),
-
+    ("setup", "rig"): (
+        "darsia.presets.workflows.setup.setup_rig",
+        "setup_rig",
+    ),
     # Setup composite mapping: "all" runs depth + segmentation + facies + rig (no protocol)
     # Mirrors setup.py:104-115 run_setup() logic exactly.
     ("setup", "all"): [
@@ -40,29 +45,27 @@ CHECKBOX_TO_SECTIONS = {
         ("setup", "facies"),
         ("setup", "rig"),
     ],
-
-    # Calibration leaf mappings (dormant for now, will be fixed separately)
+    # Calibration leaf mappings
     ("calibration", "color"): (
         "darsia.presets.workflows.calibration.calibration_color_paths",
-        "REQUIRED_SECTIONS",
+        "calibration_color_paths_from_context",
     ),
     ("calibration", "mass"): (
         "darsia.presets.workflows.calibration.calibration_color_to_mass_analysis",
-        "REQUIRED_SECTIONS",
+        "calibration_color_to_mass_analysis_from_context",
     ),
-
-    # Analysis leaf mappings (dormant for now, will be fixed separately)
+    # Analysis leaf mappings — all point to the same branching function
     ("analysis", "fingers"): (
         "darsia.presets.workflows.analysis.analysis_context",
-        "REQUIRED_SECTIONS",
+        "prepare_analysis_context",
     ),
     ("analysis", "mass"): (
         "darsia.presets.workflows.analysis.analysis_context",
-        "REQUIRED_SECTIONS",
+        "prepare_analysis_context",
     ),
     ("analysis", "segmentation"): (
         "darsia.presets.workflows.analysis.analysis_context",
-        "REQUIRED_SECTIONS",
+        "prepare_analysis_context",
     ),
 }
 
@@ -70,9 +73,8 @@ CHECKBOX_TO_SECTIONS = {
 def get_required_sections(action: str, checkbox_id: str) -> tuple[str, ...] | None:
     """Get the required config sections for a checkbox.
 
-    Handles both leaf entries (import a REQUIRED_SECTIONS constant from a workflow
-    module) and composite entries (recursively resolve a list of other checkbox IDs
-    and union their sections).
+    Handles both leaf entries (decorated functions) and composite entries (recursively
+    resolve a list of other checkbox IDs and union their sections).
 
     Args:
         action: Workflow action (setup, calibration, analysis)
@@ -80,6 +82,10 @@ def get_required_sections(action: str, checkbox_id: str) -> tuple[str, ...] | No
 
     Returns:
         Tuple of section names, or None if checkbox is not registered.
+
+    Raises:
+        ValueError: If a registered function is missing the @required_sections
+            decorator or if the decorator is misconfigured.
     """
     key = (action, checkbox_id)
     if key not in CHECKBOX_TO_SECTIONS:
@@ -100,13 +106,20 @@ def get_required_sections(action: str, checkbox_id: str) -> tuple[str, ...] | No
                         seen.add(section)
         return tuple(all_sections) if all_sections else None
 
-    # Leaf entry: (module_path, const_name)
-    module_path, const_name = entry
+    # Leaf entry: (module_path, function_name) — get sections from decorated function
+    module_path, function_name = entry
     try:
         import importlib
+        from darsia.presets.workflows.config.gui_sections import gui_display_sections
 
         module = importlib.import_module(module_path)
-        sections = getattr(module, const_name, None)
+        func = getattr(module, function_name, None)
+        if func is None:
+            raise ValueError(f"Function {function_name} not found in {module_path}")
+        sections = gui_display_sections(func)
         return sections
-    except (ImportError, AttributeError):
-        return None
+    except (ImportError, AttributeError, ValueError) as e:
+        # Re-raise ValueError as-is (includes missing decorator), wrap others
+        if isinstance(e, ValueError):
+            raise
+        raise ValueError(f"Error loading sections for {action}.{checkbox_id}: {e}")
