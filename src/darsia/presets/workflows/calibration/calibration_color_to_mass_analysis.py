@@ -12,8 +12,8 @@ from darsia.presets.workflows.calibration.metadata import (
 )
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.sections import (
-    required_sections,
     list_required_sections,
+    required_sections,
 )
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
