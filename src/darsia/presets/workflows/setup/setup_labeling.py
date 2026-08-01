@@ -11,6 +11,9 @@ from darsia.presets.workflows.setup.illustrations import save_discrete_map_illus
 
 logger = logging.getLogger(__name__)
 
+# Sections required by GUI when "setup.segmentation" checkbox is selected
+REQUIRED_SECTIONS = ("labeling", "rig")
+
 
 def segment_colored_image(path: Path, show: bool = False):
     """Segment colored image based on config file."""

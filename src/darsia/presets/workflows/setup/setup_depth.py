@@ -11,6 +11,9 @@ from darsia.presets.workflows.setup.illustrations import save_scalar_map_illustr
 
 logger = logging.getLogger(__name__)
 
+# Sections required by GUI when "setup.depth" checkbox is selected
+REQUIRED_SECTIONS = ("depth", "rig")
+
 
 def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> None:
     """Set up depth map from measurements.
