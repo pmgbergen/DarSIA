@@ -8,22 +8,24 @@ import pandas as pd
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    required_sections,
+    list_required_sections,
+)
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.setup.illustrations import save_discrete_map_illustration
 
 logger = logging.getLogger(__name__)
 
-# Sections required by GUI when "setup.facies" checkbox is selected
-REQUIRED_SECTIONS = ("facies", "labeling")
 
-
+@required_sections("facies", "labeling")
 def setup_facies(cls: Rig, path: Path, show: bool = False):
     """Setup facies based on config file."""
 
     logger.info("\033[92mSetting up facies...\033[0m")
 
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
-    config.check("facies", "labeling")
+    config.check(*list_required_sections(setup_facies))
 
     # Mypy type checking
     assert config.labeling is not None

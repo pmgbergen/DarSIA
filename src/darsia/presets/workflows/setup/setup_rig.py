@@ -12,16 +12,27 @@ from typing import Type
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    required_sections,
+    list_required_sections,
+)
 from darsia.presets.workflows.rig import Rig
 
 # Set logging level
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Sections required by GUI when "setup.rig" checkbox is selected
-REQUIRED_SECTIONS = ("data", "depth", "labeling", "protocol")
 
-
+@required_sections(
+    "data",
+    "depth",
+    "labeling",
+    "facies",
+    "protocol",
+    "rig",
+    "corrections",
+    "image_porosity",
+)
 def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> None:
     """Setup and store rig object.
 
@@ -39,7 +50,7 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
 
     # ! ---- LOAD RUN AND RIG ----
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
-    config.check("data", "depth", "labeling", "protocol")
+    config.check(*list_required_sections(setup_rig))
 
     # Mypy type checking
     assert config.data is not None
