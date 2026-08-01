@@ -2,8 +2,7 @@
 
 Each leaf entry points to a workflow entry-point function decorated with
 @required_sections(...). The decorator is the single source of truth for what
-sections that function requires — both for GUI schema and for the function's own
-config.check() enforcement.
+sections that function requires.
 
 Composite entries are lists of other (action, checkbox_id) keys whose sections should
 be unioned together.
@@ -110,7 +109,7 @@ def get_required_sections(action: str, checkbox_id: str) -> tuple[str, ...] | No
     module_path, function_name = entry
     try:
         import importlib
-        from darsia.presets.workflows.config.gui_sections import gui_display_sections
+        from darsia.presets.workflows.config.sections import gui_display_sections
 
         module = importlib.import_module(module_path)
         func = getattr(module, function_name, None)
