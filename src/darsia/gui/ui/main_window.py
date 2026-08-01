@@ -157,7 +157,6 @@ class MainWindow(QMainWindow):
 
         self.showMaximized()
 
-
     def save_settings(self):
         """Save the current settings to the loaded config file."""
         for key, value in self.settings_inputs.items():
@@ -369,7 +368,6 @@ class MainWindow(QMainWindow):
 
     def load_config(self):
         """Method that loads the config file chosen in the GUI."""
-        # file = self.chosen_files["config_file"]["path"]
         file = self.config_path_label.text()
         if not file:
             self.print_log("No config file selected.")
