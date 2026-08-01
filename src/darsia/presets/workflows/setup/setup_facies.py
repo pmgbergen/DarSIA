@@ -13,6 +13,9 @@ from darsia.presets.workflows.setup.illustrations import save_discrete_map_illus
 
 logger = logging.getLogger(__name__)
 
+# Sections required by GUI when "setup.facies" checkbox is selected
+REQUIRED_SECTIONS = ("facies", "labeling")
+
 
 def setup_facies(cls: Rig, path: Path, show: bool = False):
     """Setup facies based on config file."""
