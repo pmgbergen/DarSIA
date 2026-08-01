@@ -109,6 +109,7 @@ def get_required_sections(action: str, checkbox_id: str) -> tuple[str, ...] | No
     module_path, function_name = entry
     try:
         import importlib
+
         from darsia.presets.workflows.config.sections import gui_display_sections
 
         module = importlib.import_module(module_path)
