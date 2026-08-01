@@ -79,7 +79,9 @@ def _infer_widget_type(field_type: Any, metadata: dict) -> str:
     # Map Python scalar types to widget types
     if field_type is bool:
         return "bool"
-    elif field_type is Path or (isinstance(field_type, type) and issubclass(field_type, Path)):
+    elif field_type is Path or (
+        isinstance(field_type, type) and issubclass(field_type, Path)
+    ):
         return "file"  # Default for Path; can be overridden via metadata["widget"]
     elif field_type is int:
         return "int"
