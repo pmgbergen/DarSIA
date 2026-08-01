@@ -13,13 +13,14 @@ from PIL import Image
 from PIL.ExifTags import TAGS
 
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    required_sections,
+    list_required_sections,
+)
 
 logger = logging.getLogger(__name__)
 
 _SUPPORTED_MODES = {"exif", "ctime"}
-
-# Sections required by GUI when "setup.protocol" checkbox is selected
-REQUIRED_SECTIONS = ("data", "protocol")
 
 
 def get_modification_time(filepath: Path) -> datetime:
@@ -197,6 +198,7 @@ def _write_pressure_temperature_template(path: Path, start: datetime) -> None:
     _write_csv(df, path)
 
 
+@required_sections("data", "protocol")
 def setup_imaging_protocol(
     path: Path | list[Path],
     *,
@@ -208,7 +210,7 @@ def setup_imaging_protocol(
     del show
 
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
-    config.check("data", "protocol")
+    config.check(*list_required_sections(setup_imaging_protocol))
     assert config.data is not None
     assert config.protocol is not None
     assert config.protocol.imaging is not None

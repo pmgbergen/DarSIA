@@ -12,6 +12,10 @@ import darsia
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    required_sections,
+    list_required_sections,
+)
 from darsia.presets.workflows.config.time_data import TimeData
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
@@ -25,9 +29,6 @@ if TYPE_CHECKING:
     pass
 
 logger = logging.getLogger(__name__)
-
-# Sections required by GUI when any analysis checkbox (fingers, mass, segmentation) is selected
-REQUIRED_SECTIONS = ("analysis", "protocol", "data", "rig")
 
 
 def infer_require_color_to_mass_from_config(
@@ -244,6 +245,15 @@ def _build_color_to_mass_analysis(
     return color_to_mass_analysis
 
 
+@required_sections(
+    default=("protocol", "data", "rig", "color"),
+    when={
+        "section": {
+            "analysis": ("analysis", "protocol", "data", "rig", "color"),
+            "calibration": ("calibration", "protocol", "data", "rig", "color"),
+        }
+    },
+)
 def prepare_analysis_context(
     cls: type[Rig],
     path: Path | list[Path],
@@ -285,10 +295,7 @@ def prepare_analysis_context(
     config = FluidFlowerConfig(
         path, require_results=require_results, require_data=require_data
     )
-    if section in {"analysis", "calibration"}:
-        config.check(section, "protocol", "data", "rig")
-    else:
-        config.check("protocol", "data", "rig")
+    config.check(*list_required_sections(prepare_analysis_context, section=section))
 
     # Mypy type checking
     assert config.rig is not None

@@ -7,14 +7,16 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    required_sections,
+    list_required_sections,
+)
 from darsia.presets.workflows.setup.illustrations import save_scalar_map_illustration
 
 logger = logging.getLogger(__name__)
 
-# Sections required by GUI when "setup.depth" checkbox is selected
-REQUIRED_SECTIONS = ("depth", "rig")
 
-
+@required_sections("depth", "rig")
 def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> None:
     """Set up depth map from measurements.
 
@@ -31,7 +33,7 @@ def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> 
 
     # ! ---- READ CONFIG ---- ! #
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
-    config.check("depth", "rig")
+    config.check(*list_required_sections(setup_depth_map))
 
     # Mypy type checking
     for c in [
