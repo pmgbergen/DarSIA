@@ -3,9 +3,11 @@
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -131,6 +133,8 @@ class SettingsFactory:
             return self.create_simple_input(setting_dict)
         elif setting_type == "bool":
             return self.create_bool_input(setting_dict)
+        elif setting_type == "group":
+            return self.create_group_input(setting_dict)
         elif setting_type == "fixed_list" and setting_dict.get("list_type") == "string":
             return self.create_fixed_list_string_input(setting_dict)
         elif setting_type == "file":
@@ -224,3 +228,40 @@ class SettingsFactory:
                     check_box.setChecked(True)
             setting_layout.addWidget(check_box)
         return setting_container, check_boxes
+
+    def create_group_input(self, setting_dict):
+        """Create a checkable group box for an Optional[dataclass] field.
+
+        Checked state comes from `<section>.active_corrections` if the loaded config
+        defines it; otherwise falls back to "checked iff the sub-table is present",
+        matching CorrectionsConfig.load()'s default-active semantics for configs
+        written before this list existed.
+        """
+        key = setting_dict["key"]  # e.g. "corrections.resize"
+        section, name = key.rsplit(".", 1)
+        active_list_key = f"{section}.active_corrections"
+
+        active_list = self.get_value(self.main_window.config_dict, active_list_key)
+        if active_list is not None:
+            is_active = name in active_list
+        else:
+            is_active = self.get_value(self.main_window.config_dict, key) is not None
+
+        group_box = QGroupBox(name)
+        group_box.setCheckable(True)
+        group_box.setChecked(is_active)
+
+        group_layout = QVBoxLayout(group_box)
+        sub_inputs = {}
+        for sub_setting in setting_dict["fields"]:
+            sub_container, sub_edit = self.create_setting_edit(sub_setting)
+            wrapped = self.wrap_setting_with_help(sub_container, sub_setting)
+            group_layout.addWidget(wrapped)
+            sub_inputs[sub_setting["key"]] = sub_edit
+
+        return group_box, {
+            "checkbox": group_box,
+            "sub_inputs": sub_inputs,
+            "active_list_key": active_list_key,
+            "name": name,
+        }
