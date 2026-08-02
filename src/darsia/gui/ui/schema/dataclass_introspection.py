@@ -140,6 +140,7 @@ def _build_fields(
                 "type": "group",
                 "help": field.metadata.get("help", None),
                 "link": field.metadata.get("link", None),
+                "active_list_key": field.metadata.get("active_list_key", None),
                 "fields": _build_fields(inner_type, key),
             }
         else:
