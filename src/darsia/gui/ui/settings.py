@@ -253,12 +253,18 @@ class SettingsFactory:
             if active_list is not None:
                 is_active = name in active_list
             else:
-                is_active = self.get_value(self.main_window.config_dict, key) is not None
+                is_active = (
+                    self.get_value(self.main_window.config_dict, key) is not None
+                )
 
             group_box.setCheckable(True)
             group_box.setChecked(is_active)
             result.update(
-                {"checkbox": group_box, "active_list_key": active_list_key, "name": name}
+                {
+                    "checkbox": group_box,
+                    "active_list_key": active_list_key,
+                    "name": name,
+                }
             )
 
         group_layout = QVBoxLayout(group_box)
