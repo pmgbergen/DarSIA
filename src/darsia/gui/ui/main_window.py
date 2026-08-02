@@ -159,7 +159,30 @@ class MainWindow(QMainWindow):
 
     def save_settings(self):
         """Save the current settings to the loaded config file."""
+        # First pass: collect group checkbox states and determine which sub-inputs to skip
+        group_active_names: dict[str, set[str]] = {}
+        skip_keys: set[str] = set()
+
         for key, value in self.settings_inputs.items():
+            if isinstance(value, dict) and "checkbox" in value:
+                # This is a group dict; record its active state
+                active_list_key = value["active_list_key"]
+                group_active_names.setdefault(active_list_key, set())
+                if value["checkbox"].isChecked():
+                    group_active_names[active_list_key].add(value["name"])
+                else:
+                    # Group is unchecked; skip saving any of its sub-inputs
+                    skip_keys.update(value["sub_inputs"].keys())
+
+        # Second pass: save all regular values (non-group dicts), skipping unchecked group sub-inputs
+        for key, value in self.settings_inputs.items():
+            # Skip group dicts (already handled above)
+            if isinstance(value, dict) and "checkbox" in value:
+                continue
+            # Skip sub-inputs of unchecked groups
+            if key in skip_keys:
+                continue
+
             try:
                 if isinstance(value, QLineEdit):
                     self.settings_factory.set_value(
@@ -190,6 +213,13 @@ class MainWindow(QMainWindow):
             except (ValueError, SyntaxError):
                 if hasattr(value, "text"):
                     self.settings_factory.set_value(self.config_dict, key, value.text())
+
+        # Third pass: write all active lists
+        for active_list_key, names in group_active_names.items():
+            self.settings_factory.set_value(
+                self.config_dict, active_list_key, sorted(names)
+            )
+
         if self.config_file != "":
             with open(self.config_file, "w") as f:
                 toml.dump(self.config_dict, f)
@@ -350,12 +380,21 @@ class MainWindow(QMainWindow):
                 setting_container, setting_edit = (
                     self.settings_factory.create_setting_edit(setting)
                 )
-                wrapped_container = self.settings_factory.wrap_setting_with_help(
-                    setting_container, setting
-                )
 
-                tab_layout.addWidget(wrapped_container)
-                self.settings_inputs[setting["key"]] = setting_edit
+                # For groups, wrap the group box itself (no extra help button);
+                # for scalars, add help button column.
+                if setting["type"] == "group":
+                    tab_layout.addWidget(setting_container)
+                    self.settings_inputs[setting["key"]] = setting_edit
+                    # Flatten sub-inputs into settings_inputs so they save normally
+                    for sub_key, sub_edit in setting_edit["sub_inputs"].items():
+                        self.settings_inputs[sub_key] = sub_edit
+                else:
+                    wrapped_container = self.settings_factory.wrap_setting_with_help(
+                        setting_container, setting
+                    )
+                    tab_layout.addWidget(wrapped_container)
+                    self.settings_inputs[setting["key"]] = setting_edit
 
             # Add stretch at the end of the section
             tab_layout.addStretch()
