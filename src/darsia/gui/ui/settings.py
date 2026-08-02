@@ -66,7 +66,14 @@ class SettingsFactory:
 
         for checked_id in checked_ids:
             # Get the required sections for this checkbox
-            sections = get_required_sections(action, checked_id)
+            try:
+                sections = get_required_sections(action, checked_id)
+            except ValueError as e:
+                self.main_window.print_log(
+                    f"Error resolving sections for {action}.{checked_id}: {e}"
+                )
+                continue
+
             if sections is None:
                 self.main_window.print_log(
                     f"No settings mapping found for {action}.{checked_id}"
@@ -139,10 +146,12 @@ class SettingsFactory:
             return self.create_fixed_list_string_input(setting_dict)
         elif setting_type == "file":
             return self.file_dialog.create_file_chooser(
-                setting_dict["key"], None, False
+                setting_dict["key"], None, False, setting_dict
             )
         elif setting_type == "folder":
-            return self.file_dialog.create_file_chooser(setting_dict["key"], None, True)
+            return self.file_dialog.create_file_chooser(
+                setting_dict["key"], None, True, setting_dict
+            )
         elif setting_type == "multi_file":
             return self.file_dialog.create_multi_file_input(setting_dict)
         else:
@@ -154,8 +163,9 @@ class SettingsFactory:
     def create_simple_input(self, setting_dict):
         """Create a line edit input for numeric or string values."""
         setting = setting_dict["key"]
-
         value = self.get_value(self.main_window.config_dict, setting)
+        if value is None:
+            value = setting_dict.get("default")
         setting_container = QWidget()
         setting_layout = QHBoxLayout(setting_container)
         setting_label = QLabel(setting)
@@ -177,6 +187,8 @@ class SettingsFactory:
         """Create a checkbox input for boolean values."""
         setting = setting_dict["key"]
         value = self.get_value(self.main_window.config_dict, setting)
+        if value is None:
+            value = setting_dict.get("default")
         setting_container = QWidget()
         setting_layout = QHBoxLayout(setting_container)
         setting_label = QLabel(setting)
@@ -192,6 +204,8 @@ class SettingsFactory:
         """Create a combobox input with predefined options."""
         setting = setting_dict["key"]
         value = self.get_value(self.main_window.config_dict, setting)
+        if value is None:
+            value = setting_dict.get("default")
         setting_container = QWidget()
         setting_layout = QHBoxLayout(setting_container)
         setting_label = QLabel(setting)
@@ -214,6 +228,8 @@ class SettingsFactory:
         """Create a checkbox list for selecting from predefined options."""
         setting = setting_dict["key"]
         values = self.get_value(self.main_window.config_dict, setting)
+        if values is None:
+            values = setting_dict.get("default")
         setting_container = QWidget()
         setting_layout = QHBoxLayout(setting_container)
         setting_label = QLabel(setting)
