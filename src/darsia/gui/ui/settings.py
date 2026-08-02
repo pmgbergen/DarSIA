@@ -230,26 +230,36 @@ class SettingsFactory:
         return setting_container, check_boxes
 
     def create_group_input(self, setting_dict):
-        """Create a checkable group box for an Optional[dataclass] field.
+        """Create a group box for an Optional[dataclass] field.
 
-        Checked state comes from `<section>.active_corrections` if the loaded config
-        defines it; otherwise falls back to "checked iff the sub-table is present",
-        matching CorrectionsConfig.load()'s default-active semantics for configs
-        written before this list existed.
+        If the field declares `metadata={"active_list_key": "<name>"}`, the group is
+        checkable and its checked state is driven by `<section>.<name>` in the loaded
+        config (falling back to "checked iff the sub-table is present" for configs
+        predating that list). Fields without this metadata render as a plain
+        non-checkable box — their data layer doesn't support enable/disable, so no
+        checkbox is shown and nothing is written to the TOML for them.
         """
         key = setting_dict["key"]  # e.g. "corrections.resize"
-        section, name = key.rsplit(".", 1)
-        active_list_key = f"{section}.active_corrections"
-
-        active_list = self.get_value(self.main_window.config_dict, active_list_key)
-        if active_list is not None:
-            is_active = name in active_list
-        else:
-            is_active = self.get_value(self.main_window.config_dict, key) is not None
+        name = key.rsplit(".", 1)[-1]
+        active_list_name = setting_dict.get("active_list_key")
 
         group_box = QGroupBox(name)
-        group_box.setCheckable(True)
-        group_box.setChecked(is_active)
+        result = {}
+
+        if active_list_name is not None:
+            section = key.rsplit(".", 1)[0]
+            active_list_key = f"{section}.{active_list_name}"
+            active_list = self.get_value(self.main_window.config_dict, active_list_key)
+            if active_list is not None:
+                is_active = name in active_list
+            else:
+                is_active = self.get_value(self.main_window.config_dict, key) is not None
+
+            group_box.setCheckable(True)
+            group_box.setChecked(is_active)
+            result.update(
+                {"checkbox": group_box, "active_list_key": active_list_key, "name": name}
+            )
 
         group_layout = QVBoxLayout(group_box)
         sub_inputs = {}
@@ -258,10 +268,6 @@ class SettingsFactory:
             wrapped = self.wrap_setting_with_help(sub_container, sub_setting)
             group_layout.addWidget(wrapped)
             sub_inputs[sub_setting["key"]] = sub_edit
+        result["sub_inputs"] = sub_inputs
 
-        return group_box, {
-            "checkbox": group_box,
-            "sub_inputs": sub_inputs,
-            "active_list_key": active_list_key,
-            "name": name,
-        }
+        return group_box, result
