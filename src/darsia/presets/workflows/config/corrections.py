@@ -62,12 +62,12 @@ class ResizeCorrectionConfig:
         self.target_shape = sec.get("target_shape", self.target_shape)
 
         # Sanity checks.
-        assert (
-            self.scale is None or self.target_shape is None
-        ), "Cannot specify both scale and target_shape for resize correction."
-        assert (
-            self.scale is not None or self.target_shape is not None
-        ), "Must specify either scale or target_shape for resize correction."
+        assert self.scale is None or self.target_shape is None, (
+            "Cannot specify both scale and target_shape for resize correction."
+        )
+        assert self.scale is not None or self.target_shape is not None, (
+            "Must specify either scale or target_shape for resize correction."
+        )
         return self
 
 
@@ -346,20 +346,36 @@ class CorrectionsConfig:
     """
 
     # Configuration objects for each correction type
-    type: TypeCorrectionConfig | None = None
-    resize: ResizeCorrectionConfig | None = None
-    drift: DriftCorrectionConfig | None = None
-    curvature: CurvatureCorrectionConfig | None = None
-    color: ColorCorrectionConfig | None = None
-    relative_color: bool | RelativeColorCorrectionConfig = False
-    illumination: IlluminationCorrectionConfig | None = None
-    patchwise_illumination: PatchwiseIlluminationCorrectionConfig | None = None
+    type: TypeCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    resize: ResizeCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    drift: DriftCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    curvature: CurvatureCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    color: ColorCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    relative_color: bool | RelativeColorCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    illumination: IlluminationCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    patchwise_illumination: PatchwiseIlluminationCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
 
     inactive: dict[str, Any] = field(
         default_factory=dict, repr=False, metadata={"hidden": True}
     )
     """Parsed sub-configs for corrections present in the TOML but deactivated via
-    `active_corrections`. Kept so tuned parameters survive toggling a correction off
+    `active`. Kept so tuned parameters survive toggling a correction off
     (not consumed by the correction pipeline — see `get_parsed`)."""
 
     def get_parsed(self, name: str) -> Any | None:
@@ -377,14 +393,14 @@ class CorrectionsConfig:
         """
         sec = _get_section_from_toml(path, "corrections")
 
-        # Parse all correction sub-tables; active_corrections list decides exposure
-        active_corrections = sec.get("active_corrections")  # None => all present are active
+        # Parse all correction sub-tables; active list decides exposure
+        active = sec.get("active")  # None => all present are active
         for name, cls in _CORRECTION_CLASSES.items():
             sub_sec = sec.get(name)
             if not sub_sec:
                 continue
             parsed = cls().load(sub_sec)
-            is_active = active_corrections is None or name in active_corrections
+            is_active = active is None or name in active
             if is_active:
                 setattr(self, name, parsed)
             else:
