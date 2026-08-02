@@ -17,7 +17,9 @@ class FileDialogHelper:
     def __init__(self, main_window):
         self.main_window = main_window
 
-    def create_file_chooser(self, display_name, file_filter, is_directory):
+    def create_file_chooser(
+        self, display_name, file_filter, is_directory, setting_dict=None
+    ):
         """Create a file/folder chooser UI element (button + path label).
 
         Parameters
@@ -28,6 +30,9 @@ class FileDialogHelper:
             File filter for the dialog (e.g., "TOML Files (*.toml);;All Files (*)")
         is_directory : bool
             If True, opens directory selection dialog; if False, opens file dialog
+        setting_dict : dict, optional
+            Setting configuration dict with "key" and "default"; when provided,
+            pre-fills the path label from the loaded config or default value.
 
         Returns
         -------
@@ -48,6 +53,17 @@ class FileDialogHelper:
         # Path label to display selected path
         path_label = QLineEdit("No file chosen")
         path_label.setStyleSheet("color: white;")
+
+        # Pre-fill from config or default if setting_dict is provided
+        if setting_dict is not None:
+            value = self.main_window.settings_factory.get_value(
+                self.main_window.config_dict, setting_dict["key"]
+            )
+            if value is None:
+                value = setting_dict.get("default")
+            if value:
+                path_label.setText(str(value))
+                path_label.setStyleSheet("color: white;")
 
         # Store label reference for updating
         key = display_name.lower().replace(" ", "_")
@@ -83,6 +99,8 @@ class FileDialogHelper:
         values = self.main_window.settings_factory.get_value(
             self.main_window.config_dict, setting
         )
+        if values is None:
+            values = setting_dict.get("default")
 
         setting_container = QWidget()
         setting_layout = QVBoxLayout(setting_container)
