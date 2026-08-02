@@ -94,6 +94,42 @@ def _infer_widget_type(field_type: Any, metadata: dict) -> str:
         return "string"
 
 
+def _field_default(field: Any) -> Any:
+    """Resolve a dataclass field's default value, or None if not usable as a pre-fill.
+
+    Args:
+        field: A dataclass field object.
+
+    Returns:
+        The field's default value if usable for pre-filling a widget, or None otherwise.
+        Skips empty collections ([], {}, Path()) and nested dataclass instances.
+    """
+    if field.default is not MISSING:
+        default = field.default
+    elif field.default_factory is not MISSING:
+        try:
+            default = field.default_factory()
+        except Exception:
+            return None
+    else:
+        return None
+
+    # Skip empty Path() (equivalent to ".") for file/folder choosers.
+    if isinstance(default, Path) and default == Path():
+        return None
+
+    # Skip empty collections — not meaningful pre-fills for list/dict widgets.
+    if isinstance(default, (list, dict)) and len(default) == 0:
+        return None
+
+    # Skip nested dataclass instances (e.g., CorrectionsConfig.type:
+    # TypeCorrectionConfig) — they don't round-trip cleanly through scalar widgets.
+    if is_dataclass(default) and not isinstance(default, type):
+        return None
+
+    return default
+
+
 def _infer_list_type(field_type: Any) -> str:
     """Infer the element type of a list/tuple field for the UI label.
 
