@@ -1,7 +1,7 @@
 """Introspect FluidFlowerConfig section dataclasses to derive GUI widget schema."""
 
 import types
-from dataclasses import fields, is_dataclass
+from dataclasses import MISSING, fields, is_dataclass
 from pathlib import Path
 from typing import Any, Union, get_args, get_origin
 
@@ -110,6 +110,60 @@ def _infer_list_type(field_type: Any) -> str:
     return _infer_widget_type(inner, {})
 
 
+def _build_fields(
+    dataclass_type: type, key_prefix: str
+) -> list[dict[str, Any]]:
+    """Build field schema for a dataclass type, recursing into Optional[dataclass] fields.
+
+    Args:
+        dataclass_type: The dataclass type to introspect.
+        key_prefix: The TOML key prefix for this level (e.g., "corrections" or
+            "corrections.resize").
+
+    Returns:
+        List of setting dicts with key, type, help, link, options, fields (for groups),
+        list_type (for lists), default, etc.
+    """
+    settings = []
+    for field in fields(dataclass_type):
+        # Skip fields marked as hidden (outputs, derived fields)
+        if field.metadata.get("hidden", False):
+            continue
+
+        key = f"{key_prefix}.{field.name}"
+        inner_type = _unwrap_optional(field.type)
+
+        # Check if this is an Optional[dataclass] field — render as a group
+        if is_dataclass(inner_type):
+            setting_dict = {
+                "key": key,
+                "type": "group",
+                "help": field.metadata.get("help", None),
+                "link": field.metadata.get("link", None),
+                "fields": _build_fields(inner_type, key),
+            }
+        else:
+            widget_type = _infer_widget_type(field.type, field.metadata)
+            setting_dict = {
+                "key": key,
+                "type": widget_type,
+                "help": field.metadata.get("help", None),
+                "link": field.metadata.get("link", None),
+                "options": field.metadata.get("options", None),
+                "default": _field_default(field),
+            }
+
+            # For list/tuple types, add the element type label
+            if widget_type == "list":
+                setting_dict["list_type"] = _infer_list_type(field.type)
+
+        # Remove None values to keep the dict clean
+        setting_dict = {k: v for k, v in setting_dict.items() if v is not None}
+        settings.append(setting_dict)
+
+    return settings
+
+
 def get_section_fields(section: str) -> list[dict[str, Any]] | None:
     """Get GUI widget schema for all fields in a config section.
 
@@ -117,7 +171,8 @@ def get_section_fields(section: str) -> list[dict[str, Any]] | None:
         section: Section name (e.g., "rig", "depth", "calibration")
 
     Returns:
-        List of setting dicts with key, type, help, link, options, etc.
+        List of setting dicts with key, type, help, link, options, fields (for groups),
+        list_type (for lists), default, etc.
         Returns None if section is not recognized.
     """
     if section not in SECTION_TO_DATACLASS:
@@ -127,28 +182,5 @@ def get_section_fields(section: str) -> list[dict[str, Any]] | None:
     if not is_dataclass(dataclass_type):
         return None
 
-    settings = []
-    for field in fields(dataclass_type):
-        # Skip fields marked as hidden (outputs, derived fields)
-        if field.metadata.get("hidden", False):
-            continue
-
-        widget_type = _infer_widget_type(field.type, field.metadata)
-        setting_dict = {
-            "key": f"{section}.{field.name}",
-            "type": widget_type,
-            "help": field.metadata.get("help", None),
-            "link": field.metadata.get("link", None),
-            "options": field.metadata.get("options", None),
-        }
-
-        # For list/tuple types, add the element type label
-        if widget_type == "list":
-            setting_dict["list_type"] = _infer_list_type(field.type)
-
-        # Remove None values to keep the dict clean
-        setting_dict = {k: v for k, v in setting_dict.items() if v is not None}
-
-        settings.append(setting_dict)
-
-    return settings
+    toml_section = TOML_SECTION_ALIASES.get(section, section)
+    return _build_fields(dataclass_type, toml_section)
