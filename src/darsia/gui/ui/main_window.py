@@ -174,7 +174,8 @@ class MainWindow(QMainWindow):
                     # Group is unchecked; skip saving any of its sub-inputs
                     skip_keys.update(value["sub_inputs"].keys())
 
-        # Second pass: save all regular values (non-group dicts), skipping unchecked group sub-inputs
+        # Second pass: save all regular values (non-group dicts),
+        # skipping unchecked group sub-inputs.
         for key, value in self.settings_inputs.items():
             # Skip group dicts (already handled above)
             if isinstance(value, dict) and "checkbox" in value:

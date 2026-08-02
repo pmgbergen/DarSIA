@@ -110,9 +110,7 @@ def _infer_list_type(field_type: Any) -> str:
     return _infer_widget_type(inner, {})
 
 
-def _build_fields(
-    dataclass_type: type, key_prefix: str
-) -> list[dict[str, Any]]:
+def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]:
     """Build field schema for a dataclass type, recursing into Optional[dataclass] fields.
 
     Args:
