@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, Type
+from typing import Any, Literal, Type
 
 import numpy as np
 
@@ -269,6 +269,17 @@ class PatchwiseIlluminationCorrectionConfig:
         return self
 
 
+_CORRECTION_CLASSES: dict[str, type] = {
+    "type": TypeCorrectionConfig,
+    "resize": ResizeCorrectionConfig,
+    "drift": DriftCorrectionConfig,
+    "curvature": CurvatureCorrectionConfig,
+    "color": ColorCorrectionConfig,
+    "illumination": IlluminationCorrectionConfig,
+    "patchwise_illumination": PatchwiseIlluminationCorrectionConfig,
+}
+
+
 @dataclass
 class CorrectionsConfig:
     """Configuration for image corrections.
@@ -307,60 +318,45 @@ class CorrectionsConfig:
     illumination: IlluminationCorrectionConfig | None = None
     patchwise_illumination: PatchwiseIlluminationCorrectionConfig | None = None
 
+    inactive: dict[str, Any] = field(
+        default_factory=dict, repr=False, metadata={"hidden": True}
+    )
+    """Parsed sub-configs for corrections present in the TOML but deactivated via
+    `active_corrections`. Kept so tuned parameters survive toggling a correction off
+    (not consumed by the correction pipeline — see `get_parsed`)."""
+
+    def get_parsed(self, name: str) -> Any | None:
+        """Return the parsed sub-config for `name`, active or not (GUI use)."""
+        return getattr(self, name, None) or self.inactive.get(name)
+
     def load(self, path: Path | list[Path]) -> "CorrectionsConfig":
         """Load correction configuration from TOML file.
 
         Args:
             path: Path to TOML config file
-            results: Path to results folder
 
         Returns:
             self with loaded configuration
         """
         sec = _get_section_from_toml(path, "corrections")
 
-        # Load individual correction settings
-        type_sec = sec.get("type")
-        if type_sec:
-            self.type = TypeCorrectionConfig().load(type_sec)
-
-        resize_sec = sec.get("resize")
-        if resize_sec:
-            self.resize = ResizeCorrectionConfig().load(resize_sec)
-
-        drift_sec = sec.get("drift")
-        if drift_sec:
-            self.drift = DriftCorrectionConfig().load(drift_sec)
-
-        curvature_sec = sec.get("curvature")
-        if curvature_sec:
-            self.curvature = CurvatureCorrectionConfig().load(curvature_sec)
-
-        color_sec = sec.get("color")
-        if color_sec:
-            self.color = ColorCorrectionConfig().load(color_sec)
+        # Parse all correction sub-tables; active_corrections list decides exposure
+        active_corrections = sec.get("active_corrections")  # None => all present are active
+        for name, cls in _CORRECTION_CLASSES.items():
+            sub_sec = sec.get(name)
+            if not sub_sec:
+                continue
+            parsed = cls().load(sub_sec)
+            is_active = active_corrections is None or name in active_corrections
+            if is_active:
+                setattr(self, name, parsed)
+            else:
+                self.inactive[name] = parsed
 
         self.relative_color = sec.get("relative_color", self.relative_color)
         if not isinstance(self.relative_color, bool):
             raise NotImplementedError(
                 "relative color correction is only implemented as boolean for now."
             )
-
-        illumination_sec = sec.get("illumination")
-        if illumination_sec:
-            self.illumination = IlluminationCorrectionConfig().load(illumination_sec)
-
-        patchwise_illumination_sec = sec.get("patchwise_illumination")
-        if patchwise_illumination_sec:
-            self.patchwise_illumination = PatchwiseIlluminationCorrectionConfig().load(
-                patchwise_illumination_sec
-            )
-
-        print(self.patchwise_illumination)
-
-        # Identify active corrections
-        active_corrections = sec.get("active_corrections", None)
-        if active_corrections is not None:
-            raise NotImplementedError("active_corrections is not implemented yet.")
 
         return self
