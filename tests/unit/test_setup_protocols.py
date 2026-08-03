@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 from PIL import Image
 
-from darsia.presets.workflows.config.protocol import ProtocolConfig
+from darsia.presets.workflows.config.protocols import ProtocolsConfig
 from darsia.presets.workflows.setup.setup_protocols import (
     preview_protocol_setup_conflicts,
     setup_imaging_protocol,
@@ -128,7 +128,7 @@ imaging = "imaging_protocol.csv"
 """,
     )
 
-    config = ProtocolConfig().load(config_path)
+    config = ProtocolsConfig().load(config_path)
     assert config.imaging_mode == "exif"
 
 
@@ -145,7 +145,7 @@ def test_protocol_config_supports_per_folder_imaging_mapping(tmp_path: Path) -> 
 """,
     )
 
-    config = ProtocolConfig().load(config_path)
+    config = ProtocolsConfig().load(config_path)
     assert isinstance(config.imaging, dict)
     assert config.imaging[folder_a] == tmp_path / "protocols" / "imaging_a.csv"
     assert config.imaging[folder_b] == (

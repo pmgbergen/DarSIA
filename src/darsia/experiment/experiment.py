@@ -96,19 +96,19 @@ class ProtocolledExperiment:
     @classmethod
     def init_from_config(cls, config: FluidFlowerConfig):
         assert config.data is not None
-        assert config.protocol is not None
+        assert config.protocols is not None
         if len(config.data.folders) > 1 and not isinstance(
-            config.protocol.imaging, dict
+            config.protocols.imaging, dict
         ):
             raise ValueError(
                 "Multiple [data].folders require [protocols].imaging to be a per-folder table."
             )
         return cls(
             data=config.data.data,
-            imaging_protocol=config.protocol.imaging,
-            injection_protocol=config.protocol.injection,
-            pressure_temperature_protocol=config.protocol.pressure_temperature,
-            blacklist_protocol=config.protocol.blacklist,
+            imaging_protocol=config.protocols.imaging,
+            injection_protocol=config.protocols.injection,
+            pressure_temperature_protocol=config.protocols.pressure_temperature,
+            blacklist_protocol=config.protocols.blacklist,
             pad=config.data.pad,
         )
 

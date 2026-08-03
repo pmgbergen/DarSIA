@@ -14,7 +14,7 @@ from darsia.presets.workflows.config.facies import FaciesConfig
 from darsia.presets.workflows.config.helper import HelperConfig
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.config.labeling import LabelingConfig
-from darsia.presets.workflows.config.protocol import ProtocolConfig
+from darsia.presets.workflows.config.protocols import ProtocolsConfig
 from darsia.presets.workflows.config.restoration import RestorationConfig
 from darsia.presets.workflows.config.rig import RigConfig
 
@@ -29,7 +29,7 @@ SECTION_TO_DATACLASS = {
     "helper": HelperConfig,
     "image_porosity": ImagePorosityConfig,
     "labeling": LabelingConfig,
-    "protocol": ProtocolConfig,
+    "protocols": ProtocolsConfig,
     "restoration": RestorationConfig,
     "rig": RigConfig,
 }
@@ -217,5 +217,4 @@ def get_section_fields(section: str) -> list[dict[str, Any]] | None:
     if not is_dataclass(dataclass_type):
         return None
 
-    toml_section = TOML_SECTION_ALIASES.get(section, section)
-    return _build_fields(dataclass_type, toml_section)
+    return _build_fields(dataclass_type, section)

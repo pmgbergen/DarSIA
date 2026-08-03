@@ -68,7 +68,7 @@ def _load_baseline_color_spectrum_for_color_to_mass(
     return baseline_color_spectrum
 
 
-@required_sections("color", "rig", "data", "protocol", "calibration.mass", "analysis")
+@required_sections("color", "rig", "data", "protocols", "calibration.mass", "analysis")
 def calibration_color_to_mass_analysis_from_context(
     ctx: AnalysisContext,
     ref_path: Path | None = None,
@@ -103,7 +103,7 @@ def calibration_color_to_mass_analysis_from_context(
         *list_required_sections(calibration_color_to_mass_analysis_from_context)
     )
     assert config.data is not None
-    assert config.protocol is not None
+    assert config.protocols is not None
     assert config.color is not None
     assert config.calibration is not None
     assert config.calibration.mass is not None

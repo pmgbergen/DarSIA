@@ -16,7 +16,7 @@ be unioned together.
 #   sections (in order, deduplicated)
 CHECKBOX_TO_SECTIONS = {
     # Setup leaf mappings — point to the functions the GUI's setup.py::run_setup() calls
-    ("setup", "protocol"): (
+    ("setup", "protocols"): (
         "darsia.presets.workflows.setup.setup_protocols",
         "setup_imaging_protocol",
     ),
