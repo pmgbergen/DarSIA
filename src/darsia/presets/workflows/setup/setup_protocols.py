@@ -109,18 +109,18 @@ def _overwrite_conflicts(paths: Iterable[Path]) -> list[Path]:
 def preview_protocol_setup_conflicts(path: Path | list[Path]) -> list[Path]:
     """Return protocol target files that already exist."""
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
-    config.check("protocol")
-    assert config.protocol is not None
+    config.check("protocols")
+    assert config.protocols is not None
 
     imaging_targets = _imaging_protocol_paths(
-        config.protocol.imaging, config.data.folders
+        config.protocols.imaging, config.data.folders
     )
     targets = list(imaging_targets.values())
     targets.extend(
         [
-            _protocol_path(config.protocol.injection, "injection"),
+            _protocol_path(config.protocols.injection, "injection"),
             _protocol_path(
-                config.protocol.pressure_temperature, "pressure_temperature"
+                config.protocols.pressure_temperature, "pressure_temperature"
             ),
         ]
     )
@@ -198,7 +198,7 @@ def _write_pressure_temperature_template(path: Path, start: datetime) -> None:
     _write_csv(df, path)
 
 
-@required_sections("data", "protocol")
+@required_sections("data", "protocols")
 def setup_imaging_protocol(
     path: Path | list[Path],
     *,
@@ -212,15 +212,15 @@ def setup_imaging_protocol(
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
     config.check(*list_required_sections(setup_imaging_protocol))
     assert config.data is not None
-    assert config.protocol is not None
-    assert config.protocol.imaging is not None
+    assert config.protocols is not None
+    assert config.protocols.imaging is not None
 
     imaging_targets = _imaging_protocol_paths(
-        config.protocol.imaging, config.data.folders
+        config.protocols.imaging, config.data.folders
     )
-    injection_path = _protocol_path(config.protocol.injection, "injection")
+    injection_path = _protocol_path(config.protocols.injection, "injection")
     pressure_temperature_path = _protocol_path(
-        config.protocol.pressure_temperature, "pressure_temperature"
+        config.protocols.pressure_temperature, "pressure_temperature"
     )
 
     for imaging_path in imaging_targets.values():
@@ -242,7 +242,7 @@ def setup_imaging_protocol(
             f"Protocol file(s) already exist: {conflict_text}. Use --force to overwrite."
         )
 
-    mode = config.protocol.imaging_mode
+    mode = config.protocols.imaging_mode
     if mode not in _SUPPORTED_MODES:
         raise ValueError(
             f"Unsupported [protocols].imaging_mode '{mode}'. "

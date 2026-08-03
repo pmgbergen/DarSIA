@@ -50,13 +50,13 @@ def _scan_source_images(
 def _protocol_sort_frames(
     experiment: darsia.ProtocolledExperiment,
     image_paths: list[Path],
-    sorting_method: Literal["protocol", "name"],
+    sorting_method: Literal["protocols", "name"],
 ) -> list[tuple[Path, datetime, float]]:
     if sorting_method == "name":
         # Sort by filename only, ignoring protocol datetimes and blacklisting.
         # Elapsed time is set to 0.
         rows = [(path, None, 0) for path in natsorted(image_paths, alg=ns.IGNORECASE)]
-    elif sorting_method == "protocol":
+    elif sorting_method == "protocols":
         rows: list[tuple[Path, datetime, float]] = []
         if (
             hasattr(experiment, "iter_available")
@@ -221,7 +221,7 @@ def _write_gif(
 def build_media(path: Path | list[Path]) -> dict[str, Path]:
     """Build protocol-time ordered MP4/GIF from configured analysis outputs."""
     config = FluidFlowerConfig(path, require_data=True, require_results=False)
-    config.check("data", "protocol", "video")
+    config.check("data", "protocols", "video")
     assert config.video is not None
     assert config.data is not None
 

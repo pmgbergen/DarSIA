@@ -23,7 +23,7 @@ class SetupTab:
             ("Depth", "depth"),
             ("Segmentation", "segmentation"),
             ("Facies", "facies"),
-            ("Protocol", "protocol"),
+            ("Protocols", "protocols"),
             ("Rig", "rig"),
             ("Show plots", "show_plots"),
         ]
@@ -73,7 +73,7 @@ class SetupTab:
             "depth": "depth" in checked_ids,
             "segmentation": "segmentation" in checked_ids,
             "facies": "facies" in checked_ids,
-            "protocol": "protocol" in checked_ids,
+            "protocols": "protocols" in checked_ids,
             "rig": "rig" in checked_ids,
             "show": "show_plots" in checked_ids,
             "force": False,
@@ -113,7 +113,7 @@ class SetupTab:
                 if options["all"] or options["rig"]:
                     self.main_window.print_log("Running rig setup...")
                     setup_rig(Rig, config_paths, show=show)
-                if options["protocol"]:
+                if options["protocols"]:
                     self.main_window.print_log("Running protocol setup...")
                     setup_imaging_protocol(
                         config_paths, force=options["force"], show=show

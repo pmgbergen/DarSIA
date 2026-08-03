@@ -19,7 +19,7 @@ from .format_registry import FormatRegistry
 from .helper import HelperConfig
 from .image_porosity import ImagePorosityConfig
 from .labeling import LabelingConfig
-from .protocol import ProtocolConfig
+from .protocols import ProtocolsConfig
 from .restoration import RestorationConfig
 from .rig import RigConfig
 from .roi_registry import RoiRegistry
@@ -129,10 +129,10 @@ class FluidFlowerConfig:
 
         # ! ---- PROTOCOLS ---- ! #
         try:
-            self.protocol: ProtocolConfig | None = ProtocolConfig()
-            self.protocol.load(path)
+            self.protocols: ProtocolsConfig | None = ProtocolsConfig()
+            self.protocols.load(path)
         except KeyError:
-            self.protocol = None
+            self.protocols = None
             warn(f"Section protocols not found in {path}, use [protocols].")
 
         # ! ---- ROI REGISTRY ---- ! #
@@ -260,8 +260,8 @@ class FluidFlowerConfig:
             DepthConfig().error()
         elif key == "rig" and not self.rig:
             RigConfig().error()
-        elif key == "protocol" and not self.protocol:
-            ProtocolConfig().error()
+        elif key == "protocols" and not self.protocols:
+            ProtocolsConfig().error()
         elif key == "color":
             if not self.color:
                 raise ValueError(
@@ -306,7 +306,7 @@ class FluidFlowerConfig:
                 "data",
                 "labeling",
                 "depth",
-                "protocol",
+                "protocols",
                 "color",
                 "analysis".
 
@@ -327,7 +327,7 @@ class FluidFlowerConfig:
                 "depth",
                 "facies",
                 "labeling",
-                "protocol",
+                "protocols",
                 "rig",
                 "video",
             ], f"Key {key} not recognized for checking."

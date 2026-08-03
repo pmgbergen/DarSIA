@@ -41,9 +41,9 @@ class VideoSourceConfig:
         default_factory=lambda: [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"]
     )
     recursive: bool = False
-    sorting: str = "protocol"
+    sorting: str = "protocols"
 
-    ALLOWED_SORTING_METHODS = {"protocol", "name"}
+    ALLOWED_SORTING_METHODS = {"protocols", "name"}
 
     def load(self, sec: dict) -> "VideoSourceConfig":
         src = _get_key(sec, "source", required=True)

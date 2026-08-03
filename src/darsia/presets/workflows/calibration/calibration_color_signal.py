@@ -18,7 +18,7 @@ def calibration_color_signal(cls, path: Path, show: bool = False):
     # ! ---- LOAD RUN AND RIG ----
 
     config = FluidFlowerConfig(path)
-    config.check("color_signal", "color_paths", "rig", "data", "protocol")
+    config.check("color_signal", "color_paths", "rig", "data", "protocols")
 
     # Mypy type checking
     for c in [
@@ -26,7 +26,7 @@ def calibration_color_signal(cls, path: Path, show: bool = False):
         config.color_paths,
         config.rig,
         config.data,
-        config.protocol,
+        config.protocols,
     ]:
         assert c is not None
 

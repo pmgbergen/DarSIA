@@ -18,7 +18,7 @@ def calibration_mass_analysis(cls, path: Path, show: bool = False) -> None:
     # ! ---- LOAD RUN AND RIG ----
 
     config = FluidFlowerConfig(path)
-    config.check("rig", "data", "protocol", "color_paths", "color_signal", "mass")
+    config.check("rig", "data", "protocols", "color_paths", "color_signal", "mass")
 
     # Mypy type checking
     for c in [
@@ -26,7 +26,7 @@ def calibration_mass_analysis(cls, path: Path, show: bool = False) -> None:
         config.color_signal,
         config.color_paths,
         config.data,
-        config.protocol,
+        config.protocols,
         config.rig,
     ]:
         assert c is not None
