@@ -28,10 +28,10 @@ def required_sections(
 
     **Branching (discriminated by one argument):**
         @required_sections(
-            default=("protocol", "data", "rig"),
+            default=("protocols", "data", "rig"),
             when={"section": {
-                "analysis": ("analysis", "protocol", "data", "rig"),
-                "calibration": ("calibration", "protocol", "data", "rig"),
+                "analysis": ("analysis", "protocols", "data", "rig"),
+                "calibration": ("calibration", "protocols", "data", "rig"),
             }},
         )
         def prepare_analysis_context(..., section="analysis", ...):

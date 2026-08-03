@@ -25,7 +25,7 @@ def calibration_flash(cls, path: Path, show: bool = False):
     # ! ---- LOAD RUN AND RIG ----
 
     config = FluidFlowerConfig(path)
-    config.check("color_signal", "color_paths", "rig", "data", "protocol")
+    config.check("color_signal", "color_paths", "rig", "data", "protocols")
 
     # Mypy type checking
     assert config.color_signal is not None
@@ -33,11 +33,11 @@ def calibration_flash(cls, path: Path, show: bool = False):
     assert config.rig is not None
     assert config.data is not None
     assert config.data.data is not None
-    assert config.protocol is not None
-    assert config.protocol.imaging is not None
-    assert config.protocol.injection is not None
-    assert config.protocol.pressure_temperature is not None
-    assert config.protocol.blacklist is not None
+    assert config.protocols is not None
+    assert config.protocols.imaging is not None
+    assert config.protocols.injection is not None
+    assert config.protocols.pressure_temperature is not None
+    assert config.protocols.blacklist is not None
 
     # ! ---- LOAD EXPERIMENT ----
     experiment = darsia.ProtocolledExperiment.init_from_config(config)

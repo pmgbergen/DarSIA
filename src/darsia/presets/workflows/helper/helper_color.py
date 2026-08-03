@@ -203,7 +203,7 @@ def helper_color(
         )
 
     config = FluidFlowerConfig(path, require_data=True, require_results=False)
-    config.check("rig", "data", "protocol")
+    config.check("rig", "data", "protocols")
     if config.helper is None or config.helper.color is None:
         raise ValueError("Color helper requires a [helper.color] configuration.")
 

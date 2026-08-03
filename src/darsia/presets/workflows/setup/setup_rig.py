@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO)
     "depth",
     "labeling",
     "facies",
-    "protocol",
+    "protocols",
     "rig",
     "corrections",
     "image_porosity",
@@ -57,18 +57,18 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
     assert config.depth is not None
     assert config.labeling is not None
     assert config.facies is not None
-    assert config.protocol is not None
-    assert config.protocol.imaging is not None
-    assert config.protocol.injection is not None
-    assert config.protocol.pressure_temperature is not None
+    assert config.protocols is not None
+    assert config.protocols.imaging is not None
+    assert config.protocols.injection is not None
+    assert config.protocols.pressure_temperature is not None
 
     # Load imaging protocol
     experiment = darsia.ProtocolledExperiment(
         data=config.data.data,
-        imaging_protocol=config.protocol.imaging,
-        injection_protocol=config.protocol.injection,
-        pressure_temperature_protocol=config.protocol.pressure_temperature,
-        blacklist_protocol=config.protocol.blacklist,
+        imaging_protocol=config.protocols.imaging,
+        injection_protocol=config.protocols.injection,
+        pressure_temperature_protocol=config.protocols.pressure_temperature,
+        blacklist_protocol=config.protocols.blacklist,
         pad=config.data.pad,
     )
 

@@ -26,7 +26,7 @@ from darsia.utils.standard_images import roi_to_mask
 logger = logging.getLogger(__name__)
 
 
-@required_sections("rig", "data", "protocol", "color", "calibration.color")
+@required_sections("rig", "data", "protocols", "color", "calibration.color")
 def calibration_color_paths_from_context(
     ctx: AnalysisContext, show: bool = False
 ) -> None:
@@ -51,10 +51,10 @@ def calibration_color_paths_from_context(
     assert config.calibration.color is not None
     assert config.rig is not None
     assert config.data is not None
-    assert config.protocol is not None
-    assert config.protocol.imaging is not None
-    assert config.protocol.injection is not None
-    assert config.protocol.pressure_temperature is not None
+    assert config.protocols is not None
+    assert config.protocols.imaging is not None
+    assert config.protocols.injection is not None
+    assert config.protocols.pressure_temperature is not None
 
     # ! ---- SELECT EMBEDDING AND LABELS ----
 

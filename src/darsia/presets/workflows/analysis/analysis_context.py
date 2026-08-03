@@ -246,11 +246,11 @@ def _build_color_to_mass_analysis(
 
 
 @required_sections(
-    default=("protocol", "data", "rig", "color"),
+    default=("protocols", "data", "rig", "color"),
     when={
         "section": {
-            "analysis": ("analysis", "protocol", "data", "rig", "color"),
-            "calibration": ("calibration", "protocol", "data", "rig", "color"),
+            "analysis": ("analysis", "protocols", "data", "rig", "color"),
+            "calibration": ("calibration", "protocols", "data", "rig", "color"),
         }
     },
 )
@@ -301,7 +301,7 @@ def prepare_analysis_context(
     assert config.rig is not None
     assert config.rig.path is not None
     assert config.data is not None
-    assert config.protocol is not None
+    assert config.protocols is not None
     if section == "analysis" and config.analysis is None:
         raise ValueError("Analysis context requires an [analysis] section.")
     if section == "helper" and config.helper is None:
