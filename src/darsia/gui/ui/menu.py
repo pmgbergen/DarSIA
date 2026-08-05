@@ -19,15 +19,17 @@ class MenuBuilder:
         menu_bar = self.main_window.menuBar()
 
         file_menu = menu_bar.addMenu("&File")
-        self._add_action(file_menu, "&New", self.main_window.new_config, "Ctrl+N")
+        self.new_action = self._add_action(
+            file_menu, "&New", self.main_window.new_config, "Ctrl+N"
+        )
         file_menu.addSeparator()
-        self._add_action(
+        self.open_action = self._add_action(
             file_menu, "&Open Config...", self.main_window.open_config, "Ctrl+O"
         )
         self.recent_menu = file_menu.addMenu("Open &Recent")
         self.recent_menu.aboutToShow.connect(self._populate_recent_menu)
         file_menu.addSeparator()
-        self._add_action(
+        self.save_action = self._add_action(
             file_menu, "&Save Config", self.main_window.save_settings, "Ctrl+S"
         )
         self._add_action(
