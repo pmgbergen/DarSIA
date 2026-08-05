@@ -1,6 +1,7 @@
 from functools import partial
 
 from PySide6.QtGui import QAction
+
 from .recent_files import clear_recent_configs, get_recent_configs
 
 
@@ -54,9 +55,7 @@ class MenuBuilder:
             return
         for path in recent:
             action = QAction(path, self.main_window)
-            action.triggered.connect(
-                partial(self.main_window.open_recent_config, path)
-            )
+            action.triggered.connect(partial(self.main_window.open_recent_config, path))
             self.recent_menu.addAction(action)
         self.recent_menu.addSeparator()
         clear_action = QAction("Clear Recent", self.main_window)
