@@ -62,10 +62,7 @@ class MainWindow(QMainWindow):
 
         # Setting up the left upper layout
         upper_layout.addWidget(QLabel("Loaded config:"))
-        self.config_path_label = QLabel(
-            """No config loaded. """
-            """Use <b><i>File > Open Config</i></b> to select a config file."""
-        )
+        self.config_path_label = QLabel("No config loaded.")
         self.config_path_label.setWordWrap(True)
         upper_layout.addWidget(self.config_path_label)
 
