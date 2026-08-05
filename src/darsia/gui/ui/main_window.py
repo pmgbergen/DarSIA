@@ -110,11 +110,6 @@ class MainWindow(QMainWindow):
         self.settings_scroll_area.setWidgetResizable(True)
         upper_right_layout.addWidget(self.settings_scroll_area)
 
-        # Save Settings button
-        save_button = QPushButton("Save Settings")
-        save_button.clicked.connect(self.save_settings)
-        upper_right_layout.addWidget(save_button)
-
         # Store config
         self.config_file = ""
         self.config_dict = {}
