@@ -24,7 +24,6 @@ from PySide6.QtWidgets import (
 from .about_dialog import AboutDialog
 from .analysis import AnalysisTab
 from .calibration import CalibrationTab
-from .file_dialog import FileDialogHelper
 from .menu import MenuBuilder
 from .settings import SettingsFactory
 from .setup import SetupTab
@@ -60,28 +59,23 @@ class MainWindow(QMainWindow):
         upper_right_layout = QVBoxLayout(upper_right_container)
 
         # Setting up the left upper layout
-        upper_layout.addWidget(QLabel("Choose experiment files"))
+        upper_layout.addWidget(QLabel("Loaded config:"))
+        self.config_path_label = QLabel(
+            """No config loaded. """
+            """Use <b><i>File > Open Config</i></b> to select a config file."""
+        )
+        self.config_path_label.setWordWrap(True)
+        upper_layout.addWidget(self.config_path_label)
 
-        # Initialize file chooser storage and file dialog helper
+        # Storage for file/folder chooser widgets used by settings.py's
+        # FileDialogHelper (e.g. depth.measurements, facies.props).
         self.chosen_files = {}
-        self.file_dialog = FileDialogHelper(self)
         self.baseline_images = []
         self.baseline_container = QWidget()
         self.baseline_layout = QVBoxLayout(self.baseline_container)
         self.baseline_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Add config file chooser first
-        config_file_chooser_container, self.config_path_label = (
-            self.file_dialog.create_file_chooser(
-                "Config File", "TOML Files (*.toml);;All Files (*)", False
-            )
-        )
-        upper_layout.addWidget(config_file_chooser_container)
-        load_config_button = QPushButton("Load Config")
-        load_config_button.clicked.connect(self.load_config)
-        upper_layout.addWidget(load_config_button)
-
-        # Add stretch to push file choosers to top
+        # Add stretch to push the config label to the top
         upper_layout.addStretch()
 
         # Setting up the middle upper layout with tabs
@@ -429,7 +423,10 @@ class MainWindow(QMainWindow):
         """Method that loads the config file chosen in the GUI."""
         file = self.config_path_label.text()
         if not file:
-            self.print_log("No config file selected.")
+            self.print_log(
+                """No config file selected. """
+                """Use <b><i>File > Open Config</i></b> to select a config file."""
+            )
             return
         try:
             with open(file, "r") as f:
