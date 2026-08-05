@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class ProtocolConfig:
+class ProtocolsConfig:
     """Protocol configuration for the setup."""
 
     imaging: Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]] | None = None
@@ -33,7 +33,7 @@ class ProtocolConfig:
             return Path(value)
         raise ValueError("Protocol value must be a string or a list of [path, sheet].")
 
-    def load(self, path: Path) -> "ProtocolConfig":
+    def load(self, path: Path) -> "ProtocolsConfig":
         sec = _get_section_from_toml(path, "protocols")
         try:
             imaging_protocol = sec["imaging"]
