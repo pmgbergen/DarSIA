@@ -21,9 +21,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .about_dialog import AboutDialog
 from .analysis import AnalysisTab
 from .calibration import CalibrationTab
 from .file_dialog import FileDialogHelper
+from .menu import MenuBuilder
 from .settings import SettingsFactory
 from .setup import SetupTab
 
@@ -42,6 +44,9 @@ class MainWindow(QMainWindow):
         )
         if logo_path.exists():
             self.setWindowIcon(QIcon(str(logo_path)))
+
+        # Set up the menu bar
+        MenuBuilder(self).build()
 
         # Setting up the three upper layouts
         upper_container = QWidget()
@@ -405,6 +410,20 @@ class MainWindow(QMainWindow):
 
         self.settings_layout.addWidget(tabs)
         self.settings_layout.addStretch()
+
+    def show_about_dialog(self):
+        """Show the About dialog."""
+        AboutDialog(self).exec()
+
+    def open_config(self):
+        """Open a config file via dialog and load it immediately."""
+        file, _ = QFileDialog.getOpenFileName(
+            self, "Open Config File", "", "TOML Files (*.toml);;All Files (*)"
+        )
+        if not file:
+            return
+        self.config_path_label.setText(file)
+        self.load_config()
 
     def load_config(self):
         """Method that loads the config file chosen in the GUI."""
