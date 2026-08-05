@@ -1,4 +1,7 @@
+from functools import partial
+
 from PySide6.QtGui import QAction
+from .recent_files import clear_recent_configs, get_recent_configs
 
 
 class MenuBuilder:
@@ -18,6 +21,8 @@ class MenuBuilder:
         self._add_action(file_menu, "&New", self.main_window.new_config)
         file_menu.addSeparator()
         self._add_action(file_menu, "&Open Config...", self.main_window.open_config)
+        self.recent_menu = file_menu.addMenu("Open &Recent")
+        self.recent_menu.aboutToShow.connect(self._populate_recent_menu)
         file_menu.addSeparator()
         self._add_action(file_menu, "&Save Config", self.main_window.save_settings)
         self._add_action(
@@ -34,3 +39,26 @@ class MenuBuilder:
         action.triggered.connect(handler)
         menu.addAction(action)
         return action
+
+    def _populate_recent_menu(self):
+        self.recent_menu.clear()
+        try:
+            recent = get_recent_configs()
+        except Exception as e:
+            self.main_window.print_log(f"Error loading recent files: {e}")
+            recent = []
+        if not recent:
+            empty = QAction("No recent files", self.main_window)
+            empty.setEnabled(False)
+            self.recent_menu.addAction(empty)
+            return
+        for path in recent:
+            action = QAction(path, self.main_window)
+            action.triggered.connect(
+                partial(self.main_window.open_recent_config, path)
+            )
+            self.recent_menu.addAction(action)
+        self.recent_menu.addSeparator()
+        clear_action = QAction("Clear Recent", self.main_window)
+        clear_action.triggered.connect(clear_recent_configs)
+        self.recent_menu.addAction(clear_action)

@@ -25,6 +25,7 @@ from .about_dialog import AboutDialog
 from .analysis import AnalysisTab
 from .calibration import CalibrationTab
 from .menu import MenuBuilder
+from .recent_files import add_recent_config, remove_recent_config
 from .settings import SettingsFactory
 from .setup import SetupTab
 
@@ -45,7 +46,8 @@ class MainWindow(QMainWindow):
             self.setWindowIcon(QIcon(str(logo_path)))
 
         # Set up the menu bar
-        MenuBuilder(self).build()
+        self.menu_builder = MenuBuilder(self)
+        self.menu_builder.build()
 
         # Setting up the three upper layouts
         upper_container = QWidget()
@@ -425,6 +427,7 @@ class MainWindow(QMainWindow):
         self.config_file = file
         self.config_path_label.setText(file)
         self.config_dict = {}
+        add_recent_config(file)
         self.print_log(f"New config created and opened: {file}")
 
     def open_config(self):
@@ -446,7 +449,17 @@ class MainWindow(QMainWindow):
             return
         self.config_file = file
         self.config_path_label.setText(file)
+        add_recent_config(file)
         self.save_settings()
+
+    def open_recent_config(self, path):
+        """Open a config file from the recent-files list."""
+        if not Path(path).exists():
+            self.print_log(f"Recent config file no longer exists: {path}")
+            remove_recent_config(path)
+            return
+        self.config_path_label.setText(path)
+        self.load_config()
 
     def load_config(self):
         """Method that loads the config file chosen in the GUI."""
@@ -464,6 +477,7 @@ class MainWindow(QMainWindow):
             self.print_log(f"Error loading config file: {e}")
             return
         self.config_file = file
+        add_recent_config(file)
         self.print_log("Config loaded")
 
     def print_log(self, text):
