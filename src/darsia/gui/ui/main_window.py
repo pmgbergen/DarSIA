@@ -153,6 +153,16 @@ class MainWindow(QMainWindow):
 
         self.showMaximized()
 
+        # Display welcome message
+        self.print_log("No config loaded. Use:")
+        self.print_log("- <b><i>File > New</i></b> to start a new config, ")
+        self.print_log(
+            "- <b><i>File > Open Config...</i></b> to open an existing one, or "
+        )
+        self.print_log(
+            "- <b><i>File > Open Recent</i></b> to open a recently-used config."
+        )
+
     def save_settings(self):
         """Save the current settings to the loaded config file."""
         # First pass: collect group checkbox states and determine which sub-inputs to skip
