@@ -409,6 +409,24 @@ class MainWindow(QMainWindow):
         """Show the About dialog."""
         AboutDialog(self).exec()
 
+    def new_config(self):
+        """Create a new empty config file at a chosen path and open it."""
+        file, _ = QFileDialog.getSaveFileName(
+            self, "New Config File", "", "TOML Files (*.toml);;All Files (*)"
+        )
+        if not file:
+            return
+        try:
+            with open(file, "w") as f:
+                toml.dump({}, f)
+        except Exception as e:
+            self.print_log(f"Error creating config file: {e}")
+            return
+        self.config_file = file
+        self.config_path_label.setText(file)
+        self.config_dict = {}
+        self.print_log(f"New config created and opened: {file}")
+
     def open_config(self):
         """Open a config file via dialog and load it immediately."""
         file, _ = QFileDialog.getOpenFileName(
@@ -418,6 +436,17 @@ class MainWindow(QMainWindow):
             return
         self.config_path_label.setText(file)
         self.load_config()
+
+    def save_config_as(self):
+        """Save current settings to a new config file chosen via dialog."""
+        file, _ = QFileDialog.getSaveFileName(
+            self, "Save Config As", "", "TOML Files (*.toml);;All Files (*)"
+        )
+        if not file:
+            return
+        self.config_file = file
+        self.config_path_label.setText(file)
+        self.save_settings()
 
     def load_config(self):
         """Method that loads the config file chosen in the GUI."""
