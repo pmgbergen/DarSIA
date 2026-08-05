@@ -1,6 +1,5 @@
 from functools import partial
 
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
 
 from .recent_files import clear_recent_configs, get_recent_configs
