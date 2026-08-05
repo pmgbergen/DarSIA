@@ -15,7 +15,16 @@ class MenuBuilder:
         menu_bar = self.main_window.menuBar()
 
         file_menu = menu_bar.addMenu("&File")
+        self._add_action(file_menu, "&New", self.main_window.new_config)
+        file_menu.addSeparator()
         self._add_action(file_menu, "&Open Config...", self.main_window.open_config)
+        file_menu.addSeparator()
+        self._add_action(file_menu, "&Save Config", self.main_window.save_settings)
+        self._add_action(
+            file_menu, "Save Config &As...", self.main_window.save_config_as
+        )
+        file_menu.addSeparator()
+        self._add_action(file_menu, "&Close", self.main_window.close)
 
         help_menu = menu_bar.addMenu("&Help")
         self._add_action(help_menu, "&About", self.main_window.show_about_dialog)
