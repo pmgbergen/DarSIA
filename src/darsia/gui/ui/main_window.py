@@ -28,6 +28,7 @@ from .menu import MenuBuilder
 from .recent_files import add_recent_config, remove_recent_config
 from .settings import SettingsFactory
 from .setup import SetupTab
+from .toolbar import ToolbarBuilder
 
 
 class MainWindow(QMainWindow):
@@ -48,6 +49,10 @@ class MainWindow(QMainWindow):
         # Set up the menu bar
         self.menu_builder = MenuBuilder(self)
         self.menu_builder.build()
+
+        # Set up the toolbar
+        self.toolbar_builder = ToolbarBuilder(self, self.menu_builder)
+        self.toolbar_builder.build()
 
         # Setting up the three upper layouts
         upper_container = QWidget()
