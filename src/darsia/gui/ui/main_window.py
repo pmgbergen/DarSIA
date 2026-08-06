@@ -25,8 +25,10 @@ from .about_dialog import AboutDialog
 from .analysis import AnalysisTab
 from .calibration import CalibrationTab
 from .menu import MenuBuilder
+from .recent_files import add_recent_config, remove_recent_config
 from .settings import SettingsFactory
 from .setup import SetupTab
+from .toolbar import ToolbarBuilder
 
 
 class MainWindow(QMainWindow):
@@ -45,7 +47,12 @@ class MainWindow(QMainWindow):
             self.setWindowIcon(QIcon(str(logo_path)))
 
         # Set up the menu bar
-        MenuBuilder(self).build()
+        self.menu_builder = MenuBuilder(self)
+        self.menu_builder.build()
+
+        # Set up the toolbar
+        self.toolbar_builder = ToolbarBuilder(self, self.menu_builder)
+        self.toolbar_builder.build()
 
         # Setting up the three upper layouts
         upper_container = QWidget()
@@ -60,10 +67,7 @@ class MainWindow(QMainWindow):
 
         # Setting up the left upper layout
         upper_layout.addWidget(QLabel("Loaded config:"))
-        self.config_path_label = QLabel(
-            """No config loaded. """
-            """Use <b><i>File > Open Config</i></b> to select a config file."""
-        )
+        self.config_path_label = QLabel("No config loaded.")
         self.config_path_label.setWordWrap(True)
         upper_layout.addWidget(self.config_path_label)
 
@@ -108,11 +112,6 @@ class MainWindow(QMainWindow):
         self.settings_scroll_area.setWidgetResizable(True)
         upper_right_layout.addWidget(self.settings_scroll_area)
 
-        # Save Settings button
-        save_button = QPushButton("Save Settings")
-        save_button.clicked.connect(self.save_settings)
-        upper_right_layout.addWidget(save_button)
-
         # Store config
         self.config_file = ""
         self.config_dict = {}
@@ -155,6 +154,16 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(content_splitter)
 
         self.showMaximized()
+
+        # Display welcome message
+        self.print_log("No config loaded. Use:")
+        self.print_log("- <b><i>File > New</i></b> to start a new config, ")
+        self.print_log(
+            "- <b><i>File > Open Config...</i></b> to open an existing one, or "
+        )
+        self.print_log(
+            "- <b><i>File > Open Recent</i></b> to open a recently-used config."
+        )
 
     def save_settings(self):
         """Save the current settings to the loaded config file."""
@@ -409,6 +418,25 @@ class MainWindow(QMainWindow):
         """Show the About dialog."""
         AboutDialog(self).exec()
 
+    def new_config(self):
+        """Create a new empty config file at a chosen path and open it."""
+        file, _ = QFileDialog.getSaveFileName(
+            self, "New Config File", "", "TOML Files (*.toml);;All Files (*)"
+        )
+        if not file:
+            return
+        try:
+            with open(file, "w") as f:
+                toml.dump({}, f)
+        except Exception as e:
+            self.print_log(f"Error creating config file: {e}")
+            return
+        self.config_file = file
+        self.config_path_label.setText(file)
+        self.config_dict = {}
+        add_recent_config(file)
+        self.print_log(f"New config created and opened: {file}")
+
     def open_config(self):
         """Open a config file via dialog and load it immediately."""
         file, _ = QFileDialog.getOpenFileName(
@@ -417,6 +445,27 @@ class MainWindow(QMainWindow):
         if not file:
             return
         self.config_path_label.setText(file)
+        self.load_config()
+
+    def save_config_as(self):
+        """Save current settings to a new config file chosen via dialog."""
+        file, _ = QFileDialog.getSaveFileName(
+            self, "Save Config As", "", "TOML Files (*.toml);;All Files (*)"
+        )
+        if not file:
+            return
+        self.config_file = file
+        self.config_path_label.setText(file)
+        add_recent_config(file)
+        self.save_settings()
+
+    def open_recent_config(self, path):
+        """Open a config file from the recent-files list."""
+        if not Path(path).exists():
+            self.print_log(f"Recent config file no longer exists: {path}")
+            remove_recent_config(path)
+            return
+        self.config_path_label.setText(path)
         self.load_config()
 
     def load_config(self):
@@ -435,6 +484,7 @@ class MainWindow(QMainWindow):
             self.print_log(f"Error loading config file: {e}")
             return
         self.config_file = file
+        add_recent_config(file)
         self.print_log("Config loaded")
 
     def print_log(self, text):
