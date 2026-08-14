@@ -199,3 +199,159 @@ class FileDialogHelper:
             add_row("")
 
         return setting_container, file_edits
+
+    def create_path_map_input(
+        self,
+        setting_dict,
+        key_is_directory=False,
+        value_is_directory=False,
+    ):
+        """Create a dict[Path, Path] editor with two-column rows (key, value).
+
+        Parameters
+        ----------
+        setting_dict : dict
+            Setting configuration dictionary with 'key' field
+        key_is_directory : bool, optional
+            If True, key column opens directory selection; if False, file selection
+        value_is_directory : bool, optional
+            If True, value column opens directory selection; if False, file selection
+
+        Returns
+        -------
+        tuple
+            (setting_container, {"path_map": True, "rows": [(key_edit, value_edit), ...]})
+        """
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+        values = self.main_window.settings_factory.get_value(
+            self.main_window.config_dict, key
+        )
+        if values is None:
+            values = setting_dict.get("default")
+
+        setting_container = QWidget()
+        setting_layout = QVBoxLayout(setting_container)
+        setting_layout.setContentsMargins(0, 0, 0, 0)
+
+        header_container = QWidget()
+        header_layout = QHBoxLayout(header_container)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        setting_label = QLabel(display_name)
+        add_button = QPushButton("Add row")
+        header_layout.addWidget(setting_label)
+        header_layout.addStretch()
+        header_layout.addWidget(add_button)
+        setting_layout.addWidget(header_container)
+
+        rows_container = QWidget()
+        rows_layout = QVBoxLayout(rows_container)
+        rows_layout.setContentsMargins(0, 0, 0, 0)
+        setting_layout.addWidget(rows_container)
+
+        row_pairs = []  # List of (key_edit, value_edit) tuples
+        row_data_list = []
+
+        def refresh_remove_buttons():
+            show_remove = len(row_data_list) > 1
+            for row in row_data_list:
+                row["remove_button"].setVisible(show_remove)
+
+        def add_row(initial_key="", initial_value=""):
+            row_container = QWidget()
+            row_layout = QHBoxLayout(row_container)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+
+            # Key column
+            key_browse_button = QPushButton("Browse")
+            key_browse_button.setMaximumWidth(80)
+            key_edit = QLineEdit()
+            key_placeholder = "Select folder or type path" if key_is_directory else "Select file or type path"
+            key_edit.setPlaceholderText(key_placeholder)
+            if initial_key:
+                key_edit.setText(str(initial_key))
+
+            # Value column
+            value_browse_button = QPushButton("Browse")
+            value_browse_button.setMaximumWidth(80)
+            value_edit = QLineEdit()
+            value_placeholder = "Select folder or type path" if value_is_directory else "Select file or type path"
+            value_edit.setPlaceholderText(value_placeholder)
+            if initial_value:
+                value_edit.setText(str(initial_value))
+
+            # Remove button
+            remove_button = QPushButton("Remove")
+            remove_button.setMaximumWidth(80)
+
+            def browse_key():
+                if key_is_directory:
+                    selected = QFileDialog.getExistingDirectory(
+                        self.main_window,
+                        f"Select key (folder) for {display_name}",
+                        key_edit.text() if key_edit.text() else "",
+                    )
+                else:
+                    selected, _ = QFileDialog.getOpenFileName(
+                        self.main_window,
+                        f"Select key (file) for {display_name}",
+                        key_edit.text() if key_edit.text() else "",
+                        "All Files (*)",
+                    )
+                if selected:
+                    key_edit.setText(selected)
+
+            def browse_value():
+                if value_is_directory:
+                    selected = QFileDialog.getExistingDirectory(
+                        self.main_window,
+                        f"Select value (folder) for {display_name}",
+                        value_edit.text() if value_edit.text() else "",
+                    )
+                else:
+                    selected, _ = QFileDialog.getOpenFileName(
+                        self.main_window,
+                        f"Select value (file) for {display_name}",
+                        value_edit.text() if value_edit.text() else "",
+                        "All Files (*)",
+                    )
+                if selected:
+                    value_edit.setText(selected)
+
+            def remove():
+                row_container.deleteLater()
+                if row_data in row_data_list:
+                    row_data_list.remove(row_data)
+                if (key_edit, value_edit) in row_pairs:
+                    row_pairs.remove((key_edit, value_edit))
+                refresh_remove_buttons()
+
+            key_browse_button.clicked.connect(browse_key)
+            value_browse_button.clicked.connect(browse_value)
+            remove_button.clicked.connect(remove)
+
+            row_layout.addWidget(key_browse_button)
+            row_layout.addWidget(key_edit)
+            row_layout.addWidget(value_browse_button)
+            row_layout.addWidget(value_edit)
+            row_layout.addWidget(remove_button)
+
+            rows_layout.addWidget(row_container)
+
+            row_data = {
+                "container": row_container,
+                "remove_button": remove_button,
+            }
+            row_data_list.append(row_data)
+            row_pairs.append((key_edit, value_edit))
+            refresh_remove_buttons()
+
+        add_button.clicked.connect(lambda: add_row())
+
+        if isinstance(values, dict) and values:
+            for k, v in values.items():
+                add_row(k, v)
+        else:
+            add_row("")
+
+        return setting_container, {"path_map": True, "rows": row_pairs}
