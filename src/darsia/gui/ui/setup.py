@@ -48,7 +48,6 @@ class SetupTab:
     def on_settings_clicked(self):
         """Handle settings button click."""
         checked_ids = self.main_window.get_checked_checkbox_ids(self.setup_checkboxes)
-        self.main_window.print_log(f"Setup: Checked specifics - {checked_ids}")
         self.main_window.display_settings("setup", checked_ids)
 
     def on_run_clicked(self):
