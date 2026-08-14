@@ -16,8 +16,8 @@ from darsia.presets.analysis.porosity import patched_porosity_analysis
 from darsia.presets.workflows.config.corrections import (
     CorrectionsConfig,
     IlluminationCorrectionConfig,
-    RelativeColorCorrectionConfig,
     PatchwiseIlluminationCorrectionConfig,
+    RelativeColorCorrectionConfig,
 )
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.facies_props import FaciesProps
