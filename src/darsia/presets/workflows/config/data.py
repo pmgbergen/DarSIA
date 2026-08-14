@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .data_registry import DataRegistry
-from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
 
 logger = logging.getLogger(__name__)
@@ -27,29 +26,82 @@ class DataConfig:
 
     """
 
-    folder: Path = field(default_factory=Path)
+    folder: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Folder (single)",
+            "help": "Path to the folder containing image data. Use this OR 'Folders (multi)' below, not both.",
+            "widget": "folder",
+        },
+    )
     """Path to the folder containing the image data."""
-    folders: list[Path] = field(default_factory=list)
+    folders: list[Path] = field(
+        default_factory=list,
+        metadata={
+            "name": "Folders (multi)",
+            "help": "Paths to multiple folders containing image data, for multi-folder mode.",
+            "widget": "multi_file",
+        },
+    )
     """Paths to folders containing image data (multi-folder mode)."""
-    format: str = "JPG"
+    format: str = field(
+        default="JPG",
+        metadata={
+            "name": "Format",
+            "help": "Image file format/extension.",
+            "options": ["JPG", "PNG", "TIF", "TIFF", "BMP"],
+        },
+    )
     """Format of the image data (e.g., 'JPG', 'PNG')."""
-    data: list[Path] = field(default_factory=list)
+    data: list[Path] = field(
+        default_factory=list,
+        metadata={"hidden": True},
+    )
     """List of paths to the image data."""
-    baseline: Path = field(default_factory=Path)
+    baseline: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Baseline image",
+            "help": "Path to the baseline image file.",
+        },
+    )
     """Path to the baseline image."""
-    pad: int = 0
+    pad: int = field(
+        default=0,
+        metadata={"hidden": True},
+    )
     """Pad for image names."""
-    results: Path = field(default_factory=Path)
+    results: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Results folder",
+            "help": "Path to the folder where results are stored.",
+            "widget": "folder",
+        },
+    )
     """Path to the results folder."""
-    cache: Path | None = None
+    cache: Path | None = field(
+        default=None,
+        metadata={"hidden": True},
+    )
     """Path to the cache folder, or None if caching is disabled."""
-    raw_cache: Path | None = None
+    raw_cache: Path | None = field(
+        default=None,
+        metadata={"hidden": True},
+    )
     """Path to the raw cache folder, or None if caching is disabled."""
-    use_cache: bool = False
+    use_cache: bool = field(
+        default=False,
+        metadata={
+            "name": "Use cache",
+            "help": "Whether to cache read/processed images under the results folder.",
+        },
+    )
     """Whether to use the cache folder for reading/writing cached images."""
-    time_data: TimeData | None = None
-    """Calibration data configuration."""
-    registry: DataRegistry | None = None
+    registry: DataRegistry | None = field(
+        default=None,
+        metadata={"hidden": True},
+    )
     """Optional global data registry loaded from [data.interval.*], [data.time.*],
     and [data.path.*] sub-sections."""
 
