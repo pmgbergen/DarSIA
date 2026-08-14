@@ -188,6 +188,8 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "link": field.metadata.get("link", None),
                 "options": field.metadata.get("options", None),
                 "default": _field_default(field),
+                "key_is_directory": field.metadata.get("key_is_directory", None),
+                "value_is_directory": field.metadata.get("value_is_directory", None),
             }
 
             # For list/tuple types, add the element type label
