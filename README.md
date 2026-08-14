@@ -57,15 +57,11 @@ pip install -e .[dev]
 sudo apt-get install -y libhypre-dev libmumps-seq-dev build-essential gcc gfortran mpich cmake
 pip install numpy mpi4py
 PETSC_CONFIGURE_OPTIONS="--download-hypre --download-mumps --download-parmetis --download-ml --download-metis --download-scalapack" pip install petsc petsc4py
-# Then install DarSIA with petsc extra:
+# Then install DarSIA:
 # With uv (editable environment):
-uv sync --extra petsc
-# With uv (non-editable install):
-uv pip install .[petsc]
+uv sync --extra dev
 # With pip:
-pip install .[petsc]
-# Combined with dev dependencies (pip):
-pip install .[dev,petsc]
+pip install .[dev]
 ```
 
 **macOS / conda:**
