@@ -25,7 +25,7 @@ If `--calibration-bundle` is omitted, a default bundle is written under:
 The bundle includes (when available):
 
 - `calibration/color/<embedding_id>/...`
-- `manifest.json`
+- `calibration/color/manifest.json`
 
 ## 2) User: import a calibration bundle
 
@@ -41,6 +41,8 @@ Optional:
 
 - `--overwrite` to overwrite all conflicting files in the destination.
 
+`--calibration-bundle` can point to either a zip file or a folder (for example an
+unzipped bundle or a copied `calibration` / `calibration/color` directory).
 Without `--overwrite`, import aborts if conflicting files already exist.
 
 After import, DarSIA writes:
