@@ -95,9 +95,10 @@ class FileDialogHelper:
         tuple
             (setting_container, file_edits) - the UI widget and list of line edits
         """
-        setting = setting_dict["key"]
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
         values = self.main_window.settings_factory.get_value(
-            self.main_window.config_dict, setting
+            self.main_window.config_dict, key
         )
         if values is None:
             values = setting_dict.get("default")
@@ -109,7 +110,7 @@ class FileDialogHelper:
         header_container = QWidget()
         header_layout = QHBoxLayout(header_container)
         header_layout.setContentsMargins(0, 0, 0, 0)
-        setting_label = QLabel(setting)
+        setting_label = QLabel(display_name)
         add_button = QPushButton("Add file")
         header_layout.addWidget(setting_label)
         header_layout.addStretch()
@@ -146,7 +147,7 @@ class FileDialogHelper:
             def browse():
                 selected_path, _ = QFileDialog.getOpenFileName(
                     self.main_window,
-                    f"Select file for {setting}",
+                    f"Select file for {display_name}",
                     path_edit.text() if path_edit.text() else "",
                     "All Files (*)",
                 )

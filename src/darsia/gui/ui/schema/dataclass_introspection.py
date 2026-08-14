@@ -172,6 +172,7 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
             setting_dict = {
                 "key": key,
                 "type": "group",
+                "name": field.metadata.get("name", None),
                 "help": field.metadata.get("help", None),
                 "link": field.metadata.get("link", None),
                 "active_list_key": field.metadata.get("active_list_key", None),
@@ -182,6 +183,7 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
             setting_dict = {
                 "key": key,
                 "type": widget_type,
+                "name": field.metadata.get("name", None),
                 "help": field.metadata.get("help", None),
                 "link": field.metadata.get("link", None),
                 "options": field.metadata.get("options", None),
