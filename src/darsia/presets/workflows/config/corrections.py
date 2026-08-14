@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, Type
+from typing import Any, Literal, Type
 
 import numpy as np
 
@@ -306,6 +306,17 @@ class PatchwiseIlluminationCorrectionConfig:
         return self
 
 
+_CORRECTION_CLASSES: dict[str, type] = {
+    "type": TypeCorrectionConfig,
+    "resize": ResizeCorrectionConfig,
+    "drift": DriftCorrectionConfig,
+    "curvature": CurvatureCorrectionConfig,
+    "color": ColorCorrectionConfig,
+    "illumination": IlluminationCorrectionConfig,
+    "patchwise_illumination": PatchwiseIlluminationCorrectionConfig,
+}
+
+
 @dataclass
 class CorrectionsConfig:
     """Configuration for image corrections.
@@ -335,47 +346,65 @@ class CorrectionsConfig:
     """
 
     # Configuration objects for each correction type
-    type: TypeCorrectionConfig | None = None
-    resize: ResizeCorrectionConfig | None = None
-    drift: DriftCorrectionConfig | None = None
-    curvature: CurvatureCorrectionConfig | None = None
-    color: ColorCorrectionConfig | None = None
-    relative_color: bool | RelativeColorCorrectionConfig = False
-    illumination: IlluminationCorrectionConfig | None = None
-    patchwise_illumination: PatchwiseIlluminationCorrectionConfig | None = None
+    type: TypeCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    resize: ResizeCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    drift: DriftCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    curvature: CurvatureCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    color: ColorCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    relative_color: bool | RelativeColorCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    illumination: IlluminationCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+    patchwise_illumination: PatchwiseIlluminationCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
+
+    inactive: dict[str, Any] = field(
+        default_factory=dict, repr=False, metadata={"hidden": True}
+    )
+    """Parsed sub-configs for corrections present in the TOML but deactivated via
+    `active`. Kept so tuned parameters survive toggling a correction off
+    (not consumed by the correction pipeline — see `get_parsed`)."""
+
+    def get_parsed(self, name: str) -> Any | None:
+        """Return the parsed sub-config for `name`, active or not (GUI use)."""
+        return getattr(self, name, None) or self.inactive.get(name)
 
     def load(self, path: Path | list[Path]) -> "CorrectionsConfig":
         """Load correction configuration from TOML file.
 
         Args:
             path: Path to TOML config file
-            results: Path to results folder
 
         Returns:
             self with loaded configuration
         """
         sec = _get_section_from_toml(path, "corrections")
 
-        # Load individual correction settings
-        type_sec = sec.get("type")
-        if type_sec:
-            self.type = TypeCorrectionConfig().load(type_sec)
-
-        resize_sec = sec.get("resize")
-        if resize_sec:
-            self.resize = ResizeCorrectionConfig().load(resize_sec)
-
-        drift_sec = sec.get("drift")
-        if drift_sec:
-            self.drift = DriftCorrectionConfig().load(drift_sec)
-
-        curvature_sec = sec.get("curvature")
-        if curvature_sec:
-            self.curvature = CurvatureCorrectionConfig().load(curvature_sec)
-
-        color_sec = sec.get("color")
-        if color_sec:
-            self.color = ColorCorrectionConfig().load(color_sec)
+        # Parse all correction sub-tables; active list decides exposure
+        active = sec.get("active")  # None => all present are active
+        for name, cls in _CORRECTION_CLASSES.items():
+            sub_sec = sec.get(name)
+            if not sub_sec:
+                continue
+            parsed = cls().load(sub_sec)
+            is_active = active is None or name in active
+            if is_active:
+                setattr(self, name, parsed)
+            else:
+                self.inactive[name] = parsed
 
         relative_color_sec = sec.get("relative_color", self.relative_color)
         if isinstance(relative_color_sec, bool):
@@ -398,8 +427,6 @@ class CorrectionsConfig:
             self.patchwise_illumination = PatchwiseIlluminationCorrectionConfig().load(
                 patchwise_illumination_sec
             )
-
-        print(self.patchwise_illumination)
 
         # Identify active corrections
         active_corrections = sec.get("active_corrections", None)

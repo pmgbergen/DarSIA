@@ -322,7 +322,7 @@ def suggested_workflow_results_folder(
             setup_candidates.append(results / "setup" / "facies")
         if "rig" in selected_actions:
             setup_candidates.append(results / "setup" / "rig")
-        if "protocol" in selected_actions:
+        if "protocols" in selected_actions:
             setup_candidates.append(results / "setup")
         if "all" in selected_actions:
             setup_candidates.append(results / "setup")
@@ -667,7 +667,7 @@ def _run_setup_workflow(
         setup_facies(rig_cls, paths, show=show)
     if options["all"] or options["rig"]:
         setup_rig(rig_cls, paths, show=show)
-    if options["protocol"]:
+    if options["protocols"]:
         setup_imaging_protocol(paths, force=options["force"], show=show)
     if options["delete_rig"]:
         delete_rig(rig_cls, paths, show=show)
@@ -1031,7 +1031,7 @@ class WorkflowGUI:
         self.setup_depth = self.tk.BooleanVar(value=False)
         self.setup_seg = self.tk.BooleanVar(value=False)
         self.setup_facies = self.tk.BooleanVar(value=False)
-        self.setup_protocol = self.tk.BooleanVar(value=False)
+        self.setup_protocols = self.tk.BooleanVar(value=False)
         self.setup_rig = self.tk.BooleanVar(value=False)
         self.setup_delete = self.tk.BooleanVar(value=False)
         self.setup_show = self.tk.BooleanVar(value=False)
@@ -1040,7 +1040,7 @@ class WorkflowGUI:
             ("Depth", self.setup_depth),
             ("Segmentation", self.setup_seg),
             ("Facies", self.setup_facies),
-            ("Protocol", self.setup_protocol),
+            ("Protocols", self.setup_protocols),
             ("Rig", self.setup_rig),
             ("Delete rig", self.setup_delete),
             ("Show plots (option)", self.setup_show),
@@ -1814,13 +1814,13 @@ class WorkflowGUI:
             "depth": self.setup_depth.get(),
             "segmentation": self.setup_seg.get(),
             "facies": self.setup_facies.get(),
-            "protocol": self.setup_protocol.get(),
+            "protocols": self.setup_protocols.get(),
             "rig": self.setup_rig.get(),
             "delete_rig": self.setup_delete.get(),
             "show": self.setup_show.get(),
             "force": False,
         }
-        protocol_enabled = options["protocol"]
+        protocol_enabled = options["protocols"]
         if protocol_enabled:
             from darsia.presets.workflows.setup.setup_protocols import (
                 preview_protocol_setup_conflicts,

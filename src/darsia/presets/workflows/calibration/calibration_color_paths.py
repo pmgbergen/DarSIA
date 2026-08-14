@@ -14,6 +14,10 @@ from darsia.presets.workflows.analysis.analysis_context import (
 from darsia.presets.workflows.basis import label_ids_from_image
 from darsia.presets.workflows.calibration.metadata import write_calibration_metadata
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    list_required_sections,
+    required_sections,
+)
 from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.presets.workflows.utils.roi_visualization import draw_active_region
 from darsia.signals.color import ColorPathEmbedding
@@ -22,6 +26,7 @@ from darsia.utils.standard_images import roi_to_mask
 logger = logging.getLogger(__name__)
 
 
+@required_sections("rig", "data", "protocols", "color", "calibration.color")
 def calibration_color_paths_from_context(
     ctx: AnalysisContext, show: bool = False
 ) -> None:
@@ -40,16 +45,16 @@ def calibration_color_paths_from_context(
     calibration_image_paths = ctx.image_paths
 
     # Mypy type checking
-    config.check("rig", "data", "protocol", "color", "calibration.color")
+    config.check(*list_required_sections(calibration_color_paths_from_context))
     assert config.color is not None
     assert config.calibration is not None
     assert config.calibration.color is not None
     assert config.rig is not None
     assert config.data is not None
-    assert config.protocol is not None
-    assert config.protocol.imaging is not None
-    assert config.protocol.injection is not None
-    assert config.protocol.pressure_temperature is not None
+    assert config.protocols is not None
+    assert config.protocols.imaging is not None
+    assert config.protocols.injection is not None
+    assert config.protocols.pressure_temperature is not None
 
     # ! ---- SELECT EMBEDDING AND LABELS ----
 

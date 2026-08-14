@@ -129,7 +129,7 @@ def helper_roi_viewer(
             "Interactive ROI viewer always opens its viewer."
         )
     config = FluidFlowerConfig(path, require_data=True, require_results=False)
-    config.check("rig", "data", "protocol")
+    config.check("rig", "data", "protocols")
 
     assert config.data is not None
     assert config.rig is not None

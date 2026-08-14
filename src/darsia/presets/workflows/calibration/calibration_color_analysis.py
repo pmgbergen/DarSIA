@@ -17,11 +17,11 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
     # ! ---- LOAD RUN AND RIG ----
 
     config = FluidFlowerConfig(path)
-    config.check("color_signal", "color_paths", "rig", "data", "protocol")
+    config.check("color_signal", "color_paths", "rig", "data", "protocols")
 
     # Mypy type checking
     assert config.data is not None
-    assert config.protocol is not None
+    assert config.protocols is not None
     assert config.color_paths is not None
     assert config.rig is not None
     assert config.color_signal is not None  # TODO redundant?

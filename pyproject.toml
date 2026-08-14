@@ -10,7 +10,7 @@ version = "1.1.0"
 description = "Darcy scale image analysis toolbox"
 readme = "README.md"
 license = { file = "LICENSE.txt" }
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 keywords = ["darcy", "image analysis", "porous media", "flow"]
 
 authors = [
@@ -55,6 +55,8 @@ dependencies = [
   "pyamg",
   "shapely",
   "openpyxl",
+  "toml",
+  "PySide6",
 ]
 
 [project.urls]
@@ -66,6 +68,7 @@ Issues = "https://github.com/pmgbergen/DarSIA/issues"
 [project.optional-dependencies]
 dev = [
   "pytest>=7.1",
+  "pytest-qt",
   "black==24.10.0",
   "isort",
   "flake8",

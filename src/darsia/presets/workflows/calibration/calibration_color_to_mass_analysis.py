@@ -11,6 +11,10 @@ from darsia.presets.workflows.calibration.metadata import (
     validate_basis_metadata,
 )
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    list_required_sections,
+    required_sections,
+)
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
@@ -64,6 +68,7 @@ def _load_baseline_color_spectrum_for_color_to_mass(
     return baseline_color_spectrum
 
 
+@required_sections("color", "rig", "data", "protocols", "calibration.mass", "analysis")
 def calibration_color_to_mass_analysis_from_context(
     ctx: AnalysisContext,
     ref_path: Path | None = None,
@@ -94,9 +99,11 @@ def calibration_color_to_mass_analysis_from_context(
     calibration_image_paths = ctx.image_paths
 
     # Mypy type checking
-    config.check("color", "rig", "data", "protocol", "calibration.mass")
+    config.check(
+        *list_required_sections(calibration_color_to_mass_analysis_from_context)
+    )
     assert config.data is not None
-    assert config.protocol is not None
+    assert config.protocols is not None
     assert config.color is not None
     assert config.calibration is not None
     assert config.calibration.mass is not None

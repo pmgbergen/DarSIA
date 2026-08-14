@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .data_registry import DataRegistry
-from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
 
 logger = logging.getLogger(__name__)
@@ -27,31 +26,83 @@ class DataConfig:
 
     """
 
-    folder: Path = field(default_factory=Path)
-    """Path to the folder containing the image data."""
-    folders: list[Path] = field(default_factory=list)
-    """Paths to folders containing image data (multi-folder mode)."""
-    format: str = "JPG"
+    folders: list[Path] = field(
+        default_factory=list,
+        metadata={
+            "name": "Folders",
+            "help": (
+                """Path(s) to folder(s) containing image data. """
+                """Add/remove folders using the list editor."""
+            ),
+            "widget": "multi_folder",
+        },
+    )
+    """Paths to folders containing image data."""
+    format: str = field(
+        default="JPG",
+        metadata={
+            "name": "Format",
+            "help": "Image file format/extension.",
+            "options": ["JPG", "PNG", "TIF", "TIFF", "BMP"],
+        },
+    )
     """Format of the image data (e.g., 'JPG', 'PNG')."""
-    data: list[Path] = field(default_factory=list)
+    data: list[Path] = field(
+        default_factory=list,
+        metadata={"hidden": True},
+    )
     """List of paths to the image data."""
-    baseline: Path = field(default_factory=Path)
+    baseline: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Baseline image",
+            "help": "Path to the baseline image file.",
+        },
+    )
     """Path to the baseline image."""
-    pad: int = 0
+    pad: int = field(
+        default=0,
+        metadata={"hidden": True},
+    )
     """Pad for image names."""
-    results: Path = field(default_factory=Path)
+    results: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Results folder",
+            "help": "Path to the folder where results are stored.",
+            "widget": "folder",
+        },
+    )
     """Path to the results folder."""
-    cache: Path | None = None
+    cache: Path | None = field(
+        default=None,
+        metadata={"hidden": True},
+    )
     """Path to the cache folder, or None if caching is disabled."""
-    raw_cache: Path | None = None
+    raw_cache: Path | None = field(
+        default=None,
+        metadata={"hidden": True},
+    )
     """Path to the raw cache folder, or None if caching is disabled."""
-    use_cache: bool = False
+    use_cache: bool = field(
+        default=False,
+        metadata={
+            "name": "Use cache",
+            "help": "Whether to cache read/processed images under the results folder.",
+        },
+    )
     """Whether to use the cache folder for reading/writing cached images."""
-    time_data: TimeData | None = None
-    """Calibration data configuration."""
-    registry: DataRegistry | None = None
+    registry: DataRegistry | None = field(
+        default=None,
+        metadata={"hidden": True},
+    )
     """Optional global data registry loaded from [data.interval.*], [data.time.*],
     and [data.path.*] sub-sections."""
+
+    @property
+    def folder(self) -> Path:
+        """First folder, for single-folder-style consumers (e.g. download.py default)."""
+        return self.folders[0] if self.folders else Path()
 
     def load(
         self,
@@ -61,16 +112,24 @@ class DataConfig:
     ) -> "DataConfig":
         sec = _get_section_from_toml(path, "data")
 
-        # Get folder(s)
+        # Get folder(s) — support both legacy 'folder' (singular) and current
+        # 'folders' (plural)
         folder_value = _get_key(sec, "folder", required=False)
         folders_value = _get_key(sec, "folders", required=False)
+
+        # Filter out GUI placeholder junk: "No file chosen" and empty strings
+        PLACEHOLDER = "No file chosen"
+        if folder_value == PLACEHOLDER or folder_value == "":
+            folder_value = None
+        if folders_value == "":
+            folders_value = None
+
         if folder_value is None and folders_value is None:
             raise KeyError("Missing key 'folder' or 'folders' in [data].")
 
         self.folders = []
         if folder_value is not None:
-            self.folder = Path(folder_value)
-            self.folders.append(self.folder)
+            self.folders.append(Path(folder_value))
         if folders_value is not None:
             if not isinstance(folders_value, list):
                 raise ValueError("[data].folders must be a list of paths.")
@@ -80,8 +139,6 @@ class DataConfig:
             for folder in parsed_folders:
                 if folder not in self.folders:
                     self.folders.append(folder)
-            if folder_value is None:
-                self.folder = self.folders[0]
 
         if require_data:
             for folder in self.folders:
@@ -171,9 +228,7 @@ class DataConfig:
         has_registry_sections = any(key in sec for key in ("interval", "time", "path"))
         if has_registry_sections:
             try:
-                self.registry = DataRegistry().load(
-                    sec, self.folders if len(self.folders) > 1 else self.folder
-                )
+                self.registry = DataRegistry().load(sec, self.folders)
             except Exception as e:
                 logger.warning(f"Failed to load DataRegistry: {e}")
                 raise ValueError(

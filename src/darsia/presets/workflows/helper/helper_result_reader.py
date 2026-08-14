@@ -181,7 +181,7 @@ def helper_result_reader(
         )
 
     config = FluidFlowerConfig(path, require_data=True, require_results=True)
-    config.check("rig", "data", "protocol")
+    config.check("rig", "data", "protocols")
     assert config.data is not None
     assert config.rig is not None
     assert config.helper is not None

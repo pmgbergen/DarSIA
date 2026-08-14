@@ -7,11 +7,16 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    list_required_sections,
+    required_sections,
+)
 from darsia.presets.workflows.setup.illustrations import save_scalar_map_illustration
 
 logger = logging.getLogger(__name__)
 
 
+@required_sections("depth", "rig")
 def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> None:
     """Set up depth map from measurements.
 
@@ -28,7 +33,7 @@ def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> 
 
     # ! ---- READ CONFIG ---- ! #
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
-    config.check("depth", "rig")
+    config.check(*list_required_sections(setup_depth_map))
 
     # Mypy type checking
     for c in [
@@ -39,7 +44,7 @@ def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> 
 
     # Convert to depth map by interpolation
     proxy_image = darsia.Image(
-        img=np.zeros(config.rig.resolution),
+        img=np.zeros(config.depth.target_resolution),
         width=config.rig.width,
         height=config.rig.height,
         scalar=True,

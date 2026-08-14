@@ -12,6 +12,10 @@ from typing import Type
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    list_required_sections,
+    required_sections,
+)
 from darsia.presets.workflows.rig import Rig
 
 # Set logging level
@@ -19,6 +23,16 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
+@required_sections(
+    "data",
+    "depth",
+    "labeling",
+    "facies",
+    "protocols",
+    "rig",
+    "corrections",
+    "image_porosity",
+)
 def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> None:
     """Setup and store rig object.
 
@@ -36,25 +50,25 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
 
     # ! ---- LOAD RUN AND RIG ----
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
-    config.check("data", "depth", "labeling", "protocol")
+    config.check(*list_required_sections(setup_rig))
 
     # Mypy type checking
     assert config.data is not None
     assert config.depth is not None
     assert config.labeling is not None
     assert config.facies is not None
-    assert config.protocol is not None
-    assert config.protocol.imaging is not None
-    assert config.protocol.injection is not None
-    assert config.protocol.pressure_temperature is not None
+    assert config.protocols is not None
+    assert config.protocols.imaging is not None
+    assert config.protocols.injection is not None
+    assert config.protocols.pressure_temperature is not None
 
     # Load imaging protocol
     experiment = darsia.ProtocolledExperiment(
         data=config.data.data,
-        imaging_protocol=config.protocol.imaging,
-        injection_protocol=config.protocol.injection,
-        pressure_temperature_protocol=config.protocol.pressure_temperature,
-        blacklist_protocol=config.protocol.blacklist,
+        imaging_protocol=config.protocols.imaging,
+        injection_protocol=config.protocols.injection,
+        pressure_temperature_protocol=config.protocols.pressure_temperature,
+        blacklist_protocol=config.protocols.blacklist,
         pad=config.data.pad,
     )
 

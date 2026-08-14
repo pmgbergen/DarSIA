@@ -13,6 +13,10 @@ from PIL import Image
 from PIL.ExifTags import TAGS
 
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    list_required_sections,
+    required_sections,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,39 +60,28 @@ def _protocol_path(
 
 
 def _imaging_protocol_paths(
-    protocol: Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]] | None,
+    protocol: dict[Path, Path | tuple[Path, str]] | None,
     folders: list[Path],
 ) -> dict[Path, Path]:
     if protocol is None:
         return {}
-    if isinstance(protocol, dict):
-        protocol_map = {
-            Path(folder): _protocol_path(value, "imaging")
-            for folder, value in protocol.items()
-        }
-        missing = [folder for folder in folders if folder not in protocol_map]
-        extra = [folder for folder in protocol_map if folder not in folders]
-        if missing:
-            raise ValueError(
-                "Missing imaging protocol entries for folder(s): "
-                + ", ".join(str(folder) for folder in missing)
-            )
-        if extra:
-            raise ValueError(
-                "Imaging protocol configured for unknown folder(s): "
-                + ", ".join(str(folder) for folder in extra)
-            )
-        return {
-            folder: path for folder, path in protocol_map.items() if path is not None
-        }
-
-    if len(folders) > 1:
+    protocol_map = {
+        Path(folder): _protocol_path(value, "imaging")
+        for folder, value in protocol.items()
+    }
+    missing = [folder for folder in folders if folder not in protocol_map]
+    extra = [folder for folder in protocol_map if folder not in folders]
+    if missing:
         raise ValueError(
-            "Multiple [data].folders require [protocols].imaging to be a per-folder table."
+            "Missing imaging protocol entries for folder(s): "
+            + ", ".join(str(folder) for folder in missing)
         )
-    single_path = _protocol_path(protocol, "imaging")
-    assert single_path is not None
-    return {folders[0]: single_path}
+    if extra:
+        raise ValueError(
+            "Imaging protocol configured for unknown folder(s): "
+            + ", ".join(str(folder) for folder in extra)
+        )
+    return {folder: path for folder, path in protocol_map.items() if path is not None}
 
 
 def _assert_csv(path: Path, key: str) -> None:
@@ -105,18 +98,18 @@ def _overwrite_conflicts(paths: Iterable[Path]) -> list[Path]:
 def preview_protocol_setup_conflicts(path: Path | list[Path]) -> list[Path]:
     """Return protocol target files that already exist."""
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
-    config.check("protocol")
-    assert config.protocol is not None
+    config.check("protocols")
+    assert config.protocols is not None
 
     imaging_targets = _imaging_protocol_paths(
-        config.protocol.imaging, config.data.folders
+        config.protocols.imaging, config.data.folders
     )
     targets = list(imaging_targets.values())
     targets.extend(
         [
-            _protocol_path(config.protocol.injection, "injection"),
+            _protocol_path(config.protocols.injection, "injection"),
             _protocol_path(
-                config.protocol.pressure_temperature, "pressure_temperature"
+                config.protocols.pressure_temperature, "pressure_temperature"
             ),
         ]
     )
@@ -194,6 +187,7 @@ def _write_pressure_temperature_template(path: Path, start: datetime) -> None:
     _write_csv(df, path)
 
 
+@required_sections("data", "protocols")
 def setup_imaging_protocol(
     path: Path | list[Path],
     *,
@@ -205,17 +199,17 @@ def setup_imaging_protocol(
     del show
 
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
-    config.check("data", "protocol")
+    config.check(*list_required_sections(setup_imaging_protocol))
     assert config.data is not None
-    assert config.protocol is not None
-    assert config.protocol.imaging is not None
+    assert config.protocols is not None
+    assert config.protocols.imaging is not None
 
     imaging_targets = _imaging_protocol_paths(
-        config.protocol.imaging, config.data.folders
+        config.protocols.imaging, config.data.folders
     )
-    injection_path = _protocol_path(config.protocol.injection, "injection")
+    injection_path = _protocol_path(config.protocols.injection, "injection")
     pressure_temperature_path = _protocol_path(
-        config.protocol.pressure_temperature, "pressure_temperature"
+        config.protocols.pressure_temperature, "pressure_temperature"
     )
 
     for imaging_path in imaging_targets.values():
@@ -237,7 +231,7 @@ def setup_imaging_protocol(
             f"Protocol file(s) already exist: {conflict_text}. Use --force to overwrite."
         )
 
-    mode = config.protocol.imaging_mode
+    mode = config.protocols.imaging_mode
     if mode not in _SUPPORTED_MODES:
         raise ValueError(
             f"Unsupported [protocols].imaging_mode '{mode}'. "
