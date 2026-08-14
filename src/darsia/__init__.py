@@ -27,6 +27,9 @@ from darsia.measure.beckmann_gprox_solver import *
 from darsia.measure.wasserstein import *
 from darsia.utils.timings import *
 
+# Analysis | Needed by utilities (augmented_plotting)
+from darsia.single_image_analysis.contour_smoother import *
+
 # Utilities
 from darsia.utils.arithmetics import *
 from darsia.utils.point import *
@@ -77,6 +80,7 @@ from darsia.corrections.shape.deformation import *
 from darsia.corrections.color.colorbalance import *
 from darsia.corrections.color.colorcheckerfinder import *
 from darsia.corrections.color.illuminationcorrection import *
+from darsia.corrections.color.patchwiseilluminationcorrection import *
 from darsia.corrections.color.dynamicilluminationcorrection import *
 from darsia.corrections.color.colorcorrection import *
 from darsia.corrections.color.relativecolorcorrection import *

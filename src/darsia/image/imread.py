@@ -85,7 +85,7 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
     if suffix == ".npy":
         image = imread_from_numpy(path, **kwargs)
     elif suffix == ".npz":
-        image = imread_from_npz(path)
+        image = imread_from_npz(path, **kwargs)
     elif suffix in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]:
         image = imread_from_optical(path, **kwargs)
     elif suffix in [".dcm"]:
@@ -154,7 +154,9 @@ def imread_from_numpy(
     return image
 
 
-def imread_from_npz(path: Union[Path, list[Path]]) -> darsia.Image:
+def imread_from_npz(
+    path: Union[Path, list[Path]], transformations: Optional[list] = None, **kwargs
+) -> darsia.Image:
     """Converter from npz format to darsia.Image.
 
     Args:
@@ -164,7 +166,16 @@ def imread_from_npz(path: Union[Path, list[Path]]) -> darsia.Image:
     npzdata = np.load(path, allow_pickle=True)
     array = npzdata["array"]
     metadata = npzdata["metadata"].item()
-    image = darsia.Image(array, **metadata)
+    image_type = metadata.get("type", None)
+    if image_type is None:
+        image = darsia.Image(array, transformations=transformations, **metadata)
+    else:
+        if isinstance(image_type, str):
+            Image_class = eval(image_type)
+        else:
+            Image_class = image_type
+        image = Image_class(array, transformations=transformations, **metadata)
+
     return image
 
 
@@ -259,7 +270,20 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
 
     """
     # Read image and convert to RGB and float ([0,1])
-    array = cv2.cvtColor(cv2.imread(str(path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB)
+    try:
+        array = cv2.cvtColor(
+            cv2.imread(str(path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB
+        )
+    except Exception:
+        img_bytes = np.fromfile(str(path), np.uint8)
+        if img_bytes.size == 0:
+            raise FileNotFoundError(f"Could not read file: {path}")
+
+        # Let darsia.imread handle the transformations if possible,
+        # or apply corrections manually
+        array = cv2.cvtColor(
+            cv2.imdecode(img_bytes, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB
+        )
 
     # Prefered: Read time from exif metafile.
     pil_img = PIL_Image.open(path)

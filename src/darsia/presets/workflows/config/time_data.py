@@ -2,7 +2,6 @@
 
 # Add imports
 import logging
-import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -14,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class ImageTimeInterval:
+class TimeInterval:
     start: float
     """Start time of the interval, relative to experiment start, in hours."""
     end: float
@@ -57,6 +56,25 @@ class ImageTimeInterval:
 
 
 @dataclass
+class TimeWindow:
+    start: float
+    """Start time of the window, relative to experiment start, in hours."""
+    end: float
+    """End time of the window, relative to experiment start, in hours."""
+
+    def __init__(
+        self,
+        start: float | str,
+        end: float | str,
+        step: float | str | None = None,
+        num: int = 0,
+        tol: float | None = None,
+    ):
+        self.start = _convert_to_hours(start)
+        self.end = _convert_to_hours(end)
+
+
+@dataclass
 class ImageTimeData:
     """Data specified as explicit image times."""
 
@@ -68,7 +86,7 @@ class ImageTimeData:
     def load(self, sec: dict) -> "ImageTimeData":
         """Load explicit image times from config section."""
         try:
-            times_sec = _get_section(sec, "image_times")
+            times_sec = _get_section(sec, "time")
             for times_key in times_sec.keys():
                 times_data = times_sec[times_key]
                 self.times.extend(
@@ -85,8 +103,7 @@ class ImageTimeData:
                 )
 
                 tolerance = _convert_to_hours(
-                    _get_key(times_data, "tol", required=False, type_=str | float)
-                    or 0.0
+                    _get_key(times_data, "tol", required=False) or 0.0
                 )
                 self.times_with_tolerance.extend([(t, tolerance) for t in self.times])
 
@@ -99,22 +116,24 @@ class ImageTimeData:
 
         return self
 
-    # def get_times_with_uncertainty(self) -> list[tuple[float, float]]:
-    #    """Return times with associated uncertainty."""
-    #    return self.times_with_tolerance.copy()
+    def get_times_with_uncertainty(self) -> list[tuple[float, float]]:
+        """Return times with associated uncertainty."""
+        return self.times_with_tolerance.copy()
 
 
 @dataclass
 class ImageTimeIntervalData:
     """Data specified as time intervals."""
 
-    intervals: dict[str, ImageTimeInterval] = field(default_factory=dict)
+    intervals: dict[str, TimeInterval] = field(default_factory=dict)
     """Dictionary of time intervals keyed by interval name."""
+    windows: dict[str, TimeWindow] = field(default_factory=dict)
+    """Dictionary of time windows keyed by window name."""
 
     def load(self, sec: dict) -> "ImageTimeIntervalData":
         """Load time intervals from config section."""
         try:
-            intervals_sec = _get_section(sec, "image_time_interval")
+            intervals_sec = _get_section(sec, "interval")
             for interval_key in intervals_sec.keys():
                 interval_data = intervals_sec[interval_key]
 
@@ -124,9 +143,15 @@ class ImageTimeIntervalData:
                 num = _get_key(interval_data, "num", required=False, type_=int)
                 tol = _get_key(interval_data, "tol", required=False)
 
-                self.intervals[interval_key] = ImageTimeInterval(
-                    start=start, end=end, step=step, num=num, tol=tol
-                )
+                if num is None:
+                    self.windows[interval_key] = TimeWindow(
+                        start=start,
+                        end=end,
+                    )
+                else:
+                    self.intervals[interval_key] = TimeInterval(
+                        start=start, end=end, step=step, num=num, tol=tol
+                    )
         except KeyError:
             pass
 
@@ -141,16 +166,18 @@ class ImageTimeIntervalData:
 
 
 @dataclass
-class ImagePathData:
+class PathData:
     """Data specified as direct file paths."""
 
     paths: list[Path] = field(default_factory=list)
     """List of image file paths."""
 
-    def load(self, sec: dict, data_folder: Path | None = None) -> "ImagePathData":
+    def load(
+        self, sec: dict, data_folder: Path | list[Path] | None = None
+    ) -> "PathData":
         """Load image paths from config section."""
         try:
-            paths_sec = _get_section(sec, "image_paths")
+            paths_sec = _get_section(sec, "path")
             for paths_key in paths_sec.keys():
                 paths_data = paths_sec[paths_key]
                 paths = paths_data.get("paths", [])
@@ -161,12 +188,30 @@ class ImagePathData:
                 # Treat paths containing '*' as glob patterns
                 for p in paths:
                     if "*" in p:
-                        all_paths = sorted((data_folder or Path(".")).glob(p))
-                        self.paths.extend(all_paths)
+                        if isinstance(data_folder, list):
+                            all_paths = []
+                            for folder in data_folder:
+                                all_paths.extend(sorted(folder.glob(p)))
+                            self.paths.extend(all_paths)
+                        else:
+                            all_paths = sorted((data_folder or Path(".")).glob(p))
+                            self.paths.extend(all_paths)
                     else:
-                        self.paths.append(
-                            Path(p) if data_folder is None else data_folder / p
-                        )
+                        candidate = Path(p)
+                        if candidate.is_absolute() or data_folder is None:
+                            self.paths.append(candidate)
+                        elif isinstance(data_folder, list):
+                            existing_candidates = [
+                                folder / candidate
+                                for folder in data_folder
+                                if (folder / candidate).exists()
+                            ]
+                            if len(existing_candidates) > 0:
+                                self.paths.extend(existing_candidates)
+                            else:
+                                self.paths.append(data_folder[0] / candidate)
+                        else:
+                            self.paths.append(data_folder / candidate)
 
                 # Remove duplicates and sort
                 self.paths = sorted(set(self.paths))
@@ -201,8 +246,8 @@ class TimeData:
     image_interval_data: ImageTimeIntervalData = field(
         default_factory=ImageTimeIntervalData
     )
-    """Time intervals."""
-    image_path_data: ImagePathData = field(default_factory=ImagePathData)
+    """Time intervals with time step."""
+    image_path_data: PathData = field(default_factory=PathData)
     """Direct file paths."""
 
     # Combined results
@@ -210,28 +255,9 @@ class TimeData:
     """Combined list of image paths."""
     image_times: list[float] = field(default_factory=list)
     """Combined list of image times."""
+    image_windows: list[TimeWindow] = field(default_factory=list)
     mode: str = ""
     """Primary data mode used: 'times', 'intervals', 'paths', or 'mixed'."""
-
-    def load(self, sec: dict, data_folder: Path | None = None) -> "TimeData":
-        """Load all available data modes from config section.
-
-        Args:
-            sec: Configuration section dictionary
-            data_folder: Base folder for resolving relative paths
-
-        Returns:
-            self with all available data loaded
-        """
-        # Load all three modes
-        self.image_time_data.load(sec)
-        self.image_interval_data.load(sec)
-        self.image_path_data.load(sec, data_folder)
-
-        # Combine all data
-        self._combine_data()
-
-        return self
 
     def _combine_data(self) -> None:
         """Combine all loaded data modes."""
@@ -239,14 +265,14 @@ class TimeData:
         # Count how many modes have data
         has_times = len(self.image_time_data.times) > 0
         has_intervals = len(self.image_interval_data.intervals) > 0
+        has_windows = len(self.image_interval_data.windows) > 0
         has_paths = len(self.image_path_data.paths) > 0
 
         # Determine mode
-        mode_count = sum([has_times, has_intervals, has_paths])
+        mode_count = sum([has_times, has_intervals, has_windows, has_paths])
         if mode_count == 0:
             raise ValueError(
-                "No data specified. Use one of: 'image_times', "
-                "'image_time_interval', or 'image_paths'"
+                "No data specified. Use one of: 'time', " "'interval', or 'path'"
             )
         elif mode_count > 1:
             self.mode = "mixed"
@@ -254,11 +280,14 @@ class TimeData:
             self.mode = "times"
         elif has_intervals:
             self.mode = "intervals"
+        elif has_windows:
+            self.mode = "windows"
         else:
             self.mode = "paths"
 
         # Combine paths (if any)
         if has_paths:
+            self.image_path_data.validate()
             self.image_paths = self.image_path_data.paths.copy()
 
         # Combine times (remove duplicates and sort)
@@ -280,9 +309,9 @@ class TimeData:
                 f"(mode: {self.mode})"
             )
 
-        # Validate paths if they exist
-        if self.image_paths:
-            self.image_path_data.validate()
+        # Collect windows.
+        if has_windows:
+            self.image_windows = [w for w in self.image_interval_data.windows.values()]
 
     def get_times_with_uncertainty(self) -> list[tuple[float, float]]:
         """Get all times with associated uncertainty."""
@@ -299,81 +328,6 @@ class TimeData:
     def error(self):
         raise ValueError(
             f"Use key `data` within the considered subsection in the config file. "
-            f"Supported modes: image_times, image_time_interval, or image_paths. "
+            f"Supported modes: time, interval, or path. "
             f"Multiple modes can be combined."
         )
-
-
-def load_image_times(
-    sec: dict, include_uncertainty: bool = False
-) -> list[tuple[float, float]]:
-    """Load image times from a toml section together with tolerance."""
-
-    warnings.warn(
-        "load_image_times is deprecated. Use TimeData().load() instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-    # Start with explicit times
-    image_times = sorted(
-        [
-            _convert_to_hours(t)
-            for t in _get_key(
-                sec,
-                "image_times",
-                default=[],
-                required=False,
-                type_=list[float | str],
-            )
-        ]
-    )
-    image_time_tolerance = _convert_to_hours(
-        _get_key(sec, "image_time_tolerance", required=False, type_=str | float) or 0.0
-    )
-    image_times_with_uncertainty = [(t, image_time_tolerance) for t in image_times]
-
-    # Add times provided as intervals
-    try:
-        intervals_sec = _get_section(sec, "image_time_interval")
-
-        # Loop through interval sections
-        interval_times_with_uncertainty = []
-        for interval_key in intervals_sec.keys():
-            interval_data = intervals_sec[interval_key]
-
-            # Create ImageTimeInterval object
-            # Allow start/end/step to be either float or string (HH:MM:SS format)
-            start = _get_key(interval_data, "start", required=True)
-            end = _get_key(interval_data, "end", required=True)
-            step = _get_key(interval_data, "step", required=False)
-            num = _get_key(interval_data, "num", required=False, type_=int)
-            tol = _get_key(interval_data, "tol", required=False)
-
-            # Create interval and generate times
-            interval = ImageTimeInterval(
-                start=start, end=end, step=step, num=num, tol=tol
-            )
-            interval_times_with_uncertainty.extend(
-                interval.generate_times_with_uncertainty()
-            )
-
-        # Append interval times to existing image_times and sort
-        image_times_with_uncertainty.extend(interval_times_with_uncertainty)
-
-    except KeyError:
-        # No image_time_interval section found, which is okay
-        pass
-
-    # TODO Add events.
-    ...
-
-    # Remove duplicates and sort based on first entry of the tuple
-    image_times_with_uncertainty = sorted(
-        list(set(image_times_with_uncertainty)), key=lambda x: x[0]
-    )
-
-    # Return based on user preference
-    if not include_uncertainty:
-        return [t for t, _ in image_times_with_uncertainty]
-    return image_times_with_uncertainty

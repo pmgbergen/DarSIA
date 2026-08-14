@@ -6,8 +6,9 @@ This includes measuring lengths of contours, weighted sums (generalized mass ana
 
 from __future__ import annotations
 
-from collections import namedtuple
-from typing import Optional, Union, cast
+import logging
+from pathlib import Path
+from typing import cast
 
 import cv2
 import matplotlib.pyplot as plt
@@ -15,16 +16,17 @@ import numpy as np
 import scipy.ndimage as ndi
 import skimage
 from scipy.signal import find_peaks
-from scipy.spatial import distance_matrix
 
 import darsia
+
+logger = logging.getLogger(__name__)
 
 
 def contour_length(
     img: darsia.Image,
-    roi: Optional[darsia.CoordinateArray] = None,
-    values_of_interest: Optional[Union[int, list[int]]] = None,
-    fill_holes: bool = True,
+    roi: darsia.CoordinateArray | None = None,
+    values_of_interest: int | list[int] | None = None,
+    fill_holes: bool = False,
     verbosity: bool = False,
 ) -> float:
     """
@@ -96,16 +98,43 @@ def contour_length(
         plt.imshow(img_roi.img)
         plt.figure()
         plt.imshow(mask)
+        plt.axis("off")
         plt.show()
         print(f"The contour length is {metric_contour_length}.")
 
     return metric_contour_length
 
 
+def _corners_of_roi(
+    img: darsia.Image,
+    roi: darsia.CoordinateArray,
+):
+    # Extract the top left pixel of the roi. NOTE: Need to swap for matplotlib,
+    # which uses (x, y) convention for pixels, while the image uses (row, column)
+    # convention.
+    if roi is not None:
+        roi_pixels = roi.to_voxel(img.coordinatesystem)
+        top_left_roi_pixel = [np.min(roi_pixels[:, 1]), np.min(roi_pixels[:, 0])]
+        bottom_right_roi_pixel = [
+            np.max(roi_pixels[:, 1]),
+            np.max(roi_pixels[:, 0]),
+        ]
+    else:
+        top_left_roi_pixel = [0, 0]
+        bottom_right_roi_pixel = [img.img.shape[1], img.img.shape[0]]
+
+    return top_left_roi_pixel, bottom_right_roi_pixel
+
+
 class ContourAnalysis:
     """Contour analysis object."""
 
-    def __init__(self, verbosity: bool) -> None:
+    def __init__(
+        self,
+        verbosity: bool = False,
+        contour_smoother: darsia.ContourSmoother | None = None,
+        reduce_to_main_contour: bool = False,
+    ) -> None:
         """Constructor.
 
         Args:
@@ -115,13 +144,17 @@ class ContourAnalysis:
 
         self.verbosity = verbosity
         """Vebosity flag."""
+        self.contour_smoother = contour_smoother
+        """Optional contour smoother for the contours determined from the mask."""
+        self.reduce_to_main_contour = reduce_to_main_contour
+        """Whether to reduce to main contour."""
 
-    def load_labels(
+    def load(
         self,
         img: darsia.Image,
-        roi: Optional[darsia.CoordinateArray] = None,
-        values_of_interest: Optional[Union[int, list[int]]] = None,
-        fill_holes: bool = True,
+        mask: darsia.Image,
+        roi: darsia.CoordinateArray | None = None,
+        fill_holes: bool = False,
     ) -> None:
         """Read labeled image and restrict to values of interest.
 
@@ -134,50 +167,63 @@ class ContourAnalysis:
         """
 
         # Make copy of image and restrict to region of interest
-        img_roi = img.copy() if roi is None else cast(darsia.Image, img.subregion(roi))
+        mask_roi: darsia.Image = (
+            mask.copy() if roi is None else cast(darsia.Image, mask.subregion(roi))
+        )
 
         # Extract boolean mask covering values of interest.
-        if img_roi.img.dtype == bool:
-            mask: np.ndarray = img_roi.img
-
-        elif img_roi.img.dtype in [np.uint8, np.int32, np.int64]:
-
-            assert values_of_interest is not None
-
-            # Check values of interest
-            mask = np.zeros(img_roi.img.shape[:2], dtype=bool)
-            if isinstance(values_of_interest, int):
-                mask[img_roi.img == values_of_interest] = True
-
-            elif isinstance(values_of_interest, list):
-                for value in values_of_interest:
-                    mask[img_roi.img == value] = True
-        else:
-            raise ValueError(f"Images with dtype {img_roi.img.dtype} not supported.")
+        mask_roi_array = mask_roi.img
 
         # Fill all holes
         if fill_holes:
-            mask = ndi.binary_fill_holes(mask)
+            mask_roi_array = ndi.binary_fill_holes(mask_roi_array)
 
-        self.coordinatesystem = img_roi.coordinatesystem
+        self.coordinatesystem = mask_roi.coordinatesystem
         """Coordinate system of subimage."""
 
-        self.mask = mask
+        self.mask = mask_roi_array
         """Mask."""
 
         self.roi = roi
         """Region of interest."""
 
-        self.img = img_roi
+        self.img = mask_roi
         """Subimage."""
 
         # Plot masks and print contour length if requested.
-        if self.verbosity:
-            plt.figure("Restricted image")
-            plt.imshow(img_roi.img)
-            plt.figure("Mask for values of interest")
-            plt.imshow(mask)
-            plt.show()
+        # if self.verbosity:
+        #    mask_roi.show()
+        #    # plt.figure("Restricted image")
+        #    # plt.imshow(mask_roi.as.img)
+        #    # plt.figure("Mask for values of interest")
+        #    # plt.imshow(mask)
+        #    # plt.show()
+
+    @darsia.timing_decorator
+    def contours(self) -> list[np.ndarray]:
+        """Determine contour of loaded labeled image.
+
+        Returns:
+            list[np.ndarray]: list of contours, where each contour is given as an
+                array of pixels.
+
+        """
+        # Extract contours.
+        contours, _ = cv2.findContours(
+            skimage.img_as_ubyte(self.mask), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
+        )
+
+        # Determine the main contour as the one with the largest area.
+        if self.reduce_to_main_contour and len(contours) > 1:
+            contour_areas = [cv2.contourArea(contour) for contour in contours]
+            main_contour_index = np.argmax(contour_areas)
+            contours = [contours[main_contour_index]]
+
+        # Smooth contours if smoother provided.
+        if self.contour_smoother:
+            contours = [self.contour_smoother(contour) for contour in contours]
+
+        return contours
 
     def length(self) -> float:
         """Determine length of loaded labeled image.
@@ -236,39 +282,45 @@ class ContourAnalysis:
 
         return metric_contour_length
 
-    def fingers(self, direction=np.array([0.0, -1.0])) -> tuple[np.ndarray, np.ndarray]:
+    def local_extrema(
+        self, direction=np.array([0.0, -1.0]), contours: list[np.ndarray] | None = None
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Determine local extrema of the contour, where the extremality
         is defined by a direction.
 
         Args:
+            contours (np.ndarray | None): contours to analyze. If None, contours are determined
+                from the mask; default is None.
             direction (np.ndarray): direction vector with orientation
+            # TODO do not allow for contours as input, make Contour analysis. Provide
+            # possiblility to use contour as input in a different way.
 
         Returns:
             array: pixels of peaks.
             array: pixels of valleys.
 
         """
-        # TODO extend to directions other than [0., -1.]
-        assert np.isclose(direction, np.array([0, -1])).all()
+        # Sanity check
+        if not np.isclose(direction, np.array([0, -1])).all():
+            # TODO extend to directions other than [0., -1.]
+            raise NotImplementedError(
+                """Currently only direction [0., -1.] supported, i.e., vertical direction """
+                """with peaks pointing downwards."""
+            )
 
         # Extract interface - extract the boundary
-        contours, _ = cv2.findContours(
-            skimage.img_as_ubyte(self.mask),
-            cv2.RETR_TREE,
-            cv2.CHAIN_APPROX_NONE,
-        )
+        if contours is None:
+            contours = self.contours()
 
         # Special case of no contour
         if len(contours) == 0:
             return np.zeros((0, 1, 2), dtype=int), np.zeros((0, 1, 2), dtype=int)
 
-        # NOTE: Only possible to continue with one contour
-        # assert len(contours) == 1
+        # Continue with each contour separately.
         peaks_pixels = np.zeros((0, 2), dtype=int)
         valleys_pixels = np.zeros((0, 2), dtype=int)
         for contour in contours:
-
             # Exclude pixels on the boundary
             rows, cols = self.mask.shape
             left_boundary = contour[:, :, 0] == 0
@@ -344,18 +396,99 @@ class ContourAnalysis:
         reshaped_valleys_pixels = np.reshape(sorted_valleys_pixels, (-1, 1, 2))
 
         if self.verbosity:
-            plt.figure("Original image with peaks")
-            plt.imshow(self.img.img)
-            plt.scatter(
-                reshaped_peaks_pixels[:, 0, 0],
-                reshaped_peaks_pixels[:, 0, 1],
-                c="r",
-                s=20,
-            )
-            plt.show()
+            self.plot_peaks(self.img, reshaped_peaks_pixels)
 
-        # Return peaks and valley pixels
         return reshaped_peaks_pixels, reshaped_valleys_pixels
+
+    @darsia.timing_decorator
+    def plot_peaks(
+        self,
+        img: darsia.Image,
+        peaks_pixels: np.ndarray,
+        roi: darsia.CoordinateArray | None = None,
+        contours: list[np.ndarray] | None = None,
+        path: Path | None = None,
+        show: bool = True,
+        dpi: int = 1000,
+        **kwargs,
+    ) -> None:
+        """Plot peaks on top of the provided image.
+
+        Args:
+            img (darsia.Image): image to plot on.
+            peaks_pixels (np.ndarray): pixels of peaks.
+            contours (list[np.ndarray], optional): contours to plot; if None, no contours are
+                plotted; default is None.
+            roi (darsia.CoordinateArray | None): region of interest. If provided, peaks are
+                translated to the top left corner of the ROI; default is None.
+            path (Path, optional): path to save the plot; if None, no saving is performed.
+            show (bool): flag controlling whether the plot is shown; default is True.
+            dpi (int): dots per inch for the saved plot; default is 1000.
+            **kwargs: additional keyword arguments for plotting.
+                - color (str): color for the peaks; default is "r".
+                - size (int): size for the peaks; default is 20.
+
+        """
+
+        # Extract the top left pixel of the roi. NOTE: Need to swap for matplotlib,
+        # which uses (x, y) convention for pixels, while the image uses (row, column)
+        # convention.
+        top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
+
+        plt.figure("Original image with peaks")
+        plt.imshow(img.img)
+        if contours is not None:
+            for contour in contours:
+                plt.plot(
+                    contour[:, 0, 0] + top_left_roi_pixel[0],
+                    contour[:, 0, 1] + top_left_roi_pixel[1],
+                    c=kwargs.get("contour_color", "w"),
+                    linewidth=kwargs.get("contour_linewidth", 1),
+                    alpha=kwargs.get("contour_alpha", 1.0),
+                )
+        plt.scatter(
+            # Translate pixels to the top left corner of the ROI
+            peaks_pixels[:, 0, 0] + top_left_roi_pixel[0],
+            peaks_pixels[:, 0, 1] + top_left_roi_pixel[1],
+            c=kwargs.get("peak_color", "r"),
+            s=kwargs.get("peak_size", 20),
+        )
+        if kwargs.get("plot_boundary", False):
+            plt.gca().add_patch(
+                plt.Rectangle(
+                    (top_left_roi_pixel[0], top_left_roi_pixel[1]),
+                    bottom_right_roi_pixel[0] - top_left_roi_pixel[0],
+                    bottom_right_roi_pixel[1] - top_left_roi_pixel[1],
+                    linewidth=kwargs.get("boundary_linewidth", 2),
+                    edgecolor=kwargs.get("boundary_color", "y"),
+                    facecolor="none",
+                )
+            )
+        if kwargs.get("highlight_roi", False):
+            # Add dark overlay to the area outside the ROI
+            plt.gca().add_patch(
+                plt.Rectangle(
+                    (0, 0), img.img.shape[1], img.img.shape[0], color="black", alpha=0.5
+                )
+            )
+            plt.gca().add_patch(
+                plt.Rectangle(
+                    (top_left_roi_pixel[0], top_left_roi_pixel[1]),
+                    bottom_right_roi_pixel[0] - top_left_roi_pixel[0],
+                    bottom_right_roi_pixel[1] - top_left_roi_pixel[1],
+                    color="white",
+                    alpha=0.5,
+                )
+            )
+        if path is not None:
+            plt.tight_layout()
+            plt.axis("off")
+            plt.savefig(path, format="png", dpi=dpi, bbox_inches="tight", pad_inches=0)
+
+        if show:
+            plt.show()
+        else:
+            plt.close()
 
     def number_peaks(self) -> int:
         """Determine number of peaks.
@@ -364,299 +497,128 @@ class ContourAnalysis:
             int: number of peaks.
 
         """
-        peaks_pixels, _ = self.fingers()
+        peaks_pixels, _ = self.local_extrema()
         return len(peaks_pixels)
 
-
-# In order to uniquely identify a location in the collection of paths, define
-# a subunit, storing the position in terms of local and global characteristics.
-PathUnit = namedtuple("PathUnit", ["time", "peak", "position"])
-# A connected path later will define a list of PathUnit. Collections of such
-# will define connected paths.
-
-
-class ContourEvolutionAnalysis:
-    # TODO try to merge with the above class.
-
-    def __init__(self, verbosity: bool = False) -> None:
-        """
-        Args:
-            verbosity (bool): verbosity - mostly useful for debugging.
-
-        """
-
-        self.index = 0
-        self.peaks = {}
-        self.valleys = {}
-        self.paths = []
-
-        self.verbosity = verbosity
-
-    def add(
-        self, peaks: np.ndarray, valleys: np.ndarray, time: Optional[float] = None
+    def plot_valleys(
+        self,
+        img: darsia.Image,
+        valleys_pixels: np.ndarray,
+        roi: darsia.CoordinateArray | None = None,
+        contours: list[np.ndarray] | None = None,
+        path: Path | None = None,
+        show: bool = True,
+        dpi: int = 1000,
+        **kwargs,
     ) -> None:
+        """Plot valleys on top of the provided image.
 
-        # TODO use time
-        self.peaks[self.index] = peaks.copy()
-        self.valleys[self.index] = valleys.copy()
-        self.index += 1
+        Args:
+            img (darsia.Image): image to plot on.
+            valleys_pixels (np.ndarray): pixels of valleys.
+            contours (list[np.ndarray], optional): contours to plot; if None, no contours are
+                plotted; default is None.
+            roi (darsia.CoordinateArray | None): region of interest. If provided, valleys are
+                translated to the top left corner of the ROI; default is None.
+            path (Path, optional): path to save the plot; if None, no saving is performed.
+            show (bool): flag controlling whether the plot is shown; default is True.
+            dpi (int): dots per inch for the saved plot; default is 1000.
+            **kwargs: additional keyword arguments for plotting.
+                - valley_color (str): color for valley lines; default is "c".
+                - valley_linewidth (float): line width for valley lines; default is 1.
+                - y_min (float): lower y-limit for valley lines; default is top of ROI.
+                - y_max (float): upper y-limit for valley lines; default is bottom of ROI.
+                - plot_valley_dots (bool): if True, valley dots are added; default is False.
+                - valley_dot_color (str): color for valley dots; default is valley_color.
+                - valley_dot_size (float): dot size for valley dots; default is 20.
 
-        self.total_time = self.index
+        """
 
-    def plot(self, img: Optional[darsia.Image] = None) -> None:
+        top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
+        y_min = kwargs.get("y_min", top_left_roi_pixel[1])
+        y_max = kwargs.get("y_max", bottom_right_roi_pixel[1])
+        valley_color = kwargs.get("valley_color", "c")
 
-        if img is None:
-            raise False
+        # Make sure the y_min/y_max are within the image bounds
+        y_min = max(0, y_min)
+        y_max = min(img.img.shape[0], y_max)
 
-        background = np.zeros(img.img.shape[:2], dtype=int)
-        plt.figure("Tips and valleys - evolution")
-        plt.imshow(background)
-        for peaks in self.peaks.values():
-            plt.scatter(peaks[:, 0, 0], peaks[:, 0, 1], c="y", s=20, label="peaks")
-        for valleys in self.valleys.values():
-            plt.scatter(
-                valleys[:, 0, 0], valleys[:, 0, 1], c="r", s=10, label="valleys"
-            )
-        plt.show()
-
-    def plot_paths(self, img: Optional[darsia.Image] = None) -> None:
-
-        if img is None:
-            raise False
-
-        # Draw provided image in the background
-        plt.figure("Paths")
+        plt.figure("Original image with valleys")
         plt.imshow(img.img)
 
-        # Determine longest path
-        max_path_length = 0
-        for i, path in enumerate(self.paths):
-            # Assemble path by connecting positions
-            path_pos = np.zeros((0, 2), dtype=int)
-            for unit in path:
-                path_pos = np.vstack((path_pos, unit.position))
-            max_path_length = max(max_path_length, path_pos.shape[0])
+        # Match image dimensions
+        plt.xlim(0, img.img.shape[1])
+        plt.ylim(img.img.shape[0], 0)  # Inverted because image y-axis is top-down
 
-        # Add paths
-        cmap = plt.cm.get_cmap("viridis")
-        num_paths = len(self.paths)
-        for i, path in enumerate(self.paths):
-            # Assemble path by connecting positions
-            path_pos = np.zeros((0, 2), dtype=int)
-            for unit in path:
-                path_pos = np.vstack((path_pos, unit.position))
-            path_length = path_pos.shape[0]
-            plt.plot(
-                path_pos[:, 0],
-                path_pos[:, 1],
-                color=cmap(i / (num_paths - 1)),
-                linewidth=path_length / max_path_length * 2,
+        if contours is not None:
+            for contour in contours:
+                plt.plot(
+                    contour[:, 0, 0] + top_left_roi_pixel[0],
+                    contour[:, 0, 1] + top_left_roi_pixel[1],
+                    c=kwargs.get("contour_color", "w"),
+                    linewidth=kwargs.get("contour_linewidth", 1),
+                )
+
+        valley_x = valleys_pixels[:, 0, 0] + top_left_roi_pixel[0]
+        plt.vlines(
+            valley_x,
+            y_min,
+            y_max,
+            colors=valley_color,
+            linewidth=kwargs.get("valley_linewidth", 1),
+        )
+
+        if kwargs.get("plot_valley_dots", False):
+            plt.scatter(
+                valley_x,
+                valleys_pixels[:, 0, 1] + top_left_roi_pixel[1],
+                c=kwargs.get("valley_dot_color", valley_color),
+                s=kwargs.get("valley_dot_size", 20),
             )
 
-        plt.savefig("paths.svg", format="svg", dpi=1000)
+        if kwargs.get("plot_boundary", False):
+            plt.gca().add_patch(
+                plt.Rectangle(
+                    (top_left_roi_pixel[0], top_left_roi_pixel[1]),
+                    bottom_right_roi_pixel[0] - top_left_roi_pixel[0],
+                    bottom_right_roi_pixel[1] - top_left_roi_pixel[1],
+                    linewidth=kwargs.get("boundary_linewidth", 2),
+                    edgecolor=kwargs.get("boundary_color", "y"),
+                    facecolor="none",
+                )
+            )
+        if kwargs.get("highlight_roi", False):
+            plt.gca().add_patch(
+                plt.Rectangle(
+                    (0, 0), img.img.shape[1], img.img.shape[0], color="black", alpha=0.5
+                )
+            )
+            plt.gca().add_patch(
+                plt.Rectangle(
+                    (top_left_roi_pixel[0], top_left_roi_pixel[1]),
+                    bottom_right_roi_pixel[0] - top_left_roi_pixel[0],
+                    bottom_right_roi_pixel[1] - top_left_roi_pixel[1],
+                    color="white",
+                    alpha=0.5,
+                )
+            )
 
-        # Finalize plot
-        plt.show()
+        if path is not None:
+            plt.tight_layout()
+            plt.axis("off")
+            plt.savefig(path, format="png", dpi=dpi, bbox_inches="tight", pad_inches=0)
 
-    def find_paths(self, reset: bool = True) -> None:
+        if show:
+            plt.show()
+        else:
+            plt.close()
+
+    def number_valleys(self) -> int:
+        """Determine number of valleys.
+
+        Returns:
+            int: number of valleys.
+
         """
-        Find paths in the peaks and valleys.
-        """
-
-        # TODO decide whether to reset
-        if reset:
-            self.paths = []
-
-        def _same_path_unit(path_unit_0, path_unit_1):
-            """
-            Check whether all required items are the same (position not needed
-            if implemented without errors).
-            """
-
-            return (
-                path_unit_0.time == path_unit_1.time
-                and path_unit_0.peak == path_unit_1.peak
-            )
-
-        def _include_segments(time_prev, time_next, segments, pts_prev, pts_next):
-            """
-            Assemble paths.
-            """
-
-            # Consider each segment separately:
-            for segment in segments:
-
-                # Define a path unit for the start point - ignore
-                path_unit_prev = PathUnit(
-                    time_prev, segment[0], pts_prev[segment[0], :]
-                )
-
-                # Define a path unit for the end point
-                path_unit_next = PathUnit(
-                    time_next, segment[1], pts_next[segment[1], :]
-                )
-
-                # Traverse the paths to check whether a preexisting path ends with
-                # the start of the segment.
-                added_to_preexisting_path = False
-                for path in self.paths:
-
-                    # Check last element in the path
-                    last_unit = path[-1]
-                    identical_units = _same_path_unit(last_unit, path_unit_prev)
-
-                    if identical_units:
-                        path.append(path_unit_next)
-                        added_to_preexisting_path = True
-                        break
-
-                # Add the entire segment if no suitable path exists for this
-                if not added_to_preexisting_path:
-                    # print("create new path")
-                    self.paths.append([path_unit_prev, path_unit_next])
-
-        def _include_points(time_next, points, pts_next):
-            """
-            Assemble paths.
-            """
-
-            # Consider each segment separately:
-            for point in points:
-
-                # Define a path unit for the end point
-                path_unit_next = PathUnit(time_next, point, pts_next[point, :])
-                self.paths.append([path_unit_next])
-
-        # TODO replace time_index with something global?
-        for time_index in range(self.total_time - 1):
-
-            # Fetch peak indices
-            peaks_prev = np.squeeze(self.peaks[time_index]).reshape(-1, 2)
-            peaks_next = np.squeeze(self.peaks[time_index + 1]).reshape(-1, 2)
-
-            # Initialize correpsonding peaks
-            prev_next_pairs = []
-            new_paths = []
-
-            if len(peaks_prev) == 0:
-                for peak_index in list(np.arange(len(peaks_prev))):
-                    new_paths.append(peak_index)
-                continue
-
-            if len(peaks_next) == 0:
-                continue
-
-            # Initialize paired slices
-            paired_slices = [(slice(0, len(peaks_prev)), slice(0, len(peaks_next)))]
-
-            # Construct distance matrix
-            dist = distance_matrix(peaks_prev, peaks_next)
-
-            for iteration in range(max(len(peaks_prev), len(peaks_next))):
-
-                # Stopping criterion.
-                if len(paired_slices) == 0:
-                    break
-
-                # First assignments
-                ind_prev, ind_next = paired_slices.pop(0)
-
-                if self.verbosity:
-                    print("slices", ind_prev, ind_next)
-
-                # Find smallest entry in the restricted distance matrix
-                # print(dist[ind_prev, ind_next])
-                local_distance_matrix = dist[ind_prev, ind_next]
-                num_local_cols = local_distance_matrix.shape[1]
-                local_argmin_1d = np.argmin(np.ravel(local_distance_matrix))
-                local_argmin_2d = np.array(
-                    [
-                        int(local_argmin_1d / num_local_cols),
-                        local_argmin_1d % num_local_cols,
-                    ]
-                )
-                if self.verbosity:
-                    print("local argmin 2d", local_argmin_1d, local_argmin_2d)
-                # Globalize argmin_2d
-                argmin_2d = local_argmin_2d + np.array([ind_prev.start, ind_next.start])
-                if self.verbosity:
-                    print(
-                        "argmin",
-                        argmin_2d,
-                        peaks_prev[argmin_2d[0]],
-                        peaks_next[argmin_2d[1]],
-                    )
-
-                # Bookkeeping.
-                prev_next_pairs.append(argmin_2d)
-
-                pre_slice = (
-                    slice(ind_prev.start, argmin_2d[0]),
-                    slice(ind_next.start, argmin_2d[1]),
-                )
-                post_slice = (
-                    slice(argmin_2d[0] + 1, ind_prev.stop),
-                    slice(argmin_2d[1] + 1, ind_next.stop),
-                )
-
-                def _nonempty_slice(sl) -> bool:
-                    return sl.stop - sl.start > 0
-
-                # In order to keep the order, start with the later slice
-                if _nonempty_slice(post_slice[0]) and _nonempty_slice(post_slice[1]):
-                    paired_slices.insert(0, post_slice)
-                elif _nonempty_slice(post_slice[0]):
-                    if self.verbosity:
-                        print(
-                            f"Fingers according to slice {post_slice[0]} are terminated."
-                        )
-                elif _nonempty_slice(post_slice[1]):
-                    if self.verbosity:
-                        print(f"New paths according to slice {post_slice[1]}.")
-                    for peak_index in list(
-                        np.arange(post_slice[1].start, post_slice[1].stop)
-                    ):
-                        new_paths.append(peak_index)
-
-                if _nonempty_slice(pre_slice[0]) and _nonempty_slice(pre_slice[1]):
-                    paired_slices.insert(0, pre_slice)
-                elif _nonempty_slice(pre_slice[0]):
-                    if self.verbosity:
-                        print(
-                            f"Fingers according to slice {pre_slice[0]} are terminated."
-                        )
-                elif _nonempty_slice(pre_slice[1]):
-                    if self.verbosity:
-                        print(f"New paths according to slice {pre_slice[1]}.")
-                    for peak_index in list(
-                        np.arange(pre_slice[1].start, pre_slice[1].stop)
-                    ):
-                        new_paths.append(peak_index)
-
-                if self.verbosity:
-                    print()
-
-            # For simpler handling, convert to array format (reshape only for
-            # handling empty lists) and sort
-            prev_next_pairs = np.array(prev_next_pairs).reshape(-1, 2)
-            arg_sorted_prev_next_pairs = np.argsort(prev_next_pairs[:, 0])
-            prev_next_pairs = prev_next_pairs[arg_sorted_prev_next_pairs]
-
-            new_paths = np.array(new_paths)
-            arg_sorted_new_paths = np.argsort(new_paths)
-            new_paths = new_paths[arg_sorted_new_paths]
-
-            if self.verbosity:
-                print(
-                    f"""final: {time_index} vs. {time_index + 1}. Found
-                    {len(prev_next_pairs)} many pairs among {len(peaks_prev)}
-                    and {len(peaks_next)} fingers, respectively."""
-                )
-                print(prev_next_pairs)
-                print(new_paths)
-
-            # Glue together segments where possible (sort in).
-            _include_segments(
-                time_index, time_index + 1, prev_next_pairs, peaks_prev, peaks_next
-            )
-            _include_points(time_index + 1, new_paths, peaks_next)
+        _, valleys_pixels = self.local_extrema()
+        return len(valleys_pixels)

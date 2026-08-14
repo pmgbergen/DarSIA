@@ -15,7 +15,7 @@ import math
 from datetime import datetime, timedelta
 from pathlib import Path
 from time import time as tm
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from warnings import warn
 
 import cv2
@@ -541,6 +541,7 @@ class Image:
             "reference_date": self.reference_date,
             "time": self.time,
             "name": self.name,
+            "type": type(self),
         }
         return copy.copy(metadata)
 
@@ -684,7 +685,10 @@ class Image:
             voxels = None
             coordinates = roi
         else:
-            raise ValueError
+            raise ValueError(
+                f"""roi is of type {type(roi)}, but needs to be tuple of slices, """
+                """VoxelArray, or CoordinateArray."""
+            )
 
         # ! ---- Translate coordinates to voxels
 
@@ -740,6 +744,114 @@ class Image:
         metadata["origin"] = origin
 
         return type(self)(img=img, **metadata)
+
+    def eval(
+        self,
+        point: (
+            darsia.Voxel
+            | darsia.Coordinate
+            | darsia.VoxelArray
+            | darsia.CoordinateArray
+        ),
+        interpolation: str = "nearest",
+    ) -> np.ndarray:
+        """Evaluate the image array at a given point location.
+
+        Args:
+            point (Voxel, Coordinate, VoxelArray, or CoordinateArray): point(s) at which
+                to evaluate the image. Coordinates are converted to voxels if necessary.
+            interpolation (str): interpolation mode. Either ``"nearest"`` (default,
+                rounds to nearest voxel) or ``"linear"`` (bilinear/trilinear
+                interpolation via ``scipy.interpolate.RegularGridInterpolator``).
+                Voxel inputs (``Voxel``/``VoxelArray``) always use nearest-neighbor
+                regardless of this parameter.
+
+        Returns:
+            np.ndarray: image value(s) at the given point(s). For a single point,
+                returns a scalar or 1D array depending on whether the image is scalar
+                or non-scalar. For multiple points, returns an array of corresponding
+                values.
+
+        Example::
+
+            import darsia
+            import numpy as np
+
+            arr = np.arange(12, dtype=float).reshape(3, 4)
+            image = darsia.ScalarImage(arr, dimensions=[1, 1], space_dim=2)
+
+            # Default nearest-voxel evaluation (existing behaviour)
+            image.eval(darsia.Coordinate([0.6, 0.5]))
+
+            # Bilinear interpolation at a sub-voxel coordinate
+            image.eval(darsia.Coordinate([0.625, 0.5]), interpolation="linear")  # 8.0
+
+        """
+        # Linear interpolation path: only for coordinate inputs
+        if interpolation == "linear" and isinstance(
+            point, (darsia.Coordinate, darsia.CoordinateArray)
+        ):
+            from scipy.interpolate import RegularGridInterpolator
+
+            is_single = not isinstance(point, darsia.CoordinateArray)
+
+            # Compute fractional voxel indices from coordinates (mirroring
+            # CoordinateSystem.voxel() but without rounding/flooring)
+            cs = self.coordinatesystem
+            coordinate_array = np.atleast_2d(np.asarray(point))
+            frac = np.empty_like(coordinate_array, dtype=float)
+            for i, axis in enumerate(cs.axes):
+                pos, revert = darsia.interpret_indexing(axis, cs.indexing)
+                scaling = -1 if revert else 1
+                frac[:, pos] = (
+                    scaling
+                    * (coordinate_array[:, i] - cs._coordinate_of_origin_voxel[i])
+                    / cs.voxel_size[axis]
+                )
+
+            # Clip fractional indices to valid range before interpolating
+            max_indices = np.array([n - 1 for n in self.num_voxels], dtype=float)
+            frac = np.clip(frac, 0.0, max_indices)
+
+            # Build RegularGridInterpolator over the spatial voxel grid.
+            # Works for both scalar images (values shape (n0, n1, ...)) and
+            # non-scalar images (values shape (n0, n1, ..., m)) because
+            # RegularGridInterpolator broadcasts extra trailing dimensions.
+            grid = tuple(np.arange(n, dtype=float) for n in self.num_voxels)
+            interpolator = RegularGridInterpolator(
+                grid, self.img, method="linear", bounds_error=False, fill_value=None
+            )
+            result = interpolator(frac)
+
+            return result[0] if is_single else result
+
+        # Nearest-neighbor path (default, and always used for voxel inputs)
+        # Convert coordinates to voxels if necessary
+        if isinstance(point, (darsia.Coordinate, darsia.CoordinateArray)):
+            voxels = self.coordinatesystem.voxel(point)
+        elif isinstance(point, (darsia.Voxel, darsia.VoxelArray)):
+            voxels = point
+        else:
+            raise ValueError(
+                f"point is of type {type(point)}, but needs to be Voxel, Coordinate, "
+                "VoxelArray, or CoordinateArray."
+            )
+
+        # Distinguish between a single point and multiple points
+        is_single = not isinstance(voxels, darsia.VoxelArray)
+
+        # Clip voxel indices to valid range
+        upper = [n - 1 for n in self.num_voxels]
+        voxels_array = np.clip(np.atleast_2d(np.asarray(voxels)), 0, upper)
+
+        if is_single:
+            # Single point: access via tuple index
+            idx = tuple(int(voxels_array[0, d]) for d in range(self.space_dim))
+            return self.img[idx]
+        else:
+            # Multiple points: use advanced indexing
+            idx = tuple(voxels_array[:, d].astype(int) for d in range(self.space_dim))
+            return self.img[idx]
 
     def roi(self, roi: darsia.ROI) -> Image:
         """Extraction of spatial subregion using a darsia.ROI object.
@@ -1807,11 +1919,41 @@ class ScalarImage(Image):
 
         # Write image, using the conventional matrix indexing
         ubyte_image = self.img_as(np.uint8).img
+        normalized_float_image = None
+
+        if ("vmin" in kwargs) != ("vmax" in kwargs):
+            raise ValueError(
+                "ScalarImage.write requires both 'vmin' and 'vmax' when "
+                "providing explicit normalization bounds."
+            )
+
+        if ("vmin" in kwargs) and ("vmax" in kwargs):
+            float_image = self.img_as(np.float32).img
+            finite_mask = np.isfinite(float_image)
+            if np.any(finite_mask):
+                finite_values = float_image[finite_mask]
+                vmin = kwargs.get("vmin", float(np.min(finite_values)))
+                vmax = kwargs.get("vmax", float(np.max(finite_values)))
+                if vmax <= vmin:
+                    raise ValueError(
+                        "ScalarImage.write requires 'vmax' to be greater than 'vmin'."
+                    )
+                normalized_float_image = np.zeros_like(float_image, dtype=np.float32)
+                normalized_float_image[finite_mask] = (
+                    float_image[finite_mask] - vmin
+                ) / (vmax - vmin)
+                normalized_float_image = np.clip(normalized_float_image, 0.0, 1.0)
+                ubyte_image = skimage.img_as_ubyte(normalized_float_image)
+            else:
+                ubyte_image = np.zeros_like(float_image, dtype=np.uint8)
         suffix = Path(path).suffix.lower()
 
         if "cmap" in kwargs:
             cmap = kwargs.get("cmap")
-            colored_image = cmap(self.img_as(np.float32).img)
+            if normalized_float_image is not None:
+                colored_image = cmap(normalized_float_image)
+            else:
+                colored_image = cmap(self.img_as(np.float32).img)
             ubyte_image = skimage.img_as_ubyte(colored_image[..., :3])
             ubyte_image = ubyte_image[..., ::-1]
 
@@ -1829,6 +1971,111 @@ class ScalarImage(Image):
             cv2.imwrite(str(Path(path)), ubyte_image)
 
         logger.info("\033[92mImage saved as: " + str(Path(path)) + "\033[0m")
+
+    def to_csv(
+        self,
+        path: Path,
+        *,
+        delimiter: str = ",",
+        header: str | None = None,
+        float_format: str = "{:.2e}",
+    ) -> None:
+        """Write scalar image cell-center data to CSV file.
+
+        Args:
+            path: Target CSV path.
+            delimiter: Delimiter used between values.
+            header: Optional header line. ``None`` or ``"none"`` disables header.
+            float_format: Float formatting string.
+
+        """
+        path.parent.mkdir(parents=True, exist_ok=True)
+        arr = np.asarray(self.img)
+        if arr.ndim != self.space_dim:
+            raise ValueError(
+                "ScalarImage.to_csv requires non-series scalar images with "
+                "array dimensions equal to space_dim."
+            )
+        if self.space_dim not in (1, 2, 3):
+            raise ValueError("ScalarImage.to_csv supports only 1D/2D/3D images.")
+
+        fmt = float_format.strip()
+        if fmt.startswith("{:") and fmt.endswith("}"):
+            fmt = "%" + fmt[2:-1]
+
+        use_header = None if header is None else str(header).strip()
+        if use_header is not None and use_header.lower() == "none":
+            use_header = None
+        if use_header is not None:
+            header_columns = [part.strip() for part in use_header.split(delimiter)]
+            expected_columns = self.space_dim + 1
+            if len(header_columns) != expected_columns:
+                raise ValueError(
+                    f"CSV header must provide {expected_columns} columns "
+                    f"(space_dim + 1), got {len(header_columns)}."
+                )
+
+        coordinates = np.asarray(self.coordinatesystem.coordinates, dtype=float)
+
+        def _axis_offset_sign(axis: str) -> float:
+            _, is_reversed = darsia.interpret_indexing(axis, self.indexing)
+            return -1.0 if is_reversed else 1.0
+
+        axis_offset_signs = np.asarray(
+            [_axis_offset_sign(axis) for axis in self.coordinatesystem.axes],
+            dtype=float,
+        )
+        half_voxel_offset_per_axis = 0.5 * np.asarray(
+            [
+                axis_offset_signs[i] * self.coordinatesystem.voxel_size[axis]
+                for i, axis in enumerate(self.coordinatesystem.axes)
+            ],
+            dtype=float,
+        )
+        coordinates = coordinates + half_voxel_offset_per_axis
+        # CoordinateSystem stores flattened voxel data in Fortran-style index order.
+        # Reshape with order="F" and flatten with order="C" to export rows with
+        # x-fastest ordering (then y, then z), matching the required CSV layout.
+        coordinate_columns = coordinates.reshape(
+            (*arr.shape, self.space_dim), order="F"
+        ).reshape(-1, self.space_dim, order="C")
+        values = np.asarray(arr, dtype=float).reshape(-1, order="C")
+        # Combine coordinate and value columns
+        data = np.column_stack([coordinate_columns, values])
+
+        # Coordinates are sorted wrt voxel indices (and not coordinates itself).
+        # Mainly because coordinates have a different origin and orientation than voxel
+        # indices. Apply lexsort to the data to effectivley sort by coordinate values.
+        # Since each coordinate only appears once, the sorting is not impacted by the values.
+        sort_order = np.lexsort(np.fliplr(coordinate_columns).T)
+        data = data[sort_order]
+
+        np.savetxt(
+            path,
+            data,
+            delimiter=delimiter,
+            header="" if use_header is None else use_header,
+            comments="",
+            fmt=fmt,
+        )
+        logger.info("\033[92mImage saved as: " + str(Path(path)) + "\033[0m")
+
+
+class ExtensiveImage(ScalarImage):
+    """Image type for extensive quantities stored per voxel."""
+
+    def __init__(
+        self,
+        img: np.ndarray,
+        transformations: Optional[list] = None,
+        **kwargs,
+    ) -> None:
+        """Constructor for extensive images."""
+        super().__init__(img, transformations, **kwargs)
+
+    def copy(self) -> ExtensiveImage:
+        """Create a deep copy of the extensive image."""
+        return copy.deepcopy(self)
 
 
 class OpticalImage(Image):
@@ -2070,7 +2317,9 @@ class OpticalImage(Image):
             self.img = img
             self.color_space = color_space.upper()
 
-    def to_monochromatic(self, key: str) -> ScalarImage:
+    def to_monochromatic(
+        self, key: Literal["gray", "red", "green", "blue", "hue", "saturation", "value"]
+    ) -> ScalarImage:
         """Returns monochromatic version of the image.
 
         Returns:
@@ -2116,6 +2365,12 @@ class OpticalImage(Image):
                 img = image.img[..., 1]
             elif key == "value":
                 img = image.img[..., 2]
+
+        else:
+            raise NotImplementedError(
+                f"""Key {key} not recognized. Please choose one of the following: """
+                """'gray', 'red', 'green', 'blue', 'hue', 'saturation', 'value'."""
+            )
 
         # Adapt specs.
         metadata = image.metadata()

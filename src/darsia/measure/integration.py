@@ -75,6 +75,42 @@ class Geometry:
         self.cached_voxel_volume = self.voxel_volume.copy()
         """Internal copy of the voxel volume for efficient integration."""
 
+    def _prepare_cached_voxel_volume(self, fetched_shape: list[int]) -> None:
+        """Prepare cached voxel volume for data with a specific spatial shape."""
+        scaling = np.prod(np.divide(self.num_voxels, fetched_shape))
+
+        # Resize the voxel volumes using conservative resizing.
+        if isinstance(self.voxel_volume, np.ndarray):
+            cached_shape = list(self.cached_voxel_volume.shape)
+            if not all([i == j for i, j in zip(fetched_shape, cached_shape)]):
+                if not self.space_dim == 2:
+                    raise ValueError("Incompatible data format only supported in 2d.")
+
+                # To cover the most general case, a weighted sum is required. The weight is
+                # essentially provided by the voxel volume. Due to a possible spatial
+                # variability however, reshaping and rescaling is required. In ordert to
+                # increase efficiency use a cache, assuming frequently similar data as input.
+                # In the case, a fixed (scalar) depth had been provided, the base class can be
+                # utilized. Otherwise, a more involved reshape of the effective volume is
+                # required.
+                self.cached_voxel_volume = (
+                    cv2.resize(
+                        self.voxel_volume,
+                        tuple(reversed(fetched_shape[:2])),
+                        interpolation=cv2.INTER_AREA,  # conservative.
+                    )
+                    * scaling
+                )
+
+        else:
+            # Scalar case.
+            if all([i == j for i, j in zip(fetched_shape, self.num_voxels)]):
+                self.cached_voxel_volume = self.voxel_volume.copy()
+            else:
+                if not self.space_dim == 2:
+                    raise ValueError("Incompatible data format only supported in 2d.")
+                self.cached_voxel_volume = self.voxel_volume * scaling
+
     def integrate(self, data: darsia.Image | np.ndarray) -> float | np.ndarray:
         """
         Integrate data over the entire geometry.
@@ -96,35 +132,13 @@ class Geometry:
         # Fetch data
         fetched_data = data if isinstance(data, np.ndarray) else data.img
         fetched_shape = list(fetched_data.shape[: self.space_dim])
-        scaling = np.prod(np.divide(self.num_voxels, fetched_shape))
+        if isinstance(data, darsia.ExtensiveImage):
+            extensive_sum = data.img
+            for _ in range(self.space_dim):
+                extensive_sum = np.sum(extensive_sum, axis=0)
+            return extensive_sum
 
-        # Resize the voxel volumes using conservative resizing.
-        if isinstance(self.voxel_volume, np.ndarray):
-            cached_shape = list(self.cached_voxel_volume.shape)
-            if not all([i == j for i, j in zip(fetched_shape, cached_shape)]):
-                if not self.space_dim == 2:
-                    raise ValueError("Incompatible data format only supported in 2d.")
-
-                # To cover the most general case, a weighted sum is required. The weight is
-                # essentially provided by the voxel volume. Due to a possible spatial
-                # variability however, reshaping and rescaling is required. In ordert to
-                # increase efficiency use a cache, assuming frequently similar data as input.
-                # In the case, a fixed (scalar) depth had been provided, the base class can be
-                # utilized. Otherwise, a more involved reshape of the effective volume is
-                # required.
-                self.cached_voxel_volume = (
-                    cv2.resize(
-                        self.voxel_volume,
-                        tuple(reversed(fetched_data.shape[:2])),
-                        interpolation=cv2.INTER_AREA,  # conservative.
-                    )
-                    * scaling
-                )
-
-        else:
-            # Scalar case.
-            if not all([i == j for i, j in zip(fetched_shape, self.num_voxels)]):
-                self.cached_voxel_volume = self.voxel_volume * scaling
+        self._prepare_cached_voxel_volume(fetched_shape)
 
         # ! ---- Perform spatial integration
         if isinstance(data, np.ndarray):
@@ -136,6 +150,50 @@ class Geometry:
         for i in range(self.space_dim):
             weighted_sum = np.sum(weighted_sum, axis=0)
         return weighted_sum
+
+    def make_extensive(self, data: darsia.Image) -> darsia.ExtensiveImage:
+        """Convert intensive values to integrated per-cell values on geometry grid.
+
+        Args:
+            data (darsia.Image): image of intensive values.
+
+        Returns:
+            darsia.ExtensiveImage: extensive image represented on geometry voxelization.
+
+        Raises:
+            ValueError: if data is not an image, dimensions are incompatible, or
+                incompatible reshaping is requested in dimensions other than 2.
+
+        """
+        if not isinstance(data, darsia.Image):
+            raise ValueError("Data type not supported.")
+        if not data.space_dim == self.space_dim:
+            raise ValueError("Incompatible space dimensions for image and geometry.")
+        if not np.allclose(data.dimensions, self.dimensions):
+            raise ValueError(
+                "Image and geometry need to cover the same physical dimensions."
+            )
+
+        fetched_shape = list(data.img.shape[: self.space_dim])
+        self._prepare_cached_voxel_volume(fetched_shape)
+
+        weighted_sum = np.multiply(self.cached_voxel_volume, data.img)
+        metadata = data.metadata()
+        # Remove "type" as it is informational only and not an __init__ argument.
+        metadata.pop("type", None)
+        weighted_sum_image = darsia.ExtensiveImage(weighted_sum, **metadata)
+
+        # If required, map weighted values conservatively to the geometry grid.
+        if not all([i == j for i, j in zip(fetched_shape, self.num_voxels)]):
+            if not self.space_dim == 2:
+                raise ValueError("Incompatible data format only supported in 2d.")
+
+            weighted_sum_image = darsia.resize(
+                weighted_sum_image,
+                shape=tuple(self.num_voxels[:2]),
+            )
+
+        return weighted_sum_image
 
     def normalize(
         self, img: darsia.Image, img_ref: darsia.Image, return_ratio: bool = False
@@ -229,8 +287,13 @@ class WeightedGeometry(Geometry):
                 "Weight must have the same number of dimensions as the geometry."
             )
 
-        # Add weight
-        self.weight = weight.copy() if isinstance(weight, np.ndarray) else weight
+        # Add weight. # Convert nans to zeros, as they typically arise due to ROIs
+        # that remove signals.
+        self.weight = (
+            np.nan_to_num(weight.copy(), nan=0.0)
+            if isinstance(weight, np.ndarray)
+            else weight
+        )
         """Weight of the geometry, can be a scalar or an array."""
         self.voxel_volume = np.multiply(self.voxel_volume, weight)
         """Effective voxel volume in 3d."""

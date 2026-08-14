@@ -8,17 +8,25 @@ from pathlib import Path
 from warnings import warn
 
 from .analysis import AnalysisConfig
-from .color_paths import ColorPathsConfig
-from .color_to_mass import ColorToMassConfig
+from .calibration import CalibrationConfig
+from .color_embedding_registry import ColorEmbeddingRegistry
 from .corrections import CorrectionsConfig
 from .data import DataConfig
 from .depth import DepthConfig
+from .download import DownloadConfig
 from .facies import FaciesConfig
+from .format_registry import FormatRegistry
+from .helper import HelperConfig
+from .image_porosity import ImagePorosityConfig
 from .labeling import LabelingConfig
 from .protocol import ProtocolConfig
+from .restoration import RestorationConfig
 from .rig import RigConfig
+from .roi_registry import RoiRegistry
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
+from .video import VideoConfig
+from .workflow_utils import WorkflowUtilsConfig
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +79,14 @@ class FluidFlowerConfig:
             self.corrections = None
             warn(f"Section corrections not found in {path}, use [corrections].")
 
+        # ! ---- RESTORATION ---- ! #
+        try:
+            self.restoration: RestorationConfig | None = RestorationConfig()
+            self.restoration.load(path=path)
+        except KeyError:
+            self.restoration = None
+            warn(f"Section restoration not found in {path}, use [restoration].")
+
         # ! ---- LABELING ---- ! #
         try:
             self.labeling: LabelingConfig | None = LabelingConfig()
@@ -104,6 +120,13 @@ class FluidFlowerConfig:
             self.depth = None
             warn(f"Section depth not found in {path}, use [depth].")
 
+        # ! ---- IMAGE POROSITY ---- ! #
+        try:
+            self.image_porosity: ImagePorosityConfig | None = ImagePorosityConfig()
+            self.image_porosity.load(path=path)
+        except KeyError:
+            self.image_porosity = None
+
         # ! ---- PROTOCOLS ---- ! #
         try:
             self.protocol: ProtocolConfig | None = ProtocolConfig()
@@ -112,30 +135,47 @@ class FluidFlowerConfig:
             self.protocol = None
             warn(f"Section protocols not found in {path}, use [protocols].")
 
-        # ! ---- COLOR PATHS ---- ! #
+        # ! ---- ROI REGISTRY ---- ! #
+        # Must be loaded before color embedding registry so that inline ROI entries
+        # in color embedding sections can be injected into the shared registry.
         try:
-            self.color_paths: ColorPathsConfig | None = ColorPathsConfig()
-            self.color_paths.load(
+            self.roi_registry: RoiRegistry | None = RoiRegistry()
+            self.roi_registry.load(path)
+        except KeyError:
+            self.roi_registry = None
+
+        # ! ---- COLOR EMBEDDING REGISTRY ---- ! #
+        try:
+            self.color: ColorEmbeddingRegistry | None = ColorEmbeddingRegistry()
+            self.color.load(
                 path=path,
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
+                data_registry=self.data.registry if self.data else None,
+                roi_registry=self.roi_registry,
             )
-        except ValueError:
-            self.color_paths = None
-            warn(f"Section color_paths not found in {path}.")
+        except (ValueError, KeyError, NotImplementedError):
+            self.color = None
+            warn(f"Section color not found in {path}.")
 
-        # ! ---- COLOR TO MASS ---- ! #
+        # ! ---- CALIBRATION CONFIG ---- ! #
         try:
-            self.color_to_mass: ColorToMassConfig | None = ColorToMassConfig()
-            self.color_to_mass.load(
+            self.calibration: CalibrationConfig | None = CalibrationConfig()
+            self.calibration.load(
                 path=path,
                 data=self.data.folder if self.data else None,
-                results=self.data.results if self.data else None,
+                data_registry=self.data.registry if self.data else None,
+                color_embedding_registry=self.color,
             )
-        except ValueError:
-            self.color_to_mass = None
-            warn(f"Section color_to_mass not found in {path}.")
+        except (ValueError, KeyError):
+            self.calibration = None
 
+        # ! ---- FORMAT REGISTRY ---- ! #
+        try:
+            self.format_registry: FormatRegistry | None = FormatRegistry()
+            self.format_registry.load(path)
+        except KeyError:
+            self.format_registry = None
         # ! ---- ANALYSIS DATA ---- ! #
         try:
             self.analysis = AnalysisConfig()
@@ -143,10 +183,57 @@ class FluidFlowerConfig:
                 path,
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
+                data_registry=self.data.registry if self.data else None,
+                roi_registry=self.roi_registry,
+                format_registry=self.format_registry,
+                color_embedding_registry=self.color,
             )
         except KeyError:
             self.analysis = None
             warn(f"Section analysis not found in {path}, use [analysis].")
+
+        # ! ---- HELPER ---- ! #
+        try:
+            self.helper = HelperConfig()
+            self.helper.load(
+                path,
+                data=self.data.folder if self.data else None,
+                data_registry=self.data.registry if self.data else None,
+                format_registry=self.format_registry,
+                roi_registry=self.roi_registry,
+            )
+        except KeyError:
+            self.helper = None
+
+        # ! ---- DOWNLOAD CONFIG ---- ! #
+        try:
+            self.download = DownloadConfig()
+            self.download.load(
+                path,
+                data=self.data.folder if self.data else None,
+                results=self.data.results if self.data else None,
+                data_registry=self.data.registry if self.data else None,
+            )
+        except KeyError:
+            self.download = None
+            warn(f"Section download not found in {path}, use [download].")
+
+        # ! ---- UTILS CONFIG ---- ! #
+        try:
+            self.workflow_utils = WorkflowUtilsConfig()
+            self.workflow_utils.load(path)
+        except KeyError:
+            self.workflow_utils = None
+
+        # ! ---- VIDEO CONFIG ---- ! #
+        try:
+            self.video = VideoConfig()
+            self.video.load(
+                path,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.video = None
 
         ## Reference colorchecker
         # try:
@@ -175,8 +262,28 @@ class FluidFlowerConfig:
             RigConfig().error()
         elif key == "protocol" and not self.protocol:
             ProtocolConfig().error()
-        elif key == "color_paths" and not self.color_paths:
-            ColorPathsConfig().error()
+        elif key == "color":
+            if not self.color:
+                raise ValueError(
+                    "No color embedding registry loaded. Use [color.path.*], "
+                    "[color.range.*], or [color.channel.*]."
+                )
+        elif key == "calibration" and (not self.calibration):
+            raise ValueError(
+                "No color calibration entrypoint loaded. Use [calibration]."
+            )
+        elif key == "calibration.color" and (
+            not self.calibration or not self.calibration.color
+        ):
+            raise ValueError(
+                "No color calibration entrypoint loaded. Use [calibration.color]."
+            )
+        elif key == "calibration.mass" and (
+            not self.calibration or not self.calibration.mass
+        ):
+            raise ValueError(
+                "No mass calibration entrypoint loaded. Use [calibration.mass]."
+            )
         elif key == "analysis.data" and (not self.analysis or not self.analysis.data):
             TimeData().error()
         elif key == "analysis.segmentation" and (
@@ -187,13 +294,20 @@ class FluidFlowerConfig:
             raise ValueError(
                 "No mass analysis loaded. Use [analysis.mass] in the config file."
             )
+        elif key == "video" and not self.video:
+            VideoConfig().error()
 
     def check(self, *args: str) -> None:
         """Check that required components are loaded.
 
         Args:
             keys (list[str]): List of keys to check. Possible keys are:
-                "specs", "data", "labeling", "depth", "protocol", "color_paths",
+                "specs",
+                "data",
+                "labeling",
+                "depth",
+                "protocol",
+                "color",
                 "analysis".
 
         Raises:
@@ -205,14 +319,17 @@ class FluidFlowerConfig:
                 "analysis",
                 "analysis.data",
                 "analysis.segmentation",
-                "color_paths",
-                "color_to_mass",
+                "calibration",
+                "color",
+                "calibration.color",
+                "calibration.mass",
                 "data",
                 "depth",
                 "facies",
                 "labeling",
                 "protocol",
                 "rig",
+                "video",
             ], f"Key {key} not recognized for checking."
             self._check(key)
 

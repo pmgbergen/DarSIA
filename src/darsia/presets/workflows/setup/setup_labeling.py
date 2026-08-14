@@ -7,6 +7,7 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.setup.illustrations import save_discrete_map_illustration
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +37,8 @@ def segment_colored_image(path: Path, show: bool = False):
 
     labels = darsia.label_image(
         manually_colored_image,
-        significance=0.001,  # ignore labels which cover less than 0.1% of the image area
-        ensure_connectivity=True,  # ensure that labels are connected regions
+        significance=config.labeling.rtol,  # ignore labels which cover too little area
+        ensure_connectivity=config.labeling.ensure_connectivity,
     )
     logger.info("Num unique labels: %d", len(np.unique(labels.img)))
 
@@ -54,3 +55,9 @@ def segment_colored_image(path: Path, show: bool = False):
 
     # Step 3: Save labels
     labels.save(config.labeling.labels)
+    save_discrete_map_illustration(
+        labels.img,
+        config.labeling.labels.with_suffix(".jpg"),
+        title="Labels",
+        colorbar_label="Label id",
+    )

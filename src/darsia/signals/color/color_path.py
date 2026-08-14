@@ -161,11 +161,14 @@ class ColorPath:
         if self.mode == "rgb":
             color_list = []
             # Normalize the values to the range [0, 1]
-            normalized_values = [
-                (v - min(self.relative_distances))
-                / (max(self.relative_distances) - min(self.relative_distances))
-                for v in self.relative_distances
-            ]
+            if min(self.relative_distances) == max(self.relative_distances):
+                normalized_values = [0.0 for _ in self.relative_distances]
+            else:
+                normalized_values = [
+                    (v - min(self.relative_distances))
+                    / (max(self.relative_distances) - min(self.relative_distances))
+                    for v in self.relative_distances
+                ]
             for i in range(n_colors):
                 ratio = i / (n_colors - 1)
                 index = np.searchsorted(normalized_values, ratio)

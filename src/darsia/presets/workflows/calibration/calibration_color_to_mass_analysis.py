@@ -4,23 +4,72 @@ from pathlib import Path
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.analysis.analysis_context import select_image_paths
+from darsia.presets.workflows.analysis.analysis_context import AnalysisContext
+from darsia.presets.workflows.basis import label_ids_from_image
+from darsia.presets.workflows.calibration.metadata import (
+    read_calibration_metadata,
+    validate_basis_metadata,
+)
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
+from darsia.presets.workflows.utils.images import load_images_with_cache
+from darsia.signals.color import ColorPathEmbedding
 
 logger = logging.getLogger(__name__)
 
 
-def calibration_color_to_mass_analysis(
-    cls,
-    path: Path,
+def _load_baseline_color_spectrum_for_color_to_mass(
+    *,
+    ignore_mode: str,
+    baseline_color_spectrum_folder: Path,
+    required_labels: set[int],
+) -> darsia.LabelColorSpectrumMap | None:
+    """Load baseline colour spectrum for color-to-mass calibration if configured."""
+
+    if ignore_mode == "none":
+        return None
+
+    if ignore_mode not in ("baseline", "expanded"):
+        raise ValueError(
+            f"Unsupported ignore_baseline_spectrum mode '{ignore_mode}' in "
+            "color-to-mass calibration. Valid modes are: 'none', 'baseline', "
+            "'expanded'."
+        )
+
+    spectrum_files = list(baseline_color_spectrum_folder.glob("color_spectrum_*.json"))
+    if len(spectrum_files) == 0:
+        raise FileNotFoundError(
+            "Baseline colour spectrum files were not found, but "
+            f"ignore_baseline_spectrum='{ignore_mode}' requires them. Expected files "
+            f"matching 'color_spectrum_*.json' in {baseline_color_spectrum_folder}. "
+            "Run color-path calibration first or set ignore_baseline_spectrum='none'."
+        )
+
+    baseline_color_spectrum = darsia.LabelColorSpectrumMap.load(
+        baseline_color_spectrum_folder
+    )
+
+    missing_labels = sorted(
+        required_labels.difference(set(baseline_color_spectrum.keys()))
+    )
+    if len(missing_labels) > 0:
+        raise FileNotFoundError(
+            "Baseline colour spectrum is incomplete for color-to-mass calibration. "
+            f"Missing labels: {missing_labels}. Folder: "
+            f"{baseline_color_spectrum_folder}."
+        )
+
+    return baseline_color_spectrum
+
+
+def calibration_color_to_mass_analysis_from_context(
+    ctx: AnalysisContext,
     ref_path: Path | None = None,
     reset: bool = False,
     show: bool = False,
-    rois: dict[str, darsia.CoordinateArray] | None = None,
-    use_facies: bool = True,
+    default: bool = False,
 ):
     """Calibration of color to mass analysis.
 
@@ -32,90 +81,88 @@ def calibration_color_to_mass_analysis(
         ref_path: The path to the reference configuration file (if any).
         reset: Whether to reset existing calibration data.
         show: Whether to perform a final test run to demonstrate the calibration results.
-        rois: Regions of interest for calibration (if any).
-        use_facies: Whether to use facies for analysis.
+        default: Whether to perform default calibration without interactive steps.
 
     """
-    # ! ---- LOAD RUN AND RIG ----
+    # ! ---- LOAD FROM CONTEXT ----
 
-    config = FluidFlowerConfig(path, require_data=True, require_results=False)
-    config.check("color_paths", "rig", "data", "protocol", "color_to_mass")
+    config = ctx.config
+    experiment = ctx.experiment
+    fluidflower = ctx.fluidflower
+    restoration = ctx.restoration
+    expert_knowledge_adapter = ctx.expert_knowledge_adapter
+    calibration_image_paths = ctx.image_paths
 
     # Mypy type checking
+    config.check("color", "rig", "data", "protocol", "calibration.mass")
     assert config.data is not None
     assert config.protocol is not None
-    assert config.color_paths is not None
+    assert config.color is not None
+    assert config.calibration is not None
+    assert config.calibration.mass is not None
     assert config.rig is not None
-    assert config.color_to_mass is not None
-
-    # ! ---- LOAD EXPERIMENT ----
-    experiment = darsia.ProtocolledExperiment.init_from_config(config)
-
-    # ! ---- LOAD RIG ----
-    fluidflower = cls.load(config.rig.path)
-    fluidflower.load_experiment(experiment)
+    mass_cfg = config.calibration.mass
+    embedding = mass_cfg.color
+    assert embedding is not None
+    if not isinstance(embedding, ColorPathEmbedding):
+        raise NotImplementedError(
+            "calibration.mass currently supports only color path embeddings."
+        )
 
     # ! ---- LOAD COLOR PATHS ----
 
-    if use_facies:
-        # NOTE: Base analysis on facies (not labels)
-        fluidflower.labels = fluidflower.facies.copy()
-        _color_paths = darsia.LabelColorPathMap.load(
-            config.color_paths.calibration_file
-        )
-        color_paths = darsia.LabelColorPathMap.refine(
-            _color_paths,
-            num_segments=6,
-            mode="relative",
-        )
-    else:
-        # Use fine-grained but artificial labels for analysis
-        _color_paths = darsia.LabelColorPathMap.load(
-            config.color_paths.calibration_file
-        )
+    selected_basis = embedding.basis
+    selected_labels = embedding.get_labels(fluidflower)
+    current_label_ids = label_ids_from_image(selected_labels)
 
-        # ! ---- REFINE COLOR PATHS ----
-        color_paths = darsia.LabelColorPathMap.refine(
-            _color_paths,
-            num_segments=8,
-        )
+    calibration_folder = embedding.color_paths_folder
+    color_paths_metadata = read_calibration_metadata(
+        calibration_folder / "metadata.json"
+    )
+    validate_basis_metadata(
+        metadata=color_paths_metadata,
+        expected_basis=selected_basis,
+        expected_label_ids=current_label_ids,
+        artifact="color_paths",
+    )
+
+    color_paths = darsia.LabelColorPathMap.load(calibration_folder)
 
     # Pick a reference color path - merely for visualization
-    reference_label = config.color_paths.reference_label
+    reference_label = embedding.reference_label
     reference_color_path = color_paths[reference_label]
     custom_cmap = reference_color_path.get_color_map()
     if show and False:
         reference_color_path.show_path()
 
-    # ! ---- LOAD BASELINE COLOR SPECTRUM ----
-    baseline_color_spectrum = darsia.LabelColorSpectrumMap.load(
-        config.color_paths.baseline_color_spectrum_folder
+    baseline_color_spectrum = _load_baseline_color_spectrum_for_color_to_mass(
+        ignore_mode=embedding.ignore_baseline_spectrum,
+        baseline_color_spectrum_folder=embedding.baseline_color_spectrum_folder,
+        required_labels=set(color_paths.keys()),
     )
 
     # ! ---- LOAD IMAGES ----
-    calibration_image_paths = select_image_paths(
-        config, experiment, all=False, sub_config=config.color_to_mass
-    )
 
-    # Store cached versions of calibration images to speed up development
-    calibration_images = []
-    for p in calibration_image_paths:
-        cache_path = config.data.cache / f"cache_{p.stem}.npz"
-        if not cache_path.exists():
-            calibration_image = fluidflower.read_image(p)
-            calibration_image.save(cache_path)
-        else:
-            calibration_image = darsia.imread(cache_path)
-        calibration_images.append(calibration_image)
+    # Cache calibration images for performance
+    calibration_images: list[darsia.Image] = load_images_with_cache(
+        rig=fluidflower,
+        paths=calibration_image_paths,
+        use_cache=config.data.use_cache,
+        cache_dir=config.data.cache,
+    )
 
     # ! ---- ALLOCATE EMPTY INTERPOLATIONS ----
 
     color_path_interpolation = {
         label: darsia.ColorPathInterpolation(
             color_path=color_path,
-            color_mode=darsia.ColorMode.RELATIVE,
+            color_mode=embedding.mode,
             values=color_path.relative_distances,
-            ignore_spectrum=baseline_color_spectrum[label],
+            ignore_spectrum=(
+                baseline_color_spectrum[label]
+                if baseline_color_spectrum is not None
+                else None
+            ),
         )
         for label, color_path in color_paths.items()
     }
@@ -125,23 +172,46 @@ def calibration_color_to_mass_analysis(
     # TODO move this to another calibration function.
 
     # Util 1.
-    threshold = 0.2  # TODO include in config.
+    threshold = mass_cfg.threshold
 
-    # Metric I.
     # Determine distance from color path to baseline spectrum (consider the furthest
     # away color to measure sensitivity)
-    distances = {
-        label: max(
-            [
-                float(baseline_color_spectrum[label].distance(c))
-                for c in color_path.colors
-            ]
-        )
-        for label, color_path in color_paths.items()
-    }
-    reference_distance = max(distances.values())
+    if baseline_color_spectrum is None:
+        distances = {label: 1.0 for label in color_paths}
+        reference_distance = 1.0
+    else:
+        distances = {
+            label: max(
+                [
+                    float(baseline_color_spectrum[label].distance(c))
+                    for c in color_path.colors
+                ]
+            )
+            for label, color_path in color_paths.items()
+        }
+        reference_distance = max(distances.values())
 
-    # Metric II.
+    # Decide which labels to ignore based on the two metrics
+    ignore_labels = []
+    for label in np.unique(selected_labels.img):
+        relative_distance = distances[label] / reference_distance
+        if relative_distance < threshold:
+            ignore_labels.append(label)
+    logger.info(f"\033[93mIgnoring labels based on distance: {ignore_labels}\033[0m")
+
+    # Illustrate the ignored labels for the calibration images through grayscaling
+    if show and len(ignore_labels) > 0:
+        for img in calibration_images[-1:]:
+            _img = img.copy()
+            for mask, label in darsia.Masks(selected_labels, return_label=True):
+                if label not in ignore_labels:
+                    continue
+                _img.img[mask.img] = np.mean(_img.img[mask.img], axis=1, keepdims=True)
+            _img.show(cmap=custom_cmap, title="Ignored labels")
+
+    # Util 2. Adapt the interpolation values based on the reference color path
+
+    # Rescale color paths based on reference interpolation.
     # Determine distance from color path to reference color path.
     reference_interpolation = color_path_interpolation[reference_label]
     interpolation_values = {
@@ -153,39 +223,13 @@ def calibration_color_to_mass_analysis(
         )
         for label, color_path in color_paths.items()
     }
-    reference_interpolation_value = max(interpolation_values.values())
-
-    # Decide which labels to ignore based on the two metrics
-    ignore_labels = []
-    for label in np.unique(fluidflower.labels.img):
-        relative_distance = distances[label] / reference_distance
-        relative_max_interpolation = (
-            interpolation_values[label] / reference_interpolation_value
-        )
-        if min(relative_distance, relative_max_interpolation) < threshold:
-            ignore_labels.append(label)
-
-    logger.info(f"\033[93mIgnoring labels: {ignore_labels}\033[0m")
-
-    # Illustrate the ignored labels for the calibration images throgh grayscaling
-    if False:
-        for img in calibration_images[-1:]:
-            _img = img.copy()
-            for mask, label in darsia.Masks(fluidflower.labels, return_label=True):
-                if label not in ignore_labels:
-                    continue
-                _img.img[mask.img] = np.mean(_img.img[mask.img], axis=1, keepdims=True)
-            _img.show(cmap=custom_cmap, title="Ignored labels")
-
-    # Utils. Adapt the interpolation values based on the reference color path
-
-    # Rescale color paths based on reference interpolation
     for label in color_path_interpolation:
-        color_path_interpolation[label].values *= interpolation_values[label]
+        if interpolation_values[label] > 0:
+            color_path_interpolation[label].values *= interpolation_values[label]
 
     # Overwrite the color paths with updated interpolation values
-    for label in np.unique(fluidflower.labels.img):
-        if label in config.color_paths.ignore_labels or label in ignore_labels:
+    for label in np.unique(selected_labels.img):
+        if label in embedding.ignore_labels or label in ignore_labels:
             color_path_interpolation[label] = color_path_interpolation[reference_label]
 
     # ! ---- COLOR PATH INTERPRETATION ---- ! #
@@ -193,23 +237,16 @@ def calibration_color_to_mass_analysis(
     color_path_interpretation = {
         label: darsia.ColorPathInterpolation(
             color_path=color_path,
-            color_mode=darsia.ColorMode.RELATIVE,
+            color_mode=embedding.mode,
             values=color_path.equidistant_distances,
-            ignore_spectrum=baseline_color_spectrum[label],
+            ignore_spectrum=(
+                baseline_color_spectrum[label]
+                if baseline_color_spectrum is not None
+                else None
+            ),
         )
         for label, color_path in color_paths.items()
     }
-
-    # ! ---- SIGNAL FUNCTIONS ---- ! #
-
-    # ! ---- POROSITY-INFORMED AVERAGING ---- ! #
-    # TODO: holes in the segmentation?
-    image_porosity = fluidflower.image_porosity
-    restoration = darsia.VolumeAveraging(
-        rev=darsia.REV(size=0.005, img=fluidflower.baseline),
-        mask=image_porosity,
-        # labels=fluidflower.labels,
-    )
 
     # ! ---- FROM COLOR PATH TO MASS ----
 
@@ -227,39 +264,66 @@ def calibration_color_to_mass_analysis(
     # Fetch signal functions from reference calibration.
     if not reset and ref_path is not None:
         # Start from reference calibration if available
-        ref_config = FluidFlowerConfig(ref_path)
+        ref_config = FluidFlowerConfig(
+            ref_path, require_data=False, require_results=False
+        )
+        assert ref_config.color is not None
+        ref_embedding = ref_config.color.resolve(embedding.embedding_id)
+        if not isinstance(ref_embedding, ColorPathEmbedding):
+            raise NotImplementedError(
+                "Reference mass calibration currently supports only color path embeddings."
+            )
         assert (
-            ref_config.color_to_mass.calibration_folder.exists()
+            ref_embedding.color_to_mass_folder.exists()
         ), "Reference calibration folder does not exist."
         color_analysis = HeterogeneousColorToMassAnalysis.load(
-            folder=ref_config.color_to_mass.calibration_folder,
+            folder=ref_embedding.color_to_mass_folder,
             baseline=fluidflower.baseline,
-            labels=fluidflower.labels,
+            labels=selected_labels,
             co2_mass_analysis=co2_mass_analysis,
             geometry=fluidflower.geometry,
             restoration=restoration,
+            basis=selected_basis,
+            expert_knowledge_adapter=expert_knowledge_adapter,
+            contour_smoother=config.analysis.mass.contour_smoother,
         )
         color_analysis.color_path_interpretation = color_path_interpretation
 
-    elif not reset and config.color_to_mass.calibration_folder.exists():
+    elif not reset and embedding.color_to_mass_folder.exists():
         # Start from existing calibration if available
         color_analysis = HeterogeneousColorToMassAnalysis.load(
-            folder=config.color_to_mass.calibration_folder,
+            folder=embedding.color_to_mass_folder,
             baseline=fluidflower.baseline,
-            labels=fluidflower.labels,
+            labels=selected_labels,
             co2_mass_analysis=co2_mass_analysis,
             geometry=fluidflower.geometry,
             restoration=restoration,
+            basis=selected_basis,
+            expert_knowledge_adapter=expert_knowledge_adapter,
+            contour_smoother=config.analysis.mass.contour_smoother,
         )
     else:
         # Start from scratch
-        signal_functions = {
-            label: darsia.PWTransformation(
-                color_paths[label].equidistant_distances,
-                color_path_interpolation[label].values,
-            )
-            for label in color_path_interpolation
-        }
+        signal_functions = {}
+        for label in color_path_interpolation:
+            if label in embedding.ignore_labels or label in ignore_labels:
+                signal_functions[label] = darsia.PWTransformation(
+                    color_paths[reference_label].equidistant_distances,
+                    np.zeros(len(color_paths[reference_label].equidistant_distances)),
+                )
+                continue
+            try:
+                signal_functions[label] = darsia.PWTransformation(
+                    color_paths[label].equidistant_distances,
+                    color_path_interpolation[label].values,
+                )
+            except Exception as e:
+                signal_functions[label] = darsia.PWTransformation(
+                    color_paths[reference_label].equidistant_distances,
+                    np.zeros(len(color_paths[reference_label].equidistant_distances)),
+                )
+                ignore_labels.append(label)
+                logger.warning(f"Error processing label {label}: {e}")
         flash = darsia.SimpleFlash(
             min_value_aq=0,
             max_value_aq=0.75,
@@ -269,42 +333,63 @@ def calibration_color_to_mass_analysis(
         )
         color_analysis = HeterogeneousColorToMassAnalysis(
             baseline=fluidflower.baseline,
-            labels=fluidflower.labels,
-            color_mode=darsia.ColorMode.RELATIVE,
+            labels=selected_labels,
+            color_mode=embedding.mode,
             color_path_interpretation=color_path_interpretation,
             signal_functions=signal_functions,
             flash=flash,
             co2_mass_analysis=co2_mass_analysis,
             geometry=fluidflower.geometry,
             restoration=restoration,
-            ignore_labels=config.color_paths.ignore_labels + ignore_labels,
+            ignore_labels=embedding.ignore_labels + ignore_labels,
+            basis=selected_basis,
+            expert_knowledge_adapter=expert_knowledge_adapter,
+            contour_smoother=config.analysis.mass.contour_smoother,
         )
 
     # ! ---- INTERACTIVE CALIBRATION ---- ! #
 
-    rois = rois or {}
-    rois.update(
-        {
-            "full": darsia.CoordinateArray(
-                [fluidflower.baseline.origin, fluidflower.baseline.opposite_corner]
+    rois: dict[str, darsia.CoordinateArray] = {}
+    if len(mass_cfg.rois) > 0:
+        if config.roi_registry is None:
+            raise ValueError(
+                "calibration.mass.rois is configured, but no ROI registry is available. "
+                "Define ROIs in top-level [roi.*] sections."
             )
-        }
-    )
+        roi_entries = config.roi_registry.resolve_rois(mass_cfg.rois)
+        rois = {key: roi_cfg.roi for key, roi_cfg in roi_entries.items()}
+        if len(rois) == 0:
+            raise ValueError(
+                "calibration.mass.rois did not resolve to any plain ROI rectangles. "
+                "Use keys pointing to [roi.*] entries with corner_1/corner_2 (plain "
+                "RoiConfig entries)."
+            )
+
+    if len(rois) == 0:
+        rois["full"] = darsia.CoordinateArray(
+            [fluidflower.baseline.origin, fluidflower.baseline.opposite_corner]
+        )
 
     # Perform local calibration
-    color_analysis.manual_calibration(
-        images=calibration_images,
-        experiment=experiment,
-        rois=rois,
-        cmap=custom_cmap,
-    )
+    if default:
+        logger.info(
+            "\033[93mSkipping interactive calibration. "
+            "Using default signal functions.\033[0m"
+        )
+    else:
+        color_analysis.manual_calibration(
+            images=calibration_images,
+            experiment=experiment,
+            rois=rois,
+            cmap=custom_cmap,
+        )
 
-    for label in np.unique(fluidflower.labels.img):
-        if label in config.color_paths.ignore_labels or label in ignore_labels:
+    for label in np.unique(selected_labels.img):
+        if label in embedding.ignore_labels or label in ignore_labels:
             color_paths[label] = color_paths[reference_label]
 
     # Store calibration
-    color_analysis.save(config.color_to_mass.calibration_folder)
+    color_analysis.save(embedding.color_to_mass_folder)
 
     # Test run
     if show:

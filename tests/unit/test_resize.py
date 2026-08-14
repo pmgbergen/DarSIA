@@ -47,3 +47,25 @@ def test_equalize_voxel_size():
     original_dimensions = image.dimensions
     resized_dimensions = resized_image.dimensions
     assert np.allclose(original_dimensions, resized_dimensions)
+
+
+def test_resize_extensive_image_default_is_conservative():
+    """Test default resize behavior for extensive images."""
+    array = np.arange(1, 17, dtype=float).reshape((4, 4))
+    image = darsia.ExtensiveImage(array, dimensions=[1, 1], scalar=True)
+
+    resized_image = darsia.resize(image, shape=(2, 2))
+
+    assert isinstance(resized_image, darsia.ExtensiveImage)
+    assert np.isclose(np.sum(resized_image.img), np.sum(image.img))
+
+
+def test_resize_object_extensive_image_default_is_conservative():
+    """Test default Resize object behavior for extensive images."""
+    array = np.arange(1, 17, dtype=float).reshape((4, 4))
+    image = darsia.ExtensiveImage(array, dimensions=[1, 1], scalar=True)
+
+    resized_image = darsia.Resize(shape=(2, 2))(image)
+
+    assert isinstance(resized_image, darsia.ExtensiveImage)
+    assert np.isclose(np.sum(resized_image.img), np.sum(image.img))

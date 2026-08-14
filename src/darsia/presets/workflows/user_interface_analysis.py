@@ -2,17 +2,33 @@
 
 import argparse
 import logging
+import time
+from collections.abc import Callable
 
-from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_context
+from darsia.presets.workflows.analysis.analysis_context import (
+    infer_require_color_to_mass_from_config,
+    prepare_analysis_context,
+)
 from darsia.presets.workflows.analysis.analysis_cropping import (
     analysis_cropping_from_context,
+)
+from darsia.presets.workflows.analysis.analysis_fingers import (
+    analysis_fingers_from_context,
 )
 from darsia.presets.workflows.analysis.analysis_mass import analysis_mass_from_context
 from darsia.presets.workflows.analysis.analysis_segmentation import (
     analysis_segmentation_from_context,
 )
+from darsia.presets.workflows.analysis.analysis_thresholding import (
+    analysis_thresholding_from_context,
+)
 from darsia.presets.workflows.analysis.analysis_volume import (
     analysis_volume_from_context,
+)
+from darsia.presets.workflows.analysis.progress import (
+    AnalysisProgressEvent,
+    publish_step_complete,
+    publish_step_start,
 )
 from darsia.presets.workflows.rig import Rig
 
@@ -35,10 +51,16 @@ def build_parser_for_analysis():
         "--segmentation", action="store_true", help="Perform segmentation analysis."
     )
     parser.add_argument(
+        "--fingers", action="store_true", help="Perform finger analysis."
+    )
+    parser.add_argument(
         "--mass", action="store_true", help="Perform color to mass analysis."
     )
     parser.add_argument(
         "--volume", action="store_true", help="Perform color to volume analysis."
+    )
+    parser.add_argument(
+        "--thresholding", action="store_true", help="Perform thresholding analysis."
     )
     parser.add_argument(
         "--all", action="store_true", help="Perform analysis on entire dataset."
@@ -47,16 +69,6 @@ def build_parser_for_analysis():
         "--show",
         action="store_true",
         help="Show the labels after each step.",
-    )
-    parser.add_argument(
-        "--save-jpg",
-        action="store_true",
-        help="Save output figures as JPG.",
-    )
-    parser.add_argument(
-        "--save-npz",
-        action="store_true",
-        help="Save output figures as NPZ.",
     )
     parser.add_argument(
         "--info", action="store_true", help="Provide help for activated flags."
@@ -84,58 +96,157 @@ def print_help_for_flags(args, parser):
         sys.exit(0)
 
 
-def run_analysis(rig: type[Rig], args, **kwargs):
-    if not (args.cropping or args.mass or args.volume or args.segmentation):
+def run_analysis(
+    rig_cls: type[Rig],
+    args,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
+    progress_callback: Callable[[AnalysisProgressEvent], None] | None = None,
+    **kwargs,
+):
+    if not (
+        args.cropping
+        or args.mass
+        or args.volume
+        or args.segmentation
+        or args.fingers
+        or args.thresholding
+    ):
         raise ValueError(
             """No analysis type specified. Please select at least one analysis."""
-            """Choose from --cropping, --mass, --volume, or --segmentation."""
+            """Choose from --cropping, --mass, --volume, --segmentation, """
+            """--fingers, --thresholding."""
         )
 
     # Determine if we need color-to-mass analysis (expensive initialization)
-    require_color_to_mass = args.mass or args.volume or args.segmentation
-
-    # Determine if we need facies (only for mass/volume/segmentation)
-    use_facies = require_color_to_mass
+    require_color_to_mass = infer_require_color_to_mass_from_config(
+        args.config,
+        include_segmentation=args.segmentation,
+        include_fingers=args.fingers,
+        include_thresholding=args.thresholding,
+        include_mass=args.mass,
+        include_volume=args.volume,
+    )
 
     # Prepare shared context once for all analyses
     ctx = prepare_analysis_context(
-        cls=rig,
+        cls=rig_cls,
         path=args.config,
         all=args.all,
-        use_facies=use_facies,
         require_color_to_mass=require_color_to_mass,
     )
 
     # Run requested analyses using shared context
     if args.cropping:
+        step_started_at = time.monotonic()
+        publish_step_start(
+            progress_callback, step="cropping", image_total=len(ctx.image_paths)
+        )
         analysis_cropping_from_context(
             ctx,
             show=args.show,
-            save_jpg=args.save_jpg,
-            save_npz=args.save_npz,
+            stream_callback=stream_callback,
+            progress_callback=progress_callback,
+        )
+        publish_step_complete(
+            progress_callback,
+            step="cropping",
+            image_total=len(ctx.image_paths),
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     if args.mass:
+        step_started_at = time.monotonic()
+        publish_step_start(
+            progress_callback, step="mass", image_total=len(ctx.image_paths)
+        )
         analysis_mass_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
+            progress_callback=progress_callback,
+        )
+        publish_step_complete(
+            progress_callback,
+            step="mass",
+            image_total=len(ctx.image_paths),
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     if args.volume:
+        step_started_at = time.monotonic()
+        publish_step_start(
+            progress_callback, step="volume", image_total=len(ctx.image_paths)
+        )
         analysis_volume_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
+            progress_callback=progress_callback,
+        )
+        publish_step_complete(
+            progress_callback,
+            step="volume",
+            image_total=len(ctx.image_paths),
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     if args.segmentation:
+        step_started_at = time.monotonic()
+        publish_step_start(
+            progress_callback, step="segmentation", image_total=len(ctx.image_paths)
+        )
         analysis_segmentation_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
+            progress_callback=progress_callback,
+        )
+        publish_step_complete(
+            progress_callback,
+            step="segmentation",
+            image_total=len(ctx.image_paths),
+            step_elapsed_s=time.monotonic() - step_started_at,
+        )
+
+    if args.fingers:
+        step_started_at = time.monotonic()
+        publish_step_start(
+            progress_callback, step="fingers", image_total=len(ctx.image_paths)
+        )
+        analysis_fingers_from_context(
+            ctx,
+            show=args.show,
+            stream_callback=stream_callback,
+            progress_callback=progress_callback,
+        )
+        publish_step_complete(
+            progress_callback,
+            step="fingers",
+            image_total=len(ctx.image_paths),
+            step_elapsed_s=time.monotonic() - step_started_at,
+        )
+
+    if args.thresholding:
+        step_started_at = time.monotonic()
+        publish_step_start(
+            progress_callback, step="thresholding", image_total=len(ctx.image_paths)
+        )
+        analysis_thresholding_from_context(
+            ctx,
+            show=args.show,
+            stream_callback=stream_callback,
+            progress_callback=progress_callback,
+        )
+        publish_step_complete(
+            progress_callback,
+            step="thresholding",
+            image_total=len(ctx.image_paths),
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
 
-def preset_analysis(rig: type[Rig], **kwargs):
+def preset_analysis(rig_cls: type[Rig], **kwargs):
     parser = build_parser_for_analysis()
     args = parser.parse_args()
     print_help_for_flags(args, parser)
-    run_analysis(rig, args, **kwargs)
+    run_analysis(rig_cls, args, **kwargs)

@@ -1,9 +1,11 @@
 """Data configuration for the setup."""
 
 import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .data_registry import DataRegistry
 from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
 
@@ -17,6 +19,7 @@ class DataConfig:
     Example for TOML section:
         [data]
         folder = "path/to/images"
+        # or folders = ["path/to/images_a", "path/to/images_b"]
         format = "JPG"
         baseline = "path/to/baseline.jpg"
         pad = 0
@@ -26,6 +29,8 @@ class DataConfig:
 
     folder: Path = field(default_factory=Path)
     """Path to the folder containing the image data."""
+    folders: list[Path] = field(default_factory=list)
+    """Paths to folders containing image data (multi-folder mode)."""
     format: str = "JPG"
     """Format of the image data (e.g., 'JPG', 'PNG')."""
     data: list[Path] = field(default_factory=list)
@@ -36,10 +41,17 @@ class DataConfig:
     """Pad for image names."""
     results: Path = field(default_factory=Path)
     """Path to the results folder."""
-    cache: Path = field(default_factory=Path)
-    """Path to the cache folder."""
+    cache: Path | None = None
+    """Path to the cache folder, or None if caching is disabled."""
+    raw_cache: Path | None = None
+    """Path to the raw cache folder, or None if caching is disabled."""
+    use_cache: bool = False
+    """Whether to use the cache folder for reading/writing cached images."""
     time_data: TimeData | None = None
     """Calibration data configuration."""
+    registry: DataRegistry | None = None
+    """Optional global data registry loaded from [data.interval.*], [data.time.*],
+    and [data.path.*] sub-sections."""
 
     def load(
         self,
@@ -49,15 +61,46 @@ class DataConfig:
     ) -> "DataConfig":
         sec = _get_section_from_toml(path, "data")
 
-        # Get folder
-        self.folder = _get_key(sec, "folder", required=True, type_=Path)
-        if require_data and not self.folder.is_dir():
-            raise FileNotFoundError(f"Folder {self.folder} not found.")
+        # Get folder(s)
+        folder_value = _get_key(sec, "folder", required=False)
+        folders_value = _get_key(sec, "folders", required=False)
+        if folder_value is None and folders_value is None:
+            raise KeyError("Missing key 'folder' or 'folders' in [data].")
+
+        self.folders = []
+        if folder_value is not None:
+            self.folder = Path(folder_value)
+            self.folders.append(self.folder)
+        if folders_value is not None:
+            if not isinstance(folders_value, list):
+                raise ValueError("[data].folders must be a list of paths.")
+            if not folders_value:
+                raise ValueError("[data].folders must not be empty.")
+            parsed_folders = [Path(folder) for folder in folders_value]
+            for folder in parsed_folders:
+                if folder not in self.folders:
+                    self.folders.append(folder)
+            if folder_value is None:
+                self.folder = self.folders[0]
+
+        if require_data:
+            for folder in self.folders:
+                if not folder.is_dir():
+                    raise FileNotFoundError(f"Folder {folder} not found.")
 
         # Get baseline
-        self.baseline = self.folder / _get_key(
-            sec, "baseline", required=True, type_=Path
-        )
+        baseline = _get_key(sec, "baseline", required=True, type_=Path)
+        if baseline.is_absolute():
+            self.baseline = baseline
+        else:
+            baseline_candidates = [folder / baseline for folder in self.folders]
+            existing_candidates = [
+                candidate for candidate in baseline_candidates if candidate.is_file()
+            ]
+            if len(existing_candidates) > 0:
+                self.baseline = existing_candidates[0]
+            else:
+                self.baseline = self.folder / baseline
         if require_data and not self.baseline.is_file():
             raise FileNotFoundError(f"Baseline image {self.baseline} not found.")
 
@@ -67,11 +110,20 @@ class DataConfig:
 
         # Get data
         if require_data:
-            self.data = list(sorted(self.folder.glob(f"*{self.baseline.suffix}")))
+            all_data: list[Path] = []
+            for folder in self.folders:
+                all_data.extend(
+                    sorted(
+                        folder / file
+                        for file in os.listdir(folder)
+                        if file.endswith(self.baseline.suffix)
+                    )
+                )
+            self.data = sorted(set(all_data))
             if len(self.data) == 0:
                 raise FileNotFoundError(
                     f"""No image files with suffix {self.baseline.suffix} found in """
-                    f"""{self.folder}."""
+                    f"""{self.folders}."""
                 )
         else:
             self.data = None
@@ -89,14 +141,48 @@ class DataConfig:
                     f"Cannot create results directory at {self.results}."
                 ) from e
 
-        # Define cache folder
-        self.cache = self.results / "cache"
-        try:
-            self.cache.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            raise PermissionError(
-                f"Cannot create cache directory at {self.cache}."
-            ) from e
+        # Whether to use the cache folder for reading/writing cached images
+        self.use_cache = _get_key(
+            sec, "use_cache", default=False, required=False, type_=bool
+        )
+
+        # Define cache folder and only create it when caching is enabled
+        if self.use_cache:
+            self.cache = self.results / "cache"
+            self.raw_cache = self.results / "raw_cache"
+            try:
+                self.cache.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                raise PermissionError(
+                    f"Cannot create cache directory at {self.cache}."
+                ) from e
+            try:
+                self.raw_cache.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                raise PermissionError(
+                    f"Cannot create raw cache directory at {self.raw_cache}."
+                ) from e
+        else:
+            self.cache = None
+
+        # Attempt to load global DataRegistry from [data.interval.*], [data.time.*],
+        # and [data.path.*] sub-sections. This is optional; if none are present the
+        # registry is set to None.
+        has_registry_sections = any(key in sec for key in ("interval", "time", "path"))
+        if has_registry_sections:
+            try:
+                self.registry = DataRegistry().load(
+                    sec, self.folders if len(self.folders) > 1 else self.folder
+                )
+            except Exception as e:
+                logger.warning(f"Failed to load DataRegistry: {e}")
+                raise ValueError(
+                    "Failed to load DataRegistry from [data] section. "
+                    "Ensure that any 'interval', 'time', and 'path' sub-sections are "
+                    "correctly formatted."
+                ) from e
+        else:
+            self.registry = None
 
         return self
 

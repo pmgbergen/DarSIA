@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Optional, Union
 from warnings import warn
 
@@ -12,6 +13,8 @@ import skimage
 from scipy import ndimage as ndi
 
 import darsia
+
+logger = logging.getLogger(__name__)
 
 
 def segment(
@@ -513,11 +516,10 @@ def _boundary(labels: np.ndarray, thickness: int, boundary: list[str]) -> np.nda
 def label_image(
     img: Union[np.ndarray, darsia.Image],
     map: dict | None = None,
-    tol: float = 0.01,
+    ctol: float = 0.01,
     ensure_connectivity: bool = True,
     expand_labels: bool = True,
     significance: float | None = None,
-    max_iter: int = 10,
 ) -> Union[np.ndarray, darsia.Image]:
     """
     Segment an image based on colors.
@@ -538,9 +540,12 @@ def label_image(
             }
             the keys are the color names (currently not used), the values are tuples
             containing the label (int) and the RGB value (tuple of floats in [0, 1]).
-        tol (float): tolerance for color matching in float format; default is 0.1.
-        max_iter (int): maximum number of iterations for filling unlabeled pixels;
-            default is 10.
+        ctol (float): tolerance for color matching in float format; default is 0.1.
+        ensure_connectivity (bool): whether to ensure that labels are connected regions
+            (default: True).
+        expand_labels (bool): whether to expand labels to fill unlabeled pixels
+            (default: True).
+        significance (float, optional): minimum significance of labels to be kept.
 
     The labeling is done by comparing the RGB values of the input image
     with the RGB values in the map. If the absolute difference is less than
@@ -591,9 +596,9 @@ def label_image(
             "Map contains zero labels - zeros are also used to mark unlabeled regions."
         )
 
-    for color_name, (label, color_value) in map.items():
+    for _, (label, color_value) in map.items():
         # Create a mask for the current color
-        mask = np.all(np.abs(img - color_value) < tol, axis=-1)
+        mask = np.all(np.abs(img - color_value) < ctol, axis=-1)
 
         # Label the regions
         labeled_image[mask] = label
@@ -640,7 +645,10 @@ def label_image(
 
     num_unlabeled = np.count_nonzero(np.isclose(labels, 0))
     if num_unlabeled > 0:
-        print(f"Number of unlabeled pixels: {num_unlabeled}")
+        logger.info(
+            f"""Number of unlabeled pixels: {num_unlabeled} from total {labels.size} pixels."""
+            f""" ({num_unlabeled / labels.size:.2%} of the image)"""
+        )
 
     # Ensure that the labeled image is in the optimal format
     labels = labels.astype(np.min_scalar_type(labels))
@@ -674,6 +682,21 @@ def group_labels(
                 reduced_labels.img[labels.img == label] = values[group_counter]
 
     return reduced_labels
+
+
+def reassign_labels(labels: darsia.Image, mapping: dict[int, int]) -> darsia.Image:
+    """
+    Reassign labels according to the provided mapping.
+
+    Args:
+        labels (darsia.Image): labeled image with integer labels.
+        mapping (dict[int, int]): dictionary mapping old labels to new labels.
+    """
+    reassigned_labels = labels.copy()
+    for old_label, new_label in mapping.items():
+        reassigned_labels.img[labels.img == old_label] = new_label
+
+    return reassigned_labels
 
 
 def make_consecutive(labels: darsia.Image) -> darsia.Image:

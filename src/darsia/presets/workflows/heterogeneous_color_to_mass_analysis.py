@@ -1,6 +1,5 @@
 # TODO review noqa F824 usage
 
-import json
 import logging
 from pathlib import Path
 from typing import Tuple
@@ -12,9 +11,20 @@ from matplotlib.widgets import Button, Slider
 from scipy.optimize import minimize
 
 import darsia
+from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
+from darsia.presets.workflows.basis import label_ids_from_image
+from darsia.presets.workflows.calibration.metadata import (
+    read_calibration_metadata,
+    validate_basis_metadata,
+    write_calibration_metadata,
+)
 from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
+)
+from darsia.signals.color.color_embedding import (
+    ColorEmbeddingBasis,
+    parse_color_embedding_basis,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,6 +45,9 @@ class HeterogeneousColorToMassAnalysis:
         geometry: darsia.ExtrudedPorousGeometry,
         restoration: darsia.Model | None = None,
         ignore_labels: list[int] | None = None,
+        basis: ColorEmbeddingBasis = ColorEmbeddingBasis.LABELS,
+        expert_knowledge_adapter: ExpertKnowledgeAdapter | None = None,
+        contour_smoother: darsia.ContourSmoother | None = None,
     ):
         base_model = darsia.CombinedModel(
             [
@@ -57,7 +70,7 @@ class HeterogeneousColorToMassAnalysis:
         # Define general ConcentrationAnalysis.
         self.color_analysis = darsia.ConcentrationAnalysis(
             base=baseline if color_mode == darsia.ColorMode.RELATIVE else None,
-            restoration=restoration,
+            restoration=None,
             model=base_model,
             labels=labels,
             **config,
@@ -96,6 +109,8 @@ class HeterogeneousColorToMassAnalysis:
         )
 
         self.signal_model = darsia.ConcentrationAnalysis(
+            base=None,
+            restoration=restoration,
             model=signal_model,
             labels=labels,
             **config,
@@ -119,6 +134,12 @@ class HeterogeneousColorToMassAnalysis:
 
         self.color_path_interpretation = color_path_interpretation
         """Color path interpretations for different labels."""
+        self.basis = parse_color_embedding_basis(basis)
+        """Label-space basis used during calibration."""
+        self.expert_knowledge_adapter = expert_knowledge_adapter
+        """Optional adapter constraining saturation/concentration via expert ROIs."""
+        self.contour_smoother = contour_smoother
+        """Optional contour smoother for better visualization of ROIs during calibration."""
 
     @property
     def labels(self) -> darsia.Image:
@@ -140,6 +161,9 @@ class HeterogeneousColorToMassAnalysis:
     ) -> SimpleMassAnalysisResults:
         """Run the mass analysis on a single image."""
         c_aq, s_g = self.flash(pH)
+        if self.expert_knowledge_adapter is not None:
+            c_aq = self.expert_knowledge_adapter.apply(c_aq, "concentration_aq")
+            s_g = self.expert_knowledge_adapter.apply(s_g, "saturation_g")
         mass_analysis_result: SimpleMassAnalysisResults = (
             self.co2_mass_analysis.mass_analysis(
                 c_aq=c_aq,
@@ -486,6 +510,7 @@ class HeterogeneousColorToMassAnalysis:
                     coarse_c_aq > 0.9,
                     coarse_s_g > 0.05,
                 ],
+                contour_smoother=self.contour_smoother,
                 color=[
                     (255, 0, 0),
                     (255, 0, 0),
@@ -1010,6 +1035,7 @@ class HeterogeneousColorToMassAnalysis:
                             coarse_c_aq > 0.9,
                             coarse_s_g > sliders_threshold[1].val,
                         ],
+                        contour_smoother=self.contour_smoother,
                         color=[
                             (255, 0, 0),
                             (255, 0, 0),
@@ -1187,6 +1213,7 @@ class HeterogeneousColorToMassAnalysis:
                             coarse_c_aq > 0.9,
                             coarse_s_g > sliders_threshold[1].val,
                         ],
+                        contour_smoother=self.contour_smoother,
                         color=[
                             (255, 0, 0),
                             (255, 0, 0),
@@ -1961,6 +1988,7 @@ class HeterogeneousColorToMassAnalysis:
                                 coarse_c_aq > 0.9,
                                 coarse_s_g > sliders_threshold[1].val,
                             ],
+                            contour_smoother=self.contour_smoother,
                             color=[
                                 (255, 0, 0),
                                 (255, 0, 0),
@@ -1986,17 +2014,17 @@ class HeterogeneousColorToMassAnalysis:
                             signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
 
                         # Update flash cut-off and max value lines
-                        signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
-                        signal_function_g_max_y.set_ydata(self.flash.max_value_g)
-                        signal_function_g_min_y.set_ydata(self.flash.min_value_g)
+                        signal_function_aq_max_y.set_ydata([self.flash.max_value_aq])
+                        signal_function_g_max_y.set_ydata([self.flash.max_value_g])
+                        signal_function_g_min_y.set_ydata([self.flash.min_value_g])
                         aq_max_x = signal_func.inverse(self.flash.max_value_aq)
                         aq_min_x = signal_func.inverse(self.flash.min_value_aq)
                         g_max_x = signal_func.inverse(self.flash.max_value_g)
                         g_min_x = signal_func.inverse(self.flash.min_value_g)
-                        signal_function_aq_max_x.set_xdata(aq_max_x)
-                        signal_function_aq_min_x.set_xdata(aq_min_x)
-                        signal_function_g_max_x.set_xdata(g_max_x)
-                        signal_function_g_min_x.set_xdata(g_min_x)
+                        signal_function_aq_max_x.set_xdata([aq_max_x])
+                        signal_function_aq_min_x.set_xdata([aq_min_x])
+                        signal_function_g_max_x.set_xdata([g_max_x])
+                        signal_function_g_min_x.set_xdata([g_min_x])
 
                         # Update the position of the annotaion
                         ax_signal_function.texts[0].set_position(
@@ -2104,6 +2132,7 @@ class HeterogeneousColorToMassAnalysis:
                                 coarse_c_aq > 0.9,
                                 coarse_s_g > sliders_threshold[1].val,
                             ],
+                            contour_smoother=self.contour_smoother,
                             color=[
                                 (255, 0, 0),
                                 (255, 0, 0),
@@ -2326,17 +2355,17 @@ class HeterogeneousColorToMassAnalysis:
                         signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
 
                         # Update flash cut-off and max value lines
-                        signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
-                        signal_function_g_max_y.set_ydata(self.flash.max_value_g)
-                        signal_function_g_min_y.set_ydata(self.flash.min_value_g)
+                        signal_function_aq_max_y.set_ydata([self.flash.max_value_aq])
+                        signal_function_g_max_y.set_ydata([self.flash.max_value_g])
+                        signal_function_g_min_y.set_ydata([self.flash.min_value_g])
                         aq_max_x = signal_func.inverse(self.flash.max_value_aq)
                         aq_min_x = signal_func.inverse(self.flash.min_value_aq)
                         g_max_x = signal_func.inverse(self.flash.max_value_g)
                         g_min_x = signal_func.inverse(self.flash.min_value_g)
-                        signal_function_aq_max_x.set_xdata(aq_max_x)
-                        signal_function_aq_min_x.set_xdata(aq_min_x)
-                        signal_function_g_max_x.set_xdata(g_max_x)
-                        signal_function_g_min_x.set_xdata(g_min_x)
+                        signal_function_aq_max_x.set_xdata([aq_max_x])
+                        signal_function_aq_min_x.set_xdata([aq_min_x])
+                        signal_function_g_max_x.set_xdata([g_max_x])
+                        signal_function_g_min_x.set_xdata([g_min_x])
 
                         # Update the position of the annotaion
                         ax_signal_function.texts[0].set_position(
@@ -2423,6 +2452,7 @@ class HeterogeneousColorToMassAnalysis:
                                 coarse_c_aq > 0.9,
                                 coarse_s_g > sliders_threshold[1].val,
                             ],
+                            contour_smoother=self.contour_smoother,
                             color=[
                                 (255, 0, 0),
                                 (255, 0, 0),
@@ -2787,12 +2817,19 @@ class HeterogeneousColorToMassAnalysis:
             int(label) for label in self.signal_model.model[1].ignore_labels
         ]
 
+        label_ids = label_ids_from_image(self.labels)
         metadata = {
             "color_mode": color_mode,
             "ignore_labels": ignore_labels,
+            "basis": self.basis.value,
+            "label_ids": label_ids,
         }
-        with open(folder / "metadata.json", "w") as f:
-            json.dump(metadata, f)
+        write_calibration_metadata(
+            folder / "metadata.json",
+            basis=self.basis,
+            label_ids=label_ids,
+            extra=metadata,
+        )
 
     @classmethod
     def load(
@@ -2803,6 +2840,9 @@ class HeterogeneousColorToMassAnalysis:
         co2_mass_analysis: darsia.CO2MassAnalysis,
         geometry: darsia.ExtrudedPorousGeometry,
         restoration: darsia.Model | None = None,
+        basis: ColorEmbeddingBasis = ColorEmbeddingBasis.LABELS,
+        expert_knowledge_adapter: ExpertKnowledgeAdapter | None = None,
+        contour_smoother: darsia.ContourSmoother | None = None,
     ) -> "HeterogeneousColorToMassAnalysis":
         """Load the calibration data from json file.
 
@@ -2829,11 +2869,23 @@ class HeterogeneousColorToMassAnalysis:
         flash = darsia.SimpleFlash.load(folder / "flash" / "flash")
 
         metadata_path = folder / "metadata.json"
-        if metadata_path.exists():
-            with open(metadata_path, "r") as f:
-                metadata = json.load(f)
-            color_mode = darsia.ColorMode(metadata["color_mode"])
-            ignore_labels = metadata["ignore_labels"]
+        metadata = read_calibration_metadata(metadata_path)
+        validate_basis_metadata(
+            metadata=metadata,
+            expected_basis=parse_color_embedding_basis(basis),
+            expected_label_ids=label_ids_from_image(labels),
+            artifact="color_to_mass",
+        )
+        color_mode = darsia.ColorMode.RELATIVE
+        ignore_labels = []
+        parsed_basis = parse_color_embedding_basis(basis)
+        if metadata is not None:
+            if "color_mode" in metadata:
+                color_mode = darsia.ColorMode(metadata["color_mode"])
+            if "ignore_labels" in metadata:
+                ignore_labels = metadata["ignore_labels"]
+            if "basis" in metadata:
+                parsed_basis = parse_color_embedding_basis(metadata["basis"])
 
         return cls(
             baseline=baseline,
@@ -2846,4 +2898,7 @@ class HeterogeneousColorToMassAnalysis:
             geometry=geometry,
             restoration=restoration,
             ignore_labels=ignore_labels,
+            basis=parsed_basis,
+            expert_knowledge_adapter=expert_knowledge_adapter,
+            contour_smoother=contour_smoother,
         )

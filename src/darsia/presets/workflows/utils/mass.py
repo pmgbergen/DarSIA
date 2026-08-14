@@ -1,5 +1,6 @@
 """Load data from FluidFlowerConfig experiments."""
 
+import os
 from typing import Literal
 
 import darsia
@@ -31,7 +32,9 @@ def load_data(
         folder = config.analysis.mass.folder
     else:
         raise ValueError(f"Data type {data} not recognized.")
-    available_files = sorted(folder.glob("*.npz"), key=lambda x: x.name)
+    available_files = sorted(
+        folder / name for name in os.listdir(folder) if name.endswith(".npz")
+    )
 
     # Fetch experiment protocol
     experiment = darsia.ProtocolledExperiment.init_from_config(config)

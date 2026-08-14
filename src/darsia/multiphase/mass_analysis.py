@@ -12,6 +12,8 @@ from scipy import interpolate
 
 import darsia
 
+EPSILON = 1e-12
+
 
 class CO2MassAnalysis:
     """Interpolation routines, based on NIST data."""
@@ -399,10 +401,54 @@ class CO2MassAnalysis:
             color_signal=None,  # Exclude! TODO
         )
 
-        # mass=darsia.full_like(c_aq, mass_g_array + mass_aq_array)
-        # mass_g=darsia.full_like(c_aq, mass_g_array)
-        # mass_aq=darsia.full_like(c_aq, mass_aq_array)
-        # return mass, mass_g, mass_aq
+    def inverse_mass_analysis(
+        self, mass: darsia.Image
+    ) -> "darsia.SimpleMassAnalysisResults":
+        """Determine phase maps from a total mass map and recompute components.
+
+        Args:
+            mass (darsia.Image): Total CO2 mass map.
+
+        Returns:
+            darsia.SimpleMassAnalysisResults: Reconstructed concentrations, saturation,
+                and component masses.
+
+        """
+        solubility = self.solubility_co2
+        density = self.density_gaseous_co2
+
+        c_aq_array = np.divide(
+            mass.img,
+            solubility,
+            out=np.zeros_like(mass.img, dtype=float),
+            where=np.abs(solubility) > EPSILON,
+        )
+        c_aq_array = np.clip(c_aq_array, 0.0, 1.0)
+
+        numerator = np.clip(mass.img - solubility, 0.0, None)
+        denominator = density - solubility
+        s_g_array = np.divide(
+            numerator,
+            denominator,
+            out=np.zeros_like(mass.img, dtype=float),
+            where=np.abs(denominator) > EPSILON,
+        )
+        s_g_array = np.clip(s_g_array, 0.0, 1.0)
+
+        mass_g_array = density * s_g_array
+        mass_aq_array = solubility * c_aq_array * np.clip(1 - s_g_array, 0.0, None)
+
+        return darsia.SimpleMassAnalysisResults(
+            name=mass.name,
+            date=mass.date,
+            time=mass.time,
+            mass=darsia.full_like(mass, mass_g_array + mass_aq_array),
+            mass_g=darsia.full_like(mass, mass_g_array),
+            mass_aq=darsia.full_like(mass, mass_aq_array),
+            saturation_g=darsia.full_like(mass, s_g_array),
+            color_signal=None,
+            concentration_aq=darsia.full_like(mass, c_aq_array),
+        )
 
 
 class AdvancedCO2MassAnalysis:
