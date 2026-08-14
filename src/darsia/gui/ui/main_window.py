@@ -188,6 +188,9 @@ class MainWindow(QMainWindow):
             # Skip group dicts (already handled above)
             if isinstance(value, dict) and "checkbox" in value:
                 continue
+            # Skip path_map dicts (handled below)
+            if isinstance(value, dict) and "path_map" in value:
+                continue
             # Skip sub-inputs of unchecked groups
             if key in skip_keys:
                 continue
@@ -223,7 +226,18 @@ class MainWindow(QMainWindow):
                 if hasattr(value, "text"):
                     self.settings_factory.set_value(self.config_dict, key, value.text())
 
-        # Third pass: write all active lists
+        # Third pass: save path_map dicts (key -> value mappings)
+        for key, value in self.settings_inputs.items():
+            if isinstance(value, dict) and "path_map" in value:
+                rows = value["rows"]
+                result = {
+                    k.text(): v.text()
+                    for k, v in rows
+                    if k.text().strip() and v.text().strip()
+                }
+                self.settings_factory.set_value(self.config_dict, key, result)
+
+        # Fourth pass: write all active lists
         for active_list_key, names in group_active_names.items():
             self.settings_factory.set_value(
                 self.config_dict, active_list_key, sorted(names)
@@ -358,10 +372,6 @@ class MainWindow(QMainWindow):
             child = self.settings_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
-
-        # Add a label describing what settings is being shown
-        label = QLabel(f"{action.capitalize()}: Checked specifics - {checked_ids}")
-        self.settings_layout.addWidget(label)
 
         relevant_settings = self.settings_factory.get_relevant_settings(
             action, checked_ids
