@@ -33,6 +33,17 @@ class DepthConfig:
         },
     )
     """Path to the depth map file. Computed under `results` if not given."""
+    target_resolution: tuple[int, int] = field(
+        default=(500, 1000),
+        metadata={
+            "name": "Interpolation resolution",
+            "help": (
+                "Target pixel resolution (height, width) of the grid used when "
+                "interpolating the depth measurements onto the rig."
+            ),
+        },
+    )
+    """Target grid resolution (height, width) for interpolating depth measurements."""
 
     def load(self, path: Path, results: Path | None = None) -> "DepthConfig":
         """Load depth config from a toml file from [section]."""
@@ -45,6 +56,9 @@ class DepthConfig:
             sec, "depth_map", default=default_depth_map, required=False, type_=Path
         )
         assert self.depth_map is not None, "results is required if depth_map is not set"
+        self.target_resolution = _get_key(
+            sec, "resolution", default=(500, 1000), required=False, type_=tuple
+        )
         return self
 
     def error(self):

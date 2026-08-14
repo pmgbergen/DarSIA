@@ -44,7 +44,7 @@ def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> 
 
     # Convert to depth map by interpolation
     proxy_image = darsia.Image(
-        img=np.zeros(config.rig.resolution),
+        img=np.zeros(config.depth.target_resolution),
         width=config.rig.width,
         height=config.rig.height,
         scalar=True,

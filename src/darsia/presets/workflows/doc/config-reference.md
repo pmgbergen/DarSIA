@@ -4,12 +4,12 @@ This is the user-facing map of workflow TOML sections currently loaded by `Fluid
 
 ## Core sections
 - `[data]`: image folder(s), baseline image name, results folder, optional cache toggles.
-- `[rig]`: geometry metadata (`dim`, `width`, `height`, optional `resolution`, optional `path`).
+- `[rig]`: geometry metadata (`dim`, `width`, `height`, optional `path`).
 - `[corrections]`: type/resize/drift/curvature/color/relative_color/illumination settings.
 - `[restoration]`: restoration method and method-specific options.
 - `[labeling]`: colored label image and generated labels artifact.
 - `[facies]`: facies properties and mapping to labels.
-- `[depth]`: depth measurements and depth-map path.
+- `[depth]`: depth measurements, depth-map path, and optional interpolation-resolution for depth-grid construction.
 - `[protocols]`: imaging, injection, blacklist, pressure_temperature inputs and imaging setup mode.
 - `[color]`: centralized color embedding registry (`[color.path.*]`, `[color.range.*]`, `[color.channel.*]`).
 - `[calibration]`: calibration entrypoints (`[calibration.color]`, `[calibration.mass]`).
