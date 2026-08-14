@@ -34,10 +34,12 @@ baseline = "img_0001.JPG"
 results = "{(tmp_path / "results").as_posix()}"
 
 [protocols]
-imaging = "{(tmp_path / "protocols" / "imaging_protocol.csv").as_posix()}"
 injection = "{(tmp_path / "protocols" / "injection_protocol.csv").as_posix()}"
 pressure_temperature = "{(tmp_path / "protocols" / "pressure_temperature_protocol.csv").as_posix()}"
 imaging_mode = "ctime"
+
+[protocols.imaging]
+"{(tmp_path / "images").as_posix()}" = "{(tmp_path / "protocols" / "imaging_protocol.csv").as_posix()}"
 """
 
 
@@ -124,7 +126,7 @@ def test_protocol_config_defaults_to_exif_mode(tmp_path: Path) -> None:
         config_path,
         """
 [protocols]
-imaging = "imaging_protocol.csv"
+injection = "injection_protocol.csv"
 """,
     )
 
