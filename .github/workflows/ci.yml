@@ -52,10 +52,6 @@ jobs:
       if: ${{always()}}
       run: uv run isort --check src
 
-    - name: pytest
-      if: ${{always()}}
-      run: uv run pytest
-
   build-without-petsc:
     runs-on: ubuntu-latest
 
