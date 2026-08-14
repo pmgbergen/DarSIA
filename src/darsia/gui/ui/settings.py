@@ -145,12 +145,14 @@ class SettingsFactory:
         elif setting_type == "fixed_list" and setting_dict.get("list_type") == "string":
             return self.create_fixed_list_string_input(setting_dict)
         elif setting_type == "file":
+            display_name = setting_dict.get("name", setting_dict["key"])
             return self.file_dialog.create_file_chooser(
-                setting_dict["key"], None, False, setting_dict
+                display_name, None, False, setting_dict
             )
         elif setting_type == "folder":
+            display_name = setting_dict.get("name", setting_dict["key"])
             return self.file_dialog.create_file_chooser(
-                setting_dict["key"], None, True, setting_dict
+                display_name, None, True, setting_dict
             )
         elif setting_type == "multi_file":
             return self.file_dialog.create_multi_file_input(setting_dict)
@@ -162,13 +164,14 @@ class SettingsFactory:
 
     def create_simple_input(self, setting_dict):
         """Create a line edit input for numeric or string values."""
-        setting = setting_dict["key"]
-        value = self.get_value(self.main_window.config_dict, setting)
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+        value = self.get_value(self.main_window.config_dict, key)
         if value is None:
             value = setting_dict.get("default")
         setting_container = QWidget()
         setting_layout = QHBoxLayout(setting_container)
-        setting_label = QLabel(setting)
+        setting_label = QLabel(display_name)
         setting_edit = QLineEdit()
         if value is not None:
             setting_edit.setText(str(value))
@@ -185,13 +188,14 @@ class SettingsFactory:
 
     def create_bool_input(self, setting_dict):
         """Create a checkbox input for boolean values."""
-        setting = setting_dict["key"]
-        value = self.get_value(self.main_window.config_dict, setting)
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+        value = self.get_value(self.main_window.config_dict, key)
         if value is None:
             value = setting_dict.get("default")
         setting_container = QWidget()
         setting_layout = QHBoxLayout(setting_container)
-        setting_label = QLabel(setting)
+        setting_label = QLabel(display_name)
         setting_checkbox = QCheckBox()
         if value is not None:
             setting_checkbox.setChecked(bool(value))
@@ -202,13 +206,14 @@ class SettingsFactory:
 
     def create_dropdown_input(self, setting_dict):
         """Create a combobox input with predefined options."""
-        setting = setting_dict["key"]
-        value = self.get_value(self.main_window.config_dict, setting)
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+        value = self.get_value(self.main_window.config_dict, key)
         if value is None:
             value = setting_dict.get("default")
         setting_container = QWidget()
         setting_layout = QHBoxLayout(setting_container)
-        setting_label = QLabel(setting)
+        setting_label = QLabel(display_name)
         options = setting_dict["options"]
         setting_combo = QComboBox()
         setting_combo.addItems([str(option) for option in options])
@@ -226,13 +231,14 @@ class SettingsFactory:
 
     def create_fixed_list_string_input(self, setting_dict):
         """Create a checkbox list for selecting from predefined options."""
-        setting = setting_dict["key"]
-        values = self.get_value(self.main_window.config_dict, setting)
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+        values = self.get_value(self.main_window.config_dict, key)
         if values is None:
             values = setting_dict.get("default")
         setting_container = QWidget()
         setting_layout = QHBoxLayout(setting_container)
-        setting_label = QLabel(setting)
+        setting_label = QLabel(display_name)
         setting_layout.addWidget(setting_label)
         options = setting_dict["options"]
         check_boxes = []
@@ -257,9 +263,10 @@ class SettingsFactory:
         """
         key = setting_dict["key"]  # e.g. "corrections.resize"
         name = key.rsplit(".", 1)[-1]
+        display_name = setting_dict.get("name", name)
         active_list_name = setting_dict.get("active_list_key")
 
-        group_box = QGroupBox(name)
+        group_box = QGroupBox(display_name)
         result = {}
 
         if active_list_name is not None:
