@@ -13,20 +13,20 @@ logger = logging.getLogger(__name__)
 class ProtocolsConfig:
     """Protocol configuration for the setup."""
 
-    imaging: Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]] | None = field(
+    imaging: dict[Path, Path | tuple[Path, str]] | None = field(
         default=None,
         metadata={
             "name": "Imaging protocol",
             "help": (
-                "Path to a single imaging-protocol file, or [file, sheet]. For multiple "
-                "selected folders, use a per-folder mapping under [protocols.imaging] "
-                "(folder path -> file or [file, sheet]) — not yet editable as a GUI form "
-                "field; edit the TOML directly for multi-folder setups."
+                "Table mapping each data folder to its imaging-protocol file, or [file, sheet]. "
+                "Always a table — one row per folder, even with a single folder. "
+                "Note: folder paths must exactly match those in [data].folders; use the 'Browse' button."
             ),
-            "widget": "file",
+            "widget": "path_map",
+            "key_is_directory": True,
         },
     )
-    """Path to imaging protocol, (file, sheet), or per-folder mapping."""
+    """Per-folder mapping from data folder to imaging protocol file, or (file, sheet)."""
     injection: Path | tuple[Path, str] | None = field(
         default=None,
         metadata={
@@ -77,13 +77,16 @@ class ProtocolsConfig:
         sec = _get_section_from_toml(path, "protocols")
         try:
             imaging_protocol = sec["imaging"]
-            if isinstance(imaging_protocol, dict):
-                self.imaging = {
-                    Path(folder): self._parse_protocol_value(protocol)
-                    for folder, protocol in imaging_protocol.items()
-                }
-            else:
-                self.imaging = self._parse_protocol_value(imaging_protocol)
+            if not isinstance(imaging_protocol, dict):
+                raise ValueError(
+                    "[protocols].imaging must be a per-folder table:\n"
+                    '[protocols.imaging]\n"<folder>" = "<path>" or ["<path>", "<sheet>"]\n'
+                    "A bare scalar value is no longer supported."
+                )
+            self.imaging = {
+                Path(folder): self._parse_protocol_value(protocol)
+                for folder, protocol in imaging_protocol.items()
+            }
 
         except KeyError:
             self.imaging = None
