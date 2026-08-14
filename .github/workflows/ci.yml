@@ -33,19 +33,7 @@ jobs:
       with:
         enable-cache: true
 
-    - name: Install petsc dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libhypre-dev libmumps-seq-dev
-        pip install numpy mpi4py
-        PETSC_CONFIGURE_OPTIONS="--download-hypre --download-mumps --download-parmetis --download-ml --download-metis --download-scalapack" pip install petsc petsc4py
-
-    - name: Install DarSIA (with petsc, push only)
-      if: github.event_name == 'push'
-      run: uv sync --extra dev
-
     - name: Install DarSIA
-      if: github.event_name != 'push'
       run: uv sync --extra dev
 
     - name: black
@@ -114,7 +102,7 @@ jobs:
       
   pytest-with-petsc:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     strategy:
       matrix:
