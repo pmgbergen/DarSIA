@@ -66,7 +66,7 @@ Issues = "https://github.com/pmgbergen/DarSIA/issues"
 [project.optional-dependencies]
 dev = [
   "pytest>=7.1",
-  "black==24.10.0",
+  "black==26.3.1",
   "isort",
   "flake8",
   "mypy",
