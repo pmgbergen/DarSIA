@@ -28,19 +28,31 @@ jobs:
         python-version: "3.12"
         architecture: x64
 
-    - name: Install static analysis tools
-      run: pip install black==24.10.0 flake8 isort
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+
+    - name: Install DarSIA
+      run: uv sync --extra dev
 
     - name: black
-      run: black --check src
+      if: ${{ always() }}
+      run: uv run black --check src
 
     - name: flake8
-      run: flake8 src
+      if: ${{ always() }}
+      run: uv run flake8 src
+
+    # - name: mypy
+    #   if: ${{ always() }}
+    #   run: uv run mypy src
 
     - name: isort
-      run: isort --check src
+      if: ${{always()}}
+      run: uv run isort --check src
 
-  pytest-without-petsc:
+  build-without-petsc:
     runs-on: ubuntu-latest
 
     strategy:
@@ -57,24 +69,42 @@ jobs:
         python-version: ${{ matrix.python-version }}
         architecture: x64
 
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        
     - name: Install Qt system libraries
       uses: tlambert03/setup-qt-libs@v1
 
     - name: Install DarSIA
-      run: pip install .[dev]
+      run: uv sync --extra dev
+
+    - name: black
+      if: ${{ always() }}
+      run: uv run black --check src
+
+    - name: flake8
+      if: ${{ always() }}
+      run: uv run flake8 src
+
+    - name: isort
+      if: ${{always()}}
+      run: uv run isort --check src
 
     - name: pytest
-      run: pytest
-
+      if: ${{always()}}
+      run: uv run pytest
+      
   pytest-with-petsc:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     strategy:
       matrix:
         python-version: ["3.12"]
-      fail-fast: false
-
+      fail-fast: true
+      
     steps:
     - uses: actions/checkout@v2
 

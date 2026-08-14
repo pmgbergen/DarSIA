@@ -1,5 +1,6 @@
 """Module for relative color balance correction based on global analysis."""
 
+from pathlib import Path
 from typing import Optional, Union
 from warnings import warn
 
@@ -64,22 +65,51 @@ class RelativeColorCorrection(darsia.BaseCorrection):
 
     # ! ---- I/O ----
 
-    def save(self, path: str) -> None:
+    def save(self, path: Path) -> None:
         """Save the linear approximation incl. the coefficients and meta information."""
-        assert hasattr(self.correction, "coefficients"), "No coefficients to save."
+        path.parent.mkdir(parents=True, exist_ok=True)
+        coefficients = (
+            self.correction.coefficients
+            if hasattr(self.correction, "coefficients")
+            else None
+        )
+        evaluated_correction = (
+            self.evaluated_correction if hasattr(self, "evaluated_correction") else None
+        )
         np.savez(
             path,
-            coefficients=self.correction.coefficients,
+            class_name=type(self).__name__,
+            coefficients=coefficients,
             config=self.config,
+            evaluated_correction=evaluated_correction,
         )
 
-    def load(self, path: str) -> None:
+    def load(self, path: Path) -> None:
         """Load the linear approximation incl. the coefficients and meta information."""
         data = np.load(path, allow_pickle=True)
         self.config = data["config"].item()
         self.correction = self.define_correction()
-        self.correction.coefficients = data["coefficients"]
-        self.setup()
+
+        def _optional_value(key: str):
+            if key not in data.files:
+                return None
+            value = data[key]
+            if (
+                isinstance(value, np.ndarray)
+                and value.shape == ()
+                and value.dtype == object
+            ):
+                value = value.item()
+            return value
+
+        coefficients = _optional_value("coefficients")
+        if coefficients is not None:
+            self.correction.coefficients = coefficients
+        evaluated_correction = _optional_value("evaluated_correction")
+        if evaluated_correction is not None:
+            self.evaluated_correction = evaluated_correction
+        elif self.baseline is not None and coefficients is not None:
+            self.setup()
 
     # ! ---- CORRECTION ----
 
