@@ -26,24 +26,15 @@ class DataConfig:
 
     """
 
-    folder: Path = field(
-        default_factory=Path,
-        metadata={
-            "name": "Folder (single)",
-            "help": "Path to the folder containing image data. Use this OR 'Folders (multi)' below, not both.",
-            "widget": "folder",
-        },
-    )
-    """Path to the folder containing the image data."""
     folders: list[Path] = field(
         default_factory=list,
         metadata={
-            "name": "Folders (multi)",
-            "help": "Paths to multiple folders containing image data, for multi-folder mode.",
-            "widget": "multi_file",
+            "name": "Folders",
+            "help": "Path(s) to folder(s) containing image data. Add/remove folders using the list editor.",
+            "widget": "multi_folder",
         },
     )
-    """Paths to folders containing image data (multi-folder mode)."""
+    """Paths to folders containing image data."""
     format: str = field(
         default="JPG",
         metadata={
@@ -105,6 +96,11 @@ class DataConfig:
     """Optional global data registry loaded from [data.interval.*], [data.time.*],
     and [data.path.*] sub-sections."""
 
+    @property
+    def folder(self) -> Path:
+        """First folder, for single-folder-style consumers (e.g. download.py default)."""
+        return self.folders[0] if self.folders else Path()
+
     def load(
         self,
         path: Path | list[Path],
@@ -113,16 +109,23 @@ class DataConfig:
     ) -> "DataConfig":
         sec = _get_section_from_toml(path, "data")
 
-        # Get folder(s)
+        # Get folder(s) — support both legacy 'folder' (singular) and current 'folders' (plural)
         folder_value = _get_key(sec, "folder", required=False)
         folders_value = _get_key(sec, "folders", required=False)
+
+        # Filter out GUI placeholder junk: "No file chosen" and empty strings
+        PLACEHOLDER = "No file chosen"
+        if folder_value == PLACEHOLDER or folder_value == "":
+            folder_value = None
+        if folders_value == "":
+            folders_value = None
+
         if folder_value is None and folders_value is None:
             raise KeyError("Missing key 'folder' or 'folders' in [data].")
 
         self.folders = []
         if folder_value is not None:
-            self.folder = Path(folder_value)
-            self.folders.append(self.folder)
+            self.folders.append(Path(folder_value))
         if folders_value is not None:
             if not isinstance(folders_value, list):
                 raise ValueError("[data].folders must be a list of paths.")
@@ -132,8 +135,6 @@ class DataConfig:
             for folder in parsed_folders:
                 if folder not in self.folders:
                     self.folders.append(folder)
-            if folder_value is None:
-                self.folder = self.folders[0]
 
         if require_data:
             for folder in self.folders:
@@ -223,9 +224,7 @@ class DataConfig:
         has_registry_sections = any(key in sec for key in ("interval", "time", "path"))
         if has_registry_sections:
             try:
-                self.registry = DataRegistry().load(
-                    sec, self.folders if len(self.folders) > 1 else self.folder
-                )
+                self.registry = DataRegistry().load(sec, self.folders)
             except Exception as e:
                 logger.warning(f"Failed to load DataRegistry: {e}")
                 raise ValueError(
