@@ -60,39 +60,30 @@ def _protocol_path(
 
 
 def _imaging_protocol_paths(
-    protocol: Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]] | None,
+    protocol: dict[Path, Path | tuple[Path, str]] | None,
     folders: list[Path],
 ) -> dict[Path, Path]:
     if protocol is None:
         return {}
-    if isinstance(protocol, dict):
-        protocol_map = {
-            Path(folder): _protocol_path(value, "imaging")
-            for folder, value in protocol.items()
-        }
-        missing = [folder for folder in folders if folder not in protocol_map]
-        extra = [folder for folder in protocol_map if folder not in folders]
-        if missing:
-            raise ValueError(
-                "Missing imaging protocol entries for folder(s): "
-                + ", ".join(str(folder) for folder in missing)
-            )
-        if extra:
-            raise ValueError(
-                "Imaging protocol configured for unknown folder(s): "
-                + ", ".join(str(folder) for folder in extra)
-            )
-        return {
-            folder: path for folder, path in protocol_map.items() if path is not None
-        }
-
-    if len(folders) > 1:
+    protocol_map = {
+        Path(folder): _protocol_path(value, "imaging")
+        for folder, value in protocol.items()
+    }
+    missing = [folder for folder in folders if folder not in protocol_map]
+    extra = [folder for folder in protocol_map if folder not in folders]
+    if missing:
         raise ValueError(
-            "Multiple [data].folders require [protocols].imaging to be a per-folder table."
+            "Missing imaging protocol entries for folder(s): "
+            + ", ".join(str(folder) for folder in missing)
         )
-    single_path = _protocol_path(protocol, "imaging")
-    assert single_path is not None
-    return {folders[0]: single_path}
+    if extra:
+        raise ValueError(
+            "Imaging protocol configured for unknown folder(s): "
+            + ", ".join(str(folder) for folder in extra)
+        )
+    return {
+        folder: path for folder, path in protocol_map.items() if path is not None
+    }
 
 
 def _assert_csv(path: Path, key: str) -> None:
