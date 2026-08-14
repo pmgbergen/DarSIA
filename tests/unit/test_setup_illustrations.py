@@ -131,8 +131,9 @@ def test_setup_depth_map_exports_depth_jpg(monkeypatch, tmp_path: Path) -> None:
         depth=SimpleNamespace(
             measurements=tmp_path / "depth.csv",
             depth_map=depth_map_path,
+            target_resolution=(3, 4),
         ),
-        rig=SimpleNamespace(resolution=(3, 4), width=2.0, height=1.0, dim=2),
+        rig=SimpleNamespace(width=2.0, height=1.0, dim=2),
         check=lambda *_args: None,
     )
     depth_map = DummyImage(np.arange(12, dtype=float).reshape((3, 4)))
