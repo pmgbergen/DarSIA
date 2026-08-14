@@ -29,7 +29,18 @@ imaging_mode = "exif" # or "ctime"
 
 Default is `"exif"` to match the setup protocol extractor behavior.
 
-For multi-folder input via `[data].folders`, configure one imaging protocol per folder:
+`[protocols].imaging` is always a per-folder table — one row per entry in `[data].folders`,
+even with a single folder. Folder keys must exactly match `[data].folders`:
+
+```toml
+[data]
+folders = ["/data/run_a"]
+
+[protocols.imaging]
+"/data/run_a" = "/protocols/imaging_a.csv"
+```
+
+For multiple folders, add one row per folder:
 
 ```toml
 [data]
