@@ -82,13 +82,15 @@ class FileDialogHelper:
         chooser_layout.addStretch()
         return chooser_container, path_label
 
-    def create_multi_file_input(self, setting_dict):
-        """Create a variable-size file list input with add/remove buttons.
+    def create_multi_file_input(self, setting_dict, is_directory=False):
+        """Create a variable-size file/folder list input with add/remove buttons.
 
         Parameters
         ----------
         setting_dict : dict
             Setting configuration dictionary with 'key' field
+        is_directory : bool, optional
+            If True, opens directory selection dialog; if False, opens file dialog
 
         Returns
         -------
@@ -111,7 +113,8 @@ class FileDialogHelper:
         header_layout = QHBoxLayout(header_container)
         header_layout.setContentsMargins(0, 0, 0, 0)
         setting_label = QLabel(display_name)
-        add_button = QPushButton("Add file")
+        add_button_text = "Add folder" if is_directory else "Add file"
+        add_button = QPushButton(add_button_text)
         header_layout.addWidget(setting_label)
         header_layout.addStretch()
         header_layout.addWidget(add_button)
@@ -138,19 +141,27 @@ class FileDialogHelper:
             browse_button = QPushButton("Browse")
             browse_button.setMinimumWidth(100)
             path_edit = QLineEdit()
-            path_edit.setPlaceholderText("Select a file or type a path")
+            placeholder = "Select a folder or type a path" if is_directory else "Select a file or type a path"
+            path_edit.setPlaceholderText(placeholder)
             if initial_value:
                 path_edit.setText(str(initial_value))
             remove_button = QPushButton("Remove")
             remove_button.setMaximumWidth(80)
 
             def browse():
-                selected_path, _ = QFileDialog.getOpenFileName(
-                    self.main_window,
-                    f"Select file for {display_name}",
-                    path_edit.text() if path_edit.text() else "",
-                    "All Files (*)",
-                )
+                if is_directory:
+                    selected_path = QFileDialog.getExistingDirectory(
+                        self.main_window,
+                        f"Select folder for {display_name}",
+                        path_edit.text() if path_edit.text() else "",
+                    )
+                else:
+                    selected_path, _ = QFileDialog.getOpenFileName(
+                        self.main_window,
+                        f"Select file for {display_name}",
+                        path_edit.text() if path_edit.text() else "",
+                        "All Files (*)",
+                    )
                 if selected_path:
                     path_edit.setText(selected_path)
 
