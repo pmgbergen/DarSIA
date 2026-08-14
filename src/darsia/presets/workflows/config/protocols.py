@@ -1,7 +1,7 @@
 """Protocol configuration for the setup."""
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .utils import _get_section_from_toml
@@ -13,25 +13,65 @@ logger = logging.getLogger(__name__)
 class ProtocolsConfig:
     """Protocol configuration for the setup."""
 
-    imaging: Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]] | None = None
+    imaging: Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]] | None = field(
+        default=None,
+        metadata={
+            "name": "Imaging protocol",
+            "help": (
+                "Path to a single imaging-protocol file, or [file, sheet]. For multiple "
+                "selected folders, use a per-folder mapping under [protocols.imaging] "
+                "(folder path -> file or [file, sheet]) — not yet editable as a GUI form "
+                "field; edit the TOML directly for multi-folder setups."
+            ),
+            "widget": "file",
+        },
+    )
     """Path to imaging protocol, (file, sheet), or per-folder mapping."""
-    injection: Path | tuple[Path, str] | None = None
+    injection: Path | tuple[Path, str] | None = field(
+        default=None,
+        metadata={
+            "name": "Injection protocol",
+            "help": "Path to the injection-protocol file, or [file, sheet].",
+            "widget": "file",
+        },
+    )
     """Path to the injection protocol file or (file, sheet)."""
-    blacklist: Path | tuple[Path, str] | None = None
+    blacklist: Path | tuple[Path, str] | None = field(
+        default=None,
+        metadata={
+            "name": "Blacklist",
+            "help": "Path to a file listing images to exclude, or [file, sheet].",
+            "widget": "file",
+        },
+    )
     """Path to the blacklist protocol file or (file, sheet)."""
-    pressure_temperature: Path | tuple[Path, str] | None = None
+    pressure_temperature: Path | tuple[Path, str] | None = field(
+        default=None,
+        metadata={
+            "name": "Pressure/Temperature protocol",
+            "help": "Path to the pressure-temperature protocol file, or [file, sheet].",
+            "widget": "file",
+        },
+    )
     """Path to the pressure-temperature protocol file or (file, sheet)."""
-    imaging_mode: str = "exif"
+    imaging_mode: str = field(
+        default="exif",
+        metadata={
+            "name": "Imaging mode",
+            "help": "Datetime extraction mode for imaging protocol setup.",
+            "options": ["exif", "ctime"],
+        },
+    )
     """Datetime extraction mode for imaging protocol setup: 'exif' or 'ctime'."""
 
     def _parse_protocol_value(
-        self, value: str | list[str] | tuple[str, str]
+        self, value: str | Path | list[str] | tuple[str, str]
     ) -> Path | tuple[Path, str]:
         if isinstance(value, (list, tuple)):
             return (Path(value[0]), value[1])
-        if isinstance(value, str):
+        if isinstance(value, (str, Path)):
             return Path(value)
-        raise ValueError("Protocol value must be a string or a list of [path, sheet].")
+        raise ValueError("Protocol value must be a string, Path, or a list of [path, sheet].")
 
     def load(self, path: Path) -> "ProtocolsConfig":
         sec = _get_section_from_toml(path, "protocols")
