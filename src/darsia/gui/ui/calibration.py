@@ -43,7 +43,6 @@ class CalibrationTab:
             self.calibration_checkboxes
         )
         self.main_window.display_settings("calibration", checked_ids)
-        self.main_window.print_log(f"Calibration: Checked specifics - {checked_ids}")
 
     def on_run_clicked(self):
         """Handle run button click."""
