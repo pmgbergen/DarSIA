@@ -71,7 +71,9 @@ class ProtocolsConfig:
             return (Path(value[0]), value[1])
         if isinstance(value, (str, Path)):
             return Path(value)
-        raise ValueError("Protocol value must be a string, Path, or a list of [path, sheet].")
+        raise ValueError(
+            "Protocol value must be a string, Path, or a list of [path, sheet]."
+        )
 
     def load(self, path: Path) -> "ProtocolsConfig":
         sec = _get_section_from_toml(path, "protocols")

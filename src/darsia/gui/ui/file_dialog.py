@@ -141,7 +141,11 @@ class FileDialogHelper:
             browse_button = QPushButton("Browse")
             browse_button.setMinimumWidth(100)
             path_edit = QLineEdit()
-            placeholder = "Select a folder or type a path" if is_directory else "Select a file or type a path"
+            placeholder = (
+                "Select a folder or type a path"
+                if is_directory
+                else "Select a file or type a path"
+            )
             path_edit.setPlaceholderText(placeholder)
             if initial_value:
                 path_edit.setText(str(initial_value))
@@ -266,7 +270,11 @@ class FileDialogHelper:
             key_browse_button = QPushButton("Browse")
             key_browse_button.setMaximumWidth(80)
             key_edit = QLineEdit()
-            key_placeholder = "Select folder or type path" if key_is_directory else "Select file or type path"
+            key_placeholder = (
+                "Select folder or type path"
+                if key_is_directory
+                else "Select file or type path"
+            )
             key_edit.setPlaceholderText(key_placeholder)
             if initial_key:
                 key_edit.setText(str(initial_key))
@@ -275,7 +283,11 @@ class FileDialogHelper:
             value_browse_button = QPushButton("Browse")
             value_browse_button.setMaximumWidth(80)
             value_edit = QLineEdit()
-            value_placeholder = "Select folder or type path" if value_is_directory else "Select file or type path"
+            value_placeholder = (
+                "Select folder or type path"
+                if value_is_directory
+                else "Select file or type path"
+            )
             value_edit.setPlaceholderText(value_placeholder)
             if initial_value:
                 value_edit.setText(str(initial_value))

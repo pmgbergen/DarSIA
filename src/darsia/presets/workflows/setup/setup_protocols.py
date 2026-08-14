@@ -81,9 +81,7 @@ def _imaging_protocol_paths(
             "Imaging protocol configured for unknown folder(s): "
             + ", ".join(str(folder) for folder in extra)
         )
-    return {
-        folder: path for folder, path in protocol_map.items() if path is not None
-    }
+    return {folder: path for folder, path in protocol_map.items() if path is not None}
 
 
 def _assert_csv(path: Path, key: str) -> None:
