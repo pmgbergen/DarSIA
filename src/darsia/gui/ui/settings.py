@@ -156,6 +156,16 @@ class SettingsFactory:
             )
         elif setting_type == "multi_file":
             return self.file_dialog.create_multi_file_input(setting_dict)
+        elif setting_type == "multi_folder":
+            return self.file_dialog.create_multi_file_input(setting_dict, is_directory=True)
+        elif setting_type == "path_map":
+            key_is_directory = setting_dict.get("key_is_directory", False)
+            value_is_directory = setting_dict.get("value_is_directory", False)
+            return self.file_dialog.create_path_map_input(
+                setting_dict,
+                key_is_directory=key_is_directory,
+                value_is_directory=value_is_directory,
+            )
         else:
             self.main_window.print_log(
                 f"Setting type {setting_type} not supported yet, using simple input"
