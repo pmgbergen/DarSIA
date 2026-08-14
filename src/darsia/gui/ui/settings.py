@@ -157,7 +157,9 @@ class SettingsFactory:
         elif setting_type == "multi_file":
             return self.file_dialog.create_multi_file_input(setting_dict)
         elif setting_type == "multi_folder":
-            return self.file_dialog.create_multi_file_input(setting_dict, is_directory=True)
+            return self.file_dialog.create_multi_file_input(
+                setting_dict, is_directory=True
+            )
         elif setting_type == "path_map":
             key_is_directory = setting_dict.get("key_is_directory", False)
             value_is_directory = setting_dict.get("value_is_directory", False)
