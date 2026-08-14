@@ -18,9 +18,10 @@ class ProtocolsConfig:
         metadata={
             "name": "Imaging protocol",
             "help": (
-                "Table mapping each data folder to its imaging-protocol file, or [file, sheet]. "
-                "Always a table — one row per folder, even with a single folder. "
-                "Note: folder paths must exactly match those in [data].folders; use the 'Browse' button."
+                "Table mapping each data folder to its imaging-protocol file, "
+                "or [file, sheet]. Always a table — one row per folder, even "
+                "with a single folder. Note: folder paths must exactly match "
+                "those in [data].folders; use the 'Browse' button."
             ),
             "widget": "path_map",
             "key_is_directory": True,
@@ -125,4 +126,4 @@ class ProtocolsConfig:
         return self
 
     def error(self):
-        raise ValueError(f"Use [protocols] in the config file to load protocols.")
+        raise ValueError("Use [protocols] in the config file to load protocols.")

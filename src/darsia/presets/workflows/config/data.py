@@ -30,7 +30,10 @@ class DataConfig:
         default_factory=list,
         metadata={
             "name": "Folders",
-            "help": "Path(s) to folder(s) containing image data. Add/remove folders using the list editor.",
+            "help": (
+                """Path(s) to folder(s) containing image data. """
+                """Add/remove folders using the list editor."""
+            ),
             "widget": "multi_folder",
         },
     )
@@ -109,7 +112,8 @@ class DataConfig:
     ) -> "DataConfig":
         sec = _get_section_from_toml(path, "data")
 
-        # Get folder(s) — support both legacy 'folder' (singular) and current 'folders' (plural)
+        # Get folder(s) — support both legacy 'folder' (singular) and current
+        # 'folders' (plural)
         folder_value = _get_key(sec, "folder", required=False)
         folders_value = _get_key(sec, "folders", required=False)
 
