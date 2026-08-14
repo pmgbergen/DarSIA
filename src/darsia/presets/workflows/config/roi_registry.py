@@ -49,7 +49,7 @@ class RoiRegistry:
         """Add a single ROI entry to the registry without overwriting existing entries.
 
         This is useful when inline ROI definitions (e.g. from a
-        ``[color_paths.roi.*]`` TOML sub-section) need to be injected into the
+        ``[color.path.<id>.roi.*]`` TOML sub-section) need to be injected into the
         shared registry so that they can later be resolved by key name.
 
         Args:

@@ -11,6 +11,7 @@ This section documents the maintained presets/workflows interface in DarSIA.
 - [Setup workflow](./workflow-setup.md)
 - [Calibration workflow](./workflow-calibration.md)
 - [Analysis workflow](./workflow-analysis.md)
+- [Helper workflow](./workflow-helper.md)
 - [Analysis deep-dive](./analysis.md)
 - [Finger analysis](./finger_analysis.md)
 - [Comparison workflow](./workflow-comparison.md)

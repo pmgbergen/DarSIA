@@ -1,9 +1,19 @@
 """Configuration for segmentation."""
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
+import darsia
+from darsia.presets.workflows.mode_resolution import validate_mode_syntax
+
+from .contour_smoother import SavitzkyGolaySmootherConfig
 from .utils import _get_key
+
+if TYPE_CHECKING:
+    from .color_embedding_registry import ColorEmbeddingRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -79,10 +89,17 @@ class SegmentationConfig:
         default_factory=SegmentationValueLabelsConfig
     )
     """Contour value labels configuration."""
+    contour_smoother: darsia.ContourSmoother | None = None
+    """Optional contour smoother for finger contours."""
 
-    def load(self, sec: dict) -> "SegmentationConfig":
+    def load(
+        self, sec: dict, color_embedding_registry: ColorEmbeddingRegistry | None = None
+    ) -> "SegmentationConfig":
         self.label = _get_key(sec, "label", required=True, type_=str)
         self.mode = _get_key(sec, "mode", required=True, type_=str)
+        validate_mode_syntax(
+            self.mode, color_embedding_registry, "analysis.segmentation.mode"
+        )
         self.thresholds = _get_key(sec, "thresholds", required=True, type_=list)
         self.color = _get_key(sec, "color", required=True, type_=list)
         self.alpha = _get_key(sec, "alpha", required=False, type_=list)
@@ -95,6 +112,29 @@ class SegmentationConfig:
         # flat keys in [analysis.segmentation].
         values_sec = sec if not isinstance(sec.get("values"), dict) else sec["values"]
         self.values = SegmentationValueLabelsConfig().load(values_sec, self.color)
+
+        # Load contour smoother
+        contour_smoother = _get_key(
+            sec, "contour_smoother", required=False, default="none", type_=str
+        ).lower()
+        if contour_smoother == "none":
+            self.contour_smoother = None
+        else:
+            smoother_options_sec = sec.get("contour_smoother_options", {})
+
+            if contour_smoother == "savitzky_golay":
+                smoother_options = SavitzkyGolaySmootherConfig().load(
+                    smoother_options_sec
+                )
+                self.contour_smoother = darsia.SavitzkyGolaySmoother(
+                    window_length=smoother_options.window_length,
+                    polyorder=smoother_options.polyorder,
+                )
+            else:
+                raise NotImplementedError(
+                    f"Unsupported contour smoother type: {contour_smoother}"
+                )
+
         return self
 
     def error(self):

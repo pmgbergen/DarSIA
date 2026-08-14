@@ -273,6 +273,40 @@ class IlluminationCorrectionConfig:
 
 
 @dataclass
+class PatchwiseIlluminationCorrectionConfig:
+    """Configuration for patchwise illumination correction."""
+
+    image_path: Path = Path()
+    """Path to image for patchwise illumination correction."""
+    baseline_paths: list[Path] = field(default_factory=list)
+    """Paths to baseline images for patchwise illumination correction."""
+    limit: int = 1450
+    """Limit in pixels to exclude from top of image for patch sampling."""
+    nw: int = 1000
+    """Number of patches in width direction for patchwise illumination correction."""
+    eps: float = 1e-6
+    """Small constant to avoid division by zero in patchwise illumination correction."""
+
+    def load(self, sec: dict) -> "PatchwiseIlluminationCorrectionConfig":
+        """Load patchwise illumination correction configuration from a dictionary.
+
+        Args:
+            sec: Dictionary containing patchwise illumination correction settings.
+
+         Returns:
+            self with loaded configuration
+
+        """
+        self.image_path = Path(sec.get("image_path", self.image_path))
+        _baseline_paths = sec.get("baseline_paths", self.baseline_paths)
+        self.baseline_paths = [Path(p) for p in _baseline_paths]
+        self.limit = sec.get("limit", self.limit)
+        self.nw = sec.get("nw", self.nw)
+        self.eps = sec.get("eps", self.eps)
+        return self
+
+
+@dataclass
 class CorrectionsConfig:
     """Configuration for image corrections.
 
@@ -294,6 +328,9 @@ class CorrectionsConfig:
         relative_color: Enable relative color correction based on color checker
             (default: False). Boolean flag for enabling/disabling.
         illumination: Enable illumination correction.
+        patchwise_illumination: PatchwiseIlluminationCorrectionConfig for patchwise
+            illumination correction (default: None). Corrects illumination variations
+            across the image using patchwise interpolation.
 
     """
 
@@ -305,6 +342,7 @@ class CorrectionsConfig:
     color: ColorCorrectionConfig | None = None
     relative_color: bool | RelativeColorCorrectionConfig = False
     illumination: IlluminationCorrectionConfig | None = None
+    patchwise_illumination: PatchwiseIlluminationCorrectionConfig | None = None
 
     def load(self, path: Path | list[Path]) -> "CorrectionsConfig":
         """Load correction configuration from TOML file.
@@ -354,6 +392,14 @@ class CorrectionsConfig:
         illumination_sec = sec.get("illumination")
         if illumination_sec:
             self.illumination = IlluminationCorrectionConfig().load(illumination_sec)
+
+        patchwise_illumination_sec = sec.get("patchwise_illumination")
+        if patchwise_illumination_sec:
+            self.patchwise_illumination = PatchwiseIlluminationCorrectionConfig().load(
+                patchwise_illumination_sec
+            )
+
+        print(self.patchwise_illumination)
 
         # Identify active corrections
         active_corrections = sec.get("active_corrections", None)

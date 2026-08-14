@@ -35,7 +35,7 @@ Example TOML structure::
 
 Tasks reference entries by key::
 
-    [color_paths]
+    [color.path.calibration]
     data = ["calibration1"]
 
     [analysis.mass]
@@ -48,12 +48,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .time_data import (
-    ImagePathData,
-    ImageTimeData,
-    ImageTimeIntervalData,
-    TimeData,
-)
+from .time_data import ImageTimeData, ImageTimeIntervalData, PathData, TimeData
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +63,9 @@ class DataRegistry:
 
     _registry: dict[str, TimeData] = field(default_factory=dict)
 
-    def load(self, sec: dict, data_folder: Path | None = None) -> "DataRegistry":
+    def load(
+        self, sec: dict, data_folder: Path | list[Path] | None = None
+    ) -> "DataRegistry":
         """Populate the registry from a ``[data]`` config section dict.
 
         Args:
@@ -115,7 +112,7 @@ class DataRegistry:
             for key, entry in path_sec.items():
                 path_keys.add(key)
                 td = TimeData()
-                td.image_path_data = ImagePathData().load(
+                td.image_path_data = PathData().load(
                     {"path": {key: entry}}, data_folder
                 )
                 td._combine_data()
@@ -181,6 +178,10 @@ class DataRegistry:
             for interval_key, interval in entry.image_interval_data.intervals.items():
                 merged.image_interval_data.intervals[interval_key] = interval
 
+            # Merge image_window_data
+            for window_key, window in entry.image_interval_data.windows.items():
+                merged.image_interval_data.windows[window_key] = window
+
         # Deduplicate and sort paths
         merged.image_path_data.paths = sorted(set(merged.image_path_data.paths))
 
@@ -189,6 +190,12 @@ class DataRegistry:
         merged.image_time_data.times_with_tolerance = sorted(
             set(merged.image_time_data.times_with_tolerance), key=lambda x: x[0]
         )
+
+        # Deduplicate windows (by key)
+        merged.image_interval_data.windows = {
+            key: merged.image_interval_data.windows[key]
+            for key in sorted(merged.image_interval_data.windows)
+        }
 
         # Rebuild combined fields
         merged._combine_data()

@@ -1,0 +1,16 @@
+
+[settings.setup.all]
+content = [
+    {key = "rig.test.int", type = "int"},
+    {key = "rig.test.float", type = "float"},
+    {key = "rig.test.string", type = "string", options = ["option1", "option2", "option3"]},
+    {key = "rig.test.bool", type = "bool"},
+    {key = "rig.test.fixed_list_string", type = "fixed_list", list_type="string", options = ["item1", "item2", "item3"]},
+    {key = "rig.test.fixed_list_int", type = "list", list_type="int"},
+    {key = "rig.test.list", type = "list", list_type = "float"},
+    {key = "rig.test.single_file", type = "file"},
+    {key = "rig.test.single_folder", type = "folder"},
+    {key = "rig.test.multi_file", type = "multi_file"}
+
+]
+

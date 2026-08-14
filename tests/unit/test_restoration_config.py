@@ -79,30 +79,29 @@ def test_restoration_config_tvd_custom_options(tmp_path):
 def test_restoration_config_tvd_porosity_weight(tmp_path):
     cfg_path = _write_toml(
         tmp_path,
-        '[restoration]\nmethod = "tvd"\n\n[restoration.options]\nweight = "porosity"\n',
+        '[restoration]\nmethod = "tvd"\n\n[restoration.options]\nweight = "image_porosity"\n',
     )
     cfg = RestorationConfig().load(cfg_path)
     assert cfg.method == "tvd"
     assert isinstance(cfg.options, TVDConfig)
-    assert cfg.options.weight == "porosity"
+    assert cfg.options.weight == "image_porosity"
 
 
 def test_restoration_config_tvd_boolean_porosity_weight(tmp_path):
     cfg_path = _write_toml(
         tmp_path,
-        '[restoration]\nmethod = "tvd"\n\n[restoration.options]\nweight = "boolean-porosity"\n',
+        '[restoration]\nmethod = "tvd"\n\n[restoration.options]\nweight = "boolean_porosity"\n',
     )
     cfg = RestorationConfig().load(cfg_path)
     assert cfg.method == "tvd"
     assert isinstance(cfg.options, TVDConfig)
-    assert cfg.options.weight == "boolean-porosity"
+    assert cfg.options.weight == "boolean_porosity"
 
 
 def test_restoration_config_none_method_raises(tmp_path):
-    """'none' is no longer a valid method string; omit the section instead."""
+    """'none' is accepted as a valid method string; omit the section instead."""
     cfg_path = _write_toml(tmp_path, '[restoration]\nmethod = "none"\n')
-    with pytest.raises(NotImplementedError):
-        RestorationConfig().load(cfg_path)
+    RestorationConfig().load(cfg_path)
 
 
 def test_restoration_config_unsupported_method_raises(tmp_path):

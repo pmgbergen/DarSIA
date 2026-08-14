@@ -24,10 +24,7 @@ If `--calibration-bundle` is omitted, a default bundle is written under:
 
 The bundle includes (when available):
 
-- `color_paths/`
-- `color_to_mass/`
-- `baseline_color_spectrum/`
-- `color_range/color_range.json`
+- `calibration/color/<embedding_id>/...`
 - `manifest.json`
 
 ## 2) User: import a calibration bundle
@@ -56,10 +53,9 @@ inside the import target folder.
 
 Copy the generated snippet entries into your config file. Typical keys are:
 
-- `[color_paths].calibration_file`
-- `[color_paths].baseline_color_spectrum_folder`
-- `[color_paths].color_range_file`
-- `[color_to_mass].calibration_folder`
+- `[analysis.mass].color`
+- `[calibration.color].color`
+- `[calibration.mass].color`
 
 Use absolute paths to make sharing and deployment robust.
 

@@ -7,13 +7,16 @@ Module: `darsia.presets.workflows.user_interface_setup`
 - `--depth`
 - `--segmentation`
 - `--facies`
+- `--protocol`
 - `--rig`
+- `--force` (for protocol overwrite)
 - `--delete`
 - `--show`
 
 ## Purpose
 - Build depth map artifacts
 - Generate/validate labels and facies mapping
+- Generate imaging/injection/pressure-temperature protocol CSV templates
 - Setup rig and correction pipeline artifacts
 
 ## Typical command

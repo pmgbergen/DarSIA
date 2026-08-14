@@ -24,13 +24,19 @@ from pathlib import Path
 from queue import Empty, Full
 from typing import Any, Callable, Protocol, TypedDict
 
+from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_context
+from darsia.presets.workflows.analysis.progress import (
+    AnalysisProgressEvent,
+    normalize_progress_event,
+)
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
 SESSION_CACHE_FILE_NAME = "workflows_gui_session.json"
 SESSION_CACHE_VERSION = 1
-UTILS_CONFLICT_PREVIEW_LIMIT = 8
+PREVIEW_LIST_LIMIT = 8
 WORKFLOW_ERROR_DETAILS_PREFIX = "__DARSIA_WORKFLOW_ERROR_DETAILS__:"
+UTILS_CONFLICT_PREVIEW_LIMIT = 8
 
 
 class SupportsLogQueue(Protocol):
@@ -245,21 +251,33 @@ def _deep_merge_dict(base: dict[str, Any], update: dict[str, Any]) -> dict[str, 
     return base
 
 
-def suggested_analysis_results_folder(
-    config_paths: list[Path], actions: list[str]
-) -> Path | None:
-    """Return suggested analysis results folder for completed runs."""
+def _load_merged_workflow_config(config_paths: list[Path]) -> dict[str, Any]:
+    """Load and deeply merge workflow TOML config files."""
     merged: dict[str, Any] = {}
     for path in config_paths:
         _deep_merge_dict(merged, tomllib.loads(path.read_text()))
+    return merged
 
+
+def _results_folder_from_merged_config(merged: dict[str, Any]) -> Path | None:
+    """Extract configured [data].results folder from merged config."""
     data = merged.get("data")
     if not isinstance(data, dict):
         return None
     results_raw = data.get("results")
     if not isinstance(results_raw, str) or not results_raw.strip():
         return None
-    results = Path(results_raw).expanduser()
+    return Path(results_raw).expanduser()
+
+
+def suggested_analysis_results_folder(
+    config_paths: list[Path], actions: list[str]
+) -> Path | None:
+    """Return suggested analysis results folder for completed runs."""
+    merged = _load_merged_workflow_config(config_paths)
+    results = _results_folder_from_merged_config(merged)
+    if results is None:
+        return None
 
     mode_actions = [action for action in actions if action in _ANALYSIS_MODE_ACTIONS]
     if len(mode_actions) != 1:
@@ -267,7 +285,7 @@ def suggested_analysis_results_folder(
 
     mode = mode_actions[0]
     if mode == "cropping":
-        return results / "cropped_images"
+        return results / "cropping"
 
     analysis = merged.get("analysis")
     if isinstance(analysis, dict):
@@ -278,6 +296,101 @@ def suggested_analysis_results_folder(
                 return Path(folder).expanduser()
 
     return results / _ANALYSIS_MODE_DEFAULT_SUBFOLDER[mode]
+
+
+def suggested_workflow_results_folder(
+    workflow: str, config_paths: list[Path], actions: list[str]
+) -> Path | None:
+    """Return suggested output folder for successful GUI workflow runs."""
+    merged = _load_merged_workflow_config(config_paths)
+    results = _results_folder_from_merged_config(merged)
+    if results is None:
+        return None
+
+    if workflow == "analysis":
+        return suggested_analysis_results_folder(config_paths, actions)
+
+    selected_actions = {action.strip().lower() for action in actions}
+
+    if workflow == "setup":
+        setup_candidates: list[Path] = []
+        if "depth" in selected_actions:
+            setup_candidates.append(results / "setup" / "depth")
+        if "segmentation" in selected_actions:
+            setup_candidates.append(results / "setup" / "labels")
+        if "facies" in selected_actions:
+            setup_candidates.append(results / "setup" / "facies")
+        if "rig" in selected_actions:
+            setup_candidates.append(results / "setup" / "rig")
+        if "protocol" in selected_actions:
+            setup_candidates.append(results / "setup")
+        if "all" in selected_actions:
+            setup_candidates.append(results / "setup")
+        if len(setup_candidates) == 0:
+            return None
+        all_setup_same = all(path == setup_candidates[0] for path in setup_candidates)
+        return setup_candidates[0] if all_setup_same else results / "setup"
+
+    if workflow == "calibration":
+        if (
+            "color embedding" in selected_actions
+            or "mass" in selected_actions
+            or "default mass" in selected_actions
+        ):
+            return results / "calibration"
+        return None
+
+    if workflow == "comparison":
+        has_events = "events" in selected_actions
+        has_wasserstein = (
+            "wasserstein compute" in selected_actions
+            or "wasserstein assemble" in selected_actions
+        )
+        if has_events and has_wasserstein:
+            return results
+        if has_events:
+            events = merged.get("events")
+            if isinstance(events, dict):
+                events_path_raw = events.get("path")
+                if isinstance(events_path_raw, str) and events_path_raw.strip():
+                    return Path(events_path_raw).expanduser().parent
+            return results / "events"
+        if has_wasserstein:
+            wasserstein = merged.get("wasserstein")
+            if isinstance(wasserstein, dict):
+                wasserstein_results_raw = wasserstein.get("results")
+                if (
+                    isinstance(wasserstein_results_raw, str)
+                    and wasserstein_results_raw.strip()
+                ):
+                    return Path(wasserstein_results_raw).expanduser()
+            return results / "wasserstein"
+        return None
+
+    if workflow == "utils":
+        utils_candidates: list[Path] = []
+        if "media" in selected_actions:
+            utils_candidates.append(results / "videos")
+        if "export calibration" in selected_actions:
+            utils_candidates.append(results / "calibration")
+        if "import calibration" in selected_actions:
+            utils_candidates.append(results / "calibration")
+        if "download" in selected_actions:
+            download = merged.get("download")
+            if isinstance(download, dict):
+                folder_raw = download.get("folder")
+                if isinstance(folder_raw, str) and folder_raw.strip():
+                    utils_candidates.append(Path(folder_raw).expanduser())
+                else:
+                    utils_candidates.append(results / "raw_data")
+            else:
+                utils_candidates.append(results / "raw_data")
+        if len(utils_candidates) == 0:
+            return None
+        all_utils_same = all(path == utils_candidates[0] for path in utils_candidates)
+        return utils_candidates[0] if all_utils_same else results
+
+    return None
 
 
 def open_in_file_explorer(path: Path) -> None:
@@ -307,13 +420,24 @@ def open_in_file_explorer(path: Path) -> None:
             raise RuntimeError("Failed to open folder with 'xdg-open'.") from e
 
 
-_ANALYSIS_MODE_ACTIONS = {"cropping", "segmentation", "mass", "volume", "fingers"}
+_ANALYSIS_MODE_ACTIONS = {
+    "cropping",
+    "segmentation",
+    "mass",
+    "volume",
+    "fingers",
+    "thresholding",
+}
 _ANALYSIS_MODE_DEFAULT_SUBFOLDER = {
     "segmentation": "segmentation",
     "mass": "mass",
     "volume": "volume",
     "fingers": "fingers",
+    "thresholding": "thresholding",
 }
+
+_BATCH_MONITOR_IDLE_MESSAGE = "No active analysis batch."
+_BATCH_MONITOR_WAITING_MESSAGE = "Waiting for analysis progress..."
 
 
 def enabled_option_labels(
@@ -326,6 +450,94 @@ def enabled_option_labels(
         for key, value in options.items()
         if value and key not in excluded
     ]
+
+
+def format_duration_seconds(seconds: float | None) -> str:
+    """Format duration in seconds as H:MM:SS or M:SS."""
+    if seconds is None or not isinstance(seconds, (float, int)):
+        return "n/a"
+    seconds_float = float(seconds)
+    if seconds_float < 0 or seconds_float != seconds_float:
+        return "n/a"
+    seconds_int = int(round(seconds_float))
+    hours, remainder = divmod(seconds_int, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours > 0:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes}:{secs:02d}"
+
+
+def rolling_average_runtime(
+    runtimes: list[float], *, max_samples: int = 5
+) -> float | None:
+    """Return rolling average runtime based on last valid samples."""
+    if max_samples <= 0:
+        return None
+    valid = [
+        runtime
+        for runtime in runtimes
+        if isinstance(runtime, (float, int)) and runtime > 0 and runtime == runtime
+    ]
+    if len(valid) == 0:
+        return None
+    tail = valid[-max_samples:]
+    return float(sum(tail) / len(tail))
+
+
+def remaining_image_count(processed: int, total: int) -> int:
+    """Return remaining image count."""
+    return max(0, max(0, total) - max(0, processed))
+
+
+def estimate_remaining_time_seconds(
+    avg_runtime_seconds: float | None,
+    processed_images: int,
+    total_images: int,
+) -> float | None:
+    """Estimate remaining time from average runtime and remaining image count."""
+    if avg_runtime_seconds is None:
+        return None
+    if processed_images < 2:
+        return None
+    if avg_runtime_seconds <= 0:
+        return None
+    remaining = remaining_image_count(processed_images, total_images)
+    if remaining <= 0:
+        return 0.0
+    return avg_runtime_seconds * remaining
+
+
+def progress_percent(processed: int, total: int) -> float:
+    """Compute progress percentage in [0, 100]."""
+    if total <= 0:
+        return 0.0
+    return min(100.0, max(0.0, 100.0 * max(0, processed) / total))
+
+
+def format_batch_monitor_text(
+    *,
+    step: str,
+    image_path: str,
+    processed: int,
+    total: int,
+    last_image_seconds: float | None,
+    step_elapsed_seconds: float | None,
+    overall_elapsed_seconds: float | None,
+    eta_seconds: float | None,
+) -> str:
+    """Format human-readable batch monitor status text."""
+    percent = progress_percent(processed, total)
+    step_name = step if step else "n/a"
+    current_image = image_path if image_path else "n/a"
+    return (
+        f"Current analysis step: {step_name}\n"
+        f"Current image path: {current_image}\n"
+        f"Image count: {processed}/{total} ({percent:.1f}%)\n"
+        f"Last image elapsed: {format_duration_seconds(last_image_seconds)}\n"
+        f"Current step elapsed: {format_duration_seconds(step_elapsed_seconds)}\n"
+        f"Overall elapsed: {format_duration_seconds(overall_elapsed_seconds)}\n"
+        f"Estimated remaining: {format_duration_seconds(eta_seconds)}"
+    )
 
 
 def resolve_utils_bundle_defaults(config_paths: list[str]) -> tuple[str, str]:
@@ -366,7 +578,7 @@ def format_workflow_start_message(
 ) -> str:
     """Format a detailed run-start message."""
     action_str = ", ".join(actions) if actions else "none"
-    config_str = ", ".join(str(path) for path in config_paths)
+    config_str = ", ".join(str(path.as_posix()) for path in config_paths)
     rig_str = rig_spec.strip() or "darsia.presets.workflows.rig:Rig"
     return (
         f"Starting {workflow} workflow. Actions: {action_str}. "
@@ -441,6 +653,7 @@ def _run_setup_workflow(
     from darsia.presets.workflows.setup.setup_depth import setup_depth_map
     from darsia.presets.workflows.setup.setup_facies import setup_facies
     from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
+    from darsia.presets.workflows.setup.setup_protocols import setup_imaging_protocol
     from darsia.presets.workflows.setup.setup_rig import delete_rig, setup_rig
 
     paths = normalize_paths(config_paths)
@@ -454,6 +667,8 @@ def _run_setup_workflow(
         setup_facies(rig_cls, paths, show=show)
     if options["all"] or options["rig"]:
         setup_rig(rig_cls, paths, show=show)
+    if options["protocol"]:
+        setup_imaging_protocol(paths, force=options["force"], show=show)
     if options["delete_rig"]:
         delete_rig(rig_cls, paths, show=show)
 
@@ -466,21 +681,34 @@ def _run_calibration_workflow(
         calibration_color_to_mass_analysis as c2m_analysis_module,
     )
     from darsia.presets.workflows.calibration.calibration_color_paths import (
-        calibration_color_paths,
+        calibration_color_paths_from_context,
         delete_calibration,
     )
 
     paths = normalize_paths(config_paths)
     rig_cls = resolve_rig_class(rig_spec)
+
+    # Prepare shared context once for all analyses
+    ctx = prepare_analysis_context(
+        cls=rig_cls,
+        path=paths,
+        all=False,
+        require_color_to_mass=False,
+        section="calibration",
+        require_results=False,
+    )
+
     if options["delete"]:
-        delete_calibration(paths)
-        return
-    if options["color_paths"]:
-        calibration_color_paths(rig_cls, paths, options["show"])
-    if options["mass"] or options["default_mass"]:
-        c2m_analysis_module.calibration_color_to_mass_analysis(
-            rig_cls,
+        delete_calibration(
             paths,
+            require_confirmation=not options.get("skip_delete_confirmation", False),
+        )
+        return
+    if options["color_embedding"]:
+        calibration_color_paths_from_context(ctx, options["show"])
+    if options["mass"] or options["default_mass"]:
+        c2m_analysis_module.calibration_color_to_mass_analysis_from_context(
+            ctx,
             reset=options["reset"],
             show=options["show"],
             default=options["default_mass"],
@@ -492,6 +720,7 @@ def _run_analysis_workflow(
     rig_spec: str,
     options: dict[str, bool],
     stream_queue: SupportsQueue | None = None,
+    progress_queue: SupportsQueue | None = None,
 ) -> None:
     """Run analysis workflow in a worker process."""
     from darsia.presets.workflows.user_interface_analysis import run_analysis
@@ -499,6 +728,7 @@ def _run_analysis_workflow(
     paths = normalize_paths(config_paths)
     rig_cls = resolve_rig_class(rig_spec)
     stream_callback: Callable[[dict[str, bytes] | None], None] | None = None
+    progress_callback: Callable[[AnalysisProgressEvent], None] | None = None
     if options.get("streaming", False) and stream_queue is not None:
 
         def _stream_callback(payload: dict[str, bytes] | None) -> None:
@@ -515,6 +745,15 @@ def _run_analysis_workflow(
                     pass
 
         stream_callback = _stream_callback
+    if progress_queue is not None:
+
+        def _progress_callback(payload: AnalysisProgressEvent) -> None:
+            try:
+                publish_latest_queue_item(progress_queue, payload)
+            except Exception:
+                logger.exception("Failed to publish progress payload to GUI queue.")
+
+        progress_callback = _progress_callback
     args = argparse.Namespace(
         config=paths,
         all=options["all"],
@@ -523,10 +762,38 @@ def _run_analysis_workflow(
         fingers=options["fingers"],
         mass=options["mass"],
         volume=options["volume"],
+        thresholding=options.get("thresholding", False),
         show=options["show"],
         info=False,
     )
-    run_analysis(rig_cls, args, stream_callback=stream_callback)
+    run_analysis(
+        rig_cls,
+        args,
+        stream_callback=stream_callback,
+        progress_callback=progress_callback,
+    )
+
+
+def _run_helper_workflow(
+    config_paths: list[str],
+    rig_spec: str,
+    options: dict[str, bool],
+) -> None:
+    """Run helper workflow in a worker process."""
+    from darsia.presets.workflows.user_interface_helper import run_helper
+
+    paths = normalize_paths(config_paths)
+    rig_cls = resolve_rig_class(rig_spec)
+    args = argparse.Namespace(
+        config=paths,
+        roi=options["roi"],
+        roi_viewer=options.get("roi_viewer", False),
+        color=options.get("color", False),
+        results=options.get("results", False),
+        show=options["show"],
+        info=False,
+    )
+    run_helper(rig_cls, args)
 
 
 def _run_comparison_workflow(
@@ -559,7 +826,7 @@ def _run_utils_workflow(config_paths: list[str], options: UtilsWorkflowOptions) 
 
     paths = normalize_paths(config_paths)
     if options["download"]:
-        download_data(paths)
+        download_data(paths, require_confirmation=False)
     if options["export_calibration"]:
         bundle = Path(options["export_bundle"]) if options["export_bundle"] else None
         export_calibration_bundle(paths, bundle=bundle)
@@ -607,6 +874,7 @@ class WorkflowGUI:
         self.log_queue: SupportsLogQueue = self._mp_context.Queue()
         # maxsize=1 keeps only the newest preview frame and bounds memory usage.
         self.stream_queue: SupportsQueue = self._mp_context.Queue(maxsize=1)
+        self.progress_queue: SupportsQueue = self._mp_context.Queue(maxsize=1)
         self._worker_process: mp.Process | None = None
         self._abort_requested = False
         self._active_workflow = ""
@@ -617,6 +885,19 @@ class WorkflowGUI:
         self._last_error_details = ""
         self._latest_stream_payload: dict[str, bytes | None] | None = None
         self._stream_photo: Any | None = None
+        self._batch_active = False
+        self._batch_overall_total = 0
+        self._batch_overall_processed = 0
+        self._batch_step_total = 0
+        self._batch_step_processed = 0
+        self._batch_last_step_index = 0
+        self._batch_current_step = ""
+        self._batch_current_image_path = ""
+        self._batch_last_image_runtime: float | None = None
+        self._batch_step_elapsed: float | None = None
+        self._batch_overall_started_at: float | None = None
+        self._batch_elapsed_override: float | None = None
+        self._batch_recent_image_runtimes: list[float] = []
         self._sv_ttk: Any = None
         self._native_theme_name: str | None = None
         self._session_cache_file: Path | None = None
@@ -625,13 +906,24 @@ class WorkflowGUI:
         except (OSError, RuntimeError) as e:
             logger.warning("Failed to initialize GUI session cache path: %s", e)
 
+        self._setup_icon()
         self._setup_logging()
         self._build_layout()
         self._setup_themes()
         self._poll_logs()
         self._poll_stream()
+        self._poll_batch_progress()
         self._update_dashboard()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _setup_icon(self) -> None:
+        logo_path = (
+            Path(__file__).resolve().parent
+            / "interface"
+            / "DarSIA_Horisontal_Positiv_part.png"
+        )
+        icon = self.tk.PhotoImage(file=logo_path)
+        self.root.iconphoto(True, icon)
 
     def _setup_logging(self) -> None:
         _configure_queue_logging(self.log_queue)
@@ -717,17 +1009,20 @@ class WorkflowGUI:
         self.setup_frame = self.ttk.Frame(notebook)
         self.calibration_frame = self.ttk.Frame(notebook)
         self.analysis_frame = self.ttk.Frame(notebook)
+        self.helper_frame = self.ttk.Frame(notebook)
         self.comparison_frame = self.ttk.Frame(notebook)
         self.utils_frame = self.ttk.Frame(notebook)
         notebook.add(self.setup_frame, text="Setup")
         notebook.add(self.calibration_frame, text="Calibration")
         notebook.add(self.analysis_frame, text="Analysis")
+        notebook.add(self.helper_frame, text="Helper")
         notebook.add(self.comparison_frame, text="Comparison")
         notebook.add(self.utils_frame, text="Utils")
 
         self._build_setup_tab()
         self._build_calibration_tab()
         self._build_analysis_tab()
+        self._build_helper_tab()
         self._build_comparison_tab()
         self._build_utils_tab()
 
@@ -736,6 +1031,7 @@ class WorkflowGUI:
         self.setup_depth = self.tk.BooleanVar(value=False)
         self.setup_seg = self.tk.BooleanVar(value=False)
         self.setup_facies = self.tk.BooleanVar(value=False)
+        self.setup_protocol = self.tk.BooleanVar(value=False)
         self.setup_rig = self.tk.BooleanVar(value=False)
         self.setup_delete = self.tk.BooleanVar(value=False)
         self.setup_show = self.tk.BooleanVar(value=False)
@@ -744,9 +1040,10 @@ class WorkflowGUI:
             ("Depth", self.setup_depth),
             ("Segmentation", self.setup_seg),
             ("Facies", self.setup_facies),
+            ("Protocol", self.setup_protocol),
             ("Rig", self.setup_rig),
             ("Delete rig", self.setup_delete),
-            ("Show plots", self.setup_show),
+            ("Show plots (option)", self.setup_show),
         ]:
             self.ttk.Checkbutton(self.setup_frame, text=label, variable=var).pack(
                 anchor=self.tk.W
@@ -756,19 +1053,19 @@ class WorkflowGUI:
         ).pack(fill=self.tk.X, pady=6)
 
     def _build_calibration_tab(self) -> None:
-        self.cal_color_paths = self.tk.BooleanVar(value=False)
+        self.cal_color_embedding = self.tk.BooleanVar(value=False)
         self.cal_mass = self.tk.BooleanVar(value=False)
         self.cal_default_mass = self.tk.BooleanVar(value=False)
         self.cal_reset = self.tk.BooleanVar(value=False)
         self.cal_delete = self.tk.BooleanVar(value=False)
         self.cal_show = self.tk.BooleanVar(value=False)
         for label, var in [
-            ("Color paths", self.cal_color_paths),
+            ("Color embedding", self.cal_color_embedding),
             ("Mass", self.cal_mass),
             ("Default mass", self.cal_default_mass),
-            ("Reset", self.cal_reset),
-            ("Delete calibration", self.cal_delete),
-            ("Show plots", self.cal_show),
+            ("Delete all calibrations", self.cal_delete),
+            ("Reset mass calibration (option)", self.cal_reset),
+            ("Show plots (option)", self.cal_show),
         ]:
             self.ttk.Checkbutton(self.calibration_frame, text=label, variable=var).pack(
                 anchor=self.tk.W
@@ -786,17 +1083,19 @@ class WorkflowGUI:
         self.an_fingers = self.tk.BooleanVar(value=False)
         self.an_mass = self.tk.BooleanVar(value=False)
         self.an_volume = self.tk.BooleanVar(value=False)
+        self.an_thresholding = self.tk.BooleanVar(value=False)
         self.an_show = self.tk.BooleanVar(value=False)
         self.an_stream = self.tk.BooleanVar(value=False)
         for label, var in [
-            ("All images", self.an_all),
             ("Cropping", self.an_crop),
             ("Segmentation", self.an_seg),
             ("Fingers", self.an_fingers),
             ("Mass", self.an_mass),
             ("Volume", self.an_volume),
-            ("Show plots", self.an_show),
-            ("Enable streaming", self.an_stream),
+            ("Thresholding", self.an_thresholding),
+            ("All images (option)", self.an_all),
+            ("Show plots (option)", self.an_show),
+            ("Enable streaming (option)", self.an_stream),
         ]:
             self.ttk.Checkbutton(self.analysis_frame, text=label, variable=var).pack(
                 anchor=self.tk.W
@@ -821,6 +1120,26 @@ class WorkflowGUI:
             self.comparison_frame,
             text="Run comparison",
             command=self._run_comparison_clicked,
+        ).pack(fill=self.tk.X, pady=6)
+
+    def _build_helper_tab(self) -> None:
+        self.helper_roi = self.tk.BooleanVar(value=False)
+        self.helper_roi_viewer = self.tk.BooleanVar(value=False)
+        self.helper_color = self.tk.BooleanVar(value=False)
+        self.helper_results = self.tk.BooleanVar(value=False)
+        self.helper_show = self.tk.BooleanVar(value=False)
+        for label, var in [
+            ("ROI", self.helper_roi),
+            ("ROI Viewer", self.helper_roi_viewer),
+            ("Color", self.helper_color),
+            ("ResultReader", self.helper_results),
+            ("Show  (option)", self.helper_show),
+        ]:
+            self.ttk.Checkbutton(self.helper_frame, text=label, variable=var).pack(
+                anchor=self.tk.W
+            )
+        self.ttk.Button(
+            self.helper_frame, text="Run helper", command=self._run_helper_clicked
         ).pack(fill=self.tk.X, pady=6)
 
     def _build_utils_tab(self) -> None:
@@ -943,15 +1262,18 @@ class WorkflowGUI:
     def _build_batch_monitor(self, parent) -> None:
         frame = self.ttk.LabelFrame(parent, text="Batch monitor")
         frame.pack(fill=self.tk.BOTH, expand=True, padx=8, pady=8)
-        self.batch_monitor_text = self.tk.StringVar(
-            value=(
-                "Batch monitor is currently a placeholder.\n"
-                "Future versions will show active analyses and image-level progress."
-            )
-        )
+        self.batch_monitor_text = self.tk.StringVar(value=_BATCH_MONITOR_IDLE_MESSAGE)
+        self.batch_monitor_progress = self.tk.DoubleVar(value=0.0)
         self.ttk.Label(frame, textvariable=self.batch_monitor_text).pack(
             anchor=self.tk.W, padx=5, pady=5
         )
+        self.ttk.Progressbar(
+            frame,
+            orient=self.tk.HORIZONTAL,
+            mode="determinate",
+            maximum=100.0,
+            variable=self.batch_monitor_progress,
+        ).pack(fill=self.tk.X, padx=5, pady=(0, 5))
 
     def _build_streaming_mode(self, parent) -> None:
         frame = self.ttk.LabelFrame(parent, text="Streaming monitor")
@@ -1153,6 +1475,134 @@ class WorkflowGUI:
             pass
         self.root.after(100, self._poll_stream)
 
+    def _reset_batch_monitor_state(
+        self, message: str = _BATCH_MONITOR_IDLE_MESSAGE
+    ) -> None:
+        """Reset batch monitor counters and UI state."""
+        self._batch_active = False
+        self._batch_overall_total = 0
+        self._batch_overall_processed = 0
+        self._batch_step_total = 0
+        self._batch_step_processed = 0
+        self._batch_last_step_index = 0
+        self._batch_current_step = ""
+        self._batch_current_image_path = ""
+        self._batch_last_image_runtime = None
+        self._batch_step_elapsed = None
+        self._batch_overall_started_at = None
+        self._batch_elapsed_override = None
+        self._batch_recent_image_runtimes = []
+        self.batch_monitor_text.set(message)
+        self.batch_monitor_progress.set(0.0)
+
+    def _poll_batch_progress(self) -> None:
+        try:
+            while True:
+                payload = self.progress_queue.get_nowait()
+                self._consume_batch_progress_payload(payload)
+        except Empty:
+            pass
+        self.root.after(100, self._poll_batch_progress)
+
+    def _consume_batch_progress_payload(self, payload: Any) -> None:
+        event = normalize_progress_event(payload)
+        if event is None:
+            return
+
+        event_name = event.get("event")
+        step = event.get("step", "")
+        image_total = event.get("image_total", 0)
+
+        if event_name == "step_start":
+            if self._batch_overall_started_at is None:
+                self._batch_overall_started_at = time.monotonic()
+            self._batch_active = True
+            self._batch_current_step = step
+            self._batch_step_total = image_total
+            self._batch_step_processed = 0
+            self._batch_last_step_index = 0
+            self._batch_step_elapsed = 0.0
+            self._batch_overall_total += image_total
+            self._update_batch_monitor_display()
+            return
+
+        if event_name == "image_progress":
+            image_index = event.get("image_index", 0)
+            delta = max(0, image_index - self._batch_last_step_index)
+            self._batch_overall_processed += delta
+            self._batch_last_step_index = max(self._batch_last_step_index, image_index)
+            self._batch_step_processed = max(0, image_index)
+            if image_total > 0:
+                self._batch_step_total = image_total
+            self._batch_current_step = step
+            self._batch_current_image_path = event.get("image_path", "")
+            self._batch_last_image_runtime = event.get("image_duration_s")
+            step_elapsed = event.get("step_elapsed_s")
+            if step_elapsed is not None:
+                self._batch_step_elapsed = step_elapsed
+            if self._batch_last_image_runtime is not None:
+                self._batch_recent_image_runtimes.append(self._batch_last_image_runtime)
+            self._update_batch_monitor_display()
+            return
+
+        if event_name == "step_complete":
+            if image_total > 0:
+                missing = max(0, image_total - self._batch_last_step_index)
+                self._batch_overall_processed += missing
+                self._batch_last_step_index = image_total
+                self._batch_step_total = image_total
+                self._batch_step_processed = image_total
+            self._batch_current_step = step
+            step_elapsed = event.get("step_elapsed_s")
+            if step_elapsed is not None:
+                self._batch_step_elapsed = step_elapsed
+            self._update_batch_monitor_display()
+
+    def _overall_elapsed_seconds(self) -> float | None:
+        """Return current overall elapsed seconds."""
+        if self._batch_elapsed_override is not None:
+            return self._batch_elapsed_override
+        if self._batch_overall_started_at is None:
+            return None
+        return max(0.0, time.monotonic() - self._batch_overall_started_at)
+
+    def _update_batch_monitor_display(self, prefix: str | None = None) -> None:
+        """Refresh batch monitor text and progressbar."""
+        overall_elapsed = self._overall_elapsed_seconds()
+        avg_runtime = rolling_average_runtime(self._batch_recent_image_runtimes)
+        eta_seconds = estimate_remaining_time_seconds(
+            avg_runtime,
+            self._batch_overall_processed,
+            self._batch_overall_total,
+        )
+        text = format_batch_monitor_text(
+            step=self._batch_current_step,
+            image_path=self._batch_current_image_path,
+            processed=self._batch_overall_processed,
+            total=self._batch_overall_total,
+            last_image_seconds=self._batch_last_image_runtime,
+            step_elapsed_seconds=self._batch_step_elapsed,
+            overall_elapsed_seconds=overall_elapsed,
+            eta_seconds=eta_seconds,
+        )
+        if prefix:
+            text = f"{prefix}\n{text}"
+        self.batch_monitor_text.set(text)
+        self.batch_monitor_progress.set(
+            progress_percent(self._batch_overall_processed, self._batch_overall_total)
+        )
+
+    def _finalize_batch_monitor_state(self, status: str) -> None:
+        """Finalize batch monitor after analysis workflow termination."""
+        self._batch_active = False
+        elapsed = self._overall_elapsed_seconds()
+        self._batch_elapsed_override = elapsed
+        if self._batch_overall_total <= 0:
+            self.batch_monitor_text.set(f"{status}\n{_BATCH_MONITOR_IDLE_MESSAGE}")
+            self.batch_monitor_progress.set(0.0)
+            return
+        self._update_batch_monitor_display(prefix=status)
+
     def _consume_stream_payload(self, payload: Any) -> None:
         if payload is None:
             self._latest_stream_payload = None
@@ -1264,6 +1714,8 @@ class WorkflowGUI:
         if self._worker_process is not None and self._worker_process.is_alive():
             self.messagebox.showwarning("Busy", "Another workflow is still running.")
             return
+        if workflow != "analysis":
+            self._reset_batch_monitor_state(_BATCH_MONITOR_IDLE_MESSAGE)
         self._active_workflow = workflow
         self._active_actions = actions
         self._active_config_paths = config_paths
@@ -1323,6 +1775,15 @@ class WorkflowGUI:
             self.log_queue.put(
                 format_workflow_error_message(workflow, actions, exit_code)
             )
+        if workflow == "analysis":
+            if self._abort_requested:
+                self._finalize_batch_monitor_state("Analysis aborted.")
+            elif exit_code == 0:
+                self._finalize_batch_monitor_state("Analysis completed.")
+            else:
+                self._finalize_batch_monitor_state(
+                    f"Analysis failed (exit code {exit_code})."
+                )
         self._worker_process = None
         self._worker_started_at = None
         self._active_workflow = ""
@@ -1332,13 +1793,11 @@ class WorkflowGUI:
         self._set_worker_state(False)
         if dialog_spec is not None:
             kind, title, message = dialog_spec
-            if kind == "info" and workflow == "analysis":
-                suggested_folder = suggested_analysis_results_folder(
-                    config_paths, actions
+            if kind == "info":
+                suggested_folder = suggested_workflow_results_folder(
+                    workflow, config_paths, actions
                 )
                 self._show_done_dialog_with_open_folder(message, suggested_folder)
-            elif kind == "info":
-                self.messagebox.showinfo(title, message)
             else:
                 self._show_error_dialog_with_details(
                     title, message, self._last_error_details
@@ -1355,11 +1814,35 @@ class WorkflowGUI:
             "depth": self.setup_depth.get(),
             "segmentation": self.setup_seg.get(),
             "facies": self.setup_facies.get(),
+            "protocol": self.setup_protocol.get(),
             "rig": self.setup_rig.get(),
             "delete_rig": self.setup_delete.get(),
             "show": self.setup_show.get(),
+            "force": False,
         }
-        actions = enabled_option_labels(options)
+        protocol_enabled = options["protocol"]
+        if protocol_enabled:
+            from darsia.presets.workflows.setup.setup_protocols import (
+                preview_protocol_setup_conflicts,
+            )
+
+            conflicts = preview_protocol_setup_conflicts(ctx.config_paths)
+            if conflicts:
+                max_preview = UTILS_CONFLICT_PREVIEW_LIMIT
+                preview = "\n".join(str(path) for path in conflicts[:max_preview])
+                remaining = max(0, len(conflicts) - max_preview)
+                suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
+                choice = self.messagebox.askyesnocancel(
+                    "Setup protocol conflicts",
+                    "Some protocol files already exist and would be overwritten.\n\n"
+                    f"{preview}{suffix}\n\n"
+                    "Yes: overwrite existing files\nNo/Cancel: abort",
+                )
+                if choice is not True:
+                    logger.info("Setup protocol generation aborted by user.")
+                    return
+                options["force"] = True
+        actions = enabled_option_labels(options, exclude={"force"})
         self._run_async(
             "setup",
             actions,
@@ -1379,13 +1862,41 @@ class WorkflowGUI:
             return
         options = {
             "delete": self.cal_delete.get(),
-            "color_paths": self.cal_color_paths.get(),
+            "color_embedding": self.cal_color_embedding.get(),
             "mass": self.cal_mass.get(),
             "default_mass": self.cal_default_mass.get(),
             "reset": self.cal_reset.get(),
             "show": self.cal_show.get(),
         }
+        if options["delete"]:
+            from darsia.presets.workflows.calibration.calibration_color_paths import (
+                collect_existing_calibration_paths_to_delete,
+            )
+
+            existing = collect_existing_calibration_paths_to_delete(ctx.config_paths)
+            if not existing:
+                self.messagebox.showinfo(
+                    "Delete calibration",
+                    "No existing calibration data found to delete.",
+                )
+                return
+            max_preview = PREVIEW_LIST_LIMIT
+            preview = "\n".join(str(path) for path in existing[:max_preview])
+            remaining = max(0, len(existing) - max_preview)
+            suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
+            confirmed = self.messagebox.askyesno(
+                "Confirm calibration deletion",
+                "The following calibration files/folders will be deleted:\n\n"
+                f"{preview}{suffix}\n\n"
+                "This action cannot be undone.\n\nProceed?",
+            )
+            if not confirmed:
+                logger.info("Calibration data deletion aborted by user.")
+                return
         actions = enabled_option_labels(options)
+        run_options = options.copy()
+        if options["delete"]:
+            run_options["skip_delete_confirmation"] = True
         self._run_async(
             "calibration",
             actions,
@@ -1394,7 +1905,7 @@ class WorkflowGUI:
             _run_calibration_workflow,
             [str(path) for path in ctx.config_paths],
             self.rig_spec.get(),
-            options,
+            run_options,
         )
 
     def _run_analysis_clicked(self) -> None:
@@ -1410,6 +1921,7 @@ class WorkflowGUI:
             "fingers": self.an_fingers.get(),
             "mass": self.an_mass.get(),
             "volume": self.an_volume.get(),
+            "thresholding": self.an_thresholding.get(),
             "show": self.an_show.get(),
             "streaming": self.an_stream.get(),
         }
@@ -1418,6 +1930,8 @@ class WorkflowGUI:
             self._show_stream_message("Streaming enabled. Waiting for data...")
         else:
             self._show_stream_message("Streaming disabled.")
+        clear_queue(self.progress_queue)
+        self._reset_batch_monitor_state(_BATCH_MONITOR_WAITING_MESSAGE)
         actions = enabled_option_labels(options)
         self._run_async(
             "analysis",
@@ -1429,6 +1943,7 @@ class WorkflowGUI:
             self.rig_spec.get(),
             options,
             self.stream_queue,
+            self.progress_queue,
         )
 
     def _run_comparison_clicked(self) -> None:
@@ -1461,6 +1976,31 @@ class WorkflowGUI:
             options,
         )
 
+    def _run_helper_clicked(self) -> None:
+        try:
+            ctx = self._context()
+        except Exception as e:
+            self.messagebox.showerror("Invalid configuration", str(e))
+            return
+        options = {
+            "roi": self.helper_roi.get(),
+            "roi_viewer": self.helper_roi_viewer.get(),
+            "color": self.helper_color.get(),
+            "results": self.helper_results.get(),
+            "show": self.helper_show.get(),
+        }
+        actions = enabled_option_labels(options)
+        self._run_async(
+            "helper",
+            actions,
+            ctx.config_paths,
+            self.rig_spec.get(),
+            _run_helper_workflow,
+            [str(path) for path in ctx.config_paths],
+            self.rig_spec.get(),
+            options,
+        )
+
     def _run_utils_clicked(self) -> None:
         try:
             ctx = self._context()
@@ -1476,10 +2016,6 @@ class WorkflowGUI:
             "import_calibration": self.utils_import_calibration.get(),
             "media": self.utils_media.get(),
         }
-        actions = enabled_option_labels(action_flags)
-        if not any(action_flags.values()):
-            logger.info("No utility option selected.")
-            return
 
         import_bundle = self.utils_import_bundle.get().strip()
         if action_flags["import_calibration"] and not import_bundle:
@@ -1500,7 +2036,7 @@ class WorkflowGUI:
                 Path(import_bundle),
             )
             if conflicts:
-                max_preview = UTILS_CONFLICT_PREVIEW_LIMIT
+                max_preview = PREVIEW_LIST_LIMIT
                 preview = "\n".join(str(path) for path in conflicts[:max_preview])
                 remaining = max(0, len(conflicts) - max_preview)
                 suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
@@ -1516,6 +2052,34 @@ class WorkflowGUI:
                     return
                 import_conflict_action = policy
 
+        if action_flags["download"]:
+            from darsia.presets.workflows.utils.utils_download import (
+                prepare_download_data,
+            )
+
+            plan = prepare_download_data(ctx.config_paths)
+            if not plan.image_paths:
+                self.messagebox.showinfo(
+                    "Download data",
+                    "No files selected for download.",
+                )
+                action_flags["download"] = False
+            else:
+                confirmed = self.messagebox.askyesno(
+                    "Confirm data download",
+                    f"About to download {len(plan.image_paths)} files\n"
+                    f"Total size: {plan.total_size_string}\n"
+                    f"Destination: {plan.destination_dir}\n\nProceed?",
+                )
+                if not confirmed:
+                    logger.info("Data download aborted by user.")
+                    action_flags["download"] = False
+
+        if not any(action_flags.values()):
+            logger.info("No utility option selected after confirmations.")
+            return
+
+        actions = enabled_option_labels(action_flags)
         options = {
             "download": action_flags["download"],
             "export_calibration": action_flags["export_calibration"],

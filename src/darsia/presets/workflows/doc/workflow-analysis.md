@@ -24,10 +24,16 @@ python -m darsia.presets.workflows.user_interface_analysis \
 - segmentation visualizations
 - fingers analysis outputs
 
-For cropping outputs, configure formats in TOML under:
+Color-based scalar modes are now configured via centralized color embeddings and used as
+`color.<id>` in segmentation/fingers/thresholding modes.
+
+For analysis exports, define global format identifiers under `[analysis].formats`:
 ```toml
-[analysis.cropping]
-formats = ["npz", "jpg"]
+[analysis]
+formats = ["my_npy", "4k"]
 ```
+
+These keys reference top-level `[format.<type>.<identifier>]` presets and produce
+output folders named `<type>_<identifier>` (for example `jpg_4k`).
 
 See [ROI reference](./roi-reference.md), [image selection](./image-selection.md), and [config reference](./config-reference.md).

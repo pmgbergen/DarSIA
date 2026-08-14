@@ -62,7 +62,19 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
     baseline_path = config.data.baseline
     if config.data.use_cache:
         assert config.data.raw_cache is not None
-        cache_path = config.data.raw_cache / f"{baseline_path.stem}.npz"
+        baseline_relative = None
+        for folder in config.data.folders:
+            try:
+                baseline_relative = baseline_path.resolve().relative_to(
+                    folder.resolve()
+                )
+                break
+            except ValueError:
+                continue
+        if baseline_relative is None:
+            baseline_relative = Path(baseline_path.name)
+        cache_path = config.data.raw_cache / baseline_relative.with_suffix(".npz")
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
         if cache_path.exists():
             baseline_path = cache_path
         else:
@@ -80,6 +92,7 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
         facies_path=config.facies.path,
         facies_props_path=config.facies.props,
         corrections_config=config.corrections,
+        image_porosity_config=config.image_porosity,
         log=config.rig.path / "log",
         show_plot=show,
     )

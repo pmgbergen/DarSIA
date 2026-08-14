@@ -12,6 +12,7 @@ import darsia
 def plot_contour_on_image(
     img: darsia.Image | np.ndarray,
     mask: list[darsia.Image],
+    contour_smoother: darsia.ContourSmoother | None = None,
     color: Optional[list[tuple]] = None,
     alpha: Optional[list[float]] = None,
     thickness: int = 5,
@@ -64,6 +65,12 @@ def plot_contour_on_image(
         contours, _ = cv2.findContours(
             skimage.img_as_ubyte(m.img), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
         )
+
+        # If contour_smoother provided, smooth contours.
+        if contour_smoother:
+            contours = [contour_smoother(contour) for contour in contours]
+
+        # Draw.
         cv2.drawContours(original_img, contours, -1, c_eff, thickness)
 
     # Plot

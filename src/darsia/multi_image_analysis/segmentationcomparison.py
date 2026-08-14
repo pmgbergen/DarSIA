@@ -14,7 +14,6 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
-from matplotlib.cm import get_cmap
 
 import darsia as da
 
@@ -89,7 +88,7 @@ class SegmentationComparison:
         self.light_scaling: float = kwargs.pop("light_scaling", 1.1)
         # If set of colors are not provided create it with matplotlib colormap.
         if "colors" not in kwargs:
-            colormap = get_cmap("Spectral")
+            colormap = plt.get_cmap("Spectral")
             self.colors: np.ndarray = np.zeros(
                 (self.number_of_segmented_images, 2, 3), dtype=np.uint8
             )

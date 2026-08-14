@@ -90,13 +90,9 @@ def calibration_mass_analysis(cls, path: Path, show: bool = False) -> None:
 
     # Determine calibration images based on times
     calibration_times = config.mass.calibration_image_times
-    calibration_datetimes = [
-        experiment.experiment_start + darsia.timedelta(hours=t)
-        for t in calibration_times
-    ]
-    calibration_images_paths = experiment.imaging_protocol.find_images_for_datetimes(
-        paths=config.data.data,
-        datetimes=calibration_datetimes,
+    calibration_images_paths = experiment.find_images_for_times(
+        times=calibration_times,
+        data=config.data.data,
     )
 
     # Read images

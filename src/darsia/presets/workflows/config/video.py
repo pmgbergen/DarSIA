@@ -37,10 +37,13 @@ def _to_rgb(color: list[int] | tuple[int, int, int], name: str) -> tuple[int, in
 class VideoSourceConfig:
     folder: Path | None = None
     pattern: str | None = None
-    recursive: bool = False
     extensions: list[str] = field(
         default_factory=lambda: [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"]
     )
+    recursive: bool = False
+    sorting: str = "protocol"
+
+    ALLOWED_SORTING_METHODS = {"protocol", "name"}
 
     def load(self, sec: dict) -> "VideoSourceConfig":
         src = _get_key(sec, "source", required=True)
@@ -53,6 +56,7 @@ class VideoSourceConfig:
             _get_key(src, "extensions", required=False, default=self.extensions)
         )
         self.recursive = bool(_get_key(src, "recursive", required=False, default=False))
+        self.sorting = _get_key(src, "sorting", required=False, default=self.sorting)
         return self
 
 

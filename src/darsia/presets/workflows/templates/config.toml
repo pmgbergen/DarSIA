@@ -3,10 +3,26 @@ comment = "Intro session based on glass beads experiments"
 
 [data]
 folder = "..."            # Folder with images
+## folders = ["...", "..."] # Optional multi-folder input; requires [protocols.imaging] table
 format = "JPG"            # The format of the images
 pad = 5                   # number of relevant digits in image names, e.g. 00001.JPG
 baseline = "baseline.JPG" # The baseline image
 results = "..."           # Main output folder
+
+[data.path.baseline_imgs]
+paths = ["img1.jpg", "img2.jpg", "img3.jpg"]
+
+[data.path.calibration_imgs]
+paths = ["img1.jpg", "img2.jpg", "img3.jpg"]
+
+[data.time.analysis_imgs]
+times = ["01:00:00", "01:05:00", "01:10:00", "01:20:00", "01:21:00", "01:40:00"]
+
+[data.interval.analysis_imgs2]
+start = "01:00:00"
+end = "02:00:00"
+num = 10
+tol = "00:10:00"
 
 [specs]
 dim = 2         # dimension of the model
@@ -19,14 +35,24 @@ measurements = "./data/depth_measurements.csv"
 depth_map = "./data/depth_map.npz"
 
 [protocols]
-injection = ["./data/protocol.xlsx", "injection"]
-imaging = ["./data/protocol.xlsx", "imaging"]
-pressure_temperature = ["./data/protocol.xlsx", "pressure_temperature"]
+injection = "./data/injection_protocol.csv"
+imaging = "./data/imaging_protocol.csv"
+# For multi-folder [data].folders, use:
+# [protocols.imaging]
+# "/abs/path/to/folder_a" = "./data/imaging_protocol_a.csv"
+# "/abs/path/to/folder_b" = ["./data/imaging_protocol_b.xlsx", "Sheet1"]
+pressure_temperature = "./data/pressure_temperature_protocol.csv"
+imaging_mode = "exif"
 
 [labeling]
 colored_image = "./data/segmented_baseline.png"
 labels = "./data/labels.npz"
 water_label = 0
+
+[roi.main_roi]
+name = "main_roi"
+corner_1 = [0.0, 0.0]
+corner_2 = [2.745, 1.5]
 
 [curvature.init]
 horizontal_bulge = 1e-9
@@ -46,20 +72,21 @@ horizontal_center_offset = -579
 vertical_stretch = -0.0
 vertical_center_offset = 405
 
-[color_paths]
-# Basis for calibration label-space: "labels" (default) or "facies".
-# - facies: coarse geological regions
-# - labels: fine segmentation labels
-basis = "labels"
+[color.path.my_colorpath]
+mode = "relative" # or "absolute"
+basis = "labels"  # or "facies"; "global" is not implemented for color path
+num_segments = 1
 ignore_labels = [0, 1]
-resolution = [51, 51, 51]
+resolution = 51
 threshold_baseline = 0.0
 threshold_calibration = 1e-3
-baseline_images = ["...", "...", "..."]
-calibration_images = ["...", "...", "..."]
-# If omitted, defaults to results/calibration/color_paths/from_<basis>
-calibration_file = "./data/color_paths"
+baseline = "baseline_imgs"
+data = "calibration_imgs"
 reference_label = 3
+rois = ["main_roi"]
+ignore_baseline_spectrum = "expanded" # none | baseline | expanded
+histogram_weighting = "threshold"
+calibration_mode = "auto" # auto | manual
 
 [color_signal]
 num_clusters = 2
@@ -71,21 +98,177 @@ analysis_times = [1, 5, 10, 20, 21, 40]
 calibration_image_times = [1, 5, 10, 20]
 calibration_file = "./data/mass_calibration.json"
 
-[color_to_mass]
-# Keep this aligned with [color_paths].basis.
-basis = "labels"
-# Label sensitivity threshold for deactivating insensitive color paths.
+[color.channel.red_channel]
+mode = "absolute"
+basis = "global" # labels/facies currently not implemented for channel embedding
+color_space = "RGB"
+channel = "r"
+
+[color.range.custom_range]
+mode = "absolute"
+basis = "global" # labels/facies currently not implemented for range embedding
+color_space = "HSV"
+range = [[0.2, 0.4], [0.5, "none"], [0.8, "none"]]
+
+[calibration.color]
+color = "my_colorpath"
+
+[calibration.mass]
+color = "my_colorpath"
+mode = "manual" # manual | auto
 threshold = 0.2
-# If omitted, defaults to results/calibration/color_to_mass/from_<basis>
-# calibration_folder = "./data/color_to_mass"
+data = "calibration_imgs"
+
+[analysis]
+data = "analysis_imgs"
+random_traverse = true # If true, randomizes image order for faster preview of analysis. default: false.
+formats = ["npz_default", "jpg_preview"]
+
+[format.npz.npz_default]
+# resolution = [500, 1000]
+# keep_ratio = true
+# dtype = "np.float32"
+
+[format.jpg.jpg_preview]
+# resolution = [2160, 4096]
+# cmap = "matplotlib.viridis"
 
 [analysis.cropping]
-image_times = [1, 5, 10, 20, 21, 40]
 formats = ["npz", "jpg"]
+
 [analysis.color_signal]
-image_times = [1, 5, 10, 20, 21, 40]
+data = "analysis_imgs"
+
 [analysis.mass]
-image_times = [1, 5, 10, 20, 21, 40]
+color = "my_colorpath"
+contour_smoother = "savitzky_golay" # If chosen (default), contours are smoothed.
+
+[analysis.expert_knowledge]
+# Optional ROI constraints (keys from top-level [roi.*]).
+# Defaults are empty lists (strict no-op).
+# saturation_g = ["roi_key_1", "roi_key_2"]
+# concentration_aq = ["roi_key_3"]
+
+[helper.roi]
+# mode: none (default), concentration_aq, saturation_g, mass/mass_total,
+# mass_g, mass_aq, rescaled_mass, rescaled_saturation_g, rescaled_concentration_aq
+mode = "none"
+data = "analysis_imgs"
+
+[helper.roi_viewer]
+# ROI Viewer data selection. Supports `all` / `none` / single ROI key selector in UI.
+data = "analysis_imgs"
+
+[helper.color]
+# Color helper data selection from [data.*] registry.
+data = "analysis_imgs"
+
+[helper.results]
+# ResultReader input selection from [data.*] registry.
+data = "analysis_imgs"
+# Any scalar result folder produced by mass analysis (e.g. rescaled_mass, mass, ...)
+mode = "rescaled_mass"
+# Either direct type (csv/npz) or a [format.*.*] registry key resolving to csv/npz.
+format = "csv"
+# Optional colormap (matplotlib.<name> or color_path.from_<basis>.<label>)
+# cmap = "matplotlib.viridis"
+# Optional ROI keys from top-level [roi.*]; when omitted, full image is used.
+# roi = ["main"]
+
+#[helper]
+# Shorthand for ROI Viewer:
+# data = ["analysis_imgs"]
+
+[analysis.thresholding]
+# Optional thresholding with per-layer styling and separate format outputs.
+# Supported layer modes:
+# concentration_aq, saturation_g, mass_total, mass_g, mass_aq,
+# rescaled_mass, rescaled_saturation_g, rescaled_concentration_aq,
+# color.<id>
+formats = ["jpg", "npz"]
+[analysis.thresholding.layer.gas]
+mode = "saturation_g"
+threshold_min = 0.05
+#threshold_max = 0.15
+label = "Gas plume"
+fill = [255, 0, 0]
+stroke = [255, 255, 255]
+fill_alpha = 0.35
+stroke_width = 2
+[analysis.thresholding.layer.aq]
+mode = "concentration_aq"
+threshold_min = 0.05
+#threshold_max = 1.0
+label = "Aqueous plume"
+fill = [0, 0, 255]
+stroke = [255, 255, 255]
+fill_alpha = 0.35
+stroke_width = 2
+[analysis.thresholding.layer.red]
+mode = "color.red_channel"
+threshold_min = 0.6
+label = "High red channel"
+fill = [255, 255, 0]
+stroke = [255, 255, 255]
+fill_alpha = 0.2
+stroke_width = 1
+[analysis.thresholding.layer.green_hsv_band]
+mode = "color.custom_range"
+threshold_min = 0.5
+label = "HSV green range"
+fill = [0, 255, 0]
+stroke = [255, 255, 255]
+fill_alpha = 0.2
+stroke_width = 1
+[analysis.thresholding.legend]
+show = true
+font_scale = 0.7
+thickness = 2
+position = [20, 20]
+text_color = [255, 255, 255]
+box_enabled = true
+box_color = [0, 0, 0]
+box_alpha = 0.4
+box_padding = 10
+
+# Optional segmentation with per-layer styling and separate format outputs.
+[analysis.segmentation.aqueous]
+label = "CO2(aq)"
+mode = "concentration_aq"
+thresholds = [0.05, 0.1, 0.5, 0.9]
+color = [255, 113, 107]
+alpha = [0.6, 0.7, 0.9, 1.0]
+linewidth = 8
+show_values = true
+value_color = [255, 255, 255]
+value_size = 4
+value_alpha = 0.8
+value_density = 0.5
+value_min_distance_px = 35
+value_max_per_contour = 4
+value_format = "{:.2f}"
+contour_smoother = "savitzky_golay" # If chosen, contours are smoothed.
+
+[analysis.segmentation.gas]
+label = "CO2(g)"
+mode = "saturation_g"
+thresholds = [0.01, 0.05, 0.5]
+color = [30, 255, 90]
+alpha = [0.6, 0.9, 1.0]
+linewidth = 5
+contour_smoother = "savitzky_golay" # If chosen, contours are smoothed.
+
+[analysis.fingers]
+mode = "concentration_aq" # Choose from std modes ("mass", "cconcentration_aq", ...) or "id" among color.*.<id>.
+threshold = 0.01 # Choose sufficiently low.
+roi = ["storage"] # Choose such that the top boundary crosses the plume.
+reduce_to_main_contour = true # If true (default), removes all small features.
+fill_holes = false # If true, fills holes in segmentation masks before contour extraction.
+contour_smoother = "savitzky_golay" # If chosen (default), contours are smoothed.
+
+[analysis.fingers.contour_smoother_options]
+window_length = 21 # Default value; must be odd and >= 3.
+polyorder = 3 # Default value; must be < window_length.
 
 [video]
 

@@ -270,7 +270,20 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
 
     """
     # Read image and convert to RGB and float ([0,1])
-    array = cv2.cvtColor(cv2.imread(str(path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB)
+    try:
+        array = cv2.cvtColor(
+            cv2.imread(str(path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB
+        )
+    except Exception:
+        img_bytes = np.fromfile(str(path), np.uint8)
+        if img_bytes.size == 0:
+            raise FileNotFoundError(f"Could not read file: {path}")
+
+        # Let darsia.imread handle the transformations if possible,
+        # or apply corrections manually
+        array = cv2.cvtColor(
+            cv2.imdecode(img_bytes, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB
+        )
 
     # Prefered: Read time from exif metafile.
     pil_img = PIL_Image.open(path)

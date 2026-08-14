@@ -3,8 +3,10 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 import pytest
 
+import darsia
 from darsia.presets.workflows.config.corrections import (
     ColorCorrectionConfig,
     CorrectionsConfig,
@@ -230,3 +232,50 @@ def test_setup_illumination_correction_creates_uninitialized_correction_when_con
 
     assert isinstance(correction, DummyIlluminationCorrection)
     assert correction.setup_called is False
+
+
+def test_import_from_csv_supports_matrix_layout(tmp_path):
+    rig = Rig()
+    rig.baseline = darsia.ScalarImage(
+        np.zeros((2, 3), dtype=float),
+        dimensions=[2.0, 3.0],
+    )
+
+    values = np.array(
+        [
+            [0.5, 0.5, 3.0],
+            [1.5, 0.5, 3.0],
+            [2.5, 0.5, 3.0],
+            [0.5, 1.5, 6.0],
+            [1.5, 1.5, 6.0],
+            [2.5, 1.5, 6.0],
+        ]
+    )
+    csv_path = tmp_path / "result.csv"
+    np.savetxt(csv_path, values, delimiter=",")
+
+    image = rig.import_from_csv(csv_path)
+
+    assert isinstance(image, darsia.ScalarImage)
+    assert np.allclose(image.img, np.array([[6.0, 6.0, 6.0], [3.0, 3.0, 3.0]]))
+
+
+def test_import_from_csv_supports_coordinate_layout(tmp_path):
+    rig = Rig()
+    baseline = darsia.ScalarImage(
+        np.zeros((2, 2), dtype=float),
+        dimensions=[2.0, 2.0],
+    )
+    rig.baseline = baseline
+
+    reference = darsia.ScalarImage(
+        np.array([[10.0, 20.0], [30.0, 40.0]], dtype=float),
+        **baseline.metadata(),
+    )
+    csv_path = tmp_path / "coords.csv"
+    reference.to_csv(csv_path, delimiter=",")
+
+    image = rig.import_from_csv(csv_path)
+
+    assert isinstance(image, darsia.ScalarImage)
+    assert np.allclose(image.img, reference.img)

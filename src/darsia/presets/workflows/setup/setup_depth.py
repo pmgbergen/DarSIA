@@ -7,6 +7,7 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.setup.illustrations import save_scalar_map_illustration
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,14 @@ def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> 
         image=proxy_image,
         method="rbf",
     )
-    depth_map.save(config.depth.depth_map.with_suffix(".npz"))
+    depth_map_path = config.depth.depth_map.with_suffix(".npz")
+    depth_map.save(depth_map_path)
+    save_scalar_map_illustration(
+        depth_map.img,
+        config.depth.depth_map.with_suffix(".jpg"),
+        title="Depth map",
+        colorbar_label="Depth",
+    )
 
     if show:
         depth_map.show(title="Depth map")

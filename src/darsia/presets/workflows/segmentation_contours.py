@@ -1,15 +1,40 @@
 """Util for contour plots."""
 
+from __future__ import annotations
+
 import logging
+from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import SegmentationConfig
+from darsia.presets.workflows.mode_resolution import resolve_mode_image
+from darsia.signals.color import ColorEmbeddingRuntime
 from darsia.utils.augmented_plotting import plot_contour_on_image
 
+if TYPE_CHECKING:
+    from darsia.presets.workflows.config.color_embedding_registry import (
+        ColorEmbeddingRegistry,
+    )
+
 logger = logging.getLogger(__name__)
+
+
+def _compose_mass_analysis_result(
+    saturation_g: darsia.Image | None,
+    concentration_aq: darsia.Image | None,
+    mass: darsia.Image | None,
+):
+    return SimpleNamespace(
+        saturation_g=saturation_g,
+        concentration_aq=concentration_aq,
+        mass=mass,
+        mass_g=None,
+        mass_aq=None,
+    )
 
 
 class SimpleSegmentation:
@@ -49,25 +74,64 @@ class SimpleSegmentation:
         saturation_g: darsia.Image | None,
         concentration_aq: darsia.Image | None,
         mass: darsia.Image | None,
+        mass_analysis_result=None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
+        color_embedding_runtime: ColorEmbeddingRuntime | None = None,
+        rescaled_saturation_g: darsia.Image | None = None,
+        rescaled_concentration_aq: darsia.Image | None = None,
+        rescaled_mass: darsia.Image | None = None,
+        scalar_products: dict[str, darsia.Image | None] | None = None,
     ) -> darsia.Image:
-        if self.mode == "saturation_g":
-            if saturation_g is None:
-                raise ValueError(f"Missing image for mode {self.mode}")
-            values = saturation_g
-        elif self.mode == "concentration_aq":
-            if concentration_aq is None:
-                raise ValueError(f"Missing image for mode {self.mode}")
-            values = concentration_aq
-        elif self.mode == "mass":
-            if mass is None:
-                raise ValueError(f"Missing image for mode {self.mode}")
-                values = mass
-            else:
-                raise ValueError(f"Unknown label {self.mode} in segmentation config.")
+        if mass_analysis_result is None:
+            mass_analysis_result = _compose_mass_analysis_result(
+                saturation_g, concentration_aq, mass
+            )
+        products = scalar_products or {
+            "saturation_g": saturation_g,
+            "concentration_aq": concentration_aq,
+            "mass": mass,
+            "rescaled_saturation_g": rescaled_saturation_g,
+            "rescaled_concentration_aq": rescaled_concentration_aq,
+            "rescaled_mass": rescaled_mass,
+        }
+        values = resolve_mode_image(
+            self.mode,
+            img,
+            mass_analysis_result=mass_analysis_result,
+            color_embedding_registry=color_embedding_registry,
+            color_embedding_runtime=color_embedding_runtime,
+            scalar_products=products,
+        )
 
         # Extract masks based on thresholds
         mask = self.extract_mask(values, [self.threshold])[0]
         return mask
+
+
+class GradientBasedSegmentation(SimpleSegmentation):
+    def extract_mask(
+        self, img: darsia.ScalarImage, thresholds: list[float] | None
+    ) -> list[darsia.ScalarImage]:
+        """Extract phase based on gradient magnitude thresholding."""
+        # Compute gradient magnitude using Sobel operator
+        grad_x = cv2.Sobel(img.img.astype(np.float32), cv2.CV_32F, 1, 0, ksize=3)
+        grad_y = cv2.Sobel(img.img.astype(np.float32), cv2.CV_32F, 0, 1, ksize=3)
+        grad_magnitude = cv2.magnitude(grad_x, grad_y)
+
+        # Determine the maximum gradient magnitude for automatic thresholding if not provided
+        if thresholds is None:
+            max_grad = grad_magnitude.max()
+            thresholds = [max_grad]  # [max_grad * 0.5, max_grad * 0.75, max_grad]
+
+        # Use the same thresholding logic as in SimpleSegmentation
+        masks = []
+        for i in range(len(thresholds)):
+            lower = thresholds[i]
+            next = i + 1
+            upper = thresholds[next] if next < len(thresholds) else float("inf")
+            mask = (grad_magnitude >= lower) & (grad_magnitude <= upper)
+            masks.append(darsia.ScalarImage(img=mask, **img.metadata()))
+        return masks
 
 
 class SegmentationContours:
@@ -80,6 +144,10 @@ class SegmentationContours:
             self.config = config
         else:
             self.config = {"": config}
+
+    def requested_modes(self) -> set[str]:
+        """Return configured segmentation modes."""
+        return {cfg.mode for cfg in self.config.values()}
 
     def extract_mask(
         self, img: darsia.ScalarImage, thresholds: list[float]
@@ -112,6 +180,7 @@ class SegmentationContours:
         alpha: list[float],
         values_config,
         linewidth: int = 2,
+        contour_smoother: darsia.ContourSmoother | None = None,
     ) -> darsia.Image:
         """Add contours to image based on segmentation of mass.
 
@@ -128,6 +197,7 @@ class SegmentationContours:
             contour_image = plot_contour_on_image(
                 img=contour_image,
                 mask=[mask],
+                contour_smoother=contour_smoother,
                 color=[color],
                 alpha=[alpha],
                 thickness=linewidth,
@@ -293,28 +363,39 @@ class SegmentationContours:
     def __call__(
         self,
         img,
-        saturation_g: darsia.Image | None,
-        concentration_aq: darsia.Image | None,
-        mass: darsia.Image | None,
+        saturation_g: darsia.Image | None = None,
+        concentration_aq: darsia.Image | None = None,
+        mass: darsia.Image | None = None,
+        rescaled_saturation_g: darsia.Image | None = None,
+        rescaled_concentration_aq: darsia.Image | None = None,
+        rescaled_mass: darsia.Image | None = None,
+        scalar_products: dict[str, darsia.Image | None] | None = None,
+        mass_analysis_result=None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
+        color_embedding_runtime: ColorEmbeddingRuntime | None = None,
     ) -> darsia.Image:
+        products = scalar_products or {
+            "saturation_g": saturation_g,
+            "concentration_aq": concentration_aq,
+            "mass": mass,
+            "rescaled_saturation_g": rescaled_saturation_g,
+            "rescaled_concentration_aq": rescaled_concentration_aq,
+            "rescaled_mass": rescaled_mass,
+        }
         contour_img = img.copy()
+        if mass_analysis_result is None:
+            mass_analysis_result = _compose_mass_analysis_result(
+                saturation_g, concentration_aq, mass
+            )
         for segmentation_config in self.config.values():
-            # Select values based on mode
-            mode = segmentation_config.mode
-            if mode == "saturation_g":
-                if saturation_g is None:
-                    raise ValueError(f"Missing image for mode {mode}")
-                values = saturation_g
-            elif mode == "concentration_aq":
-                if concentration_aq is None:
-                    raise ValueError(f"Missing image for mode {mode}")
-                values = concentration_aq
-            elif mode == "mass":
-                if mass is None:
-                    raise ValueError(f"Missing image for mode {mode}")
-                values = mass
-            else:
-                raise ValueError(f"Unknown label {mode} in segmentation config.")
+            values = resolve_mode_image(
+                segmentation_config.mode,
+                img,
+                mass_analysis_result=mass_analysis_result,
+                color_embedding_registry=color_embedding_registry,
+                color_embedding_runtime=color_embedding_runtime,
+                scalar_products=products,
+            )
 
             # Extract masks based on thresholds
             masks = self.extract_mask(values, segmentation_config.thresholds)
@@ -328,5 +409,6 @@ class SegmentationContours:
                 segmentation_config.alpha,
                 segmentation_config.values,
                 segmentation_config.linewidth,
+                segmentation_config.contour_smoother,
             )
         return contour_img

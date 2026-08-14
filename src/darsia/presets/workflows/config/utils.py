@@ -128,3 +128,11 @@ def _convert_to_hours(time_value: float | str) -> float:
 
 def _convert_none(v):
     return None if ((isinstance(v, str) and v.lower() == "none") or v is None) else v
+
+
+def _validate_choice(value: str, *, allowed: set[str], context: str, key: str) -> str:
+    if value not in allowed:
+        raise ValueError(
+            f"Invalid {context}.{key} '{value}'. Allowed values are: {sorted(allowed)}."
+        )
+    return value

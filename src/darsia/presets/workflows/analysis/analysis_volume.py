@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import random
+import time
 from collections.abc import Callable
 from pathlib import Path
 
@@ -11,6 +13,11 @@ import pandas as pd
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
+)
+from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
+from darsia.presets.workflows.analysis.progress import (
+    AnalysisProgressEvent,
+    publish_image_progress,
 )
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.config.analysis import AnalysisVolumeConfig
@@ -23,6 +30,7 @@ def analysis_volume_from_context(
     ctx: AnalysisContext,
     show: bool = False,
     stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
+    progress_callback: Callable[[AnalysisProgressEvent], None] | None = None,
 ) -> None:
     """Volume analysis using pre-prepared context.
 
@@ -111,17 +119,31 @@ def analysis_volume_from_context(
     folder_concentration_aq = config.data.results / "concentration_aq"
     folder_saturation_g.mkdir(parents=True, exist_ok=True)
     folder_concentration_aq.mkdir(parents=True, exist_ok=True)
+    exporter = ImageExportFormats.from_analysis_config(config, fallback_formats=["npz"])
 
     # ! ---- ANALYSIS ----
 
     # Loop over images and analyze
-    for path in image_paths:
+    step_started_at = time.monotonic()
+    image_total = len(image_paths)
+
+    # Random shuffle for faster preview of analysis.
+    if ctx.config.analysis.random_traverse:
+        random.shuffle(image_paths)
+
+    for image_index, path in enumerate(image_paths, start=1):
+        image_started_at = time.monotonic()
+        try:
+            img = fluidflower.read_image(path)
+        except Exception as e:
+            logger.error(f"Failed to read image '{path}': {e}")
+            continue
+
         # Extract color signal and assign mass
-        img = fluidflower.read_image(path)
         mass_analysis_result = color_to_mass_analysis(img)
 
         # Log time
-        time = mass_analysis_result.time
+        image_time = mass_analysis_result.time
 
         # Fetch results
         saturation_g = mass_analysis_result.saturation_g
@@ -130,11 +152,21 @@ def analysis_volume_from_context(
         saturation_aq.img *= 1 - saturation_g.img
 
         # Store coarse data to disk
-        saturation_g.save(folder_saturation_g / f"{path.stem}.npz")
-        concentration_aq.save(folder_concentration_aq / f"{path.stem}.npz")
+        exporter.export_image(
+            saturation_g,
+            folder_saturation_g,
+            path.stem,
+            supported_types={"jpg", "png", "npz", "npy", "csv"},
+        )
+        exporter.export_image(
+            concentration_aq,
+            folder_concentration_aq,
+            path.stem,
+            supported_types={"jpg", "png", "npz", "npy", "csv"},
+        )
 
         # Prepare row data for DataFrame
-        row_data = {"time": time, "datetime": img.date, "stem": path.stem}
+        row_data = {"time": image_time, "datetime": img.date, "stem": path.stem}
 
         # Compute exact mass in ROIs and add to row data
         for roi_config in config.analysis.volume.roi.values():
@@ -178,7 +210,7 @@ def analysis_volume_from_context(
 
         # Save DataFrame to CSV after each image analysis
         volume_df.to_csv(csv_path, index=False)
-        logger.info(f"Processed {path.stem} at time {time}")
+        logger.info(f"Processed {path.stem} at time {image_time}")
 
         # Log the current analysis results
         for roi_config in config.analysis.volume.roi.values():
@@ -210,6 +242,15 @@ def analysis_volume_from_context(
             },
             logger=logger,
             error_message=f"Failed to stream volume previews for image '{path}'.",
+        )
+        publish_image_progress(
+            progress_callback,
+            step="volume",
+            image_path=str(path.resolve()),
+            image_index=image_index,
+            image_total=image_total,
+            image_duration_s=time.monotonic() - image_started_at,
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
 

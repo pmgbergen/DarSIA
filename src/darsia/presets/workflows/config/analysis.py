@@ -8,6 +8,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from warnings import warn
 
+import darsia
+from darsia.presets.workflows.mode_resolution import validate_mode_syntax
+
+from .contour_smoother import SavitzkyGolaySmootherConfig
 from .data_registry import DataRegistry
 from .fingers import FingersConfig
 from .roi import RoiAndLabelConfig, RoiConfig
@@ -16,9 +20,222 @@ from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
 
 if TYPE_CHECKING:
+    from darsia.signals.color import ColorEmbedding
+
+    from .color_embedding_registry import ColorEmbeddingRegistry
+    from .format_registry import FormatRegistry
     from .roi_registry import RoiRegistry
 
 logger = logging.getLogger(__name__)
+
+SUPPORTED_ANALYSIS_MASS_EXPORT_MODES = {
+    "mass",
+    "rescaled_mass",
+    "extensive_mass",
+    "extensive_rescaled_mass",
+    "saturation_g",
+    "rescaled_saturation_g",
+    "concentration_aq",
+    "rescaled_concentration_aq",
+}
+
+
+def _to_rgb(color: list[int] | tuple[int, int, int], name: str) -> tuple[int, int, int]:
+    if len(color) != 3:
+        raise ValueError(f"{name} must have exactly 3 entries [R, G, B].")
+    vals = tuple(int(v) for v in color)
+    if any(v < 0 or v > 255 for v in vals):
+        raise ValueError(f"{name} entries must be in [0, 255].")
+    return vals
+
+
+@dataclass
+class AnalysisThresholdingLegendConfig:
+    show: bool = True
+    font_scale: float = 0.7
+    thickness: int = 2
+    line_spacing: int = 8
+    position: tuple[int, int] = (20, 20)
+    text_color: tuple[int, int, int] = (255, 255, 255)
+    box_enabled: bool = True
+    box_color: tuple[int, int, int] = (0, 0, 0)
+    box_alpha: float = 0.4
+    box_padding: int = 10
+
+    def load(self, sec: dict) -> "AnalysisThresholdingLegendConfig":
+        self.show = bool(_get_key(sec, "show", required=False, default=self.show))
+        self.font_scale = float(
+            _get_key(sec, "font_scale", required=False, default=self.font_scale)
+        )
+        self.thickness = int(
+            _get_key(sec, "thickness", required=False, default=self.thickness)
+        )
+        self.line_spacing = int(
+            _get_key(sec, "line_spacing", required=False, default=self.line_spacing)
+        )
+        position = _get_key(sec, "position", required=False, default=self.position)
+        if len(position) != 2:
+            raise ValueError("analysis.thresholding.legend.position must be [x, y].")
+        self.position = (int(position[0]), int(position[1]))
+        self.text_color = _to_rgb(
+            _get_key(sec, "text_color", required=False, default=self.text_color),
+            "analysis.thresholding.legend.text_color",
+        )
+        self.box_enabled = bool(
+            _get_key(sec, "box_enabled", required=False, default=self.box_enabled)
+        )
+        self.box_color = _to_rgb(
+            _get_key(sec, "box_color", required=False, default=self.box_color),
+            "analysis.thresholding.legend.box_color",
+        )
+        self.box_alpha = float(
+            _get_key(sec, "box_alpha", required=False, default=self.box_alpha)
+        )
+        if not (0 <= self.box_alpha <= 1):
+            raise ValueError(
+                "analysis.thresholding.legend.box_alpha must be in [0, 1]."
+            )
+        self.box_padding = int(
+            _get_key(sec, "box_padding", required=False, default=self.box_padding)
+        )
+        return self
+
+
+@dataclass
+class AnalysisThresholdingConfig:
+    @dataclass
+    class LayerConfig:
+        mode: str = "concentration_aq"
+        threshold_min: float | None = None
+        threshold_max: float | None = None
+        label: str = ""
+        fill: tuple[int, int, int] = (255, 255, 255)
+        stroke: tuple[int, int, int] = (0, 0, 0)
+        fill_alpha: float = 0.35
+        stroke_width: int = 2
+
+        def load(
+            self,
+            sec: dict,
+            *,
+            key: str,
+            color_embedding_registry: ColorEmbeddingRegistry | None = None,
+        ) -> "AnalysisThresholdingConfig.LayerConfig":
+            self.mode = _get_key(sec, "mode", required=True, type_=str).strip()
+            validate_mode_syntax(
+                self.mode,
+                color_embedding_registry,
+                "analysis.thresholding.layer.{key}.mode",
+            )
+            self.threshold_min = _get_key(sec, "threshold_min", required=False)
+            self.threshold_max = _get_key(sec, "threshold_max", required=False)
+            if self.threshold_min is not None:
+                self.threshold_min = float(self.threshold_min)
+            if self.threshold_max is not None:
+                self.threshold_max = float(self.threshold_max)
+            if (
+                self.threshold_min is not None
+                and self.threshold_max is not None
+                and self.threshold_min > self.threshold_max
+            ):
+                raise ValueError(
+                    f"analysis.thresholding.layer.{key} has threshold_min > threshold_max."
+                )
+            if self.threshold_min is None and self.threshold_max is None:
+                raise ValueError(
+                    f"analysis.thresholding.layer.{key} must have at least one of "
+                    "threshold_min or threshold_max."
+                )
+
+            self.label = _get_key(sec, "label", required=False, default=key, type_=str)
+            self.fill = _to_rgb(
+                _get_key(sec, "fill", required=False, default=self.fill),
+                f"analysis.thresholding.layer.{key}.fill",
+            )
+            self.stroke = _to_rgb(
+                _get_key(sec, "stroke", required=False, default=self.stroke),
+                f"analysis.thresholding.layer.{key}.stroke",
+            )
+            self.fill_alpha = float(
+                _get_key(sec, "fill_alpha", required=False, default=self.fill_alpha)
+            )
+            if not (0.0 <= self.fill_alpha <= 1.0):
+                raise ValueError(
+                    f"analysis.thresholding.layer.{key}.fill_alpha must be in [0, 1]."
+                )
+            self.stroke_width = int(
+                _get_key(sec, "stroke_width", required=False, default=self.stroke_width)
+            )
+            if self.stroke_width < 0:
+                raise ValueError(
+                    f"analysis.thresholding.layer.{key}.stroke_width must be >= 0."
+                )
+
+            return self
+
+    formats: list[str] = field(default_factory=lambda: ["jpg", "npz"])
+    layers: dict[str, LayerConfig] = field(default_factory=dict)
+    legend: AnalysisThresholdingLegendConfig = field(
+        default_factory=AnalysisThresholdingLegendConfig
+    )
+    folder: Path = field(default_factory=Path)
+    """Path to the results folder for thresholding analysis."""
+
+    def load(
+        self,
+        sec: dict,
+        results: Path | None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
+    ) -> "AnalysisThresholdingConfig":
+        sub_sec = _get_section(sec, "thresholding")
+
+        raw_formats = _get_key(sub_sec, "formats", required=False, default=self.formats)
+        if not isinstance(raw_formats, list):
+            raise ValueError("analysis.thresholding.formats must be a list.")
+        if not all(isinstance(fmt, str) for fmt in raw_formats):
+            raise ValueError("analysis.thresholding.formats entries must be strings.")
+        self.formats = [fmt.strip().lower() for fmt in raw_formats if fmt.strip()]
+        if len(self.formats) == 0:
+            raise ValueError("analysis.thresholding.formats must not be empty.")
+        supported_formats = {"jpg", "npz"}
+        invalid_formats = sorted(set(self.formats) - supported_formats)
+        if len(invalid_formats) > 0:
+            raise ValueError(
+                "Unsupported [analysis.thresholding].formats entries: "
+                f"{', '.join(invalid_formats)}. Supported formats: "
+                f"{', '.join(sorted(supported_formats))}."
+            )
+
+        raw_layers = _get_key(sub_sec, "layer", required=False, default={})
+        if not isinstance(raw_layers, dict):
+            raise ValueError("analysis.thresholding.layer must be a table/dict.")
+        self.layers = {}
+        if len(raw_layers) > 0:
+            for key in raw_layers.keys():
+                layer_sec = _get_section(raw_layers, key)
+                self.layers[key] = self.LayerConfig().load(
+                    layer_sec,
+                    key=key,
+                    color_embedding_registry=color_embedding_registry,
+                )
+        legend = _get_key(sub_sec, "legend", required=False, default={})
+        if not isinstance(legend, dict):
+            raise ValueError("analysis.thresholding.legend must be a table/dict.")
+        self.legend.load(legend)
+
+        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
+        if not folder:
+            assert results is not None
+            self.folder = results / "thresholding"
+        else:
+            self.folder = folder
+
+        return self
+
+    def error(self):
+        raise ValueError(
+            "Use [analysis.thresholding] in the config file to load thresholding."
+        )
 
 
 @dataclass
@@ -29,21 +246,32 @@ class AnalysisSegmentationConfig:
     folder: Path = field(default_factory=Path)
     """Path to the results folder for segmentation."""
 
-    def load(self, sec: dict, results: Path | None) -> "AnalysisSegmentationConfig":
+    def load(
+        self,
+        sec: dict,
+        results: Path | None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
+    ) -> "AnalysisSegmentationConfig":
         # Allow for two scenarios: single segmentation or multiple segmentations
         sub_sec = _get_section(sec, "segmentation")
 
         try:
-            self.config = SegmentationConfig().load(sub_sec)
+            self.config = SegmentationConfig().load(
+                sub_sec, color_embedding_registry=color_embedding_registry
+            )
         except KeyError:
             self.config = {}
             for key in sub_sec.keys():
-                self.config[key] = SegmentationConfig().load(_get_section(sub_sec, key))
+                self.config[key] = SegmentationConfig().load(
+                    _get_section(sub_sec, key),
+                    color_embedding_registry=color_embedding_registry,
+                )
             try:
                 self.config = {}
                 for key in sub_sec.keys():
                     self.config[key] = SegmentationConfig().load(
-                        _get_section(sub_sec, key)
+                        _get_section(sub_sec, key),
+                        color_embedding_registry=color_embedding_registry,
                     )
             except KeyError as e:
                 raise KeyError(
@@ -64,17 +292,43 @@ class AnalysisSegmentationConfig:
 
 @dataclass
 class AnalysisMassConfig:
+    color: "ColorEmbedding | None" = None
+    """Color embedding identifier used for mass conversion.
+
+    The value must be a non-empty key defined in the centralized
+    ``[color.*.*]`` registry.
+    """
     roi: dict[str, RoiConfig] = field(default_factory=dict)
     """ROI configurations for mass analysis."""
     roi_and_label: dict[str, RoiAndLabelConfig] = field(default_factory=dict)
     """ROI and label configurations for mass analysis."""
+    export: list[str] | None = None
+    """Optional selection of mass-analysis scalar fields exported to disk."""
     folder: Path = field(default_factory=Path)
     """Path to the results folder for mass analysis."""
+    contour_smoother: darsia.ContourSmoother | None = None
+    """Optional contour smoother for finger contours."""
 
     def load(
-        self, sec: dict, results: Path | None, roi_registry: RoiRegistry | None = None
+        self,
+        sec: dict,
+        results: Path | None,
+        roi_registry: RoiRegistry | None = None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "AnalysisMassConfig":
         sub_sec = _get_section(sec, "mass")
+        color_key = _get_key(sub_sec, "color", required=True, type_=str).strip()
+        if color_embedding_registry is None:
+            raise ValueError(
+                "analysis.mass.color references [color.*.*], but no "
+                "ColorEmbeddingRegistry is available."
+            )
+        try:
+            self.color = color_embedding_registry.resolve(color_key)
+        except KeyError as exc:
+            raise ValueError(
+                f"Unknown analysis.mass.color embedding '{color_key}'."
+            ) from exc
 
         # Load ROIs – support registry-key references (list) and inline dicts.
         roi_raw = sub_sec.get("roi")
@@ -114,10 +368,60 @@ class AnalysisMassConfig:
             except KeyError:
                 self.roi_and_label = {}
 
+        raw_export = _get_key(sub_sec, "export", required=False, default=None)
+        if raw_export is None:
+            self.export = None
+        else:
+            if not isinstance(raw_export, list):
+                raise ValueError("analysis.mass.export must be a list.")
+            if not all(isinstance(mode, str) for mode in raw_export):
+                raise ValueError("analysis.mass.export entries must be strings.")
+            export_modes = []
+            for mode in raw_export:
+                stripped_mode = mode.strip()
+                if stripped_mode:
+                    export_modes.append(stripped_mode.lower())
+            invalid_modes = sorted(
+                set(export_modes) - SUPPORTED_ANALYSIS_MASS_EXPORT_MODES
+            )
+            if len(invalid_modes) > 0:
+                raise ValueError(
+                    "Unsupported [analysis.mass].export entries: "
+                    f"{', '.join(invalid_modes)}. "
+                    "Supported values: "
+                    f"{', '.join(sorted(SUPPORTED_ANALYSIS_MASS_EXPORT_MODES))}."
+                )
+            # Deduplicate while preserving first-seen order.
+            self.export = list(dict.fromkeys(export_modes))
+
         folder = _get_key(sub_sec, "folder", required=False, type_=Path)
         if not folder:
             assert results is not None
-            self.folder = results / "mass"
+            folder = results / "mass"
+        self.folder = folder
+
+        # Load contour smoother
+        contour_smoother = _get_key(
+            sub_sec, "contour_smoother", required=False, default="none", type_=str
+        ).lower()
+        if contour_smoother == "none":
+            self.contour_smoother = None
+        else:
+            smoother_options_sec = sub_sec.get("contour_smoother_options", {})
+
+            if contour_smoother == "savitzky_golay":
+                smoother_options = SavitzkyGolaySmootherConfig().load(
+                    smoother_options_sec
+                )
+                self.contour_smoother = darsia.SavitzkyGolaySmoother(
+                    window_length=smoother_options.window_length,
+                    polyorder=smoother_options.polyorder,
+                )
+            else:
+                raise NotImplementedError(
+                    f"Unsupported contour smoother type: {contour_smoother}"
+                )
+
         return self
 
 
@@ -184,6 +488,55 @@ class AnalysisVolumeConfig:
 
 
 @dataclass
+class AnalysisExpertKnowledgeConfig:
+    """Configuration for expert-knowledge ROI constraints on analysis fields."""
+
+    saturation_g: list[str] = field(default_factory=list)
+    """ROI registry keys constraining where saturation_g may be non-zero."""
+    concentration_aq: list[str] = field(default_factory=list)
+    """ROI registry keys constraining where concentration_aq may be non-zero."""
+
+    def load(
+        self, sec: dict, roi_registry: RoiRegistry | None = None
+    ) -> "AnalysisExpertKnowledgeConfig":
+        sub_sec = _get_section(sec, "expert_knowledge")
+
+        self.saturation_g = _get_key(
+            sub_sec, "saturation_g", required=False, default=[]
+        )
+        self.concentration_aq = _get_key(
+            sub_sec, "concentration_aq", required=False, default=[]
+        )
+
+        if not isinstance(self.saturation_g, list) or not all(
+            isinstance(key, str) for key in self.saturation_g
+        ):
+            raise ValueError(
+                "analysis.expert_knowledge.saturation_g must be a list[str]."
+            )
+        if not isinstance(self.concentration_aq, list) or not all(
+            isinstance(key, str) for key in self.concentration_aq
+        ):
+            raise ValueError(
+                "analysis.expert_knowledge.concentration_aq must be a list[str]."
+            )
+
+        # Validate registry references eagerly when provided.
+        if roi_registry is not None:
+            if len(self.saturation_g) > 0:
+                roi_registry.resolve_rois(self.saturation_g)
+            if len(self.concentration_aq) > 0:
+                roi_registry.resolve_rois(self.concentration_aq)
+        elif len(self.saturation_g) > 0 or len(self.concentration_aq) > 0:
+            raise ValueError(
+                "analysis.expert_knowledge requires a loaded ROI registry when "
+                "saturation_g or concentration_aq keys are provided."
+            )
+
+        return self
+
+
+@dataclass
 class AnalysisFingersConfig:
     config: FingersConfig | dict[str, FingersConfig] = field(
         default_factory=lambda: FingersConfig()
@@ -198,23 +551,32 @@ class AnalysisFingersConfig:
         sec: dict,
         results: Path | None,
         roi_registry: RoiRegistry | None = None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "AnalysisFingersConfig":
         # Allow for two scenarios: single fingers or multiple fingers
         sub_sec = _get_section(sec, "fingers")
 
         try:
-            self.config = FingersConfig().load(sub_sec, roi_registry=roi_registry)
+            self.config = FingersConfig().load(
+                sub_sec,
+                roi_registry=roi_registry,
+                color_embedding_registry=color_embedding_registry,
+            )
         except KeyError:
             self.config = {}
             for key in sub_sec.keys():
                 self.config[key] = FingersConfig().load(
-                    _get_section(sub_sec, key), roi_registry=roi_registry
+                    _get_section(sub_sec, key),
+                    roi_registry=roi_registry,
+                    color_embedding_registry=color_embedding_registry,
                 )
             try:
                 self.config = {}
                 for key in sub_sec.keys():
                     self.config[key] = FingersConfig().load(
-                        _get_section(sub_sec, key), roi_registry=roi_registry
+                        _get_section(sub_sec, key),
+                        roi_registry=roi_registry,
+                        color_embedding_registry=color_embedding_registry,
                     )
             except KeyError as e:
                 raise KeyError(
@@ -260,6 +622,10 @@ class AnalysisCroppingConfig:
 class AnalysisConfig:
     data: TimeData | None = None
     """Analysis data configuration."""
+    random_traverse: bool = False
+    """Whether to randomly traverse the data."""
+    formats: list[str] | None = None
+    """Optional analysis-wide export format identifiers."""
     cropping: AnalysisCroppingConfig | None = None
     """Analysis cropping configuration."""
     segmentation: AnalysisSegmentationConfig | None = None
@@ -270,6 +636,12 @@ class AnalysisConfig:
     """Analysis volume configuration."""
     fingers: AnalysisFingersConfig | None = None
     """Analysis fingers configuration."""
+    thresholding: AnalysisThresholdingConfig | None = None
+    """Analysis thresholding configuration."""
+    expert_knowledge: AnalysisExpertKnowledgeConfig = field(
+        default_factory=AnalysisExpertKnowledgeConfig
+    )
+    """Expert knowledge constraints for selected scalar analysis fields."""
 
     def load(
         self,
@@ -278,19 +650,50 @@ class AnalysisConfig:
         results: Path | None,
         data_registry: DataRegistry | None = None,
         roi_registry: RoiRegistry | None = None,
+        format_registry: FormatRegistry | None = None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "AnalysisConfig":
         sec = _get_section_from_toml(path, "analysis")
 
-        # Config to load analysis data – support registry reference or inline
-        data_val = sec.get("data")
-        if isinstance(data_val, (str, list)) and data_registry is not None:
-            self.data = data_registry.resolve(data_val)
+        # Config to load analysis data – centralized selector resolution.
+        try:
+            self.data = (
+                data_registry.resolve(sec.get("data")) if data_registry else None
+            )
+        except KeyError:
+            warn("No analysis data found. Use [analysis.data].")
+            self.data = None
+
+        self.random_traverse = _get_key(
+            sec, "random_traverse", required=False, default=False, type_=bool
+        )
+
+        raw_formats = _get_key(sec, "formats", required=False, default=None)
+        if raw_formats is None:
+            self.formats = None
         else:
-            try:
-                self.data = TimeData().load(sec["data"], data)
-            except KeyError:
-                warn("No analysis data found. Use [analysis.data].")
-                self.data = None
+            if not isinstance(raw_formats, list):
+                raise ValueError("analysis.formats must be a list.")
+            if not all(isinstance(fmt, str) for fmt in raw_formats):
+                raise ValueError("analysis.formats entries must be strings.")
+            self.formats = [fmt.strip() for fmt in raw_formats if fmt.strip()]
+            if len(self.formats) == 0:
+                raise ValueError("analysis.formats must not be empty.")
+            # Validate against global registry keys when available.
+            if format_registry is not None:
+                available = set(format_registry.keys())
+                unsupported = sorted(
+                    key
+                    for key in self.formats
+                    if key not in available
+                    and key.lower() not in {"jpg", "png", "npz", "npy", "csv"}
+                )
+                if len(unsupported) > 0:
+                    raise ValueError(
+                        "Unsupported [analysis].formats entries: "
+                        f"{', '.join(unsupported)}. "
+                        "Use top-level [format.<type>.<identifier>] keys."
+                    )
 
         # Config to load analysis cropping
         try:
@@ -301,7 +704,11 @@ class AnalysisConfig:
 
         # Config to load analysis segmentation
         try:
-            self.segmentation = AnalysisSegmentationConfig().load(sec, results)
+            self.segmentation = AnalysisSegmentationConfig().load(
+                sec,
+                results,
+                color_embedding_registry=color_embedding_registry,
+            )
         except KeyError:
             warn("No analysis segmentation found. Use [analysis.segmentation].")
             self.segmentation = None
@@ -309,7 +716,10 @@ class AnalysisConfig:
         # Config to load analysis mass
         try:
             self.mass = AnalysisMassConfig().load(
-                sec, results, roi_registry=roi_registry
+                sec,
+                results,
+                roi_registry=roi_registry,
+                color_embedding_registry=color_embedding_registry,
             )
         except KeyError:
             warn("No analysis mass found. Use [analysis.mass].")
@@ -327,10 +737,32 @@ class AnalysisConfig:
         # Config to load analysis fingers
         try:
             self.fingers = AnalysisFingersConfig().load(
-                sec, results, roi_registry=roi_registry
+                sec,
+                results,
+                roi_registry=roi_registry,
+                color_embedding_registry=color_embedding_registry,
             )
         except KeyError:
             warn("No analysis fingers found. Use [analysis.fingers].")
             self.fingers = None
+
+        # Config to load analysis thresholding
+        try:
+            self.thresholding = AnalysisThresholdingConfig().load(
+                sec,
+                results,
+                color_embedding_registry=color_embedding_registry,
+            )
+        except KeyError:
+            warn("No analysis thresholding found. Use [analysis.thresholding].")
+            self.thresholding = None
+
+        # Config to load analysis expert knowledge. Missing section is a no-op default.
+        try:
+            self.expert_knowledge = AnalysisExpertKnowledgeConfig().load(
+                sec, roi_registry=roi_registry
+            )
+        except KeyError:
+            self.expert_knowledge = AnalysisExpertKnowledgeConfig()
 
         return self

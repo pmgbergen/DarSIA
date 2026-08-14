@@ -9,6 +9,7 @@ import pandas as pd
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.rig import Rig
+from darsia.presets.workflows.setup.illustrations import save_discrete_map_illustration
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,10 @@ def setup_facies(cls: Rig, path: Path, show: bool = False):
     facies = darsia.reassign_labels(labels, label_to_facies_map)
 
     # Sanity check - ids. Check that all facies ids are defined in props.
-    facies_props = pd.read_excel(config.facies.props)
+    if config.facies.props.suffix == ".xlsx":
+        facies_props = pd.read_excel(config.facies.props)
+    elif config.facies.props.suffix == ".csv":
+        facies_props = pd.read_csv(config.facies.props)
     facies_ids = facies_props["id"].tolist()
     for facies_id in np.unique(facies.img):
         assert (
@@ -52,5 +56,11 @@ def setup_facies(cls: Rig, path: Path, show: bool = False):
 
     # ! ---- SAVE FACIES ----
     facies.save(config.facies.path)
+    save_discrete_map_illustration(
+        facies.img,
+        config.facies.path.with_suffix(".jpg"),
+        title="Facies",
+        colorbar_label="Facies id",
+    )
     if show:
         facies.show(title="Facies")

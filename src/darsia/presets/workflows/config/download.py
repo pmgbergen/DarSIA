@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from warnings import warn
 
+from .data_registry import DataRegistry
 from .time_data import TimeData
 from .utils import _get_section_from_toml
 
@@ -24,7 +25,11 @@ class DownloadConfig:
     If not provided, defaults to [data.results/raw_data]."""
 
     def load(
-        self, path: Path, data: Path | None, results: Path | None
+        self,
+        path: Path,
+        data: Path | None,
+        results: Path | None,
+        data_registry: DataRegistry | None,
     ) -> "DownloadConfig":
         sec = _get_section_from_toml(path, "download")
 
@@ -44,11 +49,13 @@ class DownloadConfig:
                 """ensure that [data] is correctly specified."""
             )
 
-        # Config to load analysis data
+        # Config to load download data
         try:
-            self.data = TimeData().load(sec["data"], self.source)
+            self.data = (
+                data_registry.resolve(sec.get("data")) if data_registry else None
+            )
         except KeyError:
-            warn("No download data selection found. Use [download.data].")
+            warn("No download data found. Use [download.data].")
             self.data = None
 
         # Config to skip existing files
