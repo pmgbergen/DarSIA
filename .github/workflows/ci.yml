@@ -95,16 +95,21 @@ jobs:
         python-version: ${{ matrix.python-version}}
         architecture: x64
 
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+
     - name: Install DarSIA
-      run: pip install .[dev]
+      run: uv sync --extra dev
 
     - name: black
       if: ${{ always() }}
-      run: black --check src
+      run: uv run black --check src
 
     - name: flake8
       if: ${{ always() }}
-      run: flake8 src
+      run: uv run flake8 src
 
     # - name: mypy
     #   if: ${{ always() }}
@@ -112,7 +117,7 @@ jobs:
 
     - name: isort
       if: ${{always()}}
-      run: isort --check src
+      run: uv run isort --check src
 
     - name: pytest
       if: ${{always()}}
