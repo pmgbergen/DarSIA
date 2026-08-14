@@ -50,7 +50,7 @@ jobs:
 
     - name: Install DarSIA (with petsc, push only)
       if: github.event_name == 'push'
-      run: uv sync --extra dev --extra petsc
+      run: uv sync --extra dev
 
     - name: Install DarSIA
       if: github.event_name != 'push'
