@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 
 import toml
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -37,6 +37,7 @@ class MainWindow(QMainWindow):
     """The main class containing the window and the relevant methods for the visualization."""
 
     log_message = Signal(str)
+    main_thread_call = Signal(object)
 
     def __init__(self):
         super().__init__()
@@ -44,6 +45,9 @@ class MainWindow(QMainWindow):
 
         # Connect log_message signal to append_log slot for thread-safe logging
         self.log_message.connect(self._append_log)
+
+        # Connect main_thread_call signal for blocking main-thread execution from worker threads
+        self.main_thread_call.connect(self._run_on_main_thread, Qt.BlockingQueuedConnection)
 
         # Set window icon
         logo_path = (
@@ -521,3 +525,19 @@ class MainWindow(QMainWindow):
         """Slot that appends text to log window and prints to console."""
         self.log_text.append(text)
         print(text)
+
+    def _run_on_main_thread(self, func):
+        """Slot: execute a zero-arg callable on the main thread."""
+        func()
+
+    def call_on_main_thread(self, func):
+        """Run func() on the main GUI thread, blocking the caller until it returns.
+
+        Safe to call from either the main thread or a worker thread. Qt's
+        BlockingQueuedConnection deadlocks if emitter and receiver share a thread,
+        so same-thread calls are short-circuited to a direct call.
+        """
+        if QThread.currentThread() is self.thread():
+            func()
+        else:
+            self.main_thread_call.emit(func)

@@ -1,9 +1,33 @@
 """Setup workflow tab for DarSIA GUI."""
 
+import contextlib
 import threading
 from pathlib import Path
 
 from PySide6.QtWidgets import QCheckBox, QMessageBox, QPushButton, QVBoxLayout, QWidget
+
+
+@contextlib.contextmanager
+def _marshal_image_show_to_main_thread(main_window):
+    """Redirect darsia.Image.show() to run on the main GUI thread for the
+    duration of the block, blocking the calling (worker) thread until each
+    plot window is closed. Needed because matplotlib's interactive Qt backend
+    may only create/show windows from the main thread.
+    """
+    import darsia
+
+    original_show = darsia.Image.show
+
+    def threadsafe_show(image_self, *args, **kwargs):
+        main_window.call_on_main_thread(
+            lambda: original_show(image_self, *args, **kwargs)
+        )
+
+    darsia.Image.show = threadsafe_show
+    try:
+        yield
+    finally:
+        darsia.Image.show = original_show
 
 
 class SetupTab:
@@ -132,52 +156,45 @@ class SetupTab:
 
         # Run workflow in a separate thread to avoid blocking the GUI
         def run_workflow():
-            try:
-                from darsia.presets.workflows.rig import Rig
-                from darsia.presets.workflows.setup.setup_depth import setup_depth_map
-                from darsia.presets.workflows.setup.setup_facies import setup_facies
-                from darsia.presets.workflows.setup.setup_labeling import (
-                    segment_colored_image,
-                )
-                from darsia.presets.workflows.setup.setup_protocols import (
-                    setup_imaging_protocol,
-                )
-                from darsia.presets.workflows.setup.setup_rig import setup_rig
-
-                show = options["show"]
-
-                if options["all"] or options["depth"]:
-                    self.main_window.print_log("Running depth map setup...")
-                    setup_depth_map(config_paths, key="depth", show=show)
-                if options["all"] or options["segmentation"]:
-                    self.main_window.print_log("Running segmentation setup...")
-                    segment_colored_image(config_paths, show=show)
-                if options["all"] or options["facies"]:
-                    self.main_window.print_log("Running facies setup...")
-                    setup_facies(Rig, config_paths, show=show)
-                if options["all"] or options["rig"]:
-                    self.main_window.print_log("Running rig setup...")
-                    setup_rig(Rig, config_paths, show=show)
-                if options["protocols"]:
-                    self.main_window.print_log("Running protocol setup...")
-                    setup_imaging_protocol(
-                        config_paths, force=options["force"], show=show
+            with _marshal_image_show_to_main_thread(self.main_window):
+                try:
+                    from darsia.presets.workflows.rig import Rig
+                    from darsia.presets.workflows.setup.setup_depth import setup_depth_map
+                    from darsia.presets.workflows.setup.setup_facies import setup_facies
+                    from darsia.presets.workflows.setup.setup_labeling import (
+                        segment_colored_image,
                     )
+                    from darsia.presets.workflows.setup.setup_protocols import (
+                        setup_imaging_protocol,
+                    )
+                    from darsia.presets.workflows.setup.setup_rig import setup_rig
 
-                self.main_window.print_log("Setup completed successfully!")
-            except Exception as e:
-                self.main_window.print_log(f"Error during setup: {str(e)}")
-                import traceback
+                    show = options["show"]
 
-                self.main_window.print_log(traceback.format_exc())
+                    if options["all"] or options["depth"]:
+                        self.main_window.print_log("Running depth map setup...")
+                        setup_depth_map(config_paths, key="depth", show=show)
+                    if options["all"] or options["segmentation"]:
+                        self.main_window.print_log("Running segmentation setup...")
+                        segment_colored_image(config_paths, show=show)
+                    if options["all"] or options["facies"]:
+                        self.main_window.print_log("Running facies setup...")
+                        setup_facies(Rig, config_paths, show=show)
+                    if options["all"] or options["rig"]:
+                        self.main_window.print_log("Running rig setup...")
+                        setup_rig(Rig, config_paths, show=show)
+                    if options["protocols"]:
+                        self.main_window.print_log("Running protocol setup...")
+                        setup_imaging_protocol(
+                            config_paths, force=options["force"], show=show
+                        )
 
-        if options["show"]:
-            # Interactive plotting (plt.show()) must run on the main thread — Qt/matplotlib
-            # are not thread-safe for GUI object creation. Run synchronously; the GUI will
-            # block until the workflow (and any plot windows) complete, which is expected
-            # for interactive output. print_log calls are now thread-safe via Qt signal.
-            run_workflow()
-        else:
-            # No interactive plotting — use background thread to keep GUI responsive
-            thread = threading.Thread(target=run_workflow, daemon=True)
-            thread.start()
+                    self.main_window.print_log("Setup completed successfully!")
+                except Exception as e:
+                    self.main_window.print_log(f"Error during setup: {str(e)}")
+                    import traceback
+
+                    self.main_window.print_log(traceback.format_exc())
+
+        thread = threading.Thread(target=run_workflow, daemon=True)
+        thread.start()
