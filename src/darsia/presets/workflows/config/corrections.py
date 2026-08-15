@@ -18,7 +18,14 @@ class TypeCorrectionConfig:
 
     """
 
-    target_type: Type[np.floating] = np.float64
+    target_type: Type[np.floating] = field(
+        default=np.float64,
+        metadata={
+            "name": "Target type",
+            "help": "Target data type for conversion (float32 or float64).",
+            "options": ["float32", "float64"],
+        },
+    )
 
     def load(self, sec: dict) -> "TypeCorrectionConfig":
         """Load type correction configuration from a dictionary.
@@ -77,7 +84,7 @@ class CurvatureCorrectionConfig:
 
     # TODO mere with curvature correction config from curvature.py
 
-    config: dict | None = None
+    config: dict | None = field(default=None, metadata={"hidden": True})
 
     def load(self, sec: dict) -> "CurvatureCorrectionConfig":
         """Load curvature correction configuration from a dictionary.
@@ -99,7 +106,17 @@ class DriftCorrectionConfig:
 
     colorchecker: (
         Literal["upper_left", "upper_right", "lower_left", "lower_right"] | None
-    ) = None
+    ) = field(
+        default=None,
+        metadata={
+            "name": "Color checker position",
+            "help": (
+                "Position of color checker (upper/lower, left/right). "
+                "Leave empty to disable drift correction."
+            ),
+            "options": ["upper_left", "upper_right", "lower_left", "lower_right"],
+        },
+    )
 
     def load(self, sec: dict) -> "DriftCorrectionConfig":
         """Load drift correction configuration from a dictionary.
@@ -176,7 +193,7 @@ class RelativeColorCorrectionConfig:
     """Calibration images used to calibrate relative color correction."""
     interactive: bool = False
     """Whether interactive calibration is allowed."""
-    options: dict = field(default_factory=dict)
+    options: dict = field(default_factory=dict, metadata={"hidden": True})
     """Calibration options forwarded to RelativeColorCorrection."""
 
     def load(self, sec: dict) -> "RelativeColorCorrectionConfig":
@@ -347,28 +364,36 @@ class CorrectionsConfig:
 
     # Configuration objects for each correction type
     type: TypeCorrectionConfig | None = field(
-        default=None, metadata={"active_list_key": "active"}
+        default=None, metadata={"name": "Type correction", "active_list_key": "active"}
     )
     resize: ResizeCorrectionConfig | None = field(
-        default=None, metadata={"active_list_key": "active"}
+        default=None,
+        metadata={"name": "Resize correction", "active_list_key": "active"},
     )
     drift: DriftCorrectionConfig | None = field(
-        default=None, metadata={"active_list_key": "active"}
+        default=None, metadata={"name": "Drift correction", "active_list_key": "active"}
     )
     curvature: CurvatureCorrectionConfig | None = field(
-        default=None, metadata={"active_list_key": "active"}
+        default=None,
+        metadata={"name": "Curvature correction", "active_list_key": "active"},
     )
     color: ColorCorrectionConfig | None = field(
-        default=None, metadata={"active_list_key": "active"}
+        default=None, metadata={"name": "Color correction", "active_list_key": "active"}
     )
     relative_color: bool | RelativeColorCorrectionConfig | None = field(
-        default=None, metadata={"active_list_key": "active"}
+        default=None,
+        metadata={"name": "Relative color correction", "active_list_key": "active"},
     )
     illumination: IlluminationCorrectionConfig | None = field(
-        default=None, metadata={"active_list_key": "active"}
+        default=None,
+        metadata={"name": "Illumination correction", "active_list_key": "active"},
     )
     patchwise_illumination: PatchwiseIlluminationCorrectionConfig | None = field(
-        default=None, metadata={"active_list_key": "active"}
+        default=None,
+        metadata={
+            "name": "Patchwise illumination correction",
+            "active_list_key": "active",
+        },
     )
 
     inactive: dict[str, Any] = field(
