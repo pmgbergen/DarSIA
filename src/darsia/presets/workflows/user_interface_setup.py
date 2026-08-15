@@ -20,6 +20,7 @@ Advanced usage (activate specific steps):
 
 import argparse
 import logging
+import sys
 
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.setup.setup_depth import setup_depth_map
@@ -30,6 +31,7 @@ from darsia.presets.workflows.setup.setup_rig import delete_rig, setup_rig
 
 # Set logging level
 logger = logging.getLogger(__name__)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
 def build_parser_for_setup():
@@ -81,14 +83,23 @@ def preset_setup(rig=Rig):
     args = parser.parse_args()
 
     if args.all or args.depth:
+        print("Running depth map setup...", flush=True)
         setup_depth_map(args.config, key="depth", show=args.show)
     if args.all or args.segmentation:
+        print("Running segmentation setup...", flush=True)
         segment_colored_image(args.config, args.show)
     if args.all or args.facies:
+        print("Running facies setup...", flush=True)
         setup_facies(rig, args.config, args.show)
     if args.all or args.rig:
+        print("Running rig setup...", flush=True)
         setup_rig(rig, args.config, args.show)
     if args.protocol:
+        print("Running protocol setup...", flush=True)
         setup_imaging_protocol(args.config, force=args.force, show=args.show)
     if args.delete:
         delete_rig(rig, args.config, args.show)
+
+
+if __name__ == "__main__":
+    preset_setup()

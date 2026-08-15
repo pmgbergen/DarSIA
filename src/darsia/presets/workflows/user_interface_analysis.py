@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import sys
 import time
 from collections.abc import Callable
 
@@ -33,6 +34,7 @@ from darsia.presets.workflows.analysis.progress import (
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
 def build_parser_for_analysis():
@@ -250,3 +252,7 @@ def preset_analysis(rig_cls: type[Rig], **kwargs):
     args = parser.parse_args()
     print_help_for_flags(args, parser)
     run_analysis(rig_cls, args, **kwargs)
+
+
+if __name__ == "__main__":
+    preset_analysis(Rig)

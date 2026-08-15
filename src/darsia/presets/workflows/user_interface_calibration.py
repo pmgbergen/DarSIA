@@ -8,6 +8,7 @@ Available:
 
 import argparse
 import logging
+import sys
 from pathlib import Path
 
 from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_context
@@ -21,6 +22,7 @@ from darsia.presets.workflows.calibration.calibration_color_to_mass_analysis imp
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
 def build_parser_for_calibration():
@@ -98,12 +100,14 @@ def preset_calibration(rig=Rig, **kwargs):
     )
 
     if args.color_embedding:
+        print("Running color embedding calibration...", flush=True)
         calibration_color_paths_from_context(
             ctx,
             args.show,
         )
 
     if args.mass or args.default_mass:
+        print("Running mass calibration...", flush=True)
         ref_config = Path(args.ref_config) if args.ref_config else None
         calibration_color_to_mass_analysis_from_context(
             ctx,
@@ -112,3 +116,7 @@ def preset_calibration(rig=Rig, **kwargs):
             show=args.show,
             default=args.default_mass,
         )
+
+
+if __name__ == "__main__":
+    preset_calibration()
