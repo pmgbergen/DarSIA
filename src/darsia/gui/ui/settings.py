@@ -198,9 +198,14 @@ class SettingsFactory:
                 ).items():
                     self.main_window.settings_inputs[sub_key] = sub_widget
             # Handle grouped scalar fields and auto-grouped multi-row fields
-            elif auto_grouped and isinstance(field_or_result, dict) and "widget" in field_or_result:
+            elif (
+                auto_grouped
+                and isinstance(field_or_result, dict)
+                and "widget" in field_or_result
+            ):
                 # Multi-row field (form_context mode): form gets the header widget as the
-                # spanning row; settings_inputs gets the row-tracking payload save_settings expects.
+                # spanning row; settings_inputs gets the row-tracking payload save_settings
+                # expects.
                 target_form.addRow("", field_or_result["widget"])
                 if "path_map" in field_or_result:
                     self.main_window.settings_inputs[setting["key"]] = {
@@ -213,9 +218,12 @@ class SettingsFactory:
                         "rows": field_or_result["rows"],
                     }
                 else:
-                    self.main_window.settings_inputs[setting["key"]] = field_or_result["rows"]
+                    self.main_window.settings_inputs[setting["key"]] = field_or_result[
+                        "rows"
+                    ]
             elif auto_grouped and isinstance(field_or_result, dict):
-                # Multi-row field that created its own result dict (backward compat, non-form_context)
+                # Multi-row field that created its own result dict
+                # (backward compat, non-form_context)
                 # Skip adding to form
                 self.main_window.settings_inputs[setting["key"]] = field_or_result
             elif auto_grouped or explicit_group:
@@ -570,7 +578,11 @@ class SettingsFactory:
             QTimer.singleShot(0, deferred_prefill)
 
             # Return enriched dict: widget for form insertion, rows for save_settings
-            return display_name, {"widget": header_widget, "int_group_list": True, "rows": row_edits}
+            return display_name, {
+                "widget": header_widget,
+                "int_group_list": True,
+                "rows": row_edits,
+            }
 
         else:
             # Fallback (should not be reached in the current app, but kept for compatibility)

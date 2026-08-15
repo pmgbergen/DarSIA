@@ -46,8 +46,11 @@ class MainWindow(QMainWindow):
         # Connect log_message signal to append_log slot for thread-safe logging
         self.log_message.connect(self._append_log)
 
-        # Connect main_thread_call signal for blocking main-thread execution from worker threads
-        self.main_thread_call.connect(self._run_on_main_thread, Qt.BlockingQueuedConnection)
+        # Connect main_thread_call signal for blocking main-thread execution from
+        # worker threads
+        self.main_thread_call.connect(
+            self._run_on_main_thread, Qt.BlockingQueuedConnection
+        )
 
         # Set window icon
         logo_path = (
@@ -203,7 +206,9 @@ class MainWindow(QMainWindow):
             if isinstance(value, dict) and "checkbox" in value:
                 continue
             # Skip path_map and int_group_list dicts (handled below)
-            if isinstance(value, dict) and ("path_map" in value or "int_group_list" in value):
+            if isinstance(value, dict) and (
+                "path_map" in value or "int_group_list" in value
+            ):
                 continue
             # Skip sub-inputs of unchecked groups
             if key in skip_keys:
