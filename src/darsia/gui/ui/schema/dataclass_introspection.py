@@ -232,4 +232,30 @@ def get_section_fields(section: str) -> list[dict[str, Any]] | None:
     if not is_dataclass(dataclass_type):
         return None
 
-    return _build_fields(dataclass_type, section)
+    # Check if any field has section_active metadata (marks the whole section as toggleable)
+    active_field = None
+    for f in fields(dataclass_type):
+        if f.metadata.get("section_active"):
+            active_field = f
+            break
+
+    # Build the normal field list (already excludes hidden fields like section_active=True)
+    field_list = _build_fields(dataclass_type, section)
+
+    # If a section_active field exists, wrap the entire field list in a checkable group
+    if active_field is not None:
+        active_bool_key = f"{section}.{active_field.name}"
+        active_bool_default = _field_default(active_field)
+        # Use the active field's name metadata as the group box title (e.g., "Extract image porosity")
+        group_title = active_field.metadata.get("name", section)
+        group_dict = {
+            "key": section,
+            "type": "group",
+            "name": group_title,
+            "active_bool_key": active_bool_key,
+            "active_bool_default": active_bool_default,
+            "fields": field_list,
+        }
+        return [group_dict]
+
+    return field_list
