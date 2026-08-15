@@ -246,7 +246,8 @@ def get_section_fields(section: str) -> list[dict[str, Any]] | None:
     if active_field is not None:
         active_bool_key = f"{section}.{active_field.name}"
         active_bool_default = _field_default(active_field)
-        # Use the active field's name metadata as the group box title (e.g., "Extract image porosity")
+        # Use the active field's name metadata as the group box title (e.g.,
+        # "Activate image porosity")
         group_title = active_field.metadata.get("name", section)
         group_dict = {
             "key": section,
