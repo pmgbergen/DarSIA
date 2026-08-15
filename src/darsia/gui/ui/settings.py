@@ -832,6 +832,38 @@ class SettingsFactory:
         group_box = QGroupBox(display_name)
         result = {}
 
+        # Apply QSS to make checkboxes visible (not "ghosted") in dark mode.
+        # Uses palette() functions so it respects the OS theme.
+        group_box.setStyleSheet(
+            "QGroupBox::indicator {"
+            "  width: 14px; height: 14px;"
+            "  border: 1px solid palette(mid);"
+            "  border-radius: 3px;"
+            "  background-color: palette(window);"
+            "}"
+            "QGroupBox::indicator:checked {"
+            "  background-color: palette(highlight);"
+            "  border: 1px solid palette(highlight);"
+            "}"
+        )
+
+        # Handle active_bool_key (section-level toggle, simple boolean)
+        active_bool_key = setting_dict.get("active_bool_key")
+        if active_bool_key is not None:
+            is_active = self.get_value(self.main_window.config_dict, active_bool_key)
+            if is_active is None:
+                is_active = setting_dict.get("active_bool_default", True)
+
+            group_box.setCheckable(True)
+            group_box.setChecked(is_active)
+            result.update(
+                {
+                    "checkbox": group_box,
+                    "bool_key": active_bool_key,
+                }
+            )
+
+        # Handle active_list_key (field-level toggles within a section, list membership)
         if active_list_name is not None:
             section = key.rsplit(".", 1)[0]
             active_list_key = f"{section}.{active_list_name}"
