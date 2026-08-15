@@ -296,8 +296,13 @@ class TestOptionsMetadata:
             "default": "a",
         }
 
-        container, widget = factory.create_dropdown_input(setting_dict)
-        qtbot.addWidget(container)
+        label_text, field_widget = factory.create_dropdown_input(setting_dict)
+        qtbot.addWidget(field_widget)
+
+        # field_widget is a composite HBox; find the QComboBox inside
+        combos = field_widget.findChildren(QComboBox)
+        assert len(combos) > 0
+        widget = combos[0]
 
         # Should be a QComboBox
         assert isinstance(widget, QComboBox)
@@ -316,8 +321,13 @@ class TestOptionsMetadata:
             "default": 1,
         }
 
-        container, widget = factory.create_dropdown_input(setting_dict)
-        qtbot.addWidget(container)
+        label_text, field_widget = factory.create_dropdown_input(setting_dict)
+        qtbot.addWidget(field_widget)
+
+        # field_widget is a composite HBox; find the QComboBox inside
+        combos = field_widget.findChildren(QComboBox)
+        assert len(combos) > 0
+        widget = combos[0]
 
         assert isinstance(widget, QComboBox)
         assert widget.count() == 5
@@ -375,9 +385,12 @@ class TestActiveListKeyMetadata:
             ],
         }
 
-        group_box, result = factory.create_group_input(setting_dict)
+        label_text, result = factory.create_group_input(setting_dict)
+        group_box = result.get("widget")
         qtbot.addWidget(group_box)
 
+        # label_text should be None for groups
+        assert label_text is None
         # Should be checkable
         assert group_box.isCheckable()
         # Result dict should have checkbox info
@@ -396,7 +409,8 @@ class TestActiveListKeyMetadata:
             ],
         }
 
-        group_box, result = factory.create_group_input(setting_dict)
+        label_text, result = factory.create_group_input(setting_dict)
+        group_box = result.get("widget")
         qtbot.addWidget(group_box)
 
         # Should NOT be checkable
@@ -426,14 +440,11 @@ class TestNameMetadata:
             "name": "Display Name",
         }
 
-        container, widget = factory.create_simple_input(setting_dict)
-        qtbot.addWidget(container)
+        label_text, field_widget = factory.create_simple_input(setting_dict)
+        qtbot.addWidget(field_widget)
 
-        # Find the label
-        labels = container.findChildren(QLabel)
-        assert len(labels) > 0
-        # First label should have the display name
-        assert labels[0].text() == "Display Name"
+        # Label is now returned as a string
+        assert label_text == "Display Name"
 
     def test_simple_input_fallback_to_key(self, qtbot):
         """Simple input should fallback to key when name absent."""
@@ -443,13 +454,11 @@ class TestNameMetadata:
             "type": "string",
         }
 
-        container, widget = factory.create_simple_input(setting_dict)
-        qtbot.addWidget(container)
+        label_text, field_widget = factory.create_simple_input(setting_dict)
+        qtbot.addWidget(field_widget)
 
-        labels = container.findChildren(QLabel)
-        assert len(labels) > 0
-        # Should use the key
-        assert labels[0].text() == "test.field"
+        # Label is now returned as a string; should fall back to key
+        assert label_text == "test.field"
 
     def test_bool_input_uses_name_label(self, qtbot):
         """Bool input should use name as label when present."""
@@ -460,12 +469,11 @@ class TestNameMetadata:
             "name": "Enable Feature",
         }
 
-        container, widget = factory.create_bool_input(setting_dict)
-        qtbot.addWidget(container)
+        label_text, field_widget = factory.create_bool_input(setting_dict)
+        qtbot.addWidget(field_widget)
 
-        labels = container.findChildren(QLabel)
-        assert len(labels) > 0
-        assert labels[0].text() == "Enable Feature"
+        # Label is now returned as a string
+        assert label_text == "Enable Feature"
 
     def test_group_uses_name_for_title(self, qtbot):
         """Group box should use name as title when present."""
@@ -477,9 +485,12 @@ class TestNameMetadata:
             "fields": [],
         }
 
-        group_box, result = factory.create_group_input(setting_dict)
+        label_text, result = factory.create_group_input(setting_dict)
+        group_box = result.get("widget")
         qtbot.addWidget(group_box)
 
+        # label_text should be None for group types
+        assert label_text is None
         assert group_box.title() == "Sub Configuration"
 
     def test_group_fallback_to_key_segment(self, qtbot):
@@ -491,7 +502,8 @@ class TestNameMetadata:
             "fields": [],
         }
 
-        group_box, result = factory.create_group_input(setting_dict)
+        label_text, result = factory.create_group_input(setting_dict)
+        group_box = result.get("widget")
         qtbot.addWidget(group_box)
 
         # Should use the last segment of the key

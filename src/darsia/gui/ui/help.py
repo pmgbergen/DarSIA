@@ -3,9 +3,11 @@ import webbrowser
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QFrame,
+    QHBoxLayout,
     QLabel,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
 
 
@@ -136,3 +138,24 @@ class HelpButton(QPushButton):
         pos = self.mapToGlobal(self.rect().bottomRight())
         self.popup.move(pos.x() - 200, pos.y() + 5)
         self.popup.show()
+
+
+def build_help_column(setting_dict=None) -> QWidget:
+    """Fixed-width (40px) column: a HelpButton if setting_dict has 'help', else a spacer.
+
+    Used as the right-hand column of every field/header row so Browse buttons,
+    value editors, and Add buttons all line up regardless of whether a field has help text.
+    """
+    right_column = QWidget()
+    right_layout = QHBoxLayout(right_column)
+    right_layout.setContentsMargins(0, 0, 0, 0)
+
+    help_text = setting_dict.get("help") if setting_dict else None
+    if help_text:
+        link_url = setting_dict.get("link")
+        right_layout.addWidget(HelpButton(help_text, link_url))
+    else:
+        right_layout.addStretch()
+
+    right_column.setFixedWidth(40)
+    return right_column
