@@ -167,6 +167,43 @@ class ColorCorrectionConfig:
 
 
 @dataclass
+class RelativeColorCorrectionConfig:
+    """Configuration for relative color correction."""
+
+    path: Path | None = None
+    """Path to a precomputed relative color correction file."""
+    images: list[Path] = field(default_factory=list)
+    """Calibration images used to calibrate relative color correction."""
+    interactive: bool = False
+    """Whether interactive calibration is allowed."""
+    options: dict = field(default_factory=dict)
+    """Calibration options forwarded to RelativeColorCorrection."""
+
+    def load(self, sec: dict) -> "RelativeColorCorrectionConfig":
+        """Load relative color correction configuration from a dictionary."""
+        path = sec.get("path", self.path)
+        self.path = Path(path) if path is not None else None
+        self.images = [Path(p) for p in sec.get("images", self.images)]
+        self.interactive = sec.get("interactive", self.interactive)
+        if not isinstance(self.interactive, bool):
+            raise ValueError(
+                "corrections.relative_color.interactive must be a boolean."
+            )
+
+        known_keys = {"path", "images", "interactive"}
+        self.options = {
+            key: value for key, value in sec.items() if key not in known_keys
+        }
+
+        if self.path is None and len(self.images) == 0:
+            raise ValueError(
+                "corrections.relative_color must define either 'path' or 'images'."
+            )
+
+        return self
+
+
+@dataclass
 class IlluminationCorrectionConfig:
     """Configuration for illumination correction."""
 
@@ -324,7 +361,9 @@ class CorrectionsConfig:
     color: ColorCorrectionConfig | None = field(
         default=None, metadata={"active_list_key": "active"}
     )
-    relative_color: bool = False
+    relative_color: bool | RelativeColorCorrectionConfig | None = field(
+        default=None, metadata={"active_list_key": "active"}
+    )
     illumination: IlluminationCorrectionConfig | None = field(
         default=None, metadata={"active_list_key": "active"}
     )
@@ -367,10 +406,31 @@ class CorrectionsConfig:
             else:
                 self.inactive[name] = parsed
 
-        self.relative_color = sec.get("relative_color", self.relative_color)
-        if not isinstance(self.relative_color, bool):
-            raise NotImplementedError(
-                "relative color correction is only implemented as boolean for now."
+        relative_color_sec = sec.get("relative_color", self.relative_color)
+        if isinstance(relative_color_sec, bool):
+            self.relative_color = relative_color_sec
+        elif isinstance(relative_color_sec, dict):
+            self.relative_color = RelativeColorCorrectionConfig().load(
+                relative_color_sec
             )
+        else:
+            raise ValueError(
+                "corrections.relative_color must be a boolean or a configuration table."
+            )
+
+        illumination_sec = sec.get("illumination")
+        if illumination_sec:
+            self.illumination = IlluminationCorrectionConfig().load(illumination_sec)
+
+        patchwise_illumination_sec = sec.get("patchwise_illumination")
+        if patchwise_illumination_sec:
+            self.patchwise_illumination = PatchwiseIlluminationCorrectionConfig().load(
+                patchwise_illumination_sec
+            )
+
+        # Identify active corrections
+        active_corrections = sec.get("active_corrections", None)
+        if active_corrections is not None:
+            raise NotImplementedError("active_corrections is not implemented yet.")
 
         return self
