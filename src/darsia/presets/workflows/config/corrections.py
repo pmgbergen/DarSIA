@@ -80,6 +80,7 @@ class ResizeCorrectionConfig:
                 "For example, 0.5 to halve the image size."
             ),
             "placeholder": "e.g., 0.5 for half size",
+            "depends_on": {"field": "mode", "value": "scale"},
         },
     )
     """Uniform scale factor (mode='scale' only)."""
@@ -92,6 +93,7 @@ class ResizeCorrectionConfig:
                 "For example, [512, 1024]."
             ),
             "placeholder": "e.g., [512, 1024] for images of 512 rows and 1024 columns",
+            "depends_on": {"field": "mode", "value": "target_shape"},
         },
     )
     """Target (rows, cols) shape (mode='target_shape' only)."""
