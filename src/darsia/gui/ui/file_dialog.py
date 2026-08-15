@@ -514,7 +514,11 @@ class FileDialogHelper:
             QTimer.singleShot(0, deferred_prefill)
 
             # Return enriched dict: widget for form insertion, rows for save_settings
-            return display_name, {"widget": header_widget, "path_map": True, "rows": row_pairs}
+            return display_name, {
+                "widget": header_widget,
+                "path_map": True,
+                "rows": row_pairs,
+            }
 
         # Fallback: use internal QVBoxLayout (backward compat)
         else:

@@ -159,7 +159,9 @@ class SetupTab:
             with _marshal_image_show_to_main_thread(self.main_window):
                 try:
                     from darsia.presets.workflows.rig import Rig
-                    from darsia.presets.workflows.setup.setup_depth import setup_depth_map
+                    from darsia.presets.workflows.setup.setup_depth import (
+                        setup_depth_map,
+                    )
                     from darsia.presets.workflows.setup.setup_facies import setup_facies
                     from darsia.presets.workflows.setup.setup_labeling import (
                         segment_colored_image,
