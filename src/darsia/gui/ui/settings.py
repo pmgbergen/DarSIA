@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from .file_dialog import FileDialogHelper
-from .help import HelpButton
+from .help import build_help_column
 from .schema.dataclass_introspection import get_section_fields
 from .schema.section_registry import get_required_sections
 
@@ -202,9 +202,6 @@ class SettingsFactory:
 
     def wrap_setting_with_help(self, setting_container, setting_dict):
         """Wrap a setting container with a dedicated help button column."""
-        help_text = setting_dict.get("help")
-        link_url = setting_dict.get("link")
-
         wrapper = QWidget()
         wrapper_layout = QHBoxLayout(wrapper)
         wrapper_layout.setContentsMargins(0, 0, 0, 0)
@@ -214,17 +211,7 @@ class SettingsFactory:
         wrapper_layout.addWidget(setting_container, stretch=1)
 
         # Right: fixed-width column for help button (or empty space)
-        right_column = QWidget()
-        right_layout = QHBoxLayout(right_column)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        if help_text:
-            help_button = HelpButton(help_text, link_url)
-            right_layout.addWidget(help_button)
-        else:
-            right_layout.addStretch()
-
-        right_column.setFixedWidth(40)
+        right_column = build_help_column(setting_dict)
         wrapper_layout.addWidget(right_column)
 
         return wrapper
@@ -327,20 +314,7 @@ class SettingsFactory:
         field_layout.addWidget(type_label)
 
         # Right column: help button or spacer (fixed 40px)
-        right_column = QWidget()
-        right_layout = QHBoxLayout(right_column)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        help_text = setting_dict.get("help")
-        link_url = setting_dict.get("link")
-        if help_text:
-            help_button = HelpButton(help_text, link_url)
-            right_layout.addWidget(help_button)
-        else:
-            right_layout.addStretch()
-
-        right_column.setFixedWidth(40)
-        field_layout.addWidget(right_column)
+        field_layout.addWidget(build_help_column(setting_dict))
 
         return display_name, field_widget
 
@@ -371,20 +345,7 @@ class SettingsFactory:
         field_layout.addStretch()
 
         # Right column: help button or spacer (fixed 40px)
-        right_column = QWidget()
-        right_layout = QHBoxLayout(right_column)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        help_text = setting_dict.get("help")
-        link_url = setting_dict.get("link")
-        if help_text:
-            help_button = HelpButton(help_text, link_url)
-            right_layout.addWidget(help_button)
-        else:
-            right_layout.addStretch()
-
-        right_column.setFixedWidth(40)
-        field_layout.addWidget(right_column)
+        field_layout.addWidget(build_help_column(setting_dict))
 
         return display_name, field_widget
 
@@ -419,20 +380,7 @@ class SettingsFactory:
         field_layout.addWidget(setting_combo, stretch=1)
 
         # Right column: help button or spacer (fixed 40px)
-        right_column = QWidget()
-        right_layout = QHBoxLayout(right_column)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        help_text = setting_dict.get("help")
-        link_url = setting_dict.get("link")
-        if help_text:
-            help_button = HelpButton(help_text, link_url)
-            right_layout.addWidget(help_button)
-        else:
-            right_layout.addStretch()
-
-        right_column.setFixedWidth(40)
-        field_layout.addWidget(right_column)
+        field_layout.addWidget(build_help_column(setting_dict))
 
         return display_name, field_widget
 
@@ -468,20 +416,7 @@ class SettingsFactory:
         field_layout.addStretch()
 
         # Right column: help button or spacer (fixed 40px)
-        right_column = QWidget()
-        right_layout = QHBoxLayout(right_column)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        help_text = setting_dict.get("help")
-        link_url = setting_dict.get("link")
-        if help_text:
-            help_button = HelpButton(help_text, link_url)
-            right_layout.addWidget(help_button)
-        else:
-            right_layout.addStretch()
-
-        right_column.setFixedWidth(40)
-        field_layout.addWidget(right_column)
+        field_layout.addWidget(build_help_column(setting_dict))
 
         return display_name, field_widget
 

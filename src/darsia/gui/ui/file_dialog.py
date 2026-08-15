@@ -10,6 +10,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .help import build_help_column
+
 
 class FileDialogHelper:
     """Helper for creating file/folder selection UI components."""
@@ -80,21 +82,7 @@ class FileDialogHelper:
         field_layout.addWidget(path_edit, stretch=1)
 
         # Right column: help button or spacer (fixed 40px)
-        right_column = QWidget()
-        right_layout = QHBoxLayout(right_column)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        help_text = setting_dict.get("help") if setting_dict else None
-        link_url = setting_dict.get("link") if setting_dict else None
-        if help_text:
-            from .help import HelpButton
-            help_button = HelpButton(help_text, link_url)
-            right_layout.addWidget(help_button)
-        else:
-            right_layout.addStretch()
-
-        right_column.setFixedWidth(40)
-        field_layout.addWidget(right_column)
+        field_layout.addWidget(build_help_column(setting_dict))
 
         return display_name, field_widget
 
@@ -146,22 +134,7 @@ class FileDialogHelper:
             header_layout.setContentsMargins(0, 0, 0, 0)
             header_layout.setSpacing(4)
             header_layout.addWidget(add_button, stretch=1)
-
-            right_column = QWidget()
-            right_layout = QHBoxLayout(right_column)
-            right_layout.setContentsMargins(0, 0, 0, 0)
-
-            help_text = setting_dict.get("help")
-            link_url = setting_dict.get("link")
-            if help_text:
-                from .help import HelpButton
-                help_button = HelpButton(help_text, link_url)
-                right_layout.addWidget(help_button)
-            else:
-                right_layout.addStretch()
-
-            right_column.setFixedWidth(40)
-            header_layout.addWidget(right_column)
+            header_layout.addWidget(build_help_column(setting_dict))
 
             def add_row(initial_value=""):
                 row_widget = QWidget()
@@ -405,22 +378,7 @@ class FileDialogHelper:
             header_layout.setContentsMargins(0, 0, 0, 0)
             header_layout.setSpacing(4)
             header_layout.addWidget(add_button, stretch=1)
-
-            right_column = QWidget()
-            right_layout = QHBoxLayout(right_column)
-            right_layout.setContentsMargins(0, 0, 0, 0)
-
-            help_text = setting_dict.get("help")
-            link_url = setting_dict.get("link")
-            if help_text:
-                from .help import HelpButton
-                help_button = HelpButton(help_text, link_url)
-                right_layout.addWidget(help_button)
-            else:
-                right_layout.addStretch()
-
-            right_column.setFixedWidth(40)
-            header_layout.addWidget(right_column)
+            header_layout.addWidget(build_help_column(setting_dict))
 
             def add_row(initial_key="", initial_value=""):
                 row_widget = QWidget()
