@@ -364,6 +364,11 @@ class SettingsFactory:
         if value is not None:
             setting_edit.setText(str(value))
 
+        # Set placeholder text if provided
+        placeholder = setting_dict.get("placeholder")
+        if placeholder:
+            setting_edit.setPlaceholderText(placeholder)
+
         # Build composite field widget with type label and help button
         field_widget = QWidget()
         field_layout = QHBoxLayout(field_widget)
@@ -449,6 +454,9 @@ class SettingsFactory:
 
         # Right column: help button or spacer (fixed 40px)
         field_layout.addWidget(build_help_column(setting_dict))
+
+        # Store reference to the QComboBox for signal wiring in create_group_input
+        field_widget.setProperty("value_widget", setting_combo)
 
         return display_name, field_widget
 
@@ -872,11 +880,58 @@ class SettingsFactory:
         group_form = QFormLayout(group_box)
         group_form.setContentsMargins(8, 10, 8, 8)  # Padding: left, top, right, bottom
         sub_inputs = {}
+        field_row_map = {}  # Map unqualified_key -> (row_index, field_widget)
         for sub_setting in setting_dict["fields"]:
             label_text, field_widget = self.create_setting_edit(sub_setting)
             group_form.addRow(label_text, field_widget)
             sub_inputs[sub_setting["key"]] = field_widget
+            # Store row index for depends_on wiring
+            unqualified_key = sub_setting["key"].rsplit(".", 1)[-1]
+            row_index = group_form.rowCount() - 1
+            field_row_map[unqualified_key] = (row_index, field_widget, sub_setting)
         result["sub_inputs"] = sub_inputs
+
+        # Wire up depends_on visibility: for each field with a depends_on constraint,
+        # connect the driver field's value-change signal to show/hide this row.
+        for unqualified_key, (
+            row_index,
+            field_widget,
+            sub_setting,
+        ) in field_row_map.items():
+            depends_on = sub_setting.get("depends_on")
+            if depends_on is None:
+                continue
+
+            driver_field_key = depends_on.get("field")
+            driver_value = depends_on.get("value")
+            if driver_field_key is None or driver_value is None:
+                continue
+
+            # Find the driver field's widget
+            if driver_field_key not in field_row_map:
+                continue  # Driver field not found in this group, skip
+            driver_row_index, driver_widget, driver_setting = field_row_map[
+                driver_field_key
+            ]
+
+            # Extract the QComboBox from the composite field_widget via the stored property
+            driver_combo = driver_widget.property("value_widget")
+            if driver_combo is None:
+                continue  # Driver is not a dropdown, skip
+
+            # Create a closure to capture the row_index and driver_value
+            def make_visibility_handler(row_idx, required_val):
+                def handler(current_text):
+                    group_form.setRowVisible(row_idx, current_text == required_val)
+
+                return handler
+
+            # Connect the driver's value-changed signal to show/hide this row
+            handler = make_visibility_handler(row_index, driver_value)
+            driver_combo.currentTextChanged.connect(handler)
+
+            # Set initial visibility based on driver's current value
+            handler(driver_combo.currentText())
 
         # Return (None, group_dict) where group_dict carries the group_box and metadata.
         # display_settings will check if the label is None to detect this case.
