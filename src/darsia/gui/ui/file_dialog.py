@@ -140,6 +140,29 @@ class FileDialogHelper:
         if form_context:
             form = form_context["form"]
 
+            # Build composite header widget: [add_button (stretch=1)][help_button_or_spacer (fixed 40px)]
+            header_widget = QWidget()
+            header_layout = QHBoxLayout(header_widget)
+            header_layout.setContentsMargins(0, 0, 0, 0)
+            header_layout.setSpacing(4)
+            header_layout.addWidget(add_button, stretch=1)
+
+            right_column = QWidget()
+            right_layout = QHBoxLayout(right_column)
+            right_layout.setContentsMargins(0, 0, 0, 0)
+
+            help_text = setting_dict.get("help")
+            link_url = setting_dict.get("link")
+            if help_text:
+                from .help import HelpButton
+                help_button = HelpButton(help_text, link_url)
+                right_layout.addWidget(help_button)
+            else:
+                right_layout.addStretch()
+
+            right_column.setFixedWidth(40)
+            header_layout.addWidget(right_column)
+
             def add_row(initial_value=""):
                 row_widget = QWidget()
                 row_layout = QHBoxLayout(row_widget)
@@ -193,8 +216,8 @@ class FileDialogHelper:
                 row_layout.addWidget(path_edit, stretch=1)
                 row_layout.addWidget(remove_button)
 
-                # Find the correct insertion index: after the add_button header row, then after last data row
-                header_idx, _ = form.getWidgetPosition(add_button)
+                # Find the correct insertion index: after the header_widget header row, then after last data row
+                header_idx, _ = form.getWidgetPosition(header_widget)
                 if file_rows:
                     last_idx, _ = form.getWidgetPosition(file_rows[-1]["widget"])
                     insert_idx = last_idx + 1
@@ -235,8 +258,8 @@ class FileDialogHelper:
 
             QTimer.singleShot(0, deferred_prefill)
 
-            # Return the add_button as the field_widget
-            return display_name, add_button
+            # Return the header_widget (composite: add_button + help) as the field_widget
+            return display_name, header_widget
 
         # Fallback: use internal QVBoxLayout (backward compat)
         else:
@@ -376,6 +399,29 @@ class FileDialogHelper:
         if form_context:
             form = form_context["form"]
 
+            # Build composite header widget: [add_button (stretch=1)][help_button_or_spacer (fixed 40px)]
+            header_widget = QWidget()
+            header_layout = QHBoxLayout(header_widget)
+            header_layout.setContentsMargins(0, 0, 0, 0)
+            header_layout.setSpacing(4)
+            header_layout.addWidget(add_button, stretch=1)
+
+            right_column = QWidget()
+            right_layout = QHBoxLayout(right_column)
+            right_layout.setContentsMargins(0, 0, 0, 0)
+
+            help_text = setting_dict.get("help")
+            link_url = setting_dict.get("link")
+            if help_text:
+                from .help import HelpButton
+                help_button = HelpButton(help_text, link_url)
+                right_layout.addWidget(help_button)
+            else:
+                right_layout.addStretch()
+
+            right_column.setFixedWidth(40)
+            header_layout.addWidget(right_column)
+
             def add_row(initial_key="", initial_value=""):
                 row_widget = QWidget()
                 row_layout = QHBoxLayout(row_widget)
@@ -465,8 +511,8 @@ class FileDialogHelper:
                 row_layout.addWidget(value_edit, stretch=1)
                 row_layout.addWidget(remove_button)
 
-                # Find the correct insertion index: after the add_button header row
-                header_idx, _ = form.getWidgetPosition(add_button)
+                # Find the correct insertion index: after the header_widget header row
+                header_idx, _ = form.getWidgetPosition(header_widget)
                 if row_data_list:
                     last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
                     insert_idx = last_idx + 1
@@ -499,8 +545,8 @@ class FileDialogHelper:
 
             QTimer.singleShot(0, deferred_prefill)
 
-            # Return the add_button as the field_widget
-            return display_name, add_button
+            # Return the header_widget (composite: add_button + help) as the field_widget
+            return display_name, header_widget
 
         # Fallback: use internal QVBoxLayout (backward compat)
         else:
