@@ -19,9 +19,31 @@ class LabelingConfig:
                 """Path to the manually-colored/segmented reference image """
                 """used to seed label detection."""
             ),
+            "group": "Input",
         },
     )
     """Path to the segmented file."""
+    rtol: float = field(
+        default=0.001,
+        metadata={
+            "name": "Significance tolerance",
+            "help": (
+                """Minimum label significance to keep, as a fraction of image area """
+                """(default 0.001 = 0.1%)."""
+            ),
+            "group": "Options",
+        },
+    )
+    """Minimum significance of labels to be kept (default: 0.1% of the image area)."""
+    ensure_connectivity: bool = field(
+        default=True,
+        metadata={
+            "name": "Ensure connectivity",
+            "help": "Whether detected labels must be spatially connected regions.",
+            "group": "Options",
+        },
+    )
+    """Whether to ensure that labels are connected regions (default: True)."""
     unite_labels: list[list[int]] = field(
         default_factory=list,
         metadata={
@@ -34,6 +56,7 @@ class LabelingConfig:
             ),
             "widget": "int_group_list",
             "placeholder": "Comma/space-separated label IDs (e.g., 3, 5, 8)",
+            "group": "Options",
         },
     )
     """List of lists of labels to be united."""
@@ -66,26 +89,6 @@ class LabelingConfig:
         metadata={"hidden": True},
     )
     """Path to the labels file."""
-    # Numerical options for labeling.
-    rtol: float = field(
-        default=0.001,
-        metadata={
-            "name": "Significance tolerance",
-            "help": (
-                """Minimum label significance to keep, as a fraction of image area """
-                """(default 0.001 = 0.1%)."""
-            ),
-        },
-    )
-    """Minimum significance of labels to be kept (default: 0.1% of the image area)."""
-    ensure_connectivity: bool = field(
-        default=True,
-        metadata={
-            "name": "Ensure connectivity",
-            "help": "Whether detected labels must be spatially connected regions.",
-        },
-    )
-    """Whether to ensure that labels are connected regions (default: True)."""
 
     def load(self, path: Path, results: Path | None = None) -> "LabelingConfig":
         """Load labeling config from a toml file from [section]."""
