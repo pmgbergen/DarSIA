@@ -184,7 +184,9 @@ class MainWindow(QMainWindow):
                 # Handle section-level boolean toggle (active_bool_key)
                 if "bool_key" in value:
                     self.settings_factory.set_value(
-                        self.config_dict, value["bool_key"], value["checkbox"].isChecked()
+                        self.config_dict,
+                        value["bool_key"],
+                        value["checkbox"].isChecked(),
                     )
                     if not value["checkbox"].isChecked():
                         skip_keys.update(value["sub_inputs"].keys())

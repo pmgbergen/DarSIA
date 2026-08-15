@@ -30,17 +30,24 @@ class ImagePorosityConfig:
         default=False,
         metadata={
             "name": "Activate image porosity",
-            "help": "When unchecked, image porosity is skipped (equivalent to omitting [image_porosity] from the config). Other values below are preserved even when unchecked.",
+            "help": (
+                "When unchecked, image porosity is skipped (equivalent to omitting "
+                "[image_porosity] from the config). Other values below are preserved even "
+                "when unchecked."
+            ),
             "section_active": True,
             "hidden": True,
         },
     )
-    """Whether to enable image porosity setup. When False, behaves like the section is absent."""
+    """Whether to enable image porosity setup."""
     mode: Literal["full", "from_image"] = field(
         default="full",
         metadata={
             "name": "Mode",
-            "help": "'full' produces constant full porosity (1 everywhere); 'from_image' derives porosity from the baseline image.",
+            "help": (
+                "'full' produces constant full porosity (1 everywhere); 'from_image' derives "
+                "porosity from the baseline image."
+            ),
             "options": ["full", "from_image"],
         },
     )
@@ -49,7 +56,10 @@ class ImagePorosityConfig:
         default=0.9,
         metadata={
             "name": "Boolean threshold",
-            "help": "Threshold to binarize the continuous porosity map (mode='from_image' only).",
+            "help": (
+                "Threshold to binarize the continuous porosity map "
+                "(mode='from_image' only)."
+            ),
         },
     )
     """Threshold for boolean image porosity (only used in ``"from_image"`` mode)."""
@@ -57,7 +67,10 @@ class ImagePorosityConfig:
         default=(1, 1),
         metadata={
             "name": "Patches",
-            "help": "Number of patches (rows, cols) for patched porosity analysis, e.g. [10, 10] (mode='from_image' only).",
+            "help": (
+                "Number of patches (rows, cols) for patched porosity analysis, "
+                "e.g. [10, 10] (mode='from_image' only)."
+            ),
         },
     )
     """Number of patches ``(rows, cols)`` for patched porosity analysis."""
@@ -65,7 +78,10 @@ class ImagePorosityConfig:
         default=5,
         metadata={
             "name": "Number of clusters",
-            "help": "Number of k-means clusters for the porosity analysis (mode='from_image' only).",
+            "help": (
+                "Number of k-means clusters for the porosity analysis "
+                "(mode='from_image' only)."
+            ),
         },
     )
     """Number of k-means clusters for the porosity analysis."""
@@ -73,7 +89,10 @@ class ImagePorosityConfig:
         default=50,
         metadata={
             "name": "Sample width",
-            "help": "Width of random samples (pixels) for the porosity analysis (mode='from_image' only).",
+            "help": (
+                "Width of random samples (pixels) for the porosity analysis "
+                "(mode='from_image' only)."
+            ),
         },
     )
     """Width of random samples (pixels) for the porosity analysis."""
@@ -81,7 +100,10 @@ class ImagePorosityConfig:
         default=0.1,
         metadata={
             "name": "Tolerance for color distance",
-            "help": "Tolerance for colour-distance filtering in the porosity analysis (mode='from_image' only).",
+            "help": (
+                "Tolerance for colour-distance filtering in the porosity analysis"
+                "(mode='from_image' only)."
+            ),
         },
     )
     """Tolerance for colour-distance filtering in the porosity analysis."""
@@ -89,7 +111,10 @@ class ImagePorosityConfig:
         default=0.02,
         metadata={
             "name": "Tolerance for color gradient",
-            "help": "Tolerance for colour-gradient filtering in the porosity analysis (mode='from_image' only).",
+            "help": (
+                "Tolerance for colour-gradient filtering in the porosity analysis"
+                "(mode='from_image' only).",
+            ),
         },
     )
     """Tolerance for colour-gradient filtering in the porosity analysis."""
