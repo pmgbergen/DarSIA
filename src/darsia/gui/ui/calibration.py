@@ -1,6 +1,6 @@
 """Calibration workflow tab for DarSIA GUI."""
 
-import threading
+import sys
 from pathlib import Path
 
 from PySide6.QtWidgets import QCheckBox, QPushButton, QVBoxLayout, QWidget
@@ -12,6 +12,7 @@ class CalibrationTab:
     def __init__(self, main_window):
         self.main_window = main_window
         self.calibration_checkboxes = []
+        self.process = None
 
     def create_tab(self):
         """Create and return the calibration tab widget."""
@@ -30,9 +31,15 @@ class CalibrationTab:
         settings_button.clicked.connect(self.on_settings_clicked)
         layout.addWidget(settings_button)
 
-        run_button = QPushButton("Run Calibration")
-        run_button.clicked.connect(self.on_run_clicked)
-        layout.addWidget(run_button)
+        self.run_button = QPushButton("Run Calibration")
+        self.run_button.clicked.connect(self.on_run_clicked)
+        layout.addWidget(self.run_button)
+
+        self.abort_button = QPushButton("Abort Calibration")
+        self.abort_button.setVisible(False)
+        self.abort_button.setEnabled(False)
+        self.abort_button.clicked.connect(self.on_abort_clicked)
+        layout.addWidget(self.abort_button)
 
         layout.addStretch()
         return container
@@ -47,6 +54,11 @@ class CalibrationTab:
     def on_run_clicked(self):
         """Handle run button click."""
         self.run_calibration()
+
+    def on_abort_clicked(self):
+        """Handle abort button click."""
+        if self.process is not None:
+            self.main_window.abort_workflow_process(self.process)
 
     def run_calibration(self):
         """Run calibration workflow based on checked checkboxes."""
@@ -72,50 +84,20 @@ class CalibrationTab:
             f"Starting calibration with options: {[k for k, v in options.items() if v]}"
         )
 
-        # Run workflow in a separate thread to avoid blocking the GUI
-        def run_workflow():
-            try:
-                from darsia.presets.workflows.analysis.analysis_context import (
-                    prepare_analysis_context,
-                )
-                from darsia.presets.workflows.calibration import (
-                    calibration_color_to_mass_analysis as c2m_analysis_module,
-                )
-                from darsia.presets.workflows.calibration.calibration_color_paths import (
-                    calibration_color_paths_from_context,
-                )
-                from darsia.presets.workflows.rig import Rig
+        # Build command-line arguments for subprocess
+        argv = [
+            sys.executable,
+            "-m",
+            "darsia.presets.workflows.user_interface_calibration",
+            "--config",
+            str(Path(config_file).resolve()),
+        ]
+        if options["color"]:
+            argv.append("--color-embedding")
+        if options["mass"]:
+            argv.append("--mass")
 
-                config_paths = [Path(config_file)]
-
-                # Prepare shared context once for all analyses
-                ctx = prepare_analysis_context(
-                    cls=Rig,
-                    path=config_paths,
-                    all=False,
-                    require_color_to_mass=False,
-                    section="calibration",
-                    require_results=False,
-                )
-
-                if options["color"]:
-                    self.main_window.print_log("Running color embedding calibration...")
-                    calibration_color_paths_from_context(ctx, False)
-                if options["mass"]:
-                    self.main_window.print_log("Running mass calibration...")
-                    c2m_analysis_module.calibration_color_to_mass_analysis_from_context(
-                        ctx,
-                        reset=False,
-                        show=False,
-                        default=False,
-                    )
-
-                self.main_window.print_log("Calibration completed successfully!")
-            except Exception as e:
-                self.main_window.print_log(f"Error during calibration: {str(e)}")
-                import traceback
-
-                self.main_window.print_log(traceback.format_exc())
-
-        thread = threading.Thread(target=run_workflow, daemon=True)
-        thread.start()
+        # Launch workflow in a separate process
+        self.process = self.main_window.start_workflow_process(
+            argv, self.run_button, self.abort_button, cwd=Path.cwd()
+        )
