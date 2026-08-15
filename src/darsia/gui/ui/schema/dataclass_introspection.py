@@ -169,7 +169,8 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
 
         # Check if this is an Optional[dataclass] field — render as a group
         if is_dataclass(inner_type):
-            # Guard: dataclass-typed fields cannot also carry "group" metadata (would nest boxes)
+            # Guard: dataclass-typed fields cannot also carry "group" metadata
+            # (would nest boxes)
             if field.metadata.get("group"):
                 raise ValueError(
                     f"Field '{key}' is a dataclass (type:'group') but also carries "

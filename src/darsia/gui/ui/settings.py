@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QVBoxLayout,
     QWidget,
 )
 
@@ -109,7 +108,9 @@ class SettingsFactory:
             box = QGroupBox(title)
             form = QFormLayout(box)
             group_forms[key] = form
-            parent_form.addRow(box)  # Spanning row in whichever form this box belongs to
+            parent_form.addRow(
+                box
+            )  # Spanning row in whichever form this box belongs to
         return group_forms[key]
 
     def build_tab_form(self, tab_form, settings_list, form_context=None):
@@ -132,7 +133,8 @@ class SettingsFactory:
         settings_list : list[dict]
             List of setting dicts from get_section_fields or similar
         form_context : dict, optional
-            Context dict passed to create_setting_edit (contains "form" for multi_file/path_map)
+            Context dict passed to create_setting_edit
+                (contains "form" for multi_file/path_map)
         """
         group_forms = {}  # key (str | tuple) -> QFormLayout, first-occurrence cache
 
@@ -164,22 +166,34 @@ class SettingsFactory:
                 group_name = explicit_group
                 auto_grouped = False
                 target_form = (
-                    self._get_or_create_group_form(group_forms, tab_form, group_name, group_name)
-                    if group_name else tab_form
+                    self._get_or_create_group_form(
+                        group_forms, tab_form, group_name, group_name
+                    )
+                    if group_name
+                    else tab_form
                 )
 
             # Resolve form_context against the actual destination form (KEY FIX)
             local_form_context = {"form": target_form}
-            label_text, field_or_result = self.create_setting_edit(setting, local_form_context)
+            label_text, field_or_result = self.create_setting_edit(
+                setting, local_form_context
+            )
 
-            # Handle type:"group" (Optional[dataclass]) fields — label_text is None, field_or_result is dict with "widget"
-            if label_text is None and isinstance(field_or_result, dict) and "widget" in field_or_result:
+            # Handle type:"group" (Optional[dataclass]) fields — label_text is None,
+            # field_or_result is dict with "widget"
+            if (
+                label_text is None
+                and isinstance(field_or_result, dict)
+                and "widget" in field_or_result
+            ):
                 # This is a group_box result dict
                 group_widget = field_or_result.get("widget")
                 if group_widget:
                     target_form.addRow(group_widget)  # Spanning row
                 self.main_window.settings_inputs[setting["key"]] = field_or_result
-                for sub_key, sub_widget in field_or_result.get("sub_inputs", {}).items():
+                for sub_key, sub_widget in field_or_result.get(
+                    "sub_inputs", {}
+                ).items():
                     self.main_window.settings_inputs[sub_key] = sub_widget
             # Handle grouped scalar fields and auto-grouped multi-row fields
             elif auto_grouped and isinstance(field_or_result, dict):
@@ -187,13 +201,15 @@ class SettingsFactory:
                 # Skip adding to form
                 self.main_window.settings_inputs[setting["key"]] = field_or_result
             elif auto_grouped or explicit_group:
-                # Blank the label for auto-grouped multi-row fields (box title already shows name)
+                # Blank the label for auto-grouped multi-row fields
+                # (box title already shows name)
                 row_label = "" if auto_grouped else label_text
                 target_form.addRow(row_label, field_or_result)
                 self.main_window.settings_inputs[setting["key"]] = field_or_result
             # Handle ungrouped scalar fields
             elif isinstance(field_or_result, dict):
-                # This is a result dict from multi_file/path_map in fallback mode (backward compat)
+                # This is a result dict from multi_file/path_map in fallback mode
+                # (backward compat)
                 # Skip adding to form; the field already created its own layout
                 self.main_window.settings_inputs[setting["key"]] = field_or_result
             else:
@@ -224,7 +240,8 @@ class SettingsFactory:
         setting_dict : dict
             Setting configuration dictionary
         form_context : dict, optional
-            Context dict with "form" (QFormLayout) for dynamic row insertion (multi_file/path_map).
+            Context dict with "form" (QFormLayout) for dynamic row insertion
+                (multi_file/path_map).
 
         Returns
         -------
@@ -306,7 +323,9 @@ class SettingsFactory:
 
         # Type annotation label
         if setting_dict["type"] == "list":
-            type_label = QLabel(f"({setting_dict['type']}, {setting_dict['list_type']})")
+            type_label = QLabel(
+                f"({setting_dict['type']}, {setting_dict['list_type']})"
+            )
         else:
             type_label = QLabel(f"({setting_dict['type']})")
 

@@ -86,7 +86,9 @@ class FileDialogHelper:
 
         return display_name, field_widget
 
-    def create_multi_file_input(self, setting_dict, is_directory=False, form_context=None):
+    def create_multi_file_input(
+        self, setting_dict, is_directory=False, form_context=None
+    ):
         """Create a variable-size file/folder list input with add/remove buttons.
 
         Parameters
@@ -128,7 +130,8 @@ class FileDialogHelper:
         if form_context:
             form = form_context["form"]
 
-            # Build composite header widget: [add_button (stretch=1)][help_button_or_spacer (fixed 40px)]
+            # Build composite header widget:
+            # [add_button (stretch=1)][help_button_or_spacer (fixed 40px)]
             header_widget = QWidget()
             header_layout = QHBoxLayout(header_widget)
             header_layout.setContentsMargins(0, 0, 0, 0)
@@ -189,7 +192,8 @@ class FileDialogHelper:
                 row_layout.addWidget(path_edit, stretch=1)
                 row_layout.addWidget(remove_button)
 
-                # Find the correct insertion index: after the header_widget header row, then after last data row
+                # Find the correct insertion index: after the header_widget header row,
+                # then after last data row
                 header_idx, _ = form.getWidgetPosition(header_widget)
                 if file_rows:
                     last_idx, _ = form.getWidgetPosition(file_rows[-1]["widget"])
@@ -211,15 +215,17 @@ class FileDialogHelper:
             # Connect add_button to add_row closure (which will handle form insertion)
             add_button.clicked.connect(lambda: add_row())
 
-            # Return the add_button as the field_widget; build_tab_form will insert the header row.
-            # Once the header is in the form, we can insert data rows (in the deferred pre-fill below).
-            # NOTE: We can't pre-fill data rows here because the header row isn't in the form yet.
-            # Instead, we'll pre-fill them lazily when the GUI is shown (by connecting to a deferred callback).
-            # For now, just return the add_button and file_edits list for save_settings.
+            # Return the add_button as the field_widget; build_tab_form will insert
+            # the header row. Once the header is in the form, we can insert data rows
+            # (in the deferred pre-fill below).
+            # NOTE: We can't pre-fill data rows here because the header row isn't in
+            # the form yet. Instead, we'll pre-fill them lazily when the GUI is shown
+            # (by connecting to a deferred callback). For now, just return the add_button
+            # and file_edits list for save_settings.
 
-            # Actually, to pre-fill, we can use a deferred insertion that runs after the header is added.
-            # The simplest: call add_row() after build_tab_form has had a chance to add the header.
-            # We'll use a QTimer to defer the pre-fill:
+            # Actually, to pre-fill, we can use a deferred insertion that runs after the
+            # header is added. The simplest: call add_row() after build_tab_form has had
+            # a chance to add the header. We'll use a QTimer to defer the pre-fill:
             from PySide6.QtCore import QTimer
 
             def deferred_prefill():
@@ -372,7 +378,8 @@ class FileDialogHelper:
         if form_context:
             form = form_context["form"]
 
-            # Build composite header widget: [add_button (stretch=1)][help_button_or_spacer (fixed 40px)]
+            # Build composite header widget:
+            # [add_button (stretch=1)][help_button_or_spacer (fixed 40px)]
             header_widget = QWidget()
             header_layout = QHBoxLayout(header_widget)
             header_layout.setContentsMargins(0, 0, 0, 0)
