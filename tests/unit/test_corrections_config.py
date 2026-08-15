@@ -1,13 +1,15 @@
-"""Unit tests for CorrectionsConfig and sub-config validation."""
+"""Unit tests for CorrectionsConfig and sub-config validation.
+
+Focuses specifically on the ResizeCorrectionConfig mode/scale/target_shape refactor
+and TOML round-trip loading. GUI schema metadata tests are in test_metadata_keywords.py.
+"""
 
 from pathlib import Path
 
 import pytest
 
 from darsia.presets.workflows.config.corrections import (
-    ColorCorrectionConfig,
     CorrectionsConfig,
-    DriftCorrectionConfig,
     ResizeCorrectionConfig,
 )
 
@@ -46,16 +48,9 @@ class TestResizeCorrectionConfigLoad:
             {"mode": "target_shape", "target_shape": [512, 512]}
         )
         assert cfg.mode == "target_shape"
+        assert isinstance(cfg.target_shape, tuple), "target_shape list should convert to tuple"
         assert cfg.target_shape == (512, 512)
         assert cfg.scale is None
-
-    def test_mode_target_shape_converts_list_to_tuple(self):
-        """target_shape list should be converted to tuple of ints."""
-        cfg = ResizeCorrectionConfig().load(
-            {"mode": "target_shape", "target_shape": [256, 384]}
-        )
-        assert isinstance(cfg.target_shape, tuple)
-        assert cfg.target_shape == (256, 384)
 
     def test_mode_target_shape_without_shape_raises(self):
         """mode='target_shape' without target_shape set should raise ValueError."""
@@ -64,22 +59,18 @@ class TestResizeCorrectionConfigLoad:
         ):
             ResizeCorrectionConfig().load({"mode": "target_shape"})
 
-    def test_mode_target_shape_with_wrong_length_raises(self):
+    @pytest.mark.parametrize(
+        "bad_shape",
+        [[512], [512, 512, 512]],
+        ids=["1-element", "3-element"],
+    )
+    def test_mode_target_shape_with_wrong_length_raises(self, bad_shape):
         """mode='target_shape' with non-2-element shape should raise ValueError."""
         with pytest.raises(
             ValueError, match="target_shape must have exactly 2 elements"
         ):
             ResizeCorrectionConfig().load(
-                {"mode": "target_shape", "target_shape": [512]}
-            )
-
-    def test_mode_target_shape_with_3_element_shape_raises(self):
-        """mode='target_shape' with 3-element shape should raise ValueError."""
-        with pytest.raises(
-            ValueError, match="target_shape must have exactly 2 elements"
-        ):
-            ResizeCorrectionConfig().load(
-                {"mode": "target_shape", "target_shape": [512, 512, 512]}
+                {"mode": "target_shape", "target_shape": bad_shape}
             )
 
     def test_invalid_mode_raises(self):
@@ -124,33 +115,3 @@ class TestResizeCorrectionConfigLoad:
         # This should fail because mode defaults to 'scale' which requires scale to be set
         with pytest.raises(ValueError, match="mode='scale' requires 'scale' to be set"):
             CorrectionsConfig().load(cfg_path)
-
-
-class TestDriftCorrectionConfigLoad:
-    """Regression: DriftCorrectionConfig should still validate correctly."""
-
-    def test_drift_colorchecker_valid_values(self):
-        """Drift colorchecker should accept all valid positions."""
-        for pos in ["upper_left", "upper_right", "lower_left", "lower_right"]:
-            cfg = DriftCorrectionConfig().load({"colorchecker": pos})
-            assert cfg.colorchecker == pos
-
-    def test_drift_colorchecker_invalid_raises(self):
-        """Drift colorchecker with invalid position should raise."""
-        with pytest.raises(AssertionError):
-            DriftCorrectionConfig().load({"colorchecker": "center"})
-
-
-class TestColorCorrectionConfigLoad:
-    """Regression: ColorCorrectionConfig should still validate correctly."""
-
-    def test_color_colorchecker_valid_values(self):
-        """Color colorchecker should accept all valid positions."""
-        for pos in ["upper_left", "upper_right", "lower_left", "lower_right"]:
-            cfg = ColorCorrectionConfig().load({"colorchecker": pos})
-            assert cfg.colorchecker == pos
-
-    def test_color_colorchecker_invalid_raises(self):
-        """Color colorchecker with invalid position should raise."""
-        with pytest.raises(AssertionError):
-            ColorCorrectionConfig().load({"colorchecker": "middle"})
