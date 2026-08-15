@@ -2,8 +2,9 @@ import ast
 import re
 from pathlib import Path
 
+import psutil
 import toml
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import QProcess, Qt, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -37,7 +38,6 @@ class MainWindow(QMainWindow):
     """The main class containing the window and the relevant methods for the visualization."""
 
     log_message = Signal(str)
-    main_thread_call = Signal(object)
 
     def __init__(self):
         super().__init__()
@@ -45,12 +45,6 @@ class MainWindow(QMainWindow):
 
         # Connect log_message signal to append_log slot for thread-safe logging
         self.log_message.connect(self._append_log)
-
-        # Connect main_thread_call signal for blocking main-thread execution from
-        # worker threads
-        self.main_thread_call.connect(
-            self._run_on_main_thread, Qt.BlockingQueuedConnection
-        )
 
         # Set window icon
         logo_path = (
@@ -531,18 +525,65 @@ class MainWindow(QMainWindow):
         self.log_text.append(text)
         print(text)
 
-    def _run_on_main_thread(self, func):
-        """Slot: execute a zero-arg callable on the main thread."""
-        func()
-
-    def call_on_main_thread(self, func):
-        """Run func() on the main GUI thread, blocking the caller until it returns.
-
-        Safe to call from either the main thread or a worker thread. Qt's
-        BlockingQueuedConnection deadlocks if emitter and receiver share a thread,
-        so same-thread calls are short-circuited to a direct call.
+    def start_workflow_process(self, argv, run_button, abort_button, cwd=None):
+        """Launch argv as a QProcess, streaming merged stdout/stderr to the log.
+        Disables run_button and shows/enables abort_button while running; restores
+        button state and logs completion/abort/error when the process finishes.
+        Returns the QProcess (caller must keep a reference alive, e.g. on the tab,
+        and call abort_workflow_process(process) to abort it).
         """
-        if QThread.currentThread() is self.thread():
-            func()
-        else:
-            self.main_thread_call.emit(func)
+        process = QProcess(self)
+        process.setProgram(argv[0])
+        process.setArguments(argv[1:])
+        if cwd:
+            process.setWorkingDirectory(str(cwd))
+        process.setProcessChannelMode(QProcess.MergedChannels)
+
+        def handle_output():
+            data = bytes(process.readAllStandardOutput()).decode(errors="replace")
+            for line in data.splitlines():
+                if line:
+                    self.print_log(line)
+
+        def handle_finished(exit_code, exit_status):
+            run_button.setEnabled(True)
+            abort_button.setVisible(False)
+            abort_button.setEnabled(False)
+            if exit_status == QProcess.CrashExit:
+                self.print_log("Process aborted.")
+            elif exit_code != 0:
+                self.print_log(f"Process exited with code {exit_code}.")
+            else:
+                self.print_log("Completed successfully!")
+
+        process.readyReadStandardOutput.connect(handle_output)
+        process.finished.connect(handle_finished)
+        run_button.setEnabled(False)
+        abort_button.setVisible(True)
+        abort_button.setEnabled(True)
+        process.start()
+        return process
+
+    def abort_workflow_process(self, process):
+        """Abort a process started via start_workflow_process, killing its whole tree."""
+        if process is None or process.state() == QProcess.NotRunning:
+            return
+        self._kill_process_tree(process.processId())
+
+    @staticmethod
+    def _kill_process_tree(pid):
+        """Best-effort kill of a process and all its descendants (children, grandchildren)."""
+        try:
+            parent = psutil.Process(pid)
+        except psutil.NoSuchProcess:
+            return
+        children = parent.children(recursive=True)
+        for child in children:
+            try:
+                child.kill()
+            except psutil.NoSuchProcess:
+                pass
+        try:
+            parent.kill()
+        except psutil.NoSuchProcess:
+            pass
