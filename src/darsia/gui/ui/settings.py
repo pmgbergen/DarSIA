@@ -870,9 +870,7 @@ class SettingsFactory:
 
         # Use QFormLayout for sub-fields (same structure as top-level tabs)
         group_form = QFormLayout(group_box)
-        group_form.setContentsMargins(
-            0, 10, 0, 0
-        )  # 10px top margin to clear group box title
+        group_form.setContentsMargins(8, 10, 8, 8)  # Padding: left, top, right, bottom
         sub_inputs = {}
         for sub_setting in setting_dict["fields"]:
             label_text, field_widget = self.create_setting_edit(sub_setting)
