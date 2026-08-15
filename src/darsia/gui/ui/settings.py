@@ -664,17 +664,19 @@ class SettingsFactory:
             return display_name, {"int_group_list": True, "rows": row_edits}
 
     def create_int_list_map_input(self, setting_dict, form_context=None):
-        """Create a multi-row editor for dict[int, list[int]] fields (int key → int-list value).
+        """Create a multi-row editor for dict[int, list[int]] fields
+        (int key → int-list value).
 
         Each row has two QLineEdits: a narrow key edit (facies ID, int) and a value edit
         (comma/whitespace-separated int labels, e.g. "3, 5, 8"). If flatten_in_section=True,
         reads from and writes to the parent section's sub-tables (e.g., [facies.0], [facies.1])
         rather than a nested field key (to maintain compatibility with existing TOML layouts).
-        Mirrors create_int_group_list_input's form_context row-management pattern (add/remove via
-        form.insertRow/removeRow).
+        Mirrors create_int_group_list_input's form_context row-management pattern (add/remove
+        via form.insertRow/removeRow).
 
-        Returns (display_name, enriched_dict) where enriched_dict has "widget" for form insertion
-        and "rows" (list of (key_edit, value_edit) tuples) for save_settings to parse.
+        Returns (display_name, enriched_dict) where enriched_dict has "widget" for form
+        insertion and "rows" (list of (key_edit, value_edit) tuples) for save_settings
+        to parse.
         """
         key = setting_dict["key"]
         display_name = setting_dict.get("name", key)
