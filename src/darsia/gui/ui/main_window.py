@@ -181,6 +181,16 @@ class MainWindow(QMainWindow):
 
         for key, value in self.settings_inputs.items():
             if isinstance(value, dict) and "checkbox" in value:
+                # Handle section-level boolean toggle (active_bool_key)
+                if "bool_key" in value:
+                    self.settings_factory.set_value(
+                        self.config_dict, value["bool_key"], value["checkbox"].isChecked()
+                    )
+                    if not value["checkbox"].isChecked():
+                        skip_keys.update(value["sub_inputs"].keys())
+                    continue
+
+                # Handle field-level toggles within a section (active_list_key)
                 # This is a group dict; record its active state
                 active_list_key = value["active_list_key"]
                 group_active_names.setdefault(active_list_key, set())
