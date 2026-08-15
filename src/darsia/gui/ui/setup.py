@@ -1,33 +1,9 @@
 """Setup workflow tab for DarSIA GUI."""
 
-import contextlib
-import threading
+import sys
 from pathlib import Path
 
 from PySide6.QtWidgets import QCheckBox, QMessageBox, QPushButton, QVBoxLayout, QWidget
-
-
-@contextlib.contextmanager
-def _marshal_image_show_to_main_thread(main_window):
-    """Redirect darsia.Image.show() to run on the main GUI thread for the
-    duration of the block, blocking the calling (worker) thread until each
-    plot window is closed. Needed because matplotlib's interactive Qt backend
-    may only create/show windows from the main thread.
-    """
-    import darsia
-
-    original_show = darsia.Image.show
-
-    def threadsafe_show(image_self, *args, **kwargs):
-        main_window.call_on_main_thread(
-            lambda: original_show(image_self, *args, **kwargs)
-        )
-
-    darsia.Image.show = threadsafe_show
-    try:
-        yield
-    finally:
-        darsia.Image.show = original_show
 
 
 class SetupTab:
@@ -36,6 +12,7 @@ class SetupTab:
     def __init__(self, main_window):
         self.main_window = main_window
         self.setup_checkboxes = []
+        self.process = None
 
     def create_tab(self):
         """Create and return the setup tab widget."""
@@ -62,9 +39,15 @@ class SetupTab:
         settings_button.clicked.connect(self.on_settings_clicked)
         layout.addWidget(settings_button)
 
-        run_button = QPushButton("Run Setup")
-        run_button.clicked.connect(self.on_run_clicked)
-        layout.addWidget(run_button)
+        self.run_button = QPushButton("Run Setup")
+        self.run_button.clicked.connect(self.on_run_clicked)
+        layout.addWidget(self.run_button)
+
+        self.abort_button = QPushButton("Abort Setup")
+        self.abort_button.setVisible(False)
+        self.abort_button.setEnabled(False)
+        self.abort_button.clicked.connect(self.on_abort_clicked)
+        layout.addWidget(self.abort_button)
 
         layout.addStretch()
         return container
@@ -77,6 +60,11 @@ class SetupTab:
     def on_run_clicked(self):
         """Handle run button click."""
         self.run_setup()
+
+    def on_abort_clicked(self):
+        """Handle abort button click."""
+        if self.process is not None:
+            self.main_window.abort_workflow_process(self.process)
 
     def run_setup(self):
         """Run setup workflow based on checked checkboxes."""
@@ -154,49 +142,32 @@ class SetupTab:
                 )
                 return
 
-        # Run workflow in a separate thread to avoid blocking the GUI
-        def run_workflow():
-            with _marshal_image_show_to_main_thread(self.main_window):
-                try:
-                    from darsia.presets.workflows.rig import Rig
-                    from darsia.presets.workflows.setup.setup_depth import (
-                        setup_depth_map,
-                    )
-                    from darsia.presets.workflows.setup.setup_facies import setup_facies
-                    from darsia.presets.workflows.setup.setup_labeling import (
-                        segment_colored_image,
-                    )
-                    from darsia.presets.workflows.setup.setup_protocols import (
-                        setup_imaging_protocol,
-                    )
-                    from darsia.presets.workflows.setup.setup_rig import setup_rig
+        # Build command-line arguments for subprocess
+        argv = [
+            sys.executable,
+            "-m",
+            "darsia.presets.workflows.user_interface_setup",
+            "--config",
+            str(Path(config_file).resolve()),
+        ]
+        if options["all"]:
+            argv.append("--all")
+        if options["depth"]:
+            argv.append("--depth")
+        if options["segmentation"]:
+            argv.append("--segmentation")
+        if options["facies"]:
+            argv.append("--facies")
+        if options["protocols"]:
+            argv.append("--protocol")
+        if options["rig"]:
+            argv.append("--rig")
+        if options["force"]:
+            argv.append("--force")
+        if options["show"]:
+            argv.append("--show")
 
-                    show = options["show"]
-
-                    if options["all"] or options["depth"]:
-                        self.main_window.print_log("Running depth map setup...")
-                        setup_depth_map(config_paths, key="depth", show=show)
-                    if options["all"] or options["segmentation"]:
-                        self.main_window.print_log("Running segmentation setup...")
-                        segment_colored_image(config_paths, show=show)
-                    if options["all"] or options["facies"]:
-                        self.main_window.print_log("Running facies setup...")
-                        setup_facies(Rig, config_paths, show=show)
-                    if options["all"] or options["rig"]:
-                        self.main_window.print_log("Running rig setup...")
-                        setup_rig(Rig, config_paths, show=show)
-                    if options["protocols"]:
-                        self.main_window.print_log("Running protocol setup...")
-                        setup_imaging_protocol(
-                            config_paths, force=options["force"], show=show
-                        )
-
-                    self.main_window.print_log("Setup completed successfully!")
-                except Exception as e:
-                    self.main_window.print_log(f"Error during setup: {str(e)}")
-                    import traceback
-
-                    self.main_window.print_log(traceback.format_exc())
-
-        thread = threading.Thread(target=run_workflow, daemon=True)
-        thread.start()
+        # Launch workflow in a separate process
+        self.process = self.main_window.start_workflow_process(
+            argv, self.run_button, self.abort_button, cwd=Path.cwd()
+        )
