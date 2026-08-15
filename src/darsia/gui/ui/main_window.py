@@ -199,9 +199,11 @@ class MainWindow(QMainWindow):
             # Skip group dicts with checkboxes (already handled above)
             if isinstance(value, dict) and "checkbox" in value:
                 continue
-            # Skip path_map and int_group_list dicts (handled below)
+            # Skip path_map, int_group_list, and int_list_map dicts (handled below)
             if isinstance(value, dict) and (
-                "path_map" in value or "int_group_list" in value
+                "path_map" in value
+                or "int_group_list" in value
+                or "int_list_map" in value
             ):
                 continue
             # Skip sub-inputs of unchecked groups
@@ -267,7 +269,42 @@ class MainWindow(QMainWindow):
                         )
                 self.settings_factory.set_value(self.config_dict, key, groups)
 
-        # Fifth pass: write all active lists
+        # Fifth pass: parse int_list_map rows into dict[int, list[int]]
+        for key, value in self.settings_inputs.items():
+            if isinstance(value, dict) and "int_list_map" in value:
+                result = {}
+                for key_edit, value_edit in value["rows"]:
+                    key_text = key_edit.text().strip()
+                    value_text = value_edit.text().strip()
+                    if not key_text or not value_text:
+                        continue
+                    tokens = [t for t in re.split(r"[,\s]+", value_text) if t]
+                    try:
+                        result[int(key_text)] = [int(t) for t in tokens]
+                    except ValueError:
+                        self.print_log(
+                            f"Skipping invalid row '{key_text}: {value_text}' for {key}: "
+                            "key and values must all be integers."
+                        )
+                if value.get("flatten_in_section"):
+                    section = value["section"]
+                    section_dict = self.config_dict.setdefault(section, {})
+                    # Drop id sub-tables removed in the GUI (has "labels", not in new result)
+                    stale_ids = [
+                        k
+                        for k, v in section_dict.items()
+                        if isinstance(v, dict)
+                        and "labels" in v
+                        and k not in {str(i) for i in result}
+                    ]
+                    for k in stale_ids:
+                        del section_dict[k]
+                    for facies_id, labels in result.items():
+                        section_dict[str(facies_id)] = {"labels": labels}
+                else:
+                    self.settings_factory.set_value(self.config_dict, key, result)
+
+        # Sixth pass: write all active lists
         for active_list_key, names in group_active_names.items():
             self.settings_factory.set_value(
                 self.config_dict, active_list_key, sorted(names)
