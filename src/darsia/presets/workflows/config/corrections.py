@@ -48,13 +48,53 @@ class TypeCorrectionConfig:
 class ResizeCorrectionConfig:
     """Configuration for resize correction.
 
+    Supports two modes: uniform scaling via ``scale`` factor, or explicit target shape
+    resizing. Exactly one mode must be configured via the ``mode`` field.
+
     Attributes:
-        target_shape: Target shape for resizing (default: None, i.e. no resizing).
+        mode: Resize mode — either ``"scale"`` (scale all axes uniformly) or
+            ``"target_shape"`` (resize to explicit rows/cols).
+        scale: Uniform scale factor applied to both spatial axes (mode='scale' only).
+        target_shape: Target ``(rows, cols)`` shape to resize to (mode='target_shape' only).
 
     """
 
-    scale: float | None = None
-    target_shape: tuple[int, int] | None = None
+    mode: Literal["scale", "target_shape"] = field(
+        default="scale",
+        metadata={
+            "name": "Resize mode",
+            "help": (
+                "Whether to resize by a uniform scale factor or to an "
+                "explicit target shape."
+            ),
+            "options": ["scale", "target_shape"],
+        },
+    )
+    """Resize mode: ``"scale"`` (uniform scaling) or ``"target_shape"`` (explicit shape)."""
+    scale: float | None = field(
+        default=None,
+        metadata={
+            "name": "Scale factor",
+            "help": (
+                "Uniform scale factor applied to both axes (mode='scale' only). "
+                "For example, 0.5 to halve the image size."
+            ),
+            "placeholder": "e.g., 0.5 for half size",
+        },
+    )
+    """Uniform scale factor (mode='scale' only)."""
+    target_shape: tuple[int, int] | None = field(
+        default=None,
+        metadata={
+            "name": "Target shape",
+            "help": (
+                "Target (rows, cols) shape to resize to (mode='target_shape' only). "
+                "For example, [512, 1024]."
+            ),
+            "placeholder": "e.g., [512, 1024] for images of 512 rows and 1024 columns",
+        },
+    )
+    """Target (rows, cols) shape (mode='target_shape' only)."""
 
     def load(self, sec: dict) -> "ResizeCorrectionConfig":
         """Load resize correction configuration from a dictionary.
@@ -64,17 +104,40 @@ class ResizeCorrectionConfig:
 
         Returns:
             self with loaded configuration
-        """
-        self.scale = sec.get("scale", self.scale)
-        self.target_shape = sec.get("target_shape", self.target_shape)
 
-        # Sanity checks.
-        assert (
-            self.scale is None or self.target_shape is None
-        ), "Cannot specify both scale and target_shape for resize correction."
-        assert (
-            self.scale is not None or self.target_shape is not None
-        ), "Must specify either scale or target_shape for resize correction."
+        Raises:
+            ValueError: if mode is invalid, if required field for the mode is missing,
+                or if target_shape does not have exactly 2 elements.
+        """
+        mode = sec.get("mode", self.mode)
+        if mode not in ("scale", "target_shape"):
+            raise ValueError(
+                f"[corrections.resize] mode must be 'scale' or 'target_shape', got {mode!r}"
+            )
+        self.mode = mode
+
+        self.scale = sec.get("scale", self.scale)
+        target_shape_raw = sec.get("target_shape", self.target_shape)
+        self.target_shape = (
+            tuple(int(v) for v in target_shape_raw)
+            if target_shape_raw is not None
+            else None
+        )
+
+        if mode == "scale" and self.scale is None:
+            raise ValueError(
+                "[corrections.resize] mode='scale' requires 'scale' to be set."
+            )
+        if mode == "target_shape" and self.target_shape is None:
+            raise ValueError(
+                "[corrections.resize] mode='target_shape' requires 'target_shape' to be set."
+            )
+        if mode == "target_shape" and len(self.target_shape) != 2:
+            raise ValueError(
+                f"[corrections.resize] target_shape must have exactly 2 elements, "
+                f"got {self.target_shape!r}"
+            )
+
         return self
 
 
