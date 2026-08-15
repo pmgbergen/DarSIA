@@ -550,3 +550,61 @@ class TestDepthConfigMetadata:
             (f for f in schema if f["key"] == "depth.depth_map"), None
         )
         assert depth_map is None, "depth_map should be hidden and absent from schema"
+
+
+class TestFaciesConfigMetadata:
+    """Regression test: ensure FaciesConfig has correct metadata applied."""
+
+    def test_facies_config_facies_to_labels_map_metadata(self):
+        """FaciesConfig.facies_to_labels_map should have int_list_map widget."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("facies")
+        assert schema is not None
+
+        facies_map = next(
+            (f for f in schema if f["key"] == "facies.facies_to_labels_map"),
+            None,
+        )
+        assert facies_map is not None
+        # The schema uses "type" field to hold the widget type, not "widget"
+        assert facies_map.get("type") == "int_list_map"
+        assert facies_map.get("name") == "Facies groups"
+        assert facies_map.get("help") is not None
+        assert len(facies_map["help"]) > 0
+        assert facies_map.get("placeholder") == "Comma/space-separated label IDs (e.g., 3, 5, 8)"
+        assert facies_map.get("flatten_in_section") is True
+
+    def test_facies_config_label_to_facies_map_hidden(self):
+        """FaciesConfig.label_to_facies_map should be hidden (derived field)."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("facies")
+        assert schema is not None
+
+        # label_to_facies_map should be absent from the schema because it's marked hidden
+        label_map = next(
+            (f for f in schema if f["key"] == "facies.label_to_facies_map"),
+            None,
+        )
+        assert label_map is None, "label_to_facies_map should be hidden and absent from schema"
+
+    def test_facies_config_path_hidden(self):
+        """FaciesConfig.path should be hidden (auto-derived output path)."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("facies")
+        assert schema is not None
+
+        # path should be absent from the schema because it's marked hidden
+        path_field = next(
+            (f for f in schema if f["key"] == "facies.path"),
+            None,
+        )
+        assert path_field is None, "path should be hidden and absent from schema"
