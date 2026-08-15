@@ -169,6 +169,13 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
 
         # Check if this is an Optional[dataclass] field — render as a group
         if is_dataclass(inner_type):
+            # Guard: dataclass-typed fields cannot also carry "group" metadata (would nest boxes)
+            if field.metadata.get("group"):
+                raise ValueError(
+                    f"Field '{key}' is a dataclass (type:'group') but also carries "
+                    f"metadata['group']. Nested QGroupBoxes are not supported. "
+                    f"Remove the 'group' metadata."
+                )
             setting_dict = {
                 "key": key,
                 "type": "group",
@@ -190,6 +197,7 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "default": _field_default(field),
                 "key_is_directory": field.metadata.get("key_is_directory", None),
                 "value_is_directory": field.metadata.get("value_is_directory", None),
+                "group_name": field.metadata.get("group", None),
             }
 
             # For list/tuple types, add the element type label
