@@ -471,7 +471,7 @@ class MainWindow(QMainWindow):
             # Create a scroll area and container for this section's fields
             tab_container = QWidget()
             tab_form = QFormLayout(tab_container)
-            tab_form.setContentsMargins(0, 0, 0, 0)
+            tab_form.setContentsMargins(8, 8, 8, 8)  # Padding on all sides
 
             # Create form_context for multi_file/path_map dynamic row insertion
             form_context = {"form": tab_form}
