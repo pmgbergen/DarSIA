@@ -3,7 +3,7 @@
 import threading
 from pathlib import Path
 
-from PySide6.QtWidgets import QCheckBox, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QCheckBox, QMessageBox, QPushButton, QVBoxLayout, QWidget
 
 
 class SetupTab:
@@ -83,6 +83,52 @@ class SetupTab:
             f"""{[k for k, v in options.items() if v and k != "force"]}"""
         )
 
+        # Check for protocol file conflicts and ask user if overwrite is needed
+        config_paths = [Path(config_file)]
+        if options["protocols"]:
+            try:
+                from darsia.presets.workflows.setup.setup_protocols import (
+                    preview_protocol_setup_conflicts,
+                )
+
+                conflicts = preview_protocol_setup_conflicts(config_paths)
+                if conflicts:
+                    # Truncate to 8 items max; show remainder count if needed
+                    CONFLICT_PREVIEW_LIMIT = 8
+                    preview_paths = conflicts[:CONFLICT_PREVIEW_LIMIT]
+                    preview_text = "\n".join(str(p) for p in preview_paths)
+                    if len(conflicts) > CONFLICT_PREVIEW_LIMIT:
+                        preview_text += (
+                            f"\n... and {len(conflicts) - CONFLICT_PREVIEW_LIMIT} more."
+                        )
+
+                    message = (
+                        "Protocol files already exist:\n\n"
+                        f"{preview_text}\n\n"
+                        "Overwrite existing protocol files?"
+                    )
+
+                    result = QMessageBox.question(
+                        self.main_window,
+                        "Protocol files exist",
+                        message,
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.No,
+                    )
+
+                    if result != QMessageBox.Yes:
+                        self.main_window.print_log(
+                            "Protocol setup cancelled: user chose not to overwrite existing files."
+                        )
+                        return
+
+                    options["force"] = True
+            except Exception as e:
+                self.main_window.print_log(
+                    f"Error checking protocol conflicts: {str(e)}"
+                )
+                return
+
         # Run workflow in a separate thread to avoid blocking the GUI
         def run_workflow():
             try:
@@ -97,7 +143,6 @@ class SetupTab:
                 )
                 from darsia.presets.workflows.setup.setup_rig import setup_rig
 
-                config_paths = [Path(config_file)]
                 show = options["show"]
 
                 if options["all"] or options["depth"]:
