@@ -25,45 +25,50 @@ class ProtocolsConfig:
             ),
             "widget": "path_map",
             "key_is_directory": True,
+            "group": "Imaging",
         },
     )
     """Per-folder mapping from data folder to imaging protocol file, or (file, sheet)."""
-    injection: Path | tuple[Path, str] | None = field(
-        default=None,
-        metadata={
-            "name": "Injection protocol",
-            "help": "Path to the injection-protocol file, or [file, sheet].",
-            "widget": "file",
-        },
-    )
-    """Path to the injection protocol file or (file, sheet)."""
     blacklist: Path | tuple[Path, str] | None = field(
         default=None,
         metadata={
             "name": "Blacklist",
             "help": "Path to a file listing images to exclude, or [file, sheet].",
             "widget": "file",
+            "group": "Imaging",
         },
     )
     """Path to the blacklist protocol file or (file, sheet)."""
-    pressure_temperature: Path | tuple[Path, str] | None = field(
-        default=None,
-        metadata={
-            "name": "Pressure/Temperature protocol",
-            "help": "Path to the pressure-temperature protocol file, or [file, sheet].",
-            "widget": "file",
-        },
-    )
-    """Path to the pressure-temperature protocol file or (file, sheet)."""
     imaging_mode: str = field(
         default="exif",
         metadata={
             "name": "Imaging mode",
             "help": "Datetime extraction mode for imaging protocol setup.",
             "options": ["exif", "ctime"],
+            "group": "Imaging",
         },
     )
     """Datetime extraction mode for imaging protocol setup: 'exif' or 'ctime'."""
+    injection: Path | tuple[Path, str] | None = field(
+        default=None,
+        metadata={
+            "name": "Injection protocol",
+            "help": "Path to the injection-protocol file, or [file, sheet].",
+            "widget": "file",
+            "group": "Experiment",
+        },
+    )
+    """Path to the injection protocol file or (file, sheet)."""
+    pressure_temperature: Path | tuple[Path, str] | None = field(
+        default=None,
+        metadata={
+            "name": "Pressure/Temperature protocol",
+            "help": "Path to the pressure-temperature protocol file, or [file, sheet].",
+            "widget": "file",
+            "group": "Experiment",
+        },
+    )
+    """Path to the pressure-temperature protocol file or (file, sheet)."""
 
     def _parse_protocol_value(
         self, value: str | Path | list[str] | tuple[str, str]
