@@ -13,15 +13,39 @@ logger = logging.getLogger(__name__)
 class FaciesConfig:
     """Facies configuration for the setup."""
 
-    # id: list[int] = field(default_factory=list)
-    # """List of facies IDs."""
-    props: Path = field(default_factory=Path)
+    props: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Facies properties",
+            "help": "Path to the facies properties file (xlsx/csv).",
+            "group": "Input",
+        },
+    )
     """Path to the facies properties file."""
-    path: Path = field(default_factory=Path)
+    path: Path = field(
+        default_factory=Path,
+        metadata={"hidden": True},
+    )
     """Path to the facies file."""
-    facies_to_labels_map: dict[int, list[int]] = field(default_factory=dict)
+    facies_to_labels_map: dict[int, list[int]] = field(
+        default_factory=dict,
+        metadata={
+            "name": "Facies groups",
+            "help": (
+                "Mapping from facies ID to the segment label IDs belonging "
+                "to it. Each row is one facies ID (integer) mapped to a "
+                "comma/space-separated list of label IDs (e.g. 3, 5, 8)."
+            ),
+            "widget": "int_list_map",
+            "placeholder": "Comma/space-separated label IDs (e.g., 3, 5, 8)",
+            "flatten_in_section": True,
+        },
+    )
     """Mapping from facies ID to list of segment labels."""
-    label_to_facies_map: dict[int, list[int]] = field(default_factory=dict)
+    label_to_facies_map: dict[int, list[int]] = field(
+        default_factory=dict,
+        metadata={"hidden": True},
+    )
     """Mapping from segment label to list of facies IDs."""
 
     def load(self, path: Path, results: Path | None = None) -> "FaciesConfig":
