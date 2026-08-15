@@ -98,12 +98,32 @@ class SettingsFactory:
 
         return settings_by_section
 
+    def _get_or_create_group_form(self, group_forms, parent_form, key, title):
+        """Get or create a group QGroupBox with its own QFormLayout.
+
+        key may be a str (top-level group name or standalone multi-row name) or a tuple
+        (nested multi-row box, keyed by (outer_group_name, own_name) to avoid colliding
+        with top-level keys).
+        """
+        if key not in group_forms:
+            box = QGroupBox(title)
+            form = QFormLayout(box)
+            group_forms[key] = form
+            parent_form.addRow(box)  # Spanning row in whichever form this box belongs to
+        return group_forms[key]
+
     def build_tab_form(self, tab_form, settings_list, form_context=None):
         """Build rows in a QFormLayout, handling grouping via group_name metadata.
 
         Multi-row types (multi_file/multi_folder/path_map) are automatically grouped in
         their own titled QGroupBox using the field's display name, ensuring both the header
         and data rows render inside the same box.
+
+        When a multi-row field carries an explicit group_name (e.g., "Input"), the behavior
+        is nested: the outer "Input" group box is created (or reused) at the top level,
+        and the multi-row field's own "Folders" box is created as a spanning row INSIDE
+        the "Input" box's form (not as a sibling at the top level). This creates a
+        visual hierarchy: Input > Folders + Format + Baseline.
 
         Parameters
         ----------
@@ -114,36 +134,39 @@ class SettingsFactory:
         form_context : dict, optional
             Context dict passed to create_setting_edit (contains "form" for multi_file/path_map)
         """
-        # Track group boxes and their nested forms for first-occurrence placement
-        group_forms = {}  # group_name -> QFormLayout
-        group_boxes = {}  # group_name -> QGroupBox
+        group_forms = {}  # key (str | tuple) -> QFormLayout, first-occurrence cache
 
         MULTI_ROW_TYPES = {"multi_file", "multi_folder", "path_map"}
 
         for setting in settings_list:
             setting_type = setting["type"]
             explicit_group = setting.get("group_name")
-            auto_grouped = False
-            group_name = explicit_group
 
-            # Auto-group multi-row types using their display name if no explicit group
-            if not group_name and setting_type in MULTI_ROW_TYPES:
-                group_name = setting.get("name", setting["key"].rsplit(".", 1)[-1])
+            if setting_type in MULTI_ROW_TYPES:
+                own_name = setting.get("name", setting["key"].rsplit(".", 1)[-1])
                 auto_grouped = True
-
-            # Resolve destination form before creating the widget (KEY FIX)
-            if group_name:
-                if group_name not in group_forms:
-                    # First occurrence: create a new group box with its own form
-                    group_box = QGroupBox(group_name)
-                    group_form = QFormLayout(group_box)
-                    group_forms[group_name] = group_form
-                    group_boxes[group_name] = group_box
-                    tab_form.addRow(group_box)  # Spanning row, first-occurrence position
-
-                target_form = group_forms[group_name]
+                if explicit_group:
+                    # Multi-row field with explicit group: create nested structure
+                    # Outer explicit-group box at top level (shared with scalar siblings)
+                    outer_form = self._get_or_create_group_form(
+                        group_forms, tab_form, explicit_group, explicit_group
+                    )
+                    # Inner box for this multi-row field, NESTED inside the outer box's form
+                    target_form = self._get_or_create_group_form(
+                        group_forms, outer_form, (explicit_group, own_name), own_name
+                    )
+                else:
+                    # No explicit group: standalone top-level box
+                    target_form = self._get_or_create_group_form(
+                        group_forms, tab_form, own_name, own_name
+                    )
             else:
-                target_form = tab_form
+                group_name = explicit_group
+                auto_grouped = False
+                target_form = (
+                    self._get_or_create_group_form(group_forms, tab_form, group_name, group_name)
+                    if group_name else tab_form
+                )
 
             # Resolve form_context against the actual destination form (KEY FIX)
             local_form_context = {"form": target_form}
@@ -159,12 +182,16 @@ class SettingsFactory:
                 for sub_key, sub_widget in field_or_result.get("sub_inputs", {}).items():
                     self.main_window.settings_inputs[sub_key] = sub_widget
             # Handle grouped scalar fields and auto-grouped multi-row fields
-            elif group_name:
+            elif auto_grouped and isinstance(field_or_result, dict):
+                # Multi-row field that created its own result dict (backward compat)
+                # Skip adding to form
+                self.main_window.settings_inputs[setting["key"]] = field_or_result
+            elif auto_grouped or explicit_group:
                 # Blank the label for auto-grouped multi-row fields (box title already shows name)
                 row_label = "" if auto_grouped else label_text
                 target_form.addRow(row_label, field_or_result)
                 self.main_window.settings_inputs[setting["key"]] = field_or_result
-            # Handle ungrouped scalar fields (check that field_or_result is a widget, not a dict)
+            # Handle ungrouped scalar fields
             elif isinstance(field_or_result, dict):
                 # This is a result dict from multi_file/path_map in fallback mode (backward compat)
                 # Skip adding to form; the field already created its own layout

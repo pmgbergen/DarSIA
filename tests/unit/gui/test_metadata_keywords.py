@@ -502,7 +502,8 @@ class TestNameMetadata:
             "fields": [],
         }
 
-        group_box, result = factory.create_group_input(setting_dict)
+        label_text, result = factory.create_group_input(setting_dict)
+        group_box = result.get("widget")
         qtbot.addWidget(group_box)
 
         # Should use the last segment of the key
