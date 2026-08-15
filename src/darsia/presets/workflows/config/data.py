@@ -35,6 +35,7 @@ class DataConfig:
                 """Add/remove folders using the list editor."""
             ),
             "widget": "multi_folder",
+            "group": "Input",
         },
     )
     """Paths to folders containing image data."""
@@ -44,6 +45,7 @@ class DataConfig:
             "name": "Format",
             "help": "Image file format/extension.",
             "options": ["JPG", "PNG", "TIF", "TIFF", "BMP"],
+            "group": "Input",
         },
     )
     """Format of the image data (e.g., 'JPG', 'PNG')."""
@@ -57,6 +59,7 @@ class DataConfig:
         metadata={
             "name": "Baseline image",
             "help": "Path to the baseline image file.",
+            "group": "Input",
         },
     )
     """Path to the baseline image."""
@@ -71,6 +74,7 @@ class DataConfig:
             "name": "Results folder",
             "help": "Path to the folder where results are stored.",
             "widget": "folder",
+            "group": "Output",
         },
     )
     """Path to the results folder."""
@@ -89,6 +93,7 @@ class DataConfig:
         metadata={
             "name": "Use cache",
             "help": "Whether to cache read/processed images under the results folder.",
+            "group": "Output",
         },
     )
     """Whether to use the cache folder for reading/writing cached images."""
