@@ -407,7 +407,9 @@ class CorrectionsConfig:
                 self.inactive[name] = parsed
 
         relative_color_sec = sec.get("relative_color", self.relative_color)
-        if isinstance(relative_color_sec, bool):
+        if relative_color_sec is None:
+            self.relative_color = False
+        elif isinstance(relative_color_sec, bool):
             self.relative_color = relative_color_sec
         elif isinstance(relative_color_sec, dict):
             self.relative_color = RelativeColorCorrectionConfig().load(
