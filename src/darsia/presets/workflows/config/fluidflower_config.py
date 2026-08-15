@@ -124,8 +124,11 @@ class FluidFlowerConfig:
         try:
             self.image_porosity: ImagePorosityConfig | None = ImagePorosityConfig()
             self.image_porosity.load(path=path)
+            if not self.image_porosity.active:
+                self.image_porosity = None
         except KeyError:
             self.image_porosity = None
+            warn(f"Section image_porosity not found in {path}, use [image_porosity].")
 
         # ! ---- PROTOCOLS ---- ! #
         try:
