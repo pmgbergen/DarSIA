@@ -675,3 +675,167 @@ class TestFaciesConfigMetadata:
             None,
         )
         assert path_field is None, "path should be hidden and absent from schema"
+
+
+class TestCorrectionsConfigMetadata:
+    """Regression test: ensure CorrectionsConfig correction sections have correct metadata."""
+
+    def test_all_correction_fields_have_name(self):
+        """All 8 CorrectionsConfig correction fields should have a friendly name."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        assert schema is not None
+
+        # Expect 8 groups, one for each correction type
+        field_keys = [f["key"] for f in schema]
+        expected_corrections = [
+            "corrections.type",
+            "corrections.resize",
+            "corrections.drift",
+            "corrections.curvature",
+            "corrections.color",
+            "corrections.relative_color",
+            "corrections.illumination",
+            "corrections.patchwise_illumination",
+        ]
+        for key in expected_corrections:
+            assert key in field_keys
+
+        # All should have a name in their metadata
+        for field in schema:
+            if field["key"] in expected_corrections:
+                assert field.get("name") is not None, f"{field['key']} should have a name"
+
+    def test_drift_correction_colorchecker_metadata(self):
+        """DriftCorrectionConfig.colorchecker should have name, help, and options."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        drift_group = next(
+            (f for f in schema if f["key"] == "corrections.drift"), None
+        )
+        assert drift_group is not None
+        assert drift_group.get("type") == "group"
+
+        # Dig into nested fields
+        fields = drift_group.get("fields", [])
+        colorchecker_field = next(
+            (f for f in fields if f["key"] == "corrections.drift.colorchecker"),
+            None,
+        )
+        assert colorchecker_field is not None
+        assert colorchecker_field.get("name") == "Color checker position"
+        assert colorchecker_field.get("help") is not None
+        assert colorchecker_field.get("options") == [
+            "upper_left",
+            "upper_right",
+            "lower_left",
+            "lower_right",
+        ]
+
+    def test_unsupported_fields_are_hidden(self):
+        """Fields with unsupported types should be marked hidden."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        assert schema is not None
+
+        # Check that hidden fields do not appear in any group's fields
+        for group in schema:
+            if group.get("type") == "group":
+                fields = group.get("fields", [])
+                field_keys = [f["key"] for f in fields]
+
+                # These fields should not appear because they're hidden
+                hidden_patterns = [
+                    "corrections.curvature.config",
+                    "corrections.relative_color.options",
+                ]
+                for pattern in hidden_patterns:
+                    assert pattern not in field_keys, f"{pattern} should be hidden"
+
+    def test_resize_correction_mode_field_metadata(self):
+        """ResizeCorrectionConfig.mode should have name, help, and options."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        resize_group = next(
+            (f for f in schema if f["key"] == "corrections.resize"), None
+        )
+        assert resize_group is not None
+        assert resize_group.get("type") == "group"
+
+        # Dig into nested fields
+        fields = resize_group.get("fields", [])
+        mode_field = next(
+            (f for f in fields if f["key"] == "corrections.resize.mode"), None
+        )
+        assert mode_field is not None
+        assert mode_field.get("name") == "Resize mode"
+        assert mode_field.get("help") is not None
+        assert mode_field.get("options") == ["scale", "target_shape"]
+
+    def test_resize_correction_scale_and_shape_metadata(self):
+        """ResizeCorrectionConfig.scale and .target_shape should have name and help."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        resize_group = next(
+            (f for f in schema if f["key"] == "corrections.resize"), None
+        )
+        assert resize_group is not None
+
+        fields = resize_group.get("fields", [])
+        field_keys = [f["key"] for f in fields]
+
+        # Both scale and target_shape should be present
+        assert "corrections.resize.scale" in field_keys
+        assert "corrections.resize.target_shape" in field_keys
+
+        # Both should have name and help
+        scale_field = next(f for f in fields if f["key"] == "corrections.resize.scale")
+        target_shape_field = next(
+            f for f in fields if f["key"] == "corrections.resize.target_shape"
+        )
+
+        assert scale_field.get("name") == "Scale factor"
+        assert scale_field.get("help") is not None
+        assert target_shape_field.get("name") == "Target shape"
+        assert target_shape_field.get("help") is not None
+
+    def test_resize_correction_depends_on_metadata(self):
+        """ResizeCorrectionConfig.scale and .target_shape should have depends_on metadata."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        resize_group = next(
+            (f for f in schema if f["key"] == "corrections.resize"), None
+        )
+        assert resize_group is not None
+
+        fields = resize_group.get("fields", [])
+        scale_field = next(f for f in fields if f["key"] == "corrections.resize.scale")
+        target_shape_field = next(
+            f for f in fields if f["key"] == "corrections.resize.target_shape"
+        )
+
+        # scale should depend on mode == "scale"
+        assert scale_field.get("depends_on") == {"field": "mode", "value": "scale"}
+        # target_shape should depend on mode == "target_shape"
+        assert target_shape_field.get("depends_on") == {
+            "field": "mode",
+            "value": "target_shape",
+        }
