@@ -19,6 +19,41 @@ class FileDialogHelper:
     def __init__(self, main_window):
         self.main_window = main_window
 
+    def _browse_for_path(self, is_directory, title, line_edit):
+        """Open a file/folder dialog and write the selected path into line_edit."""
+        if is_directory:
+            selected = QFileDialog.getExistingDirectory(
+                self.main_window, title, line_edit.text() if line_edit.text() else ""
+            )
+        else:
+            selected, _ = QFileDialog.getOpenFileName(
+                self.main_window,
+                title,
+                line_edit.text() if line_edit.text() else "",
+                "All Files (*)",
+            )
+        if selected:
+            line_edit.setText(selected)
+
+    def _remove_form_row(
+        self,
+        form,
+        row_widget,
+        row_data,
+        row_data_list,
+        removed_value,
+        value_list,
+        refresh_fn,
+    ):
+        """Remove a dynamically-added row from a QFormLayout and its tracking lists."""
+        row_idx, _ = form.getWidgetPosition(row_widget)
+        form.removeRow(row_idx)
+        if row_data in row_data_list:
+            row_data_list.remove(row_data)
+        if removed_value in value_list:
+            value_list.remove(removed_value)
+        refresh_fn()
+
     def create_file_chooser(
         self, display_name, file_filter, is_directory, setting_dict=None
     ):
@@ -159,33 +194,24 @@ class FileDialogHelper:
                 remove_button = QPushButton("Remove")
                 remove_button.setMaximumWidth(80)
 
-                def browse():
-                    if is_directory:
-                        selected_path = QFileDialog.getExistingDirectory(
-                            self.main_window,
-                            f"Select folder for {display_name}",
-                            path_edit.text() if path_edit.text() else "",
-                        )
-                    else:
-                        selected_path, _ = QFileDialog.getOpenFileName(
-                            self.main_window,
-                            f"Select file for {display_name}",
-                            path_edit.text() if path_edit.text() else "",
-                            "All Files (*)",
-                        )
-                    if selected_path:
-                        path_edit.setText(selected_path)
-
                 def remove():
-                    row_idx, _ = form.getWidgetPosition(row_widget)
-                    form.removeRow(row_idx)
-                    if row_data in file_rows:
-                        file_rows.remove(row_data)
-                    if path_edit in file_edits:
-                        file_edits.remove(path_edit)
-                    refresh_remove_buttons()
+                    self._remove_form_row(
+                        form,
+                        row_widget,
+                        row_data,
+                        file_rows,
+                        path_edit,
+                        file_edits,
+                        refresh_remove_buttons,
+                    )
 
-                browse_button.clicked.connect(browse)
+                browse_button.clicked.connect(
+                    lambda: self._browse_for_path(
+                        is_directory,
+                        f"Select {'folder' if is_directory else 'file'} for {display_name}",
+                        path_edit,
+                    )
+                )
                 remove_button.clicked.connect(remove)
 
                 row_layout.addWidget(browse_button)
@@ -278,23 +304,6 @@ class FileDialogHelper:
                 remove_button = QPushButton("Remove")
                 remove_button.setMaximumWidth(80)
 
-                def browse():
-                    if is_directory:
-                        selected_path = QFileDialog.getExistingDirectory(
-                            self.main_window,
-                            f"Select folder for {display_name}",
-                            path_edit.text() if path_edit.text() else "",
-                        )
-                    else:
-                        selected_path, _ = QFileDialog.getOpenFileName(
-                            self.main_window,
-                            f"Select file for {display_name}",
-                            path_edit.text() if path_edit.text() else "",
-                            "All Files (*)",
-                        )
-                    if selected_path:
-                        path_edit.setText(selected_path)
-
                 def remove():
                     row_container.deleteLater()
                     if row_data in file_rows:
@@ -303,7 +312,13 @@ class FileDialogHelper:
                         file_edits.remove(path_edit)
                     refresh_remove_buttons()
 
-                browse_button.clicked.connect(browse)
+                browse_button.clicked.connect(
+                    lambda: self._browse_for_path(
+                        is_directory,
+                        f"Select {'folder' if is_directory else 'file'} for {display_name}",
+                        path_edit,
+                    )
+                )
                 remove_button.clicked.connect(remove)
 
                 row_layout.addWidget(browse_button)
@@ -423,51 +438,39 @@ class FileDialogHelper:
                 remove_button = QPushButton("Remove")
                 remove_button.setMaximumWidth(80)
 
-                def browse_key():
-                    if key_is_directory:
-                        selected = QFileDialog.getExistingDirectory(
-                            self.main_window,
-                            f"Select key (folder) for {display_name}",
-                            key_edit.text() if key_edit.text() else "",
-                        )
-                    else:
-                        selected, _ = QFileDialog.getOpenFileName(
-                            self.main_window,
-                            f"Select key (file) for {display_name}",
-                            key_edit.text() if key_edit.text() else "",
-                            "All Files (*)",
-                        )
-                    if selected:
-                        key_edit.setText(selected)
-
-                def browse_value():
-                    if value_is_directory:
-                        selected = QFileDialog.getExistingDirectory(
-                            self.main_window,
-                            f"Select value (folder) for {display_name}",
-                            value_edit.text() if value_edit.text() else "",
-                        )
-                    else:
-                        selected, _ = QFileDialog.getOpenFileName(
-                            self.main_window,
-                            f"Select value (file) for {display_name}",
-                            value_edit.text() if value_edit.text() else "",
-                            "All Files (*)",
-                        )
-                    if selected:
-                        value_edit.setText(selected)
-
                 def remove():
-                    row_idx, _ = form.getWidgetPosition(row_widget)
-                    form.removeRow(row_idx)
-                    if row_data in row_data_list:
-                        row_data_list.remove(row_data)
-                    if (key_edit, value_edit) in row_pairs:
-                        row_pairs.remove((key_edit, value_edit))
-                    refresh_remove_buttons()
+                    self._remove_form_row(
+                        form,
+                        row_widget,
+                        row_data,
+                        row_data_list,
+                        (key_edit, value_edit),
+                        row_pairs,
+                        refresh_remove_buttons,
+                    )
 
-                key_browse_button.clicked.connect(browse_key)
-                value_browse_button.clicked.connect(browse_value)
+                key_browse_button.clicked.connect(
+                    lambda: self._browse_for_path(
+                        key_is_directory,
+                        (
+                            """Select key """
+                            f"""({"folder" if key_is_directory else "file"}) """
+                            f"""for {display_name}"""
+                        ),
+                        key_edit,
+                    )
+                )
+                value_browse_button.clicked.connect(
+                    lambda: self._browse_for_path(
+                        value_is_directory,
+                        (
+                            """Select value """
+                            f"""({"folder" if value_is_directory else "file"}) """
+                            f"""for {display_name}"""
+                        ),
+                        value_edit,
+                    )
+                )
                 remove_button.clicked.connect(remove)
 
                 row_layout.addWidget(key_browse_button)
@@ -569,40 +572,6 @@ class FileDialogHelper:
                 remove_button = QPushButton("Remove")
                 remove_button.setMaximumWidth(80)
 
-                def browse_key():
-                    if key_is_directory:
-                        selected = QFileDialog.getExistingDirectory(
-                            self.main_window,
-                            f"Select key (folder) for {display_name}",
-                            key_edit.text() if key_edit.text() else "",
-                        )
-                    else:
-                        selected, _ = QFileDialog.getOpenFileName(
-                            self.main_window,
-                            f"Select key (file) for {display_name}",
-                            key_edit.text() if key_edit.text() else "",
-                            "All Files (*)",
-                        )
-                    if selected:
-                        key_edit.setText(selected)
-
-                def browse_value():
-                    if value_is_directory:
-                        selected = QFileDialog.getExistingDirectory(
-                            self.main_window,
-                            f"Select value (folder) for {display_name}",
-                            value_edit.text() if value_edit.text() else "",
-                        )
-                    else:
-                        selected, _ = QFileDialog.getOpenFileName(
-                            self.main_window,
-                            f"Select value (file) for {display_name}",
-                            value_edit.text() if value_edit.text() else "",
-                            "All Files (*)",
-                        )
-                    if selected:
-                        value_edit.setText(selected)
-
                 def remove():
                     row_container.deleteLater()
                     if row_data in row_data_list:
@@ -611,8 +580,28 @@ class FileDialogHelper:
                         row_pairs.remove((key_edit, value_edit))
                     refresh_remove_buttons()
 
-                key_browse_button.clicked.connect(browse_key)
-                value_browse_button.clicked.connect(browse_value)
+                key_browse_button.clicked.connect(
+                    lambda: self._browse_for_path(
+                        key_is_directory,
+                        (
+                            """Select key """
+                            """({'folder' if key_is_directory else 'file'}) """
+                            f"""for {display_name}"""
+                        ),
+                        key_edit,
+                    )
+                )
+                value_browse_button.clicked.connect(
+                    lambda: self._browse_for_path(
+                        value_is_directory,
+                        (
+                            """Select value """
+                            f"""({"folder" if value_is_directory else "file"}) """
+                            f"""for {display_name}"""
+                        ),
+                        value_edit,
+                    )
+                )
                 remove_button.clicked.connect(remove)
 
                 row_layout.addWidget(key_browse_button)
