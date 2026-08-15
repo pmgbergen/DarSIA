@@ -814,12 +814,10 @@ class SettingsFactory:
     def create_group_input(self, setting_dict):
         """Create a group box for an Optional[dataclass] field.
 
-        If the field declares `metadata={"active_list_key": "<name>"}`, the group is
-        checkable and its checked state is driven by `<section>.<name>` in the loaded
-        config (falling back to "checked iff the sub-table is present" for configs
-        predating that list). Fields without this metadata render as a plain
-        non-checkable box — their data layer doesn't support enable/disable, so no
-        checkbox is shown and nothing is written to the TOML for them.
+        If the field declares `metadata={"active_list_key": "<name>"}` or has
+        `active_bool_key`, the group box is made checkable with no custom QSS,
+        allowing Qt to render a native checkmark in the title area. Fields without
+        these metadata render as a plain non-toggleable box.
 
         Returns the group_box widget (to be added as a spanning row in a QFormLayout)
         and a result dict with sub_inputs and optional checkbox/active_list_key/name.
@@ -828,27 +826,12 @@ class SettingsFactory:
         name = key.rsplit(".", 1)[-1]
         display_name = setting_dict.get("name", name)
         active_list_name = setting_dict.get("active_list_key")
+        active_bool_key = setting_dict.get("active_bool_key")
 
         group_box = QGroupBox(display_name)
         result = {}
 
-        # Apply QSS to make checkboxes visible (not "ghosted") in dark mode.
-        # Uses palette() functions so it respects the OS theme.
-        group_box.setStyleSheet(
-            "QGroupBox::indicator {"
-            "  width: 14px; height: 14px;"
-            "  border: 1px solid palette(mid);"
-            "  border-radius: 3px;"
-            "  background-color: palette(window);"
-            "}"
-            "QGroupBox::indicator:checked {"
-            "  background-color: palette(highlight);"
-            "  border: 1px solid palette(highlight);"
-            "}"
-        )
-
         # Handle active_bool_key (section-level toggle, simple boolean)
-        active_bool_key = setting_dict.get("active_bool_key")
         if active_bool_key is not None:
             is_active = self.get_value(self.main_window.config_dict, active_bool_key)
             if is_active is None:
@@ -887,6 +870,7 @@ class SettingsFactory:
 
         # Use QFormLayout for sub-fields (same structure as top-level tabs)
         group_form = QFormLayout(group_box)
+        group_form.setContentsMargins(0, 10, 0, 0)  # 10px top margin to clear group box title
         sub_inputs = {}
         for sub_setting in setting_dict["fields"]:
             label_text, field_widget = self.create_setting_edit(sub_setting)
