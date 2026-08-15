@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 
 import toml
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -36,9 +36,14 @@ from .toolbar import ToolbarBuilder
 class MainWindow(QMainWindow):
     """The main class containing the window and the relevant methods for the visualization."""
 
+    log_message = Signal(str)
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("DarSIA")
+
+        # Connect log_message signal to append_log slot for thread-safe logging
+        self.log_message.connect(self._append_log)
 
         # Set window icon
         logo_path = (
@@ -509,6 +514,10 @@ class MainWindow(QMainWindow):
         self.print_log("Config loaded")
 
     def print_log(self, text):
-        """Method that prints to the console and to the log window."""
+        """Emit log_message signal to append text to log window (thread-safe via Qt signal)."""
+        self.log_message.emit(text)
+
+    def _append_log(self, text):
+        """Slot that appends text to log window and prints to console."""
         self.log_text.append(text)
         print(text)
