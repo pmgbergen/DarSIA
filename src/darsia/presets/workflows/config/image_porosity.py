@@ -1,6 +1,6 @@
 """Configuration for image porosity setup."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -10,24 +10,6 @@ from .utils import _get_section_from_toml
 @dataclass
 class ImagePorosityConfig:
     """Configuration for image-porosity workflow in :class:`darsia.Rig`.
-
-    Attributes:
-        mode: ``"full"`` produces constant full porosity (value ``1`` everywhere);
-            ``"from_image"`` derives the porosity from the baseline image using
-            :func:`~darsia.patched_porosity_analysis`.  Default is ``"full"``.
-        tol: Threshold used by :meth:`~darsia.Rig.setup_boolean_image_porosity` when
-            ``mode="from_image"`` to binarise the continuous porosity map.  Ignored in
-            ``"full"`` mode (the boolean mask is always all-``True``).  Default ``0.9``.
-        patches: Number of patches ``(rows, cols)`` for the patched porosity analysis.
-            Only used when ``mode="from_image"``.  Default ``(1, 1)``.
-        num_clusters: Number of k-means clusters for the porosity analysis.
-            Only used when ``mode="from_image"``.  Default ``5``.
-        sample_width: Width of random samples in pixels for the porosity analysis.
-            Only used when ``mode="from_image"``.  Default ``50``.
-        tol_color_distance: Tolerance for colour-distance filtering in the porosity
-            analysis.  Only used when ``mode="from_image"``.  Default ``0.1``.
-        tol_color_gradient: Tolerance for colour-gradient filtering in the porosity
-            analysis.  Only used when ``mode="from_image"``.  Default ``0.02``.
 
     Config section (TOML)::
 
@@ -44,19 +26,72 @@ class ImagePorosityConfig:
 
     """
 
-    mode: Literal["full", "from_image"] = "full"
+    active: bool = field(
+        default=True,
+        metadata={
+            "name": "Enable image porosity",
+            "help": "When unchecked, image porosity is skipped (equivalent to omitting [image_porosity] from the config). Other values below are preserved even when unchecked.",
+            "section_active": True,
+            "hidden": True,
+        },
+    )
+    """Whether to enable image porosity setup. When False, behaves like the section is absent."""
+    mode: Literal["full", "from_image"] = field(
+        default="full",
+        metadata={
+            "name": "Mode",
+            "help": "'full' produces constant full porosity (1 everywhere); 'from_image' derives porosity from the baseline image.",
+            "options": ["full", "from_image"],
+        },
+    )
     """Porosity mode: ``"full"`` (constant 1) or ``"from_image"`` (image-derived)."""
-    tol: float = 0.9
+    tol: float = field(
+        default=0.9,
+        metadata={
+            "name": "Boolean threshold",
+            "help": "Threshold to binarize the continuous porosity map (mode='from_image' only).",
+        },
+    )
     """Threshold for boolean image porosity (only used in ``"from_image"`` mode)."""
-    patches: tuple[int, int] = (1, 1)
+    patches: tuple[int, int] = field(
+        default=(1, 1),
+        metadata={
+            "name": "Patches",
+            "help": "Number of patches (rows, cols) for patched porosity analysis, e.g. [10, 10] (mode='from_image' only).",
+        },
+    )
     """Number of patches ``(rows, cols)`` for patched porosity analysis."""
-    num_clusters: int = 5
+    num_clusters: int = field(
+        default=5,
+        metadata={
+            "name": "Number of clusters",
+            "help": "Number of k-means clusters for the porosity analysis (mode='from_image' only).",
+        },
+    )
     """Number of k-means clusters for the porosity analysis."""
-    sample_width: int = 50
+    sample_width: int = field(
+        default=50,
+        metadata={
+            "name": "Sample width",
+            "help": "Width of random samples (pixels) for the porosity analysis (mode='from_image' only).",
+        },
+    )
     """Width of random samples (pixels) for the porosity analysis."""
-    tol_color_distance: float = 0.1
+    tol_color_distance: float = field(
+        default=0.1,
+        metadata={
+            "name": "Tolerance for color distance",
+            "help": "Tolerance for colour-distance filtering in the porosity analysis (mode='from_image' only).",
+        },
+    )
     """Tolerance for colour-distance filtering in the porosity analysis."""
-    tol_color_gradient: float = 0.02
+    tol_color_gradient: float = field(
+        default=0.02,
+        metadata={
+            "name": "Tolerance for color gradient",
+            "help": "Tolerance for colour-gradient filtering in the porosity analysis (mode='from_image' only).",
+        },
+    )
     """Tolerance for colour-gradient filtering in the porosity analysis."""
 
     def load(self, path: Path | list[Path]) -> "ImagePorosityConfig":
@@ -93,6 +128,8 @@ class ImagePorosityConfig:
             ValueError: if ``tol`` is not a float in ``(0, 1]``.
             ValueError: if ``patches`` does not have exactly 2 elements.
         """
+        self.active = bool(sec.get("active", self.active))
+
         mode = sec.get("mode", self.mode)
         if mode not in ("full", "from_image"):
             raise ValueError(
