@@ -263,8 +263,8 @@ class FileDialogHelper:
 
             QTimer.singleShot(0, deferred_prefill)
 
-            # Return the header_widget (composite: add_button + help) as the field_widget
-            return display_name, header_widget
+            # Return enriched dict: widget for form insertion, rows for save_settings
+            return display_name, {"widget": header_widget, "rows": file_edits}
 
         # Fallback: use internal QVBoxLayout (backward compat)
         else:
@@ -513,8 +513,8 @@ class FileDialogHelper:
 
             QTimer.singleShot(0, deferred_prefill)
 
-            # Return the header_widget (composite: add_button + help) as the field_widget
-            return display_name, header_widget
+            # Return enriched dict: widget for form insertion, rows for save_settings
+            return display_name, {"widget": header_widget, "path_map": True, "rows": row_pairs}
 
         # Fallback: use internal QVBoxLayout (backward compat)
         else:

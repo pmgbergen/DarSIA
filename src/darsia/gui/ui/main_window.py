@@ -1,4 +1,5 @@
 import ast
+import re
 from pathlib import Path
 
 import toml
@@ -192,8 +193,8 @@ class MainWindow(QMainWindow):
             # Skip group dicts with checkboxes (already handled above)
             if isinstance(value, dict) and "checkbox" in value:
                 continue
-            # Skip path_map dicts (handled below)
-            if isinstance(value, dict) and "path_map" in value:
+            # Skip path_map and int_group_list dicts (handled below)
+            if isinstance(value, dict) and ("path_map" in value or "int_group_list" in value):
                 continue
             # Skip sub-inputs of unchecked groups
             if key in skip_keys:
@@ -241,7 +242,24 @@ class MainWindow(QMainWindow):
                 }
                 self.settings_factory.set_value(self.config_dict, key, result)
 
-        # Fourth pass: write all active lists
+        # Fourth pass: parse int_group_list rows into list[list[int]]
+        for key, value in self.settings_inputs.items():
+            if isinstance(value, dict) and "int_group_list" in value:
+                groups = []
+                for edit in value["rows"]:
+                    text = edit.text().strip()
+                    if not text:
+                        continue
+                    tokens = [t for t in re.split(r"[,\s]+", text) if t]
+                    try:
+                        groups.append([int(t) for t in tokens])
+                    except ValueError:
+                        self.print_log(
+                            f"Skipping invalid group '{text}' for {key}: not all-integer."
+                        )
+                self.settings_factory.set_value(self.config_dict, key, groups)
+
+        # Fifth pass: write all active lists
         for active_list_key, names in group_active_names.items():
             self.settings_factory.set_value(
                 self.config_dict, active_list_key, sorted(names)

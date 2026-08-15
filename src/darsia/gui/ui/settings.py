@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QPushButton,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -138,7 +140,7 @@ class SettingsFactory:
         """
         group_forms = {}  # key (str | tuple) -> QFormLayout, first-occurrence cache
 
-        MULTI_ROW_TYPES = {"multi_file", "multi_folder", "path_map"}
+        MULTI_ROW_TYPES = {"multi_file", "multi_folder", "path_map", "int_group_list"}
 
         for setting in settings_list:
             setting_type = setting["type"]
@@ -196,8 +198,24 @@ class SettingsFactory:
                 ).items():
                     self.main_window.settings_inputs[sub_key] = sub_widget
             # Handle grouped scalar fields and auto-grouped multi-row fields
+            elif auto_grouped and isinstance(field_or_result, dict) and "widget" in field_or_result:
+                # Multi-row field (form_context mode): form gets the header widget as the
+                # spanning row; settings_inputs gets the row-tracking payload save_settings expects.
+                target_form.addRow("", field_or_result["widget"])
+                if "path_map" in field_or_result:
+                    self.main_window.settings_inputs[setting["key"]] = {
+                        "path_map": True,
+                        "rows": field_or_result["rows"],
+                    }
+                elif "int_group_list" in field_or_result:
+                    self.main_window.settings_inputs[setting["key"]] = {
+                        "int_group_list": True,
+                        "rows": field_or_result["rows"],
+                    }
+                else:
+                    self.main_window.settings_inputs[setting["key"]] = field_or_result["rows"]
             elif auto_grouped and isinstance(field_or_result, dict):
-                # Multi-row field that created its own result dict (backward compat)
+                # Multi-row field that created its own result dict (backward compat, non-form_context)
                 # Skip adding to form
                 self.main_window.settings_inputs[setting["key"]] = field_or_result
             elif auto_grouped or explicit_group:
@@ -292,6 +310,10 @@ class SettingsFactory:
                 key_is_directory=key_is_directory,
                 value_is_directory=value_is_directory,
                 form_context=form_context,
+            )
+        elif setting_type == "int_group_list":
+            return self.create_int_group_list_input(
+                setting_dict, form_context=form_context
             )
         else:
             self.main_window.print_log(
@@ -438,6 +460,177 @@ class SettingsFactory:
         field_layout.addWidget(build_help_column(setting_dict))
 
         return display_name, field_widget
+
+    def create_int_group_list_input(self, setting_dict, form_context=None):
+        """Create a multi-row editor for list[list[int]] fields (groups of label IDs).
+
+        Each row is a single QLineEdit holding a comma/whitespace-separated list of ints,
+        e.g. "3, 5, 8". Mirrors create_multi_file_input's form_context row-management
+        pattern (add/remove via form.insertRow/removeRow). No fallback branch — form_context
+        is always provided by the live app (display_settings).
+
+        Returns (display_name, enriched_dict) where enriched_dict has "widget" for form
+        insertion and "rows" (list of QLineEdit) for save_settings to parse.
+        """
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+        values = self.main_window.settings_factory.get_value(
+            self.main_window.config_dict, key
+        )
+        if values is None:
+            values = setting_dict.get("default")
+
+        row_edits = []  # List of QLineEdit widgets for each group
+        row_data_list = []  # Track row data (widget, remove_button)
+
+        def refresh_remove_buttons():
+            show_remove = len(row_data_list) > 1
+            for row in row_data_list:
+                row["remove_button"].setVisible(show_remove)
+
+        add_button = QPushButton("Add group")
+
+        if form_context:
+            form = form_context["form"]
+
+            # Build composite header widget:
+            # [add_button (stretch=1)][help_button_or_spacer (fixed 40px)]
+            header_widget = QWidget()
+            header_layout = QHBoxLayout(header_widget)
+            header_layout.setContentsMargins(0, 0, 0, 0)
+            header_layout.setSpacing(4)
+            header_layout.addWidget(add_button, stretch=1)
+            header_layout.addWidget(build_help_column(setting_dict))
+
+            def add_row(initial_value=""):
+                row_widget = QWidget()
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(0, 0, 0, 0)
+                row_layout.setSpacing(4)
+
+                text_edit = QLineEdit()
+                placeholder = setting_dict.get("placeholder")
+                if placeholder:
+                    text_edit.setPlaceholderText(placeholder)
+                if initial_value:
+                    text_edit.setText(initial_value)
+                remove_button = QPushButton("Remove")
+                remove_button.setMaximumWidth(80)
+
+                def remove():
+                    self.file_dialog._remove_form_row(
+                        form,
+                        row_widget,
+                        row_data,
+                        row_data_list,
+                        text_edit,
+                        row_edits,
+                        refresh_remove_buttons,
+                    )
+
+                remove_button.clicked.connect(remove)
+
+                row_layout.addWidget(text_edit, stretch=1)
+                row_layout.addWidget(remove_button)
+
+                # Find the correct insertion index: after the header_widget header row
+                header_idx, _ = form.getWidgetPosition(header_widget)
+                if row_data_list:
+                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
+                    insert_idx = last_idx + 1
+                else:
+                    # Insert right after header row
+                    insert_idx = header_idx + 1
+
+                form.insertRow(insert_idx, "", row_widget)
+
+                row_data = {
+                    "widget": row_widget,
+                    "remove_button": remove_button,
+                }
+                row_data_list.append(row_data)
+                row_edits.append(text_edit)
+                refresh_remove_buttons()
+
+            # Connect add_button to add_row closure
+            add_button.clicked.connect(lambda: add_row())
+
+            # Defer pre-fill until after header row is added to form
+            from PySide6.QtCore import QTimer
+
+            def deferred_prefill():
+                if isinstance(values, list) and values:
+                    for group in values:
+                        # Join list of ints with ", "
+                        group_str = ", ".join(str(x) for x in group)
+                        add_row(group_str)
+                else:
+                    add_row("")
+
+            QTimer.singleShot(0, deferred_prefill)
+
+            # Return enriched dict: widget for form insertion, rows for save_settings
+            return display_name, {"widget": header_widget, "int_group_list": True, "rows": row_edits}
+
+        else:
+            # Fallback (should not be reached in the current app, but kept for compatibility)
+            setting_container = QWidget()
+            setting_layout = QVBoxLayout(setting_container)
+            setting_layout.setContentsMargins(0, 0, 0, 0)
+
+            setting_layout.addWidget(add_button)
+
+            rows_container = QWidget()
+            rows_layout = QVBoxLayout(rows_container)
+            rows_layout.setContentsMargins(0, 0, 0, 0)
+            setting_layout.addWidget(rows_container)
+
+            def add_row(initial_value=""):
+                row_container = QWidget()
+                row_layout = QHBoxLayout(row_container)
+                row_layout.setContentsMargins(0, 0, 0, 0)
+
+                text_edit = QLineEdit()
+                placeholder = setting_dict.get("placeholder")
+                if placeholder:
+                    text_edit.setPlaceholderText(placeholder)
+                if initial_value:
+                    text_edit.setText(initial_value)
+                remove_button = QPushButton("Remove")
+                remove_button.setMaximumWidth(80)
+
+                def remove():
+                    row_container.deleteLater()
+                    if row_data in row_data_list:
+                        row_data_list.remove(row_data)
+                    if text_edit in row_edits:
+                        row_edits.remove(text_edit)
+                    refresh_remove_buttons()
+
+                remove_button.clicked.connect(remove)
+
+                row_layout.addWidget(text_edit)
+                row_layout.addWidget(remove_button)
+                rows_layout.addWidget(row_container)
+
+                row_data = {
+                    "container": row_container,
+                    "remove_button": remove_button,
+                }
+                row_data_list.append(row_data)
+                row_edits.append(text_edit)
+                refresh_remove_buttons()
+
+            add_button.clicked.connect(lambda: add_row())
+
+            if isinstance(values, list) and values:
+                for group in values:
+                    group_str = ", ".join(str(x) for x in group)
+                    add_row(group_str)
+            else:
+                add_row("")
+
+            return display_name, {"int_group_list": True, "rows": row_edits}
 
     def create_group_input(self, setting_dict):
         """Create a group box for an Optional[dataclass] field.
