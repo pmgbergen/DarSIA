@@ -171,5 +171,13 @@ class SetupTab:
 
                 self.main_window.print_log(traceback.format_exc())
 
-        thread = threading.Thread(target=run_workflow, daemon=True)
-        thread.start()
+        if options["show"]:
+            # Interactive plotting (plt.show()) must run on the main thread — Qt/matplotlib
+            # are not thread-safe for GUI object creation. Run synchronously; the GUI will
+            # block until the workflow (and any plot windows) complete, which is expected
+            # for interactive output. print_log calls are now thread-safe via Qt signal.
+            run_workflow()
+        else:
+            # No interactive plotting — use background thread to keep GUI responsive
+            thread = threading.Thread(target=run_workflow, daemon=True)
+            thread.start()
