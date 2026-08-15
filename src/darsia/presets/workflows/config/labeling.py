@@ -11,20 +11,80 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class LabelingConfig:
-    colored_image: Path = field(default_factory=Path)
+    colored_image: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Colored image",
+            "help": (
+                """Path to the manually-colored/segmented reference image """
+                """used to seed label detection."""
+            ),
+        },
+    )
     """Path to the segmented file."""
-    unite_labels: list[list[int]] = field(default_factory=list)
+    unite_labels: list[list[int]] = field(
+        default_factory=list,
+        metadata={
+            "name": "Unite labels",
+            "help": (
+                """Groups of label IDs to merge together. """
+                """Each row is a comma/space-separated list of integers """
+                """(e.g., "3, 5, 8" merges labels 3, 5, and 8 into one label). """
+                """Leave empty if not needed."""
+            ),
+            "widget": "int_group_list",
+            "placeholder": "Comma/space-separated label IDs (e.g., 3, 5, 8)",
+        },
+    )
     """List of lists of labels to be united."""
-    water_label: int | None = None
+    water_label: int | None = field(
+        default=None,
+        metadata={
+            "name": "Water",
+            "help": (
+                """Label ID identifying the water region (if any); """
+                """reserved for future use."""
+            ),
+            "group": "Custom labels",
+        },
+    )
     """Label corresponding to water (if any)."""
-    colorchecker_label: int | None = None
+    colorchecker_label: int | None = field(
+        default=None,
+        metadata={
+            "name": "Colorchecker",
+            "help": (
+                """Label ID identifying the colorchecker region (if any); """
+                """reserved for future use."""
+            ),
+            "group": "Custom labels",
+        },
+    )
     """Label corresponding to colorchecker (if any)."""
-    labels: Path = field(default_factory=Path)
+    labels: Path = field(
+        default_factory=Path,
+        metadata={"hidden": True},
+    )
     """Path to the labels file."""
     # Numerical options for labeling.
-    rtol: float = 0.001
+    rtol: float = field(
+        default=0.001,
+        metadata={
+            "name": "Significance tolerance",
+            "help": (
+                """Minimum label significance to keep, as a fraction of image area """
+                """(default 0.001 = 0.1%)."""
+            ),
+        },
+    )
     """Minimum significance of labels to be kept (default: 0.1% of the image area)."""
-    ensure_connectivity: bool = True
+    ensure_connectivity: bool = field(
+        default=True,
+        metadata={
+            "name": "Ensure connectivity",
+            "help": "Whether detected labels must be spatially connected regions.",
+        },
+    )
     """Whether to ensure that labels are connected regions (default: True)."""
 
     def load(self, path: Path, results: Path | None = None) -> "LabelingConfig":
