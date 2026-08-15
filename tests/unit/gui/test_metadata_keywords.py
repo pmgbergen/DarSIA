@@ -616,7 +616,7 @@ class TestImagePorosityConfigMetadata:
 
         schema = get_section_fields("image_porosity")
         group = schema[0]
-        assert group.get("name") == "Extract image porosity"
+        assert group.get("name") == "Activate image porosity"
 
 
 class TestFaciesConfigMetadata:
