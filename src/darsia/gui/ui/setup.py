@@ -118,7 +118,8 @@ class SetupTab:
 
                     if result != QMessageBox.Yes:
                         self.main_window.print_log(
-                            "Protocol setup cancelled: user chose not to overwrite existing files."
+                            """Protocol setup cancelled: user chose not to """
+                            """overwrite existing files."""
                         )
                         return
 
