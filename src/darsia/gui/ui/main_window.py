@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFileDialog,
+    QFormLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -185,7 +186,10 @@ class MainWindow(QMainWindow):
         # Second pass: save all regular values (non-group dicts),
         # skipping unchecked group sub-inputs.
         for key, value in self.settings_inputs.items():
-            # Skip group dicts (already handled above)
+            # Skip group result dicts (marked with is_group_result)
+            if isinstance(value, dict) and value.get("is_group_result"):
+                continue
+            # Skip group dicts with checkboxes (already handled above)
             if isinstance(value, dict) and "checkbox" in value:
                 continue
             # Skip path_map dicts (handled below)
@@ -390,36 +394,25 @@ class MainWindow(QMainWindow):
         # Iterate through sections in order (dict preserves insertion order in Python 3.7+)
         for section, settings_list in relevant_settings.items():
             # Create a scroll area and container for this section's fields
-            tab_content = QWidget()
-            tab_layout = QVBoxLayout(tab_content)
-            tab_layout.setContentsMargins(0, 0, 0, 0)
+            tab_container = QWidget()
+            tab_form = QFormLayout(tab_container)
+            tab_form.setContentsMargins(0, 0, 0, 0)
 
-            # Add each setting in this section
-            for setting in settings_list:
-                setting_container, setting_edit = (
-                    self.settings_factory.create_setting_edit(setting)
-                )
+            # Create form_context for multi_file/path_map dynamic row insertion
+            form_context = {"form": tab_form}
 
-                # For groups, wrap the group box itself (no extra help button);
-                # for scalars, add help button column.
-                if setting["type"] == "group":
-                    tab_layout.addWidget(setting_container)
-                    self.settings_inputs[setting["key"]] = setting_edit
-                    # Flatten sub-inputs into settings_inputs so they save normally
-                    for sub_key, sub_edit in setting_edit["sub_inputs"].items():
-                        self.settings_inputs[sub_key] = sub_edit
-                else:
-                    wrapped_container = self.settings_factory.wrap_setting_with_help(
-                        setting_container, setting
-                    )
-                    tab_layout.addWidget(wrapped_container)
-                    self.settings_inputs[setting["key"]] = setting_edit
+            # Build rows in the form, handling grouping via group_name metadata
+            self.settings_factory.build_tab_form(
+                tab_form, settings_list, form_context=form_context
+            )
 
-            # Add stretch at the end of the section
-            tab_layout.addStretch()
+            # Add stretch at the end of the section (QFormLayout doesn't auto-stretch rows)
+            tab_form.setRowWrapPolicy(QFormLayout.WrapLongRows)
+            # Push content to top by adding a stretch row at the end
+            tab_form.addItem(QVBoxLayout())
 
             # Add this section as a tab (capitalize section name for display)
-            tabs.addTab(tab_content, section.capitalize())
+            tabs.addTab(tab_container, section.capitalize())
 
         self.settings_layout.addWidget(tabs)
         self.settings_layout.addStretch()
