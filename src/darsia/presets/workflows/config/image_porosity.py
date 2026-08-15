@@ -29,7 +29,7 @@ class ImagePorosityConfig:
     active: bool = field(
         default=False,
         metadata={
-            "name": "Activate tailored image porosity",
+            "name": "Activate image porosity",
             "help": "When unchecked, image porosity is skipped (equivalent to omitting [image_porosity] from the config). Other values below are preserved even when unchecked.",
             "section_active": True,
             "hidden": True,
