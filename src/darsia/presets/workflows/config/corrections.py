@@ -197,17 +197,72 @@ class CropCorrectionConfig:
     """Configuration for crop curvature correction stage.
 
     Attributes:
-        pts_src: List of 4 [x, y] points defining the source region.
+        top_left: Top-left corner as [row, col] in pixels (matrix indexing).
+        bottom_left: Bottom-left corner as [row, col] in pixels (matrix indexing).
+        bottom_right: Bottom-right corner as [row, col] in pixels (matrix indexing).
+        top_right: Top-right corner as [row, col] in pixels (matrix indexing).
+        pts_src: Internal: list of 4 [row, col] points in order (top_left, bottom_left,
+            bottom_right, top_right), assembled from the 4 corner fields. If None,
+            the full image extent is used as the source region.
         width: Crop width (default: 1.0).
         height: Crop height (default: 1.0).
         in_meters: Whether width/height are in meters (default: True).
     """
 
+    top_left: list[int] | None = field(
+        default=None,
+        metadata={
+            "name": "Top-left corner",
+            "help": (
+                "Top-left corner as [row, col] in pixels. "
+                "Row is vertical (0 at top), col is horizontal (0 at left)."
+            ),
+            "placeholder": "e.g., [47, 415]",
+            "legacy_source": "pts_src",
+            "legacy_index": 0,
+        },
+    )
+    bottom_left: list[int] | None = field(
+        default=None,
+        metadata={
+            "name": "Bottom-left corner",
+            "help": "Bottom-left corner as [row, col] in pixels.",
+            "placeholder": "e.g., [7886, 448]",
+            "legacy_source": "pts_src",
+            "legacy_index": 1,
+        },
+    )
+    bottom_right: list[int] | None = field(
+        default=None,
+        metadata={
+            "name": "Bottom-right corner",
+            "help": "Bottom-right corner as [row, col] in pixels.",
+            "placeholder": "e.g., [7829, 5228]",
+            "legacy_source": "pts_src",
+            "legacy_index": 2,
+        },
+    )
+    top_right: list[int] | None = field(
+        default=None,
+        metadata={
+            "name": "Top-right corner",
+            "help": "Top-right corner as [row, col] in pixels.",
+            "placeholder": "e.g., [110, 5263]",
+            "legacy_source": "pts_src",
+            "legacy_index": 3,
+        },
+    )
     pts_src: list | None = field(
         default=None,
         metadata={
             "name": "Source points",
-            "help": "List of 4 [x, y] points defining the source crop region.",
+            "help": (
+                "Internal: 4 [row, col] corner points "
+                "(top_left, bottom_left, bottom_right, top_right). "
+                "Derived from the 4 corner fields. If None, the full "
+                "image extent is used as the source region "
+                "(no cropping applied to source)."
+            ),
             "hidden": True,
         },
     )
@@ -228,8 +283,45 @@ class CropCorrectionConfig:
     )
 
     def load(self, sec: dict) -> "CropCorrectionConfig":
-        """Load crop correction configuration from a dictionary."""
-        self.pts_src = sec.get("pts_src", self.pts_src)
+        """Load crop correction configuration from a dictionary.
+
+        Supports two methods of specifying source crop points:
+        1. Individual corner fields: top_left, bottom_left, bottom_right, top_right
+           (each [row, col] in pixels, assembled into pts_src in that order)
+        2. Legacy flat pts_src list (backward compatibility with existing TOML files)
+
+        Args:
+            sec: Dictionary containing crop correction settings.
+
+        Returns:
+            self with loaded configuration
+        """
+        # Try to load individual corner fields first
+        corners = [
+            sec.get("top_left"),
+            sec.get("bottom_left"),
+            sec.get("bottom_right"),
+            sec.get("top_right"),
+        ]
+
+        if all(c is not None for c in corners):
+            # All 4 corners provided — assemble into pts_src
+            self.top_left = corners[0]
+            self.bottom_left = corners[1]
+            self.bottom_right = corners[2]
+            self.top_right = corners[3]
+            self.pts_src = corners
+        else:
+            # Fall back to flat pts_src (backward compatibility)
+            self.pts_src = sec.get("pts_src", self.pts_src)
+            # If pts_src was provided, try to extract corners for round-trip
+            if self.pts_src is not None:
+                if len(self.pts_src) == 4:
+                    self.top_left = self.pts_src[0]
+                    self.bottom_left = self.pts_src[1]
+                    self.bottom_right = self.pts_src[2]
+                    self.top_right = self.pts_src[3]
+
         self.width = float(sec.get("width", self.width))
         self.height = float(sec.get("height", self.height))
         # Note: TOML key is "in meters" (with space), Python attr is in_meters
