@@ -883,6 +883,28 @@ class SettingsFactory:
         field_row_map = {}  # Map unqualified_key -> (row_index, field_widget)
         for sub_setting in setting_dict["fields"]:
             label_text, field_widget = self.create_setting_edit(sub_setting)
+
+            # Handle nested groups (e.g., curvature correction stages)
+            # These return (None, result_dict) and must be added as spanning rows
+            if (
+                label_text is None
+                and isinstance(field_widget, dict)
+                and "widget" in field_widget
+            ):
+                # Nested group — add as spanning row, not label+field
+                nested_widget = field_widget.get("widget")
+                if nested_widget:
+                    group_form.addRow(nested_widget)
+                sub_inputs[sub_setting["key"]] = field_widget
+                # Flatten nested sub_inputs so they appear in parent's sub_inputs
+                for nested_key, nested_widget_or_result in field_widget.get(
+                    "sub_inputs", {}
+                ).items():
+                    sub_inputs[nested_key] = nested_widget_or_result
+                # Skip depends_on wiring for nested groups (only scalar fields supported)
+                continue
+
+            # Handle scalar fields normally
             group_form.addRow(label_text, field_widget)
             sub_inputs[sub_setting["key"]] = field_widget
             # Store row index for depends_on wiring
