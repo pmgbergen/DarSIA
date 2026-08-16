@@ -20,9 +20,14 @@ class AnalysisTab:
         layout = QVBoxLayout(container)
 
         analysis_items = [
+            ("Cropping", "cropping"),
+            ("Segmentation", "segmentation"),
             ("Fingers", "fingers"),
             ("Mass", "mass"),
-            ("Segmentation", "segmentation"),
+            ("Volume", "volume"),
+            ("Thresholding", "thresholding"),
+            ("All images (option)", "all"),
+            ("Show plots (option)", "show"),
         ]
 
         self.analysis_checkboxes = []
@@ -79,16 +84,15 @@ class AnalysisTab:
             return
 
         # Build options dictionary matching the CLI interface
-        available_options = self.get_available_options()
         options = {
-            "all": "all" in checked_ids,
-            "cropping": (
-                "cropping" in checked_ids if "cropping" in available_options else False
-            ),
+            "cropping": "cropping" in checked_ids,
             "segmentation": "segmentation" in checked_ids,
             "fingers": "fingers" in checked_ids,
             "mass": "mass" in checked_ids,
-            "show": False,
+            "volume": "volume" in checked_ids,
+            "thresholding": "thresholding" in checked_ids,
+            "all": "all" in checked_ids,
+            "show": "show" in checked_ids,
         }
 
         self.main_window.print_log(
@@ -103,8 +107,6 @@ class AnalysisTab:
             "--config",
             str(Path(config_file).resolve()),
         ]
-        if options["all"]:
-            argv.append("--all")
         if options["cropping"]:
             argv.append("--cropping")
         if options["segmentation"]:
@@ -113,12 +115,16 @@ class AnalysisTab:
             argv.append("--fingers")
         if options["mass"]:
             argv.append("--mass")
+        if options["volume"]:
+            argv.append("--volume")
+        if options["thresholding"]:
+            argv.append("--thresholding")
+        if options["all"]:
+            argv.append("--all")
+        if options["show"]:
+            argv.append("--show")
 
         # Launch workflow in a separate process
         self.process = self.main_window.start_workflow_process(
             argv, self.run_button, self.abort_button, cwd=Path.cwd()
         )
-
-    def get_available_options(self):
-        """Get list of available analysis checkbox IDs."""
-        return [checkbox_id for checkbox_id, _ in self.analysis_checkboxes]
