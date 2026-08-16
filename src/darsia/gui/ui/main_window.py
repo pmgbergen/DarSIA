@@ -27,11 +27,14 @@ from PySide6.QtWidgets import (
 from .about_dialog import AboutDialog
 from .analysis import AnalysisTab
 from .calibration import CalibrationTab
+from .comparison import ComparisonTab
+from .helper import HelperTab
 from .menu import MenuBuilder
 from .recent_files import add_recent_config, remove_recent_config
 from .settings import SettingsFactory
 from .setup import SetupTab
 from .toolbar import ToolbarBuilder
+from .utils_tab import UtilsTab
 
 
 class MainWindow(QMainWindow):
@@ -97,11 +100,17 @@ class MainWindow(QMainWindow):
         self.setup_tab = SetupTab(self)
         self.calibration_tab = CalibrationTab(self)
         self.analysis_tab = AnalysisTab(self)
+        self.helper_tab = HelperTab(self)
+        self.comparison_tab = ComparisonTab(self)
+        self.utils_tab = UtilsTab(self)
 
         # Add tabs
         tabs.addTab(self.setup_tab.create_tab(), "Setup")
         tabs.addTab(self.calibration_tab.create_tab(), "Calibration")
         tabs.addTab(self.analysis_tab.create_tab(), "Analysis")
+        tabs.addTab(self.helper_tab.create_tab(), "Helper")
+        tabs.addTab(self.comparison_tab.create_tab(), "Comparison")
+        tabs.addTab(self.utils_tab.create_tab(), "Utils")
 
         upper_mid_layout.addWidget(tabs)
 
