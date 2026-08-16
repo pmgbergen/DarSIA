@@ -54,6 +54,10 @@ CHECKBOX_TO_SECTIONS = {
         "calibration_color_to_mass_analysis_from_context",
     ),
     # Analysis leaf mappings — all point to the same branching function
+    ("analysis", "cropping"): (
+        "darsia.presets.workflows.analysis.analysis_context",
+        "prepare_analysis_context",
+    ),
     ("analysis", "fingers"): (
         "darsia.presets.workflows.analysis.analysis_context",
         "prepare_analysis_context",
@@ -63,6 +67,14 @@ CHECKBOX_TO_SECTIONS = {
         "prepare_analysis_context",
     ),
     ("analysis", "segmentation"): (
+        "darsia.presets.workflows.analysis.analysis_context",
+        "prepare_analysis_context",
+    ),
+    ("analysis", "thresholding"): (
+        "darsia.presets.workflows.analysis.analysis_context",
+        "prepare_analysis_context",
+    ),
+    ("analysis", "volume"): (
         "darsia.presets.workflows.analysis.analysis_context",
         "prepare_analysis_context",
     ),
