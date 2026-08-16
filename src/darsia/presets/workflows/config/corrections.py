@@ -867,8 +867,12 @@ class PatchwiseIlluminationCorrectionConfig:
         default_factory=list,
         metadata={
             "name": "Baseline image paths",
-            "help": "Paths to baseline images. Not yet GUI-editable — edit via TOML.",
-            "hidden": True,
+            "help": (
+                "List of paths to baseline images for patchwise illumination correction. "
+                "Not yet GUI-editable (requires multi-file picker). "
+                'Edit via TOML: baseline_paths = ["path1.jpg", "path2.jpg", ...]'
+            ),
+            "widget": "multi_file",
         },
     )
     """Paths to baseline images for patchwise illumination correction."""
@@ -877,6 +881,8 @@ class PatchwiseIlluminationCorrectionConfig:
         metadata={
             "name": "Top exclusion limit",
             "help": "Pixels to exclude from the top of the image for patch sampling.",
+            "placeholder": "e.g., 1000",
+            "group": "Options",
         },
     )
     """Limit in pixels to exclude from top of image for patch sampling."""
@@ -885,6 +891,8 @@ class PatchwiseIlluminationCorrectionConfig:
         metadata={
             "name": "Number of patches (width)",
             "help": "Number of patches in the width direction.",
+            "placeholder": "e.g., 1000",
+            "group": "Options",
         },
     )
     """Number of patches in width direction for patchwise illumination correction."""
@@ -893,6 +901,8 @@ class PatchwiseIlluminationCorrectionConfig:
         metadata={
             "name": "Epsilon (division safety)",
             "help": "Small constant to avoid division by zero.",
+            "placeholder": "e.g., 1e-6",
+            "group": "Options",
         },
     )
     """Small constant to avoid division by zero in patchwise illumination correction."""
