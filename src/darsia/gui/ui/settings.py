@@ -22,6 +22,15 @@ from .schema.section_registry import get_required_sections
 class SettingsFactory:
     """Factory for creating settings input widgets and managing settings."""
 
+    # Multi-row widget types that need special handling (auto-grouped into their own box)
+    MULTI_ROW_TYPES = {
+        "multi_file",
+        "multi_folder",
+        "path_map",
+        "int_group_list",
+        "int_list_map",
+    }
+
     def __init__(self, main_window):
         self.main_window = main_window
         self.file_dialog = FileDialogHelper(main_window)
@@ -140,19 +149,11 @@ class SettingsFactory:
         """
         group_forms = {}  # key (str | tuple) -> QFormLayout, first-occurrence cache
 
-        MULTI_ROW_TYPES = {
-            "multi_file",
-            "multi_folder",
-            "path_map",
-            "int_group_list",
-            "int_list_map",
-        }
-
         for setting in settings_list:
             setting_type = setting["type"]
             explicit_group = setting.get("group_name")
 
-            if setting_type in MULTI_ROW_TYPES:
+            if setting_type in self.MULTI_ROW_TYPES:
                 own_name = setting.get("name", setting["key"].rsplit(".", 1)[-1])
                 auto_grouped = True
                 if explicit_group:
@@ -899,11 +900,56 @@ class SettingsFactory:
         group_form.setContentsMargins(8, 10, 8, 8)  # Padding: left, top, right, bottom
         sub_inputs = {}
         field_row_map = {}  # Map unqualified_key -> (row_index, field_widget)
+        group_forms = (
+            {}
+        )  # For nested multi-row fields, reuse _get_or_create_group_form helper
+
         for sub_setting in setting_dict["fields"]:
-            label_text, field_widget = self.create_setting_edit(sub_setting)
+            sub_setting_type = sub_setting.get("type")
+            own_name = sub_setting.get("name", sub_setting["key"].rsplit(".", 1)[-1])
+
+            # Handle multi-row fields (multi_file, path_map, etc.) — create a sub-box inside
+            # this group
+            if sub_setting_type in self.MULTI_ROW_TYPES:
+                # Create a sub-group box for this multi-row field inside the parent group
+                multi_row_form = self._get_or_create_group_form(
+                    group_forms, group_form, own_name, own_name
+                )
+                local_form_context = {"form": multi_row_form}
+                label_text, field_or_result = self.create_setting_edit(
+                    sub_setting, local_form_context
+                )
+
+                # Multi-row fields return {"widget": header_widget, "rows": [...]}
+                if isinstance(field_or_result, dict) and "widget" in field_or_result:
+                    multi_row_form.addRow("", field_or_result["widget"])
+                    # Register the row-tracking payload so save_settings can find it
+                    if "path_map" in field_or_result:
+                        sub_inputs[sub_setting["key"]] = {
+                            "path_map": True,
+                            "rows": field_or_result["rows"],
+                        }
+                    elif "int_group_list" in field_or_result:
+                        sub_inputs[sub_setting["key"]] = {
+                            "int_group_list": True,
+                            "rows": field_or_result["rows"],
+                        }
+                    elif "int_list_map" in field_or_result:
+                        sub_inputs[sub_setting["key"]] = {
+                            "int_list_map": True,
+                            "flatten_in_section": field_or_result.get(
+                                "flatten_in_section", False
+                            ),
+                            "section": field_or_result.get("section"),
+                            "rows": field_or_result["rows"],
+                        }
+                    else:
+                        sub_inputs[sub_setting["key"]] = field_or_result["rows"]
+                continue
 
             # Handle nested groups (e.g., curvature correction stages)
             # These return (None, result_dict) and must be added as spanning rows
+            label_text, field_widget = self.create_setting_edit(sub_setting)
             if (
                 label_text is None
                 and isinstance(field_widget, dict)
