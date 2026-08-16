@@ -9,15 +9,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QCheckBox,
     QComboBox,
-    QGroupBox,
-    QLabel,
     QLineEdit,
-    QWidget,
 )
 
 from darsia.gui.ui.schema.dataclass_introspection import _build_fields
@@ -204,9 +199,7 @@ class TestLinkMetadata:
     def test_link_in_schema(self):
         """Link URL should appear in schema alongside help."""
         schema = _build_fields(HelpLinkConfig, "test")
-        with_link = next(
-            f for f in schema if f["key"] == "test.with_help_and_link"
-        )
+        with_link = next(f for f in schema if f["key"] == "test.with_help_and_link")
         assert with_link.get("help") == "See documentation for more."
         assert with_link.get("link") == "https://example.com/docs"
 
@@ -344,7 +337,9 @@ class TestWidgetMetadata:
 
     def test_widget_override_forces_folder_chooser(self, qtbot):
         """Path field with widget='folder' should dispatch to folder chooser."""
-        factory = SettingsFactory(MagicMock(config_dict={}, chosen_files={}, file_dialog=MagicMock()))
+        factory = SettingsFactory(
+            MagicMock(config_dict={}, chosen_files={}, file_dialog=MagicMock())
+        )
         setting_dict = {
             "key": "test.folder",
             "type": "folder",  # Overridden from the default "file"
@@ -363,12 +358,8 @@ class TestActiveListKeyMetadata:
     def test_active_list_key_in_schema(self):
         """Group fields should have active_list_key in schema."""
         schema = _build_fields(GroupWithActiveListConfig, "test")
-        group_with = next(
-            f for f in schema if f["key"] == "test.sub_with_active"
-        )
-        group_without = next(
-            f for f in schema if f["key"] == "test.sub_without_active"
-        )
+        group_with = next(f for f in schema if f["key"] == "test.sub_with_active")
+        group_without = next(f for f in schema if f["key"] == "test.sub_without_active")
 
         assert group_with.get("active_list_key") == "active"
         assert "active_list_key" not in group_without  # Filtered out (None)
@@ -380,9 +371,7 @@ class TestActiveListKeyMetadata:
             "key": "test.sub",
             "type": "group",
             "active_list_key": "active",  # Unqualified name (section prepended by create_group_input)
-            "fields": [
-                {"key": "test.sub.enabled", "type": "bool", "default": False}
-            ],
+            "fields": [{"key": "test.sub.enabled", "type": "bool", "default": False}],
         }
 
         label_text, result = factory.create_group_input(setting_dict)
@@ -404,9 +393,7 @@ class TestActiveListKeyMetadata:
         setting_dict = {
             "key": "test.sub",
             "type": "group",
-            "fields": [
-                {"key": "test.sub.enabled", "type": "bool", "default": False}
-            ],
+            "fields": [{"key": "test.sub.enabled", "type": "bool", "default": False}],
         }
 
         label_text, result = factory.create_group_input(setting_dict)
@@ -546,9 +533,7 @@ class TestDepthConfigMetadata:
         assert schema is not None
 
         # depth_map should be absent from the schema because it's marked hidden
-        depth_map = next(
-            (f for f in schema if f["key"] == "depth.depth_map"), None
-        )
+        depth_map = next((f for f in schema if f["key"] == "depth.depth_map"), None)
         assert depth_map is None, "depth_map should be hidden and absent from schema"
 
 
@@ -641,7 +626,10 @@ class TestFaciesConfigMetadata:
         assert facies_map.get("name") == "Facies groups"
         assert facies_map.get("help") is not None
         assert len(facies_map["help"]) > 0
-        assert facies_map.get("placeholder") == "Comma/space-separated label IDs (e.g., 3, 5, 8)"
+        assert (
+            facies_map.get("placeholder")
+            == "Comma/space-separated label IDs (e.g., 3, 5, 8)"
+        )
         assert facies_map.get("flatten_in_section") is True
 
     def test_facies_config_label_to_facies_map_hidden(self):
@@ -658,7 +646,9 @@ class TestFaciesConfigMetadata:
             (f for f in schema if f["key"] == "facies.label_to_facies_map"),
             None,
         )
-        assert label_map is None, "label_to_facies_map should be hidden and absent from schema"
+        assert label_map is None, (
+            "label_to_facies_map should be hidden and absent from schema"
+        )
 
     def test_facies_config_path_hidden(self):
         """FaciesConfig.path should be hidden (auto-derived output path)."""
@@ -707,7 +697,9 @@ class TestCorrectionsConfigMetadata:
         # All should have a name in their metadata
         for field in schema:
             if field["key"] in expected_corrections:
-                assert field.get("name") is not None, f"{field['key']} should have a name"
+                assert field.get("name") is not None, (
+                    f"{field['key']} should have a name"
+                )
 
     def test_drift_correction_colorchecker_metadata(self):
         """DriftCorrectionConfig.colorchecker should have name, help, and options."""
@@ -716,9 +708,7 @@ class TestCorrectionsConfigMetadata:
         )
 
         schema = get_section_fields("corrections")
-        drift_group = next(
-            (f for f in schema if f["key"] == "corrections.drift"), None
-        )
+        drift_group = next((f for f in schema if f["key"] == "corrections.drift"), None)
         assert drift_group is not None
         assert drift_group.get("type") == "group"
 
@@ -757,7 +747,6 @@ class TestCorrectionsConfigMetadata:
                 hidden_patterns = [
                     "corrections.curvature.config",
                     "corrections.relative_color.options",
-                    "corrections.patchwise_illumination.baseline_paths",
                 ]
                 for pattern in hidden_patterns:
                     assert pattern not in field_keys, f"{pattern} should be hidden"
@@ -934,7 +923,9 @@ class TestCorrectionsConfigMetadata:
             assert corner_field is not None, f"Corner field {corner_key} not found"
             assert "name" in corner_field, f"{corner_key} missing 'name' metadata"
             assert "help" in corner_field, f"{corner_key} missing 'help' metadata"
-            assert "placeholder" in corner_field, f"{corner_key} missing 'placeholder' metadata"
+            assert "placeholder" in corner_field, (
+                f"{corner_key} missing 'placeholder' metadata"
+            )
             # Should not be hidden
             assert corner_field.get("hidden") is not True
 
@@ -966,19 +957,19 @@ class TestCorrectionsConfigMetadata:
             "corrections.illumination.bounds",
         ]
         for expected_key in expected_fields:
-            assert (
-                expected_key in illumination_field_keys
-            ), f"{expected_key} should be present"
+            assert expected_key in illumination_field_keys, (
+                f"{expected_key} should be present"
+            )
 
         # Check that interpolation and colorspace have options
         for field_key in ["interpolation", "colorspace"]:
             full_key = f"corrections.illumination.{field_key}"
-            field = next(
-                (f for f in illumination_fields if f["key"] == full_key), None
-            )
+            field = next((f for f in illumination_fields if f["key"] == full_key), None)
             assert field is not None, f"{field_key} not found"
             assert "options" in field, f"{field_key} should have options"
-            assert isinstance(field["options"], list), f"{field_key} options should be a list"
+            assert isinstance(field["options"], list), (
+                f"{field_key} options should be a list"
+            )
 
     def test_patchwise_illumination_correction_fields_have_metadata(self):
         """PatchwiseIlluminationCorrectionConfig fields (except baseline_paths) should have metadata."""
@@ -999,20 +990,15 @@ class TestCorrectionsConfigMetadata:
         # These fields should be present
         visible_fields = [
             "corrections.patchwise_illumination.image_path",
+            "corrections.patchwise_illumination.baseline_paths",
             "corrections.patchwise_illumination.limit",
             "corrections.patchwise_illumination.nw",
             "corrections.patchwise_illumination.eps",
         ]
         for expected_key in visible_fields:
-            assert (
-                expected_key in patchwise_field_keys
-            ), f"{expected_key} should be present"
-
-        # baseline_paths should NOT be present (hidden)
-        assert (
-            "corrections.patchwise_illumination.baseline_paths"
-            not in patchwise_field_keys
-        ), "baseline_paths should be hidden"
+            assert expected_key in patchwise_field_keys, (
+                f"{expected_key} should be present"
+            )
 
     def test_curvature_crop_corner_fields_have_legacy_metadata(self):
         """Corner fields should have legacy_source and legacy_index metadata for GUI fallback."""
@@ -1040,17 +1026,13 @@ class TestCorrectionsConfigMetadata:
 
         for corner_name, expected_index in expected_corners.items():
             corner_field = next(
-                (
-                    f
-                    for f in crop_fields
-                    if corner_name in f.get("key", "")
-                ),
+                (f for f in crop_fields if corner_name in f.get("key", "")),
                 None,
             )
             assert corner_field is not None, f"Corner field {corner_name} not found"
-            assert (
-                corner_field.get("legacy_source") == "pts_src"
-            ), f"{corner_name} missing 'legacy_source' metadata"
-            assert (
-                corner_field.get("legacy_index") == expected_index
-            ), f"{corner_name} has wrong legacy_index: {corner_field.get('legacy_index')}, expected {expected_index}"
+            assert corner_field.get("legacy_source") == "pts_src", (
+                f"{corner_name} missing 'legacy_source' metadata"
+            )
+            assert corner_field.get("legacy_index") == expected_index, (
+                f"{corner_name} has wrong legacy_index: {corner_field.get('legacy_index')}, expected {expected_index}"
+            )
