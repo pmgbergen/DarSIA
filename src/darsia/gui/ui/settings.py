@@ -357,6 +357,24 @@ class SettingsFactory:
         key = setting_dict["key"]
         display_name = setting_dict.get("name", key)
         value = self.get_value(self.main_window.config_dict, key)
+
+        # Fallback to legacy source field if not found (for backward compatibility)
+        if value is None and setting_dict.get("legacy_source"):
+            legacy_source = setting_dict.get("legacy_source")
+            legacy_index = setting_dict.get("legacy_index")
+            # Build sibling key path: e.g., "corrections.curvature.crop.pts_src"
+            # from key "corrections.curvature.crop.top_left"
+            parent_key = ".".join(key.split(".")[:-1])
+            sibling_key = f"{parent_key}.{legacy_source}"
+            legacy_value = self.get_value(self.main_window.config_dict, sibling_key)
+            if (
+                legacy_value is not None
+                and isinstance(legacy_value, (list, tuple))
+                and legacy_index is not None
+                and legacy_index < len(legacy_value)
+            ):
+                value = legacy_value[legacy_index]
+
         if value is None:
             value = setting_dict.get("default")
 
