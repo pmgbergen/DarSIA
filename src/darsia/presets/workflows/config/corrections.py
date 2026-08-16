@@ -144,12 +144,255 @@ class ResizeCorrectionConfig:
 
 
 @dataclass
+class InitCorrectionConfig:
+    """Configuration for initial (pre-bulge) curvature correction stage.
+
+    Attributes:
+        horizontal_bulge: Horizontal bulge coefficient (default: 0.0).
+        vertical_bulge: Vertical bulge coefficient (default: 0.0).
+        horizontal_center_offset: Horizontal offset of bulge center in pixels (default: 0).
+        vertical_center_offset: Vertical offset of bulge center in pixels (default: 0).
+    """
+
+    horizontal_bulge: float = field(
+        default=0.0,
+        metadata={"name": "Horizontal bulge", "help": "Horizontal bulge coefficient."},
+    )
+    vertical_bulge: float = field(
+        default=0.0,
+        metadata={"name": "Vertical bulge", "help": "Vertical bulge coefficient."},
+    )
+    horizontal_center_offset: int = field(
+        default=0,
+        metadata={
+            "name": "Horizontal center offset",
+            "help": "Horizontal offset of bulge center in pixels.",
+        },
+    )
+    vertical_center_offset: int = field(
+        default=0,
+        metadata={
+            "name": "Vertical center offset",
+            "help": "Vertical offset of bulge center in pixels.",
+        },
+    )
+
+    def load(self, sec: dict) -> "InitCorrectionConfig":
+        """Load initial correction configuration from a dictionary."""
+        self.horizontal_bulge = float(
+            sec.get("horizontal_bulge", self.horizontal_bulge)
+        )
+        self.vertical_bulge = float(sec.get("vertical_bulge", self.vertical_bulge))
+        self.horizontal_center_offset = int(
+            sec.get("horizontal_center_offset", self.horizontal_center_offset)
+        )
+        self.vertical_center_offset = int(
+            sec.get("vertical_center_offset", self.vertical_center_offset)
+        )
+        return self
+
+
+@dataclass
+class CropCorrectionConfig:
+    """Configuration for crop curvature correction stage.
+
+    Attributes:
+        pts_src: List of 4 [x, y] points defining the source region.
+        width: Crop width (default: 1.0).
+        height: Crop height (default: 1.0).
+        in_meters: Whether width/height are in meters (default: True).
+    """
+
+    pts_src: list | None = field(
+        default=None,
+        metadata={
+            "name": "Source points",
+            "help": "List of 4 [x, y] points defining the source crop region.",
+            "hidden": True,
+        },
+    )
+    width: float = field(
+        default=1.0,
+        metadata={"name": "Width", "help": "Crop width in meters or pixels."},
+    )
+    height: float = field(
+        default=1.0,
+        metadata={"name": "Height", "help": "Crop height in meters or pixels."},
+    )
+    in_meters: bool = field(
+        default=True,
+        metadata={
+            "name": "Width/height in meters",
+            "help": "If true, width and height are in meters; otherwise pixels.",
+        },
+    )
+
+    def load(self, sec: dict) -> "CropCorrectionConfig":
+        """Load crop correction configuration from a dictionary."""
+        self.pts_src = sec.get("pts_src", self.pts_src)
+        self.width = float(sec.get("width", self.width))
+        self.height = float(sec.get("height", self.height))
+        # Note: TOML key is "in meters" (with space), Python attr is in_meters
+        self.in_meters = sec.get("in meters", self.in_meters)
+        if not isinstance(self.in_meters, bool):
+            self.in_meters = bool(self.in_meters)
+        return self
+
+
+@dataclass
+class BulgeCorrectionConfig:
+    """Configuration for bulge curvature correction stage.
+
+    Attributes:
+        horizontal_bulge: Horizontal bulge coefficient (default: 0.0).
+        vertical_bulge: Vertical bulge coefficient (default: 0.0).
+        horizontal_center_offset: Horizontal offset of bulge center in pixels (default: 0).
+        vertical_center_offset: Vertical offset of bulge center in pixels (default: 0).
+    """
+
+    horizontal_bulge: float = field(
+        default=0.0,
+        metadata={"name": "Horizontal bulge", "help": "Horizontal bulge coefficient."},
+    )
+    vertical_bulge: float = field(
+        default=0.0,
+        metadata={"name": "Vertical bulge", "help": "Vertical bulge coefficient."},
+    )
+    horizontal_center_offset: int = field(
+        default=0,
+        metadata={
+            "name": "Horizontal center offset",
+            "help": "Horizontal offset of bulge center in pixels.",
+        },
+    )
+    vertical_center_offset: int = field(
+        default=0,
+        metadata={
+            "name": "Vertical center offset",
+            "help": "Vertical offset of bulge center in pixels.",
+        },
+    )
+
+    def load(self, sec: dict) -> "BulgeCorrectionConfig":
+        """Load bulge correction configuration from a dictionary."""
+        self.horizontal_bulge = float(
+            sec.get("horizontal_bulge", self.horizontal_bulge)
+        )
+        self.vertical_bulge = float(sec.get("vertical_bulge", self.vertical_bulge))
+        self.horizontal_center_offset = int(
+            sec.get("horizontal_center_offset", self.horizontal_center_offset)
+        )
+        self.vertical_center_offset = int(
+            sec.get("vertical_center_offset", self.vertical_center_offset)
+        )
+        return self
+
+
+@dataclass
+class StretchCorrectionConfig:
+    """Configuration for stretch curvature correction stage.
+
+    Attributes:
+        horizontal_stretch: Horizontal stretch coefficient (default: 0.0).
+        vertical_stretch: Vertical stretch coefficient (default: 0.0).
+        horizontal_center_offset: Horizontal offset of stretch center in pixels (default: 0).
+        vertical_center_offset: Vertical offset of stretch center in pixels (default: 0).
+    """
+
+    horizontal_stretch: float = field(
+        default=0.0,
+        metadata={
+            "name": "Horizontal stretch",
+            "help": "Horizontal stretch coefficient.",
+        },
+    )
+    vertical_stretch: float = field(
+        default=0.0,
+        metadata={"name": "Vertical stretch", "help": "Vertical stretch coefficient."},
+    )
+    horizontal_center_offset: int = field(
+        default=0,
+        metadata={
+            "name": "Horizontal center offset",
+            "help": "Horizontal offset of stretch center in pixels.",
+        },
+    )
+    vertical_center_offset: int = field(
+        default=0,
+        metadata={
+            "name": "Vertical center offset",
+            "help": "Vertical offset of stretch center in pixels.",
+        },
+    )
+
+    def load(self, sec: dict) -> "StretchCorrectionConfig":
+        """Load stretch correction configuration from a dictionary."""
+        self.horizontal_stretch = float(
+            sec.get("horizontal_stretch", self.horizontal_stretch)
+        )
+        self.vertical_stretch = float(
+            sec.get("vertical_stretch", self.vertical_stretch)
+        )
+        self.horizontal_center_offset = int(
+            sec.get("horizontal_center_offset", self.horizontal_center_offset)
+        )
+        self.vertical_center_offset = int(
+            sec.get("vertical_center_offset", self.vertical_center_offset)
+        )
+        return self
+
+
+@dataclass
 class CurvatureCorrectionConfig:
-    """Configuration for curvature correction."""
+    """Configuration for curvature correction with hierarchical sub-stages.
 
-    # TODO mere with curvature correction config from curvature.py
+    Supports 4 independent curvature correction stages applied in order:
+    init (pre-bulge) → crop → bulge → stretch. Each stage is independently
+    toggleable via the ``active`` list.
 
-    config: dict | None = field(default=None, metadata={"hidden": True})
+    Attributes:
+        init: Initial (pre-bulge) correction stage.
+        crop: Crop correction stage.
+        bulge: Bulge correction stage.
+        stretch: Stretch correction stage.
+        inactive: Parsed but deactivated stage configs (preserved when toggled off).
+    """
+
+    init: InitCorrectionConfig | None = field(
+        default=None,
+        metadata={
+            "name": "Initial bulge correction",
+            "active_list_key": "active",
+        },
+    )
+    crop: CropCorrectionConfig | None = field(
+        default=None,
+        metadata={
+            "name": "Crop",
+            "active_list_key": "active",
+        },
+    )
+    bulge: BulgeCorrectionConfig | None = field(
+        default=None,
+        metadata={
+            "name": "Bulge correction",
+            "active_list_key": "active",
+        },
+    )
+    stretch: StretchCorrectionConfig | None = field(
+        default=None,
+        metadata={
+            "name": "Stretch correction",
+            "active_list_key": "active",
+        },
+    )
+    inactive: dict[str, Any] = field(
+        default_factory=dict,
+        repr=False,
+        metadata={"hidden": True},
+    )
+    """Parsed sub-configs for stages present in TOML but deactivated via ``active``.
+    Kept so tuned parameters survive toggling a stage off."""
 
     def load(self, sec: dict) -> "CurvatureCorrectionConfig":
         """Load curvature correction configuration from a dictionary.
@@ -159,10 +402,77 @@ class CurvatureCorrectionConfig:
 
         Returns:
             self with loaded configuration
-
         """
-        self.config = sec
+        # Mapping of stage names to their config classes
+        _STAGE_CLASSES = {
+            "init": InitCorrectionConfig,
+            "crop": CropCorrectionConfig,
+            "bulge": BulgeCorrectionConfig,
+            "stretch": StretchCorrectionConfig,
+        }
+
+        # Parse active list (None = all present stages active)
+        active = sec.get("active")
+
+        # Parse all stages; active list decides exposure
+        for stage_name, stage_cls in _STAGE_CLASSES.items():
+            stage_sec = sec.get(stage_name)
+            if not stage_sec:
+                continue
+            parsed = stage_cls().load(stage_sec)
+            is_active = active is None or stage_name in active
+            if is_active:
+                setattr(self, stage_name, parsed)
+            else:
+                self.inactive[stage_name] = parsed
+
         return self
+
+    def to_dict(self) -> dict:
+        """Convert to flat dict format expected by CurvatureCorrection engine.
+
+        Returns a dict with keys for active stages only, suitable for passing to
+        darsia.CurvatureCorrection(config=...).
+        """
+        result = {}
+        for stage_name in ["init", "crop", "bulge", "stretch"]:
+            stage_config = getattr(self, stage_name, None)
+            if stage_config is None:
+                continue
+
+            # Build stage dict based on type
+            if isinstance(stage_config, InitCorrectionConfig):
+                result["init"] = {
+                    "horizontal_bulge": stage_config.horizontal_bulge,
+                    "vertical_bulge": stage_config.vertical_bulge,
+                    "horizontal_center_offset": stage_config.horizontal_center_offset,
+                    "vertical_center_offset": stage_config.vertical_center_offset,
+                }
+            elif isinstance(stage_config, CropCorrectionConfig):
+                stage_dict = {
+                    "width": stage_config.width,
+                    "height": stage_config.height,
+                    "in meters": stage_config.in_meters,  # Note: "in meters" with space
+                }
+                if stage_config.pts_src is not None:
+                    stage_dict["pts_src"] = stage_config.pts_src
+                result["crop"] = stage_dict
+            elif isinstance(stage_config, BulgeCorrectionConfig):
+                result["bulge"] = {
+                    "horizontal_bulge": stage_config.horizontal_bulge,
+                    "vertical_bulge": stage_config.vertical_bulge,
+                    "horizontal_center_offset": stage_config.horizontal_center_offset,
+                    "vertical_center_offset": stage_config.vertical_center_offset,
+                }
+            elif isinstance(stage_config, StretchCorrectionConfig):
+                result["stretch"] = {
+                    "horizontal_stretch": stage_config.horizontal_stretch,
+                    "vertical_stretch": stage_config.vertical_stretch,
+                    "horizontal_center_offset": stage_config.horizontal_center_offset,
+                    "vertical_center_offset": stage_config.vertical_center_offset,
+                }
+
+        return result
 
 
 @dataclass
