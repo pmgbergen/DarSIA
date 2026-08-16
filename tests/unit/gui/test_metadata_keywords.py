@@ -757,6 +757,7 @@ class TestCorrectionsConfigMetadata:
                 hidden_patterns = [
                     "corrections.curvature.config",
                     "corrections.relative_color.options",
+                    "corrections.patchwise_illumination.baseline_paths",
                 ]
                 for pattern in hidden_patterns:
                     assert pattern not in field_keys, f"{pattern} should be hidden"
@@ -936,6 +937,82 @@ class TestCorrectionsConfigMetadata:
             assert "placeholder" in corner_field, f"{corner_key} missing 'placeholder' metadata"
             # Should not be hidden
             assert corner_field.get("hidden") is not True
+
+    def test_illumination_correction_fields_have_metadata(self):
+        """IlluminationCorrectionConfig fields should all have name and help."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        illumination_group = next(
+            (f for f in schema if f["key"] == "corrections.illumination"), None
+        )
+        assert illumination_group is not None, "Illumination group not found"
+
+        illumination_fields = illumination_group.get("fields", [])
+        illumination_field_keys = [f["key"] for f in illumination_fields]
+
+        # All illumination fields should be present
+        expected_fields = [
+            "corrections.illumination.labels",
+            "corrections.illumination.interpolation",
+            "corrections.illumination.colorspace",
+            "corrections.illumination.width",
+            "corrections.illumination.num_samples",
+            "corrections.illumination.seed",
+            "corrections.illumination.sigma",
+            "corrections.illumination.outliers",
+            "corrections.illumination.bounds",
+        ]
+        for expected_key in expected_fields:
+            assert (
+                expected_key in illumination_field_keys
+            ), f"{expected_key} should be present"
+
+        # Check that interpolation and colorspace have options
+        for field_key in ["interpolation", "colorspace"]:
+            full_key = f"corrections.illumination.{field_key}"
+            field = next(
+                (f for f in illumination_fields if f["key"] == full_key), None
+            )
+            assert field is not None, f"{field_key} not found"
+            assert "options" in field, f"{field_key} should have options"
+            assert isinstance(field["options"], list), f"{field_key} options should be a list"
+
+    def test_patchwise_illumination_correction_fields_have_metadata(self):
+        """PatchwiseIlluminationCorrectionConfig fields (except baseline_paths) should have metadata."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        patchwise_group = next(
+            (f for f in schema if f["key"] == "corrections.patchwise_illumination"),
+            None,
+        )
+        assert patchwise_group is not None, "Patchwise illumination group not found"
+
+        patchwise_fields = patchwise_group.get("fields", [])
+        patchwise_field_keys = [f["key"] for f in patchwise_fields]
+
+        # These fields should be present
+        visible_fields = [
+            "corrections.patchwise_illumination.image_path",
+            "corrections.patchwise_illumination.limit",
+            "corrections.patchwise_illumination.nw",
+            "corrections.patchwise_illumination.eps",
+        ]
+        for expected_key in visible_fields:
+            assert (
+                expected_key in patchwise_field_keys
+            ), f"{expected_key} should be present"
+
+        # baseline_paths should NOT be present (hidden)
+        assert (
+            "corrections.patchwise_illumination.baseline_paths"
+            not in patchwise_field_keys
+        ), "baseline_paths should be hidden"
 
     def test_curvature_crop_corner_fields_have_legacy_metadata(self):
         """Corner fields should have legacy_source and legacy_index metadata for GUI fallback."""
