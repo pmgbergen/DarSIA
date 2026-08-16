@@ -616,12 +616,23 @@ class ColorCorrectionConfig:
     """Configuration for color correction.
 
     Attributes:
+        colorchecker: Position of color checker for color correction.
 
     """
 
     colorchecker: (
         Literal["upper_left", "upper_right", "lower_left", "lower_right"] | None
-    ) = None
+    ) = field(
+        default=None,
+        metadata={
+            "name": "Color checker position",
+            "help": (
+                "Position of color checker (upper/lower, left/right). "
+                "Leave empty to disable color correction."
+            ),
+            "options": ["upper_left", "upper_right", "lower_left", "lower_right"],
+        },
+    )
     """Position of color checker for color correction."""
 
     def load(self, sec: dict) -> "ColorCorrectionConfig":
@@ -652,19 +663,110 @@ class ColorCorrectionConfig:
 
 @dataclass
 class RelativeColorCorrectionConfig:
-    """Configuration for relative color correction."""
+    """Configuration for relative color correction.
 
-    path: Path | None = None
+    Relative color correction calibrates color-drift correction by comparing
+    baseline and calibration images, optionally using user-selected color
+    samples or tensorial calibration, then builds a polynomial/linear
+    approximation over the image domain.
+    """
+
+    path: Path | None = field(
+        default=None,
+        metadata={
+            "name": "Precomputed correction path",
+            "help": "Path to a precomputed relative color correction file (.npz). "
+            "If provided, interactive calibration is skipped.",
+        },
+    )
     """Path to a precomputed relative color correction file."""
-    images: list[Path] = field(default_factory=list)
+    images: list[Path] = field(
+        default_factory=list,
+        metadata={
+            "name": "Calibration images",
+            "help": (
+                "List of paths to calibration images used to calibrate "
+                "relative color correction. Used only if 'path' is not provided; "
+                "requires interactive=true."
+            ),
+            "widget": "multi_file",
+        },
+    )
     """Calibration images used to calibrate relative color correction."""
-    interactive: bool = False
+    interactive: bool = field(
+        default=False,
+        metadata={
+            "name": "Interactive calibration",
+            "help": "Enable interactive calibration mode using the GUI assistant. "
+            "Required when calibrating from images (when 'path' is not provided).",
+        },
+    )
     """Whether interactive calibration is allowed."""
-    options: dict = field(default_factory=dict, metadata={"hidden": True})
-    """Calibration options forwarded to RelativeColorCorrection."""
+    mode: Literal["custom", "tensorial"] = field(
+        default="custom",
+        metadata={
+            "name": "Calibration mode",
+            "help": (
+                "'custom': Manual selection of similar colors and reference colors via GUI. "
+                "'tensorial': Automatic tensorial calibration without manual selection."
+            ),
+            "options": ["custom", "tensorial"],
+        },
+    )
+    """Mode for color sample selection during interactive calibration."""
+    method: Literal["polynomial"] = field(
+        default="polynomial",
+        metadata={
+            "name": "Approximation method",
+            "help": (
+                "Method for spatial color-correction approximation "
+                "(polynomial is currently the only supported method)."
+            ),
+            "options": ["polynomial"],
+        },
+    )
+    """Approximation method for spatial color correction."""
+    degree: int = field(
+        default=2,
+        metadata={
+            "name": "Polynomial degree",
+            "help": (
+                "Degree of the polynomial approximation space "
+                "(used with method='polynomial'). Higher degrees fit finer spatial "
+                "variations but risk overfitting."
+            ),
+            "placeholder": "e.g., 1, 2, 3",
+        },
+    )
+    """Degree of polynomial approximation."""
+    sample_size: int = field(
+        default=50,
+        metadata={
+            "name": "Sample box size",
+            "help": (
+                "Pixel width of the box-selection assistant during "
+                "interactive calibration."
+            ),
+            "placeholder": "e.g., 30, 50, 100",
+        },
+    )
+    """Pixel width of color-sample selection boxes."""
+    debug: bool = field(
+        default=False,
+        metadata={
+            "name": "Debug output",
+            "help": "Enable debug-level output during interactive color-sample selection.",
+        },
+    )
+    """Enable debug output during interactive calibration."""
 
     def load(self, sec: dict) -> "RelativeColorCorrectionConfig":
         """Load relative color correction configuration from a dictionary."""
+        if not isinstance(sec, dict):
+            raise ValueError(
+                "corrections.relative_color must be a configuration table, not a boolean."
+            )
+
         path = sec.get("path", self.path)
         self.path = Path(path) if path is not None else None
         self.images = [Path(p) for p in sec.get("images", self.images)]
@@ -674,10 +776,11 @@ class RelativeColorCorrectionConfig:
                 "corrections.relative_color.interactive must be a boolean."
             )
 
-        known_keys = {"path", "images", "interactive"}
-        self.options = {
-            key: value for key, value in sec.items() if key not in known_keys
-        }
+        self.mode = sec.get("mode", self.mode)
+        self.method = sec.get("method", self.method)
+        self.degree = sec.get("degree", self.degree)
+        self.sample_size = sec.get("sample_size", self.sample_size)
+        self.debug = sec.get("debug", self.debug)
 
         if self.path is None and len(self.images) == 0:
             raise ValueError(
@@ -685,6 +788,21 @@ class RelativeColorCorrectionConfig:
             )
 
         return self
+
+    def to_options_dict(self) -> dict:
+        """Convert explicit config fields to the plain dict format expected by
+        RelativeColorCorrection.
+
+        Returns:
+            dict with keys: mode, method, degree, sample_size, debug
+        """
+        return {
+            "mode": self.mode,
+            "method": self.method,
+            "degree": self.degree,
+            "sample_size": self.sample_size,
+            "debug": self.debug,
+        }
 
 
 @dataclass
@@ -932,6 +1050,7 @@ _CORRECTION_CLASSES: dict[str, type] = {
     "drift": DriftCorrectionConfig,
     "curvature": CurvatureCorrectionConfig,
     "color": ColorCorrectionConfig,
+    "relative_color": RelativeColorCorrectionConfig,
     "illumination": IlluminationCorrectionConfig,
     "patchwise_illumination": PatchwiseIlluminationCorrectionConfig,
 }
@@ -983,7 +1102,7 @@ class CorrectionsConfig:
     color: ColorCorrectionConfig | None = field(
         default=None, metadata={"name": "Color correction", "active_list_key": "active"}
     )
-    relative_color: bool | RelativeColorCorrectionConfig | None = field(
+    relative_color: RelativeColorCorrectionConfig | None = field(
         default=None,
         metadata={"name": "Relative color correction", "active_list_key": "active"},
     )
@@ -1033,30 +1152,6 @@ class CorrectionsConfig:
                 setattr(self, name, parsed)
             else:
                 self.inactive[name] = parsed
-
-        relative_color_sec = sec.get("relative_color", self.relative_color)
-        if relative_color_sec is None:
-            self.relative_color = False
-        elif isinstance(relative_color_sec, bool):
-            self.relative_color = relative_color_sec
-        elif isinstance(relative_color_sec, dict):
-            self.relative_color = RelativeColorCorrectionConfig().load(
-                relative_color_sec
-            )
-        else:
-            raise ValueError(
-                "corrections.relative_color must be a boolean or a configuration table."
-            )
-
-        illumination_sec = sec.get("illumination")
-        if illumination_sec:
-            self.illumination = IlluminationCorrectionConfig().load(illumination_sec)
-
-        patchwise_illumination_sec = sec.get("patchwise_illumination")
-        if patchwise_illumination_sec:
-            self.patchwise_illumination = PatchwiseIlluminationCorrectionConfig().load(
-                patchwise_illumination_sec
-            )
 
         # Identify active corrections
         active_corrections = sec.get("active_corrections", None)
