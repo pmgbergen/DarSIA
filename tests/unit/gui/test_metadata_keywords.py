@@ -874,7 +874,7 @@ class TestCorrectionsConfigMetadata:
                 assert field.get("name") is not None
 
     def test_curvature_crop_pts_src_hidden(self):
-        """CropCorrectionConfig.pts_src should be hidden (unsupported type)."""
+        """CropCorrectionConfig.pts_src should be hidden (internal field)."""
         from darsia.gui.ui.schema.dataclass_introspection import (
             get_section_fields,
         )
@@ -894,3 +894,86 @@ class TestCorrectionsConfigMetadata:
 
         # pts_src should not appear (hidden)
         assert "corrections.curvature.crop.pts_src" not in crop_field_keys
+
+    def test_curvature_crop_corner_fields_visible(self):
+        """CropCorrectionConfig corner fields (top_left, etc.) should be visible."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        curvature_group = next(
+            (f for f in schema if f["key"] == "corrections.curvature"), None
+        )
+        fields = curvature_group.get("fields", [])
+        crop_group = next(
+            (f for f in fields if f["key"] == "corrections.curvature.crop"), None
+        )
+        assert crop_group is not None
+
+        crop_fields = crop_group.get("fields", [])
+        crop_field_keys = [f["key"] for f in crop_fields]
+
+        # All 4 corner fields should be present and visible
+        assert "corrections.curvature.crop.top_left" in crop_field_keys
+        assert "corrections.curvature.crop.bottom_left" in crop_field_keys
+        assert "corrections.curvature.crop.bottom_right" in crop_field_keys
+        assert "corrections.curvature.crop.top_right" in crop_field_keys
+
+        # Each corner should have name, help, and placeholder metadata
+        for corner_key in [
+            "corrections.curvature.crop.top_left",
+            "corrections.curvature.crop.bottom_left",
+            "corrections.curvature.crop.bottom_right",
+            "corrections.curvature.crop.top_right",
+        ]:
+            corner_field = next(
+                (f for f in crop_fields if f["key"] == corner_key), None
+            )
+            assert corner_field is not None, f"Corner field {corner_key} not found"
+            assert "name" in corner_field, f"{corner_key} missing 'name' metadata"
+            assert "help" in corner_field, f"{corner_key} missing 'help' metadata"
+            assert "placeholder" in corner_field, f"{corner_key} missing 'placeholder' metadata"
+            # Should not be hidden
+            assert corner_field.get("hidden") is not True
+
+    def test_curvature_crop_corner_fields_have_legacy_metadata(self):
+        """Corner fields should have legacy_source and legacy_index metadata for GUI fallback."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        curvature_group = next(
+            (f for f in schema if f["key"] == "corrections.curvature"), None
+        )
+        fields = curvature_group.get("fields", [])
+        crop_group = next(
+            (f for f in fields if f["key"] == "corrections.curvature.crop"), None
+        )
+        crop_fields = crop_group.get("fields", [])
+
+        # Define expected corner-to-index mapping
+        expected_corners = {
+            "top_left": 0,
+            "bottom_left": 1,
+            "bottom_right": 2,
+            "top_right": 3,
+        }
+
+        for corner_name, expected_index in expected_corners.items():
+            corner_field = next(
+                (
+                    f
+                    for f in crop_fields
+                    if corner_name in f.get("key", "")
+                ),
+                None,
+            )
+            assert corner_field is not None, f"Corner field {corner_name} not found"
+            assert (
+                corner_field.get("legacy_source") == "pts_src"
+            ), f"{corner_name} missing 'legacy_source' metadata"
+            assert (
+                corner_field.get("legacy_index") == expected_index
+            ), f"{corner_name} has wrong legacy_index: {corner_field.get('legacy_index')}, expected {expected_index}"
