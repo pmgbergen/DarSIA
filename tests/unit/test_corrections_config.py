@@ -225,3 +225,41 @@ class TestCurvatureCorrectionConfigLoad:
 
         d = cfg.curvature.to_dict()
         assert set(d.keys()) == {"crop", "bulge"}
+
+    def test_crop_with_corner_fields(self, tmp_path):
+        """Crop config with individual corner fields should assemble into pts_src."""
+        cfg_path = _write_toml(
+            tmp_path,
+            (
+                "[corrections.curvature.crop]\n"
+                "width = 2.8\n"
+                "height = 1.5\n"
+                "top_left = [47, 415]\n"
+                "bottom_left = [7886, 448]\n"
+                "bottom_right = [7829, 5228]\n"
+                "top_right = [110, 5263]\n"
+            ),
+        )
+        cfg = CorrectionsConfig().load(cfg_path)
+        assert cfg.curvature.crop is not None
+        assert cfg.curvature.crop.top_left == [47, 415]
+        assert cfg.curvature.crop.bottom_left == [7886, 448]
+        assert cfg.curvature.crop.bottom_right == [7829, 5228]
+        assert cfg.curvature.crop.top_right == [110, 5263]
+        # pts_src should be assembled from corners in order
+        assert cfg.curvature.crop.pts_src == [
+            [47, 415],
+            [7886, 448],
+            [7829, 5228],
+            [110, 5263],
+        ]
+
+        # to_dict() should include pts_src
+        d = cfg.curvature.to_dict()
+        assert "crop" in d
+        assert d["crop"]["pts_src"] == [
+            [47, 415],
+            [7886, 448],
+            [7829, 5228],
+            [110, 5263],
+        ]
