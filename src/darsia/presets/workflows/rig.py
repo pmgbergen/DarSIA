@@ -283,9 +283,9 @@ class Rig:
 
         # 1b) patchwise illumination correction.
         if corrections_config.patchwise_illumination:
-            assert not corrections_config.illumination, (
-                "Can only use a single illumination correction method at a time."
-            )
+            assert (
+                not corrections_config.illumination
+            ), "Can only use a single illumination correction method at a time."
             self.illumination_correction = self.setup_patchwise_illumination_correction(
                 corrections_config.patchwise_illumination,
                 show_plot=show_plot,
@@ -588,9 +588,9 @@ class Rig:
                 sample_groups.append(samples)
             else:
                 for label in config.labels:
-                    assert label in self.labels.img, (
-                        f"Label {label} not found in labels image."
-                    )
+                    assert (
+                        label in self.labels.img
+                    ), f"Label {label} not found in labels image."
                     mask = self.labels.img == label
                     samples = illumination_correction.select_random_samples(
                         mask=mask, config=config
@@ -1166,9 +1166,9 @@ class Rig:
             darsia.Image: Image object with applied corrections.
 
         """
-        assert hasattr(self, "experiment"), (
-            "Experiment not defined. Run load_experiment() first."
-        )
+        assert hasattr(
+            self, "experiment"
+        ), "Experiment not defined. Run load_experiment() first."
         # Convert date from path
         date = self.experiment.get_datetime(path)
 
