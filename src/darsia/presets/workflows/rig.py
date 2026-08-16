@@ -240,7 +240,7 @@ class Rig:
         if corrections_config.curvature:
             # Define curvature correction as derived from analysis of laser grid images
             self.curvature_correction = darsia.CurvatureCorrection(
-                config=corrections_config.curvature.config
+                config=corrections_config.curvature.to_dict()
             )
             """Curvature correction based on laser grid analysis."""
             baseline_for_setup = self.curvature_correction(baseline_for_setup)
