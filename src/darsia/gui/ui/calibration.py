@@ -19,7 +19,14 @@ class CalibrationTab:
         container = QWidget()
         layout = QVBoxLayout(container)
 
-        calibration_items = [("Color Path", "color"), ("Mass", "mass")]
+        calibration_items = [
+            ("Color Path", "color"),
+            ("Mass", "mass"),
+            ("Default mass", "default_mass"),
+            ("Delete all calibrations", "delete"),
+            ("Reset mass calibration (option)", "reset"),
+            ("Show plots (option)", "show"),
+        ]
 
         self.calibration_checkboxes = []
         for label, checkbox_id in calibration_items:
@@ -78,6 +85,10 @@ class CalibrationTab:
         options = {
             "color": "color" in checked_ids,
             "mass": "mass" in checked_ids,
+            "default_mass": "default_mass" in checked_ids,
+            "delete": "delete" in checked_ids,
+            "reset": "reset" in checked_ids,
+            "show": "show" in checked_ids,
         }
 
         self.main_window.print_log(
@@ -96,6 +107,14 @@ class CalibrationTab:
             argv.append("--color-embedding")
         if options["mass"]:
             argv.append("--mass")
+        if options["default_mass"]:
+            argv.append("--default-mass")
+        if options["delete"]:
+            argv.append("--delete")
+        if options["reset"]:
+            argv.append("--reset")
+        if options["show"]:
+            argv.append("--show")
 
         # Launch workflow in a separate process
         self.process = self.main_window.start_workflow_process(
