@@ -1,9 +1,6 @@
 """Standardized configuration for FluidFlower analysis with parsing from TOML."""
 
-import json
 import logging
-import tomllib
-from dataclasses import dataclass
 from pathlib import Path
 from warnings import warn
 
@@ -31,7 +28,34 @@ from .workflow_utils import WorkflowUtilsConfig
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+def _load_section(
+    config,
+    attr_name: str,
+    config_obj,
+    load_fn,
+    warn_on_missing: bool = True,
+    exception_types: tuple = (KeyError,),
+) -> None:
+    try:
+        setattr(config, attr_name, config_obj)
+        load_fn()
+    except exception_types:
+        setattr(config, attr_name, None)
+        if warn_on_missing:
+            warn(f"Section {attr_name} not found, use [{attr_name}].")
+
+
+def _load_image_porosity(config, path: Path) -> None:
+    try:
+        config.image_porosity = ImagePorosityConfig()
+        config.image_porosity.load(path=path)
+        if not config.image_porosity.active:
+            config.image_porosity = None
+    except KeyError:
+        config.image_porosity = None
+        warn("Section image_porosity not found, use [image_porosity].")
+
+
 class FluidFlowerConfig:
     """Meta data for FluidFlower CO2 analysis."""
 
@@ -41,148 +65,162 @@ class FluidFlowerConfig:
         require_data: bool,
         require_results: bool,
     ):
-        # Make sure that path is compatible
         if isinstance(path, list):
             path = [Path(p) for p in path]
         else:
             path = Path(path)
 
-        # ! ---- DATA ---- ! #
-        try:
-            self.data: DataConfig | None = DataConfig()
-            self.data.load(
+        self.data: DataConfig | None = None
+        self.rig: RigConfig | None = None
+        self.corrections: CorrectionsConfig | None = None
+        self.restoration: RestorationConfig | None = None
+        self.labeling: LabelingConfig | None = None
+        self.facies: FaciesConfig | None = None
+        self.depth: DepthConfig | None = None
+        self.image_porosity: ImagePorosityConfig | None = None
+        self.protocols: ProtocolsConfig | None = ProtocolsConfig()
+        self.roi_registry: RoiRegistry | None = None
+        self.color: ColorEmbeddingRegistry | None = None
+        self.calibration: CalibrationConfig | None = None
+        self.format_registry: FormatRegistry | None = None
+        self.analysis: AnalysisConfig | None = None
+        self.helper: HelperConfig | None = None
+        self.download: DownloadConfig | None = None
+        self.workflow_utils: WorkflowUtilsConfig | None = None
+        self.video: VideoConfig | None = None
+
+        _load_section(
+            self,
+            "data",
+            DataConfig(),
+            lambda: self.data.load(
                 path,
                 require_data=require_data,
                 require_results=require_results,
-            )
-        except KeyError:
-            self.data = None
-            warn(f"Section data not found in {path}, use [data].")
+            ),
+            warn_on_missing=True,
+        )
 
-        # ! ---- RIG ---- ! #
-        try:
-            self.rig: RigConfig | None = RigConfig()
-            self.rig.load(
+        _load_section(
+            self,
+            "rig",
+            RigConfig(),
+            lambda: self.rig.load(
                 path=path,
                 results=self.data.results if self.data else None,
-            )
-        except KeyError:
-            self.rig = None
-            warn(f"Section rig not found in {path}, use [rig].")
+            ),
+            warn_on_missing=True,
+        )
 
-        # ! ---- CORRECTIONS ---- ! #
+        _load_section(
+            self,
+            "corrections",
+            CorrectionsConfig(),
+            lambda: self.corrections.load(path=path),
+            warn_on_missing=True,
+        )
 
-        try:
-            self.corrections: CorrectionsConfig | None = CorrectionsConfig()
-            self.corrections.load(path=path)
-        except KeyError:
-            self.corrections = None
-            warn(f"Section corrections not found in {path}, use [corrections].")
+        _load_section(
+            self,
+            "restoration",
+            RestorationConfig(),
+            lambda: self.restoration.load(path=path),
+            warn_on_missing=True,
+        )
 
-        # ! ---- RESTORATION ---- ! #
-        try:
-            self.restoration: RestorationConfig | None = RestorationConfig()
-            self.restoration.load(path=path)
-        except KeyError:
-            self.restoration = None
-            warn(f"Section restoration not found in {path}, use [restoration].")
-
-        # ! ---- LABELING ---- ! #
-        try:
-            self.labeling: LabelingConfig | None = LabelingConfig()
-            self.labeling.load(
+        _load_section(
+            self,
+            "labeling",
+            LabelingConfig(),
+            lambda: self.labeling.load(
                 path=path,
                 results=self.data.results if self.data else None,
-            )
-        except KeyError:
-            self.labeling = None
-            warn(f"Section labeling not found in {path}, use [labeling].")
+            ),
+            warn_on_missing=True,
+        )
 
-        # ! ---- FACIES ---- ! #
-        try:
-            self.facies: FaciesConfig | None = FaciesConfig()
-            self.facies.load(
+        _load_section(
+            self,
+            "facies",
+            FaciesConfig(),
+            lambda: self.facies.load(
                 path=path,
                 results=self.data.results if self.data else None,
-            )
-        except KeyError:
-            self.facies = None
-            warn(f"Section facies not found in {path}, use [facies].")
+            ),
+            warn_on_missing=True,
+        )
 
-        # ! ---- DEPTH ---- ! #
-        try:
-            self.depth: DepthConfig | None = DepthConfig()
-            self.depth.load(
+        _load_section(
+            self,
+            "depth",
+            DepthConfig(),
+            lambda: self.depth.load(
                 path=path,
                 results=self.data.results if self.data else None,
-            )
-        except KeyError:
-            self.depth = None
-            warn(f"Section depth not found in {path}, use [depth].")
+            ),
+            warn_on_missing=True,
+        )
 
-        # ! ---- IMAGE POROSITY ---- ! #
-        try:
-            self.image_porosity: ImagePorosityConfig | None = ImagePorosityConfig()
-            self.image_porosity.load(path=path)
-            if not self.image_porosity.active:
-                self.image_porosity = None
-        except KeyError:
-            self.image_porosity = None
-            warn(f"Section image_porosity not found in {path}, use [image_porosity].")
+        _load_image_porosity(self, path)
 
-        # ! ---- PROTOCOLS ---- ! #
-        try:
-            self.protocols: ProtocolsConfig | None = ProtocolsConfig()
-            self.protocols.load(path)
-        except KeyError:
-            self.protocols = None
-            warn(f"Section protocols not found in {path}, use [protocols].")
+        _load_section(
+            self,
+            "protocols",
+            ProtocolsConfig(),
+            lambda: self.protocols.load(path),
+            warn_on_missing=True,
+        )
 
-        # ! ---- ROI REGISTRY ---- ! #
-        # Must be loaded before color embedding registry so that inline ROI entries
-        # in color embedding sections can be injected into the shared registry.
-        try:
-            self.roi_registry: RoiRegistry | None = RoiRegistry()
-            self.roi_registry.load(path)
-        except KeyError:
-            self.roi_registry = None
+        _load_section(
+            self,
+            "roi_registry",
+            RoiRegistry(),
+            lambda: self.roi_registry.load(path),
+            warn_on_missing=False,
+        )
 
-        # ! ---- COLOR EMBEDDING REGISTRY ---- ! #
-        try:
-            self.color: ColorEmbeddingRegistry | None = ColorEmbeddingRegistry()
-            self.color.load(
+        _load_section(
+            self,
+            "color",
+            ColorEmbeddingRegistry(),
+            lambda: self.color.load(
                 path=path,
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
                 data_registry=self.data.registry if self.data else None,
                 roi_registry=self.roi_registry,
-            )
-        except (ValueError, KeyError, NotImplementedError):
-            self.color = None
-            warn(f"Section color not found in {path}.")
+            ),
+            warn_on_missing=True,
+            exception_types=(ValueError, KeyError, NotImplementedError),
+        )
 
-        # ! ---- CALIBRATION CONFIG ---- ! #
-        try:
-            self.calibration: CalibrationConfig | None = CalibrationConfig()
-            self.calibration.load(
+        _load_section(
+            self,
+            "calibration",
+            CalibrationConfig(),
+            lambda: self.calibration.load(
                 path=path,
                 data=self.data.folder if self.data else None,
                 data_registry=self.data.registry if self.data else None,
                 color_embedding_registry=self.color,
-            )
-        except (ValueError, KeyError):
-            self.calibration = None
+            ),
+            warn_on_missing=False,
+            exception_types=(ValueError, KeyError),
+        )
 
-        # ! ---- FORMAT REGISTRY ---- ! #
-        try:
-            self.format_registry: FormatRegistry | None = FormatRegistry()
-            self.format_registry.load(path)
-        except KeyError:
-            self.format_registry = None
-        # ! ---- ANALYSIS DATA ---- ! #
-        try:
-            self.analysis = AnalysisConfig()
-            self.analysis.load(
+        _load_section(
+            self,
+            "format_registry",
+            FormatRegistry(),
+            lambda: self.format_registry.load(path),
+            warn_on_missing=False,
+        )
+
+        _load_section(
+            self,
+            "analysis",
+            AnalysisConfig(),
+            lambda: self.analysis.load(
                 path,
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
@@ -190,69 +228,55 @@ class FluidFlowerConfig:
                 roi_registry=self.roi_registry,
                 format_registry=self.format_registry,
                 color_embedding_registry=self.color,
-            )
-        except KeyError:
-            self.analysis = None
-            warn(f"Section analysis not found in {path}, use [analysis].")
+            ),
+            warn_on_missing=True,
+        )
 
-        # ! ---- HELPER ---- ! #
-        try:
-            self.helper = HelperConfig()
-            self.helper.load(
+        _load_section(
+            self,
+            "helper",
+            HelperConfig(),
+            lambda: self.helper.load(
                 path,
                 data=self.data.folder if self.data else None,
                 data_registry=self.data.registry if self.data else None,
                 format_registry=self.format_registry,
                 roi_registry=self.roi_registry,
-            )
-        except KeyError:
-            self.helper = None
+            ),
+            warn_on_missing=False,
+        )
 
-        # ! ---- DOWNLOAD CONFIG ---- ! #
-        try:
-            self.download = DownloadConfig()
-            self.download.load(
+        _load_section(
+            self,
+            "download",
+            DownloadConfig(),
+            lambda: self.download.load(
                 path,
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
                 data_registry=self.data.registry if self.data else None,
-            )
-        except KeyError:
-            self.download = None
-            warn(f"Section download not found in {path}, use [download].")
+            ),
+            warn_on_missing=True,
+        )
 
-        # ! ---- UTILS CONFIG ---- ! #
-        try:
-            self.workflow_utils = WorkflowUtilsConfig()
-            self.workflow_utils.load(path)
-        except KeyError:
-            self.workflow_utils = None
+        _load_section(
+            self,
+            "workflow_utils",
+            WorkflowUtilsConfig(),
+            lambda: self.workflow_utils.load(path),
+            warn_on_missing=False,
+        )
 
-        # ! ---- VIDEO CONFIG ---- ! #
-        try:
-            self.video = VideoConfig()
-            self.video.load(
+        _load_section(
+            self,
+            "video",
+            VideoConfig(),
+            lambda: self.video.load(
                 path,
                 results=self.data.results if self.data else None,
-            )
-        except KeyError:
-            self.video = None
-
-        ## Reference colorchecker
-        # try:
-        #    self.ref_colorchecker = (
-        #        common_folder / meta_data["common"]["ref_colorchecker"]
-        #    )
-        # except KeyError:
-        #    self.ref_colorchecker = None
-
-        ## ! ---- CALIBRATION DATA ---- ! #
-        # self.calibration = {
-        #    "format": None,
-        #    "scaling_image": None,
-        #    "mass_images": None,
-        # }
-        # self.calibration["format"] = meta_data["calibration"].get("format", "JPG")
+            ),
+            warn_on_missing=False,
+        )
 
     def _check(self, key: str):
         if key == "data" and not self.data:
@@ -304,14 +328,7 @@ class FluidFlowerConfig:
         """Check that required components are loaded.
 
         Args:
-            keys (list[str]): List of keys to check. Possible keys are:
-                "specs",
-                "data",
-                "labeling",
-                "depth",
-                "protocols",
-                "color",
-                "analysis".
+            keys (list[str]): List of keys to check.
 
         Raises:
             ValueError: If a required component is not loaded.
@@ -321,31 +338,26 @@ class FluidFlowerConfig:
             assert key in [
                 "analysis",
                 "analysis.data",
+                "analysis.mass",
                 "analysis.segmentation",
                 "calibration",
-                "color",
                 "calibration.color",
                 "calibration.mass",
+                "color",
                 "corrections",
                 "data",
                 "depth",
+                "download",
                 "facies",
+                "format_registry",
+                "helper",
                 "image_porosity",
                 "labeling",
                 "protocols",
+                "restoration",
+                "roi_registry",
                 "rig",
                 "video",
+                "workflow_utils",
             ], f"Key {key} not recognized for checking."
             self._check(key)
-
-    # Loading
-    def load_meta(self, meta: Path) -> dict:
-        """Load meta data from file. Supports JSON and TOML formats."""
-        if meta.suffix == ".json":
-            with open(meta, "r") as f:
-                meta_data = json.load(f)
-        elif meta.suffix == ".toml":
-            meta_data = tomllib.loads(meta.read_text())
-        else:
-            raise ValueError(f"Unsupported meta file format: {meta.suffix}")
-        return meta_data
