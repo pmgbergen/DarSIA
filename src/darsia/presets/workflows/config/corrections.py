@@ -689,27 +689,113 @@ class RelativeColorCorrectionConfig:
 
 @dataclass
 class IlluminationCorrectionConfig:
-    """Configuration for illumination correction."""
+    """Configuration for illumination correction.
 
-    labels: list[int] = field(default_factory=list)
+    Attributes:
+        labels: List of label IDs to use for illumination correction (default: []).
+        interpolation: Interpolation method for scaling ("rbf", "quartic", "illumination";
+            default: "illumination").
+        colorspace: Color space for interpolation ("rgb", "rgb-scalar", "lab", "lab-scalar",
+            "hsl", "hsl-scalar", "gray"; default: "hsl-scalar").
+        width: Width of patches used for interpolation in pixels (default: 100).
+        num_samples: Number of sample patches to use (default: 30).
+        seed: Random seed for reproducible patch sampling (default: 42).
+        sigma: Sigma for Gaussian smoothing of the illumination map in pixels (default: 100.0).
+        outliers: Fraction of outliers [0.0–1.0] to discard (default: 0.1).
+        bounds: [min, max] bounds for illumination correction factors (default: [0.5, 2.0]).
+    """
+
+    labels: list[int] = field(
+        default_factory=list,
+        metadata={
+            "name": "Labels",
+            "help": "List of label IDs to use for illumination correction.",
+            "placeholder": "e.g., [4, 5, 6]",
+        },
+    )
     """List of labels to use for illumination correction. Overrides `label` if not empty."""
-    interpolation: Literal["rbf", "quartic", "illumination"] = "illumination"
+    interpolation: Literal["rbf", "quartic", "illumination"] = field(
+        default="illumination",
+        metadata={
+            "name": "Interpolation method",
+            "help": "Interpolation method to use for scaling.",
+            "options": ["rbf", "quartic", "illumination"],
+        },
+    )
     """Interpolation method to use for scaling."""
     colorspace: Literal[
         "rgb", "rgb-scalar", "lab", "lab-scalar", "hsl", "hsl-scalar", "gray"
-    ] = "hsl-scalar"
+    ] = field(
+        default="hsl-scalar",
+        metadata={
+            "name": "Color space",
+            "help": "Color space to use for interpolation.",
+            "options": [
+                "rgb",
+                "rgb-scalar",
+                "lab",
+                "lab-scalar",
+                "hsl",
+                "hsl-scalar",
+                "gray",
+            ],
+        },
+    )
     """Color space to use for interpolation."""
-    width: int = 100
+    width: int = field(
+        default=100,
+        metadata={
+            "name": "Patch width",
+            "help": "Width of patches to use for interpolation in pixels.",
+        },
+    )
     """Width of patches to use for interpolation."""
-    num_samples: int = 30
+    num_samples: int = field(
+        default=30,
+        metadata={
+            "name": "Number of samples",
+            "help": "Number of sample patches to use for interpolation.",
+        },
+    )
     """Number of patches to use for interpolation."""
-    seed: int = 42
+    seed: int = field(
+        default=42,
+        metadata={
+            "name": "Random seed",
+            "help": "Random seed for reproducible patch sampling.",
+        },
+    )
     """Random seed for patch sampling."""
-    sigma: float = 100.0
+    sigma: float = field(
+        default=100.0,
+        metadata={
+            "name": "Gaussian sigma",
+            "help": (
+                "Sigma for Gaussian smoothing of the illumination "
+                "correction map in pixels."
+            ),
+        },
+    )
     """Sigma for Gaussian smoothing of the illumination correction map."""
-    outliers: float = 0.1
+    outliers: float = field(
+        default=0.1,
+        metadata={
+            "name": "Outlier fraction",
+            "help": (
+                "Fraction of outliers [0.0–1.0] to discard when computing "
+                "the correction map."
+            ),
+        },
+    )
     """Fraction of outliers to discard when computing the illumination correction map."""
-    bounds: tuple[float, float] = (0.5, 2.0)
+    bounds: tuple[float, float] = field(
+        default=(0.5, 2.0),
+        metadata={
+            "name": "Correction bounds",
+            "help": "Min and max bounds [min, max] for illumination correction factors.",
+            "placeholder": "e.g., [0.5, 2.0]",
+        },
+    )
     """Bounds for the illumination correction factors."""
 
     def load(self, sec: dict) -> "IlluminationCorrectionConfig":
@@ -758,17 +844,57 @@ class IlluminationCorrectionConfig:
 
 @dataclass
 class PatchwiseIlluminationCorrectionConfig:
-    """Configuration for patchwise illumination correction."""
+    """Configuration for patchwise illumination correction.
 
-    image_path: Path = Path()
+    Attributes:
+        image_path: Path to the primary image for patchwise illumination correction.
+        baseline_paths: Paths to baseline images (not yet GUI-editable; edit via TOML).
+        limit: Pixels to exclude from top of image for patch sampling (default: 1450).
+        nw: Number of patches in the width direction (default: 1000).
+        eps: Small constant to avoid division by zero (default: 1e-6).
+    """
+
+    image_path: Path = field(
+        default=Path(),
+        metadata={
+            "name": "Image path",
+            "help": "Path to the primary image for patchwise illumination correction.",
+            "widget": "file",
+        },
+    )
     """Path to image for patchwise illumination correction."""
-    baseline_paths: list[Path] = field(default_factory=list)
+    baseline_paths: list[Path] = field(
+        default_factory=list,
+        metadata={
+            "name": "Baseline image paths",
+            "help": "Paths to baseline images. Not yet GUI-editable — edit via TOML.",
+            "hidden": True,
+        },
+    )
     """Paths to baseline images for patchwise illumination correction."""
-    limit: int = 1450
+    limit: int = field(
+        default=1450,
+        metadata={
+            "name": "Top exclusion limit",
+            "help": "Pixels to exclude from the top of the image for patch sampling.",
+        },
+    )
     """Limit in pixels to exclude from top of image for patch sampling."""
-    nw: int = 1000
+    nw: int = field(
+        default=1000,
+        metadata={
+            "name": "Number of patches (width)",
+            "help": "Number of patches in the width direction.",
+        },
+    )
     """Number of patches in width direction for patchwise illumination correction."""
-    eps: float = 1e-6
+    eps: float = field(
+        default=1e-6,
+        metadata={
+            "name": "Epsilon (division safety)",
+            "help": "Small constant to avoid division by zero.",
+        },
+    )
     """Small constant to avoid division by zero in patchwise illumination correction."""
 
     def load(self, sec: dict) -> "PatchwiseIlluminationCorrectionConfig":
