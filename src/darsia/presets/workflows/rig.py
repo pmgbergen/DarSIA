@@ -17,7 +17,6 @@ from darsia.presets.workflows.config.corrections import (
     CorrectionsConfig,
     IlluminationCorrectionConfig,
     PatchwiseIlluminationCorrectionConfig,
-    RelativeColorCorrectionConfig,
 )
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.facies_props import FaciesProps
@@ -284,9 +283,9 @@ class Rig:
 
         # 1b) patchwise illumination correction.
         if corrections_config.patchwise_illumination:
-            assert (
-                not corrections_config.illumination
-            ), "Can only use a single illumination correction method at a time."
+            assert not corrections_config.illumination, (
+                "Can only use a single illumination correction method at a time."
+            )
             self.illumination_correction = self.setup_patchwise_illumination_correction(
                 corrections_config.patchwise_illumination,
                 show_plot=show_plot,
@@ -296,40 +295,32 @@ class Rig:
         # 2) Relative color correction (reserved in ordering; setup currently guarded).
         if corrections_config.relative_color:
             relative_config = corrections_config.relative_color
-            if isinstance(relative_config, bool):
-                warn(
-                    "relative_color=True requires a [corrections.relative_color] "
-                    "configuration table with either 'path' or 'images'.",
-                    UserWarning,
+            if relative_config.path is not None:
+                self.relative_color_correction = darsia.RelativeColorCorrection(
+                    self.shape_corrected_baseline
                 )
-            else:
-                assert isinstance(relative_config, RelativeColorCorrectionConfig)
-                if relative_config.path is not None:
-                    self.relative_color_correction = darsia.RelativeColorCorrection(
-                        self.shape_corrected_baseline
+                self.relative_color_correction.load(relative_config.path)
+                self.color_corrections.append(self.relative_color_correction)
+            elif relative_config.images:
+                if not relative_config.interactive:
+                    raise ValueError(
+                        "Interactive calibration is required when using "
+                        "corrections.relative_color.images. Set "
+                        "corrections.relative_color.interactive=true or provide "
+                        "corrections.relative_color.path."
                     )
-                    self.relative_color_correction.load(relative_config.path)
-                    self.color_corrections.append(self.relative_color_correction)
-                elif relative_config.images:
-                    if not relative_config.interactive:
-                        raise ValueError(
-                            "Interactive calibration is required when using "
-                            "corrections.relative_color.images. Set "
-                            "corrections.relative_color.interactive=true or provide "
-                            "corrections.relative_color.path."
-                        )
-                    relative_color_images = []
-                    for path in relative_config.images:
-                        img = darsia.imread(path)
-                        for correction in self.shape_corrections:
-                            img = correction(img)
-                        relative_color_images.append(img)
-                    self.relative_color_correction = darsia.RelativeColorCorrection(
-                        self.shape_corrected_baseline,
-                        relative_color_images,
-                        relative_config.options,
-                    )
-                    self.color_corrections.append(self.relative_color_correction)
+                relative_color_images = []
+                for path in relative_config.images:
+                    img = darsia.imread(path)
+                    for correction in self.shape_corrections:
+                        img = correction(img)
+                    relative_color_images.append(img)
+                self.relative_color_correction = darsia.RelativeColorCorrection(
+                    self.shape_corrected_baseline,
+                    relative_color_images,
+                    relative_config.to_options_dict(),
+                )
+                self.color_corrections.append(self.relative_color_correction)
 
         # 3) Color correction.
         if corrections_config.color:
@@ -597,9 +588,9 @@ class Rig:
                 sample_groups.append(samples)
             else:
                 for label in config.labels:
-                    assert (
-                        label in self.labels.img
-                    ), f"Label {label} not found in labels image."
+                    assert label in self.labels.img, (
+                        f"Label {label} not found in labels image."
+                    )
                     mask = self.labels.img == label
                     samples = illumination_correction.select_random_samples(
                         mask=mask, config=config
@@ -1175,9 +1166,9 @@ class Rig:
             darsia.Image: Image object with applied corrections.
 
         """
-        assert hasattr(
-            self, "experiment"
-        ), "Experiment not defined. Run load_experiment() first."
+        assert hasattr(self, "experiment"), (
+            "Experiment not defined. Run load_experiment() first."
+        )
         # Convert date from path
         date = self.experiment.get_datetime(path)
 
