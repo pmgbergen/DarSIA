@@ -202,6 +202,8 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "flatten_in_section": field.metadata.get("flatten_in_section", None),
                 "group_name": field.metadata.get("group", None),
                 "depends_on": field.metadata.get("depends_on", None),
+                "legacy_source": field.metadata.get("legacy_source", None),
+                "legacy_index": field.metadata.get("legacy_index", None),
             }
 
             # For list/tuple types, add the element type label
