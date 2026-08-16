@@ -839,3 +839,58 @@ class TestCorrectionsConfigMetadata:
             "field": "mode",
             "value": "target_shape",
         }
+
+    def test_curvature_correction_has_stage_groups(self):
+        """CurvatureCorrectionConfig should have 4 named stage groups with active_list_key."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        curvature_group = next(
+            (f for f in schema if f["key"] == "corrections.curvature"), None
+        )
+        assert curvature_group is not None
+        assert curvature_group.get("type") == "group"
+
+        # Check the 4 stage fields exist
+        fields = curvature_group.get("fields", [])
+        field_keys = [f["key"] for f in fields]
+
+        expected_stages = [
+            "corrections.curvature.init",
+            "corrections.curvature.crop",
+            "corrections.curvature.bulge",
+            "corrections.curvature.stretch",
+        ]
+        for key in expected_stages:
+            assert key in field_keys, f"{key} should be present"
+
+        # Each should be a group with active_list_key
+        for field in fields:
+            if field["key"] in expected_stages:
+                assert field.get("type") == "group"
+                assert field.get("active_list_key") == "active"
+                assert field.get("name") is not None
+
+    def test_curvature_crop_pts_src_hidden(self):
+        """CropCorrectionConfig.pts_src should be hidden (unsupported type)."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        curvature_group = next(
+            (f for f in schema if f["key"] == "corrections.curvature"), None
+        )
+        fields = curvature_group.get("fields", [])
+        crop_group = next(
+            (f for f in fields if f["key"] == "corrections.curvature.crop"), None
+        )
+        assert crop_group is not None
+
+        crop_fields = crop_group.get("fields", [])
+        crop_field_keys = [f["key"] for f in crop_fields]
+
+        # pts_src should not appear (hidden)
+        assert "corrections.curvature.crop.pts_src" not in crop_field_keys

@@ -115,3 +115,113 @@ class TestResizeCorrectionConfigLoad:
         # This should fail because mode defaults to 'scale' which requires scale to be set
         with pytest.raises(ValueError, match="mode='scale' requires 'scale' to be set"):
             CorrectionsConfig().load(cfg_path)
+
+
+class TestCurvatureCorrectionConfigLoad:
+    """Test CurvatureCorrectionConfig stage-wise loading and to_dict() conversion."""
+
+    def test_crop_only_config_valid(self, tmp_path):
+        """crop-only config (real-world usage) should load and to_dict() correctly."""
+        cfg_path = _write_toml(
+            tmp_path,
+            '[corrections.curvature.crop]\nwidth = 2.8\nheight = 1.5\n"in meters" = true\n',
+        )
+        cfg = CorrectionsConfig().load(cfg_path)
+        assert cfg.curvature is not None
+        assert cfg.curvature.crop is not None
+        assert cfg.curvature.init is None
+        assert cfg.curvature.bulge is None
+        assert cfg.curvature.stretch is None
+
+        # to_dict() should contain only crop
+        d = cfg.curvature.to_dict()
+        assert "crop" in d
+        assert d["crop"]["width"] == 2.8
+        assert d["crop"]["height"] == 1.5
+        assert d["crop"]["in meters"] is True
+        assert "init" not in d
+        assert "bulge" not in d
+        assert "stretch" not in d
+
+    def test_all_stages_active(self, tmp_path):
+        """Config with all 4 stages + explicit active list."""
+        cfg_path = _write_toml(
+            tmp_path,
+            (
+                "[corrections.curvature]\n"
+                "active = [\"init\", \"crop\", \"bulge\", \"stretch\"]\n"
+                "[corrections.curvature.init]\nhorizontal_bulge = 0.1\n"
+                "[corrections.curvature.crop]\nwidth = 2.8\nheight = 1.5\n"
+                "[corrections.curvature.bulge]\nhorizontal_bulge = 0.2\n"
+                "[corrections.curvature.stretch]\nhorizontal_stretch = 0.05\n"
+            ),
+        )
+        cfg = CorrectionsConfig().load(cfg_path)
+        assert cfg.curvature.init is not None
+        assert cfg.curvature.crop is not None
+        assert cfg.curvature.bulge is not None
+        assert cfg.curvature.stretch is not None
+        assert len(cfg.curvature.inactive) == 0
+
+        d = cfg.curvature.to_dict()
+        assert set(d.keys()) == {"init", "crop", "bulge", "stretch"}
+
+    def test_stages_deactivated_preserved_in_inactive(self, tmp_path):
+        """Stages not in active list should be parsed and preserved in .inactive."""
+        cfg_path = _write_toml(
+            tmp_path,
+            (
+                "[corrections.curvature]\n"
+                "active = [\"crop\"]\n"
+                "[corrections.curvature.init]\nhorizontal_bulge = 0.1\n"
+                "[corrections.curvature.crop]\nwidth = 2.8\n"
+                "[corrections.curvature.bulge]\nhorizontal_bulge = 0.2\n"
+            ),
+        )
+        cfg = CorrectionsConfig().load(cfg_path)
+        assert cfg.curvature.crop is not None
+        assert cfg.curvature.init is None
+        assert cfg.curvature.bulge is None
+        assert "init" in cfg.curvature.inactive
+        assert "bulge" in cfg.curvature.inactive
+        assert cfg.curvature.inactive["init"].horizontal_bulge == 0.1
+        assert cfg.curvature.inactive["bulge"].horizontal_bulge == 0.2
+
+        # to_dict() should only include crop (active stages)
+        d = cfg.curvature.to_dict()
+        assert set(d.keys()) == {"crop"}
+
+    def test_crop_in_meters_translation(self, tmp_path):
+        """CropCorrectionConfig.in_meters should translate to/from TOML 'in meters' key."""
+        cfg_path = _write_toml(
+            tmp_path,
+            '[corrections.curvature.crop]\nwidth = 2.8\nheight = 1.5\n"in meters" = false\n',
+        )
+        cfg = CorrectionsConfig().load(cfg_path)
+        assert cfg.curvature.crop.in_meters is False
+
+        d = cfg.curvature.to_dict()
+        assert d["crop"]["in meters"] is False  # Note: key has space in dict
+
+    def test_partial_stages_active(self, tmp_path):
+        """Config with multiple stages but only some active."""
+        cfg_path = _write_toml(
+            tmp_path,
+            (
+                "[corrections.curvature]\n"
+                "active = [\"crop\", \"bulge\"]\n"
+                "[corrections.curvature.crop]\nwidth = 2.8\n"
+                "[corrections.curvature.bulge]\nhorizontal_bulge = 0.2\n"
+                "[corrections.curvature.stretch]\nhorizontal_stretch = 0.05\n"
+            ),
+        )
+        cfg = CorrectionsConfig().load(cfg_path)
+        assert cfg.curvature.crop is not None
+        assert cfg.curvature.bulge is not None
+        assert cfg.curvature.init is None
+        assert cfg.curvature.stretch is None
+        assert "stretch" in cfg.curvature.inactive
+        assert cfg.curvature.inactive["stretch"].horizontal_stretch == 0.05
+
+        d = cfg.curvature.to_dict()
+        assert set(d.keys()) == {"crop", "bulge"}
