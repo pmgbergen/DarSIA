@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
@@ -1036,3 +1037,121 @@ class TestCorrectionsConfigMetadata:
             assert corner_field.get("legacy_index") == expected_index, (
                 f"{corner_name} has wrong legacy_index: {corner_field.get('legacy_index')}, expected {expected_index}"
             )
+
+    def test_color_correction_colorchecker_has_metadata(self):
+        """ColorCorrectionConfig.colorchecker should have name, help, and options metadata."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        color_group = next(
+            (f for f in schema if f["key"] == "corrections.color"), None
+        )
+        assert color_group is not None, "color correction group not found in schema"
+
+        fields = color_group.get("fields", [])
+        colorchecker_field = next(
+            (f for f in fields if f["key"] == "corrections.color.colorchecker"),
+            None,
+        )
+        assert colorchecker_field is not None, "colorchecker field not found"
+
+        assert colorchecker_field.get("name") == "Color checker position"
+        assert "color checker" in colorchecker_field.get("help", "").lower()
+        assert colorchecker_field.get("options") == [
+            "upper_left",
+            "upper_right",
+            "lower_left",
+            "lower_right",
+        ]
+
+    def test_relative_color_correction_fields_have_metadata(self):
+        """RelativeColorCorrectionConfig fields should have proper GUI metadata."""
+        from darsia.gui.ui.schema.dataclass_introspection import (
+            get_section_fields,
+        )
+
+        schema = get_section_fields("corrections")
+        relative_group = next(
+            (f for f in schema if f["key"] == "corrections.relative_color"), None
+        )
+        assert relative_group is not None, "relative_color correction group not found"
+
+        fields = relative_group.get("fields", [])
+
+        # Check that path, images, interactive have name/help
+        expected_visible = ["path", "images", "interactive", "mode", "method", "degree", "sample_size", "debug"]
+        for field_name in expected_visible:
+            field = next(
+                (f for f in fields if field_name in f.get("key", "")),
+                None,
+            )
+            assert field is not None, f"Field {field_name} not found in relative_color group"
+            assert field.get("name"), f"{field_name} missing 'name' metadata"
+            assert field.get("help"), f"{field_name} missing 'help' metadata"
+            assert not field.get("hidden"), f"{field_name} should not be hidden"
+
+        # Check that mode and method have options
+        mode_field = next((f for f in fields if "mode" in f.get("key", "")), None)
+        assert mode_field.get("options") == ["custom", "tensorial"]
+
+        method_field = next((f for f in fields if "method" in f.get("key", "")), None)
+        assert method_field.get("options") == ["polynomial"]
+
+    def test_relative_color_correction_to_options_dict(self):
+        """RelativeColorCorrectionConfig.to_options_dict() should reconstruct the config dict."""
+        from darsia.presets.workflows.config.corrections import (
+            RelativeColorCorrectionConfig,
+        )
+
+        config = RelativeColorCorrectionConfig(
+            path=None,
+            mode="tensorial",
+            method="polynomial",
+            degree=3,
+            sample_size=75,
+            debug=True,
+        )
+        options_dict = config.to_options_dict()
+
+        assert options_dict["mode"] == "tensorial"
+        assert options_dict["method"] == "polynomial"
+        assert options_dict["degree"] == 3
+        assert options_dict["sample_size"] == 75
+        assert options_dict["debug"] is True
+
+    def test_relative_color_correction_load_dict(self):
+        """RelativeColorCorrectionConfig.load() should parse dict and extract known keys."""
+        from darsia.presets.workflows.config.corrections import (
+            RelativeColorCorrectionConfig,
+        )
+
+        sec = {
+            "path": "/path/to/correction.npz",
+            "mode": "custom",
+            "method": "polynomial",
+            "degree": 2,
+            "sample_size": 50,
+            "debug": False,
+        }
+        config = RelativeColorCorrectionConfig().load(sec)
+
+        assert config.path == Path("/path/to/correction.npz")
+        assert config.mode == "custom"
+        assert config.method == "polynomial"
+        assert config.degree == 2
+        assert config.sample_size == 50
+        assert config.debug is False
+
+    def test_relative_color_correction_load_bool_raises(self):
+        """RelativeColorCorrectionConfig.load() should raise ValueError for bool input."""
+        from darsia.presets.workflows.config.corrections import (
+            RelativeColorCorrectionConfig,
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="corrections.relative_color must be a configuration table",
+        ):
+            RelativeColorCorrectionConfig().load(True)

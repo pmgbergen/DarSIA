@@ -93,43 +93,6 @@ def test_setup_color_corrections_illumination_return_is_assigned_and_appended(
     assert rig.baseline.applied == ["illumination", "color"]
 
 
-def test_setup_color_corrections_warns_on_boolean_relative_color(
-    monkeypatch,
-):
-    rig = Rig()
-    rig.shape_corrected_baseline = DummyImage()
-
-    monkeypatch.setattr(
-        rig,
-        "setup_illumination_correction",
-        lambda *_args, **_kwargs: DummyCorrection("illumination"),
-    )
-
-    from darsia.presets.workflows import rig as rig_module
-
-    monkeypatch.setattr(
-        rig_module.darsia,
-        "find_colorchecker",
-        lambda *_args, **_kwargs: (None, "dummy-roi"),
-    )
-    monkeypatch.setattr(
-        rig_module.darsia,
-        "ColorCorrection",
-        lambda *_args, **_kwargs: DummyCorrection("color"),
-    )
-
-    config = CorrectionsConfig(
-        illumination=IlluminationCorrectionConfig(),
-        relative_color=True,
-        color=ColorCorrectionConfig(colorchecker="upper_left"),
-    )
-
-    with pytest.warns(UserWarning, match="relative_color=True requires"):
-        rig.setup_color_corrections(config)
-
-    assert [c.name for c in rig.color_corrections] == ["illumination", "color"]
-
-
 def test_setup_color_corrections_loads_relative_color_from_path_and_preserves_order(
     monkeypatch,
 ):
