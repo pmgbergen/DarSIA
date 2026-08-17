@@ -57,6 +57,7 @@ class Rig:
                 darsia.ColorCorrection,
                 darsia.RelativeColorCorrection,
                 darsia.IlluminationCorrection,
+                darsia.PatchwiseIlluminationCorrection
             ),
         )
 
