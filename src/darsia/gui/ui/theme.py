@@ -1,8 +1,7 @@
 """Theme switcher for Light/Dark/System modes with persistence."""
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QColor, QPalette
-from PySide6.QtCore import QSettings
 
 _original_style = None
 _original_palette = None
