@@ -46,6 +46,13 @@ class MenuBuilder:
         quit_action.triggered.connect(self.main_window.close)
         self.main_window.addAction(quit_action)
 
+        settings_menu = menu_bar.addMenu("&Settings")
+        self.open_full_config_action = self._add_action(
+            settings_menu,
+            "Open &Full Config",
+            self.main_window.display_full_settings,
+        )
+
         help_menu = menu_bar.addMenu("&Help")
         self._add_action(help_menu, "&About", self.main_window.show_about_dialog)
 

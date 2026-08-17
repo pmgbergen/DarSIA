@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 
 from .file_dialog import FileDialogHelper
 from .help import build_help_column
-from .schema.dataclass_introspection import get_section_fields
+from .schema.dataclass_introspection import ALL_SECTIONS, get_section_fields
 from .schema.section_registry import get_required_sections
 
 
@@ -105,6 +105,29 @@ class SettingsFactory:
                     continue
 
                 settings_by_section[section] = section_fields
+
+        return settings_by_section
+
+    def get_all_settings(self):
+        """Get all fixed-schema sections for full-config view.
+
+        Returns
+        -------
+        dict[str, list[dict]]
+            Dictionary mapping each section name to its field list,
+            in the canonical order defined by ALL_SECTIONS.
+        """
+        settings_by_section = {}
+
+        for section in ALL_SECTIONS:
+            section_fields = get_section_fields(section)
+            if section_fields is None:
+                self.main_window.print_log(
+                    f"No dataclass found for section '{section}'"
+                )
+                continue
+
+            settings_by_section[section] = section_fields
 
         return settings_by_section
 
