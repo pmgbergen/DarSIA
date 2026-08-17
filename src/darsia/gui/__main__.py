@@ -12,11 +12,13 @@ Run the GUI using one of the following methods:
 from PySide6.QtWidgets import QApplication
 
 from .ui.main_window import MainWindow
+from .ui.theme import apply_theme, get_theme
 
 if __name__ == "__main__":
     app = QApplication()
     app.setOrganizationName("DarSIA")
     app.setApplicationName("DarSIA GUI")
+    apply_theme(app, get_theme())
     window = MainWindow()
     window.show()
     app.exec()
