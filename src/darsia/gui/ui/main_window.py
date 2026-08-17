@@ -454,20 +454,22 @@ class MainWindow(QMainWindow):
                 checked_ids.append(checkbox_id)
         return checked_ids
 
-    def display_settings(self, action, checked_ids):
-        """Method that displays the relevant settings based on the action being used."""
+    def _render_settings_tabs(self, settings_by_section):
+        """Render settings_by_section dict into tabbed layout.
+
+        Clears settings_layout and builds QTabWidget with one tab per section,
+        populating form inputs via settings_factory.build_tab_form.
+        Shared with both display_settings and display_full_settings.
+        """
         while self.settings_layout.count():
             child = self.settings_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
 
-        relevant_settings = self.settings_factory.get_relevant_settings(
-            action, checked_ids
-        )
         self.settings_inputs = {}
 
         # If no sections, add a message and return
-        if not relevant_settings:
+        if not settings_by_section:
             self.settings_layout.addWidget(QLabel("No settings available"))
             self.settings_layout.addStretch()
             return
@@ -476,7 +478,7 @@ class MainWindow(QMainWindow):
         tabs = QTabWidget()
 
         # Iterate through sections in order (dict preserves insertion order in Python 3.7+)
-        for section, settings_list in relevant_settings.items():
+        for section, settings_list in settings_by_section.items():
             # Create a scroll area and container for this section's fields
             tab_container = QWidget()
             tab_form = QFormLayout(tab_container)
@@ -500,6 +502,18 @@ class MainWindow(QMainWindow):
 
         self.settings_layout.addWidget(tabs)
         self.settings_layout.addStretch()
+
+    def display_settings(self, action, checked_ids):
+        """Display the relevant settings based on the action being used."""
+        relevant_settings = self.settings_factory.get_relevant_settings(
+            action, checked_ids
+        )
+        self._render_settings_tabs(relevant_settings)
+
+    def display_full_settings(self):
+        """Display all fixed-schema sections in the settings panel."""
+        all_settings = self.settings_factory.get_all_settings()
+        self._render_settings_tabs(all_settings)
 
     def show_about_dialog(self):
         """Show the About dialog."""

@@ -12,6 +12,7 @@ _STANDARD_ICONS = {
     "new": QStyle.StandardPixmap.SP_FileIcon,
     "open": QStyle.StandardPixmap.SP_DirOpenIcon,
     "save": QStyle.StandardPixmap.SP_DriveFDIcon,
+    "settings": QStyle.StandardPixmap.SP_FileDialogDetailedView,
 }
 
 
@@ -37,10 +38,16 @@ class ToolbarBuilder:
             self.menu_builder.open_action, "open", "Open Config... (Ctrl+O)"
         )
         self._configure(self.menu_builder.save_action, "save", "Save Config (Ctrl+S)")
+        self._configure(
+            self.menu_builder.open_full_config_action,
+            "settings",
+            "Open Full Config",
+        )
 
         toolbar.addAction(self.menu_builder.new_action)
         toolbar.addAction(self.menu_builder.open_action)
         toolbar.addAction(self.menu_builder.save_action)
+        toolbar.addAction(self.menu_builder.open_full_config_action)
 
     def _configure(self, action, key, tooltip):
         action.setIcon(self._load_icon(key))
