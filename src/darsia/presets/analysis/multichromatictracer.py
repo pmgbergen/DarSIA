@@ -73,9 +73,15 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
                 )
             ]
         )
-        self.characteristic_colors = []
+
+        # Initialize calibration data - assign 0 to zero data.
+        self.characteristic_colors = {
+            counter: np.zeros((1, 3)) for counter, _ in enumerate(np.unique(labels.img))
+        }
         """Characteristic colors for each label."""
-        self.concentrations = []
+        self.concentrations = {
+            counter: [0] for counter, _ in enumerate(np.unique(labels.img))
+        }
         """Concentration values for each label."""
 
         # Define general ConcentrationAnalysis
@@ -222,7 +228,6 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
             self.concentrations = []
 
         for i, mask in enumerate(darsia.Masks(self.labels)):
-
             # Define characteristic points and corresponding data values
             print("Define samples")
             assistant = darsia.BoxSelectionAssistant(
@@ -297,29 +302,23 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
 
     def calibrate_from_samples(
         self,
-        counter,
-        calibration_image,
-        calib_points,
+        calibration_image: darsia.Image,
+        samples: list[tuple[slice, slice]],
+        concentrations: list[float],
         mask: Optional[darsia.Image] = None,
-        width: int = 25,
         num_clusters: int = 5,
-        reset: bool = False,
     ) -> None:
         """
-                    Use last calibration image to define support points.
+        Calibrate using samples from a single image.
 
-                    Use all to fix the support points assignment.
-        NOTE: This function is mostly a copy from `calibrate_from_image` and may allow
-        for merging.
-            Args:
-                calibration_image (Image): calibration image for extracting colors
-                mask (Image): boolean image-mask acting as mask for the calibration image
-                width (int): width of sample boxes returned from assistant - irrelevant if
-                    boxed defined
-                num_clusters (int): number of characteristic clusters extracted
-                reset (bool): flag controlling whether the calibration is reset. If False,
-                    the calibration is appended, allowing multi-step calibration, based on
-                    different images.
+        Args:
+            calibration_image (Image): calibration image for extracting colors
+            samples (list[tuple[slice, slice]]): the sample regions to use for calibration
+            concentrations (list[float]): the concentration values for the samples
+            mask (Image): boolean image-mask acting as mask for the calibration image
+            num_clusters (int): number of characteristic clusters extracted
+            reset (bool): flag controlling whether the calibration is reset. If False,
+                the calibration is appended, allowing multi-step calibration.
 
         """
         # TODO include possibility to deactivate untrustful support points
@@ -331,76 +330,44 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
         self.model = None
         self.restoration = None
 
-        # ! ---- STEP 1: Calibrate the support points (x) based on some images
+        # ! ---- STEP 1: Collect the support points (x) based on some images
 
-        # Initialize data collections
-        if reset:
-            self.characteristic_colors = []
-            self.concentrations = []
+        for sample, concentration in zip(samples, concentrations):
+            # Identify the label for the current sample. Pick the center of the sample and
+            # check the label at that point.
+            center_point = (
+                sample[0].start + (sample[0].stop - sample[0].start) // 2,
+                sample[1].start + (sample[1].stop - sample[1].start) // 2,
+            )
+            label_at_center = self.labels.img[center_point]
+            label_counter = np.unique(self.labels.img).tolist().index(label_at_center)
 
-        for i, mask in enumerate(darsia.Masks(self.labels)):
-
-            # hardcodes the location of the samples instead of asking the
-            # user to click on the image
-            samples = calib_points[i]["samples"]
-
-            concentrations = calib_points[i]["concentration"][counter]
-            # counter accounts for the number of the image getting processed
-
-            # Fetch characteristic colors from samples
-            # Apply concentration analysis modulo the model and the restoration
+            # Fetch characteristic colors from samples.
+            # Apply concentration analysis modulo the model and the restoration.
+            # TODO: Move this outside the loop for efficiency.
             pre_concentration = super().__call__(calibration_image)
 
             characteristic_colors = darsia.extract_characteristic_data(
                 signal=pre_concentration.img,
                 mask=mask.img if mask is not None else None,
-                samples=samples,
+                samples=[sample],
                 show_plot=self.show_plot,
                 num_clusters=num_clusters,
             )
 
-            # Use baseline image to collect 0-data
-            if self.relative:
-                # Define zero data
-                concentrations_base = len(samples) * [0]
+            concentrations = [concentration]
 
-                # Apply concentration analysis modulo the model and the restoration
-                pre_concentration_base = self(self.base)
+            self.characteristic_colors[label_counter] = np.vstack(
+                (self.characteristic_colors[label_counter], characteristic_colors)
+            )
+            self.concentrations[label_counter] = np.hstack(
+                (self.concentrations[label_counter], concentrations)
+            )
 
-                # Fetch characteristic colors from samples
-                characteristic_colors_base = darsia.extract_characteristic_data(
-                    signal=pre_concentration_base.img,
-                    mask=mask.img if mask is not None else None,
-                    samples=samples,
-                    show_plot=self.show_plot,
-                    num_clusters=num_clusters,
-                )
+        # ! ---- STEP 2: Reinstall the model and the restoration
 
-                # Collect data and add zero vector
-                characteristic_colors = np.vstack(
-                    (
-                        np.zeros((1, 3), dtype=characteristic_colors.dtype),
-                        characteristic_colors_base,
-                        characteristic_colors,
-                    )
-                )
-                concentrations = np.array([0] + concentrations_base + concentrations)
-
-            # Cache data or append if already existing
-            if len(self.characteristic_colors) > i:
-                self.characteristic_colors[i] = np.vstack(
-                    (characteristic_colors, self.characteristic_colors[i])
-                )
-                self.concentrations[i] = np.hstack(
-                    (concentrations, self.concentrations[i])
-                )
-            else:
-                self.characteristic_colors.append(characteristic_colors)
-                self.concentrations.append(concentrations)
-
-        # Reinstall the model and the restoration
         self.model = model_cache
         self.restoration = restoration_cache
 
-        # Update kernel interpolation
+        # ! ---- STEP 3: Update kernel interpolation
         self.calibrate(self.characteristic_colors, self.concentrations)
