@@ -51,6 +51,7 @@ class MenuBuilder:
             settings_menu,
             "Open &Full Config",
             self.main_window.display_full_settings,
+            "Ctrl+E",
         )
 
         help_menu = menu_bar.addMenu("&Help")
