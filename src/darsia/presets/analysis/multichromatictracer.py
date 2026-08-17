@@ -151,6 +151,21 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
         self.concentrations = data["concentrations"]
         self.calibrate(self.characteristic_colors, self.concentrations)
 
+    # ! ---- INFO ----
+
+    def __str__(self) -> str:
+        """String representation of the analysis object.
+
+        Returns:
+            str: string representation
+        """
+        info = []
+        for i, (_, label) in enumerate(darsia.Masks(self.labels, return_label=True)):
+            info.append(f"Label {label}:")
+            info.append(f"  Characteristic Colors: {self.characteristic_colors[i]}")
+            info.append(f"  Concentrations: {self.concentrations[i]}")
+        return "\n".join(info)
+
     # ! ---- CALIBRATION ----
 
     def calibrate(self, colors, concentrations) -> None:
