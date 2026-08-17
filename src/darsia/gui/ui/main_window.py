@@ -33,7 +33,8 @@ from .menu import MenuBuilder
 from .recent_files import add_recent_config, remove_recent_config
 from .settings import SettingsFactory
 from .setup import SetupTab
-from .theme import apply_theme, set_theme as save_theme
+from .theme import apply_theme
+from .theme import set_theme as save_theme
 from .toolbar import ToolbarBuilder
 from .utils_tab import UtilsTab
 
