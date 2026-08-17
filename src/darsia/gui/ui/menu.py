@@ -1,8 +1,9 @@
 from functools import partial
 
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 
 from .recent_files import clear_recent_configs, get_recent_configs
+from .theme import get_theme
 
 
 class MenuBuilder:
@@ -53,6 +54,21 @@ class MenuBuilder:
             self.main_window.display_full_settings,
             "Ctrl+E",
         )
+
+        view_menu = menu_bar.addMenu("&View")
+        theme_group = QActionGroup(self.main_window)
+        theme_group.setExclusive(True)
+
+        current_theme = get_theme()
+        for theme_name in ["System", "Light", "Dark"]:
+            action = self._add_action(
+                view_menu,
+                f"&{theme_name}",
+                partial(self.main_window.set_theme, theme_name),
+            )
+            action.setCheckable(True)
+            action.setChecked(theme_name == current_theme)
+            theme_group.addAction(action)
 
         help_menu = menu_bar.addMenu("&Help")
         self._add_action(help_menu, "&About", self.main_window.show_about_dialog)
