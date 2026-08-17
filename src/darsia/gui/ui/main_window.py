@@ -33,6 +33,7 @@ from .menu import MenuBuilder
 from .recent_files import add_recent_config, remove_recent_config
 from .settings import SettingsFactory
 from .setup import SetupTab
+from .theme import apply_theme, set_theme as save_theme
 from .toolbar import ToolbarBuilder
 from .utils_tab import UtilsTab
 
@@ -514,6 +515,20 @@ class MainWindow(QMainWindow):
         """Display all fixed-schema sections in the settings panel."""
         all_settings = self.settings_factory.get_all_settings()
         self._render_settings_tabs(all_settings)
+
+    def set_theme(self, mode: str):
+        """Set the application theme (System/Light/Dark).
+
+        Parameters
+        ----------
+        mode : str
+            One of "System", "Light", or "Dark".
+        """
+        from PySide6.QtWidgets import QApplication
+
+        apply_theme(QApplication.instance(), mode)
+        save_theme(mode)
+        self.print_log(f"Theme set to {mode}")
 
     def show_about_dialog(self):
         """Show the About dialog."""
