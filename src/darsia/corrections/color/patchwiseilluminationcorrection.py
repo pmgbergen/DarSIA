@@ -15,7 +15,7 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         self,
         image: str | darsia.Image | None = None,
         baseline_images: list[str] | list[darsia.Image] | None = None,
-        nw: int = 1000,
+        nw: int = 100,
         limit: int = 1450,
         eps: float = 1e-6,
         show_images: bool = True,
@@ -27,7 +27,7 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
             baseline_images (list[str] | list[darsia.Image]): List of baseline images for
                 correction.
             nw (int): Number of patches in width direction for patchwise illumination
-                correction. Default is 1000.
+                correction. Default is 100.
             limit (int): Limit in pixels to exclude from top of image for patch sampling.
                 Default is 1450.
             eps (float): Small constant to avoid division by zero in patchwise illumination
@@ -47,6 +47,7 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
 
         if isinstance(image, str):
             self.img = cv2.imread(image)
+            self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
             if self.img is None:
                 raise ValueError(f"Image not found : {image}")
         else:
@@ -56,6 +57,7 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         for baseline in baseline_images:
             if isinstance(baseline, str):
                 baseline = cv2.imread(baseline)
+                baseline = cv2.cvtColor(baseline, cv2.COLOR_BGR2RGB)
                 if baseline is None:
                     raise ValueError(f"Image not found : {baseline}")
             else:
@@ -74,7 +76,7 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
 
         for i in range(n_baseline_images):
             ri, gi, bi = self.extract_color_values_patches(
-                self.baseline_images[i], full=False
+                self.baseline_images[i]
             )
             r.append(ri)
             g.append(gi)
@@ -97,31 +99,25 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         image_calibrated = self.correct_array(self.img)
 
         if show_images:
+            image_calibrated = cv2.cvtColor(image_calibrated, cv2.COLOR_RGB2BGR)
             cv2.imshow("calibrated image", image_calibrated)
             cv2.waitKey(0)
             cv2.destroyAllWindows()
-            cv2.imwrite("calibrated image.png", image_calibrated)
 
     def extract_color_values_patches(
-        self, image: np.ndarray, full: bool
+        self, image: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Extract RGB values from image patches.
 
         Args:
             image (np.ndarray): Input image.
-            full (bool): Flag to determine whether to extract full image or only the
-                region below the limit.
 
         Returns:
             Tuple containing R, G, B matrices.
         """
-        if full:
-            nh = self.nh + int(self.limit / self.dh)
-            limit = 0
-        else:
-            nh = self.nh
-            limit = self.limit
+        nh = self.nh
+        limit = self.limit
 
         r = np.zeros((nh, self.nw), dtype=np.float32)
         g = np.zeros((nh, self.nw), dtype=np.float32)
@@ -138,10 +134,11 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
                 roi = image[y0:y1, x0:x1]
 
                 mean_color = cv2.mean(roi)
-
-                r[i, j] = int(mean_color[2])
-                g[i, j] = int(mean_color[1])
-                b[i, j] = int(mean_color[0])
+                
+                # TODO: Consider what if colors are in int.
+                r[i, j] = mean_color[0]
+                g[i, j] = mean_color[1]
+                b[i, j] = mean_color[2]
 
         return np.array(r), np.array(g), np.array(b)
 
@@ -189,7 +186,12 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         for col in range(self.nw):
             avg_top = np.mean(corr[:lim, col])
             new_corr[:, col] = avg_top
-        return np.vstack((new_corr, corr))
+        full_corr = np.vstack((new_corr, corr))
+        extended_corr = cv2.resize(full_corr.astype(np.float32), 
+        (self.width, self.height),
+        interpolation=cv2.INTER_LINEAR,
+        )
+        return extended_corr
 
     def correct_array(self, img: np.ndarray) -> np.ndarray:
         """Apply patchwise illumination correction to the input image.
@@ -207,20 +209,19 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
                 "images to compute correction coefficients."
             )
 
-        r, g, b = self.extract_color_values_patches(img, full=True)
+        r = img[:, :, 0]
+        g = img[:, :, 1]
+        b = img[:, :, 2]
 
         r_new = r / self.r_diff
         g_new = g / self.g_diff
         b_new = b / self.b_diff
 
         image_calib = cv2.merge(
-            (b_new.astype(np.uint8), g_new.astype(np.uint8), r_new.astype(np.uint8))
-        )
-        img_rebuilt = cv2.resize(
-            image_calib, (self.width, self.height), interpolation=cv2.INTER_LINEAR
+            (r_new, g_new, b_new)
         )
 
-        return img_rebuilt
+        return image_calib
 
     def save(self, path: Path) -> None:
         """Save correction coefficients to a file.
@@ -236,6 +237,15 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
                 "r_diff": self.r_diff,
                 "g_diff": self.g_diff,
                 "b_diff": self.b_diff,
+                "nh": self.nh,
+                "nw": self.nw,
+                "limit": self.limit,
+                "eps": self.eps,
+                "dh": self.dh,
+                "dw": self.dw,
+                "height": self.height,
+                "width": self.width,
+
             },
         )
         print(f"Correction coefficients saved to {path}")
@@ -256,4 +266,12 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         self.r_diff = data["r_diff"]
         self.g_diff = data["g_diff"]
         self.b_diff = data["b_diff"]
+        self.nh = data["nh"]
+        self.nw = data["nw"]
+        self.limit = data["limit"]
+        self.eps = data["eps"]
+        self.dh = data["dh"]
+        self.dw = data["dw"]
+        self.height = data["height"]
+        self.width = data["width"]
         print(f"Correction coefficients loaded from {path}")
