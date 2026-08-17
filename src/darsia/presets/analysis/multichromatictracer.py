@@ -224,8 +224,13 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
 
         # Initialize data collections
         if reset:
-            self.characteristic_colors = []
-            self.concentrations = []
+            self.characteristic_colors = {
+                counter: np.zeros((1, 3))
+                for counter, _ in enumerate(np.unique(self.labels.img))
+            }
+            self.concentrations = {
+                counter: [0] for counter, _ in enumerate(np.unique(self.labels.img))
+            }
 
         for i, mask in enumerate(darsia.Masks(self.labels)):
             # Define characteristic points and corresponding data values
@@ -281,17 +286,11 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
                 )
                 concentrations = np.array([0] + concentrations_base + concentrations)
 
-            # Cache data or append if already existing
-            if len(self.characteristic_colors) > i:
-                self.characteristic_colors[i] = np.vstack(
-                    (characteristic_colors, self.characteristic_colors[i])
-                )
-                self.concentrations[i] = np.hstack(
-                    (concentrations, self.concentrations[i])
-                )
-            else:
-                self.characteristic_colors.append(characteristic_colors)
-                self.concentrations.append(concentrations)
+            # Store data by label
+            self.characteristic_colors[i] = np.vstack(
+                (self.characteristic_colors[i], characteristic_colors)
+            )
+            self.concentrations[i] = np.hstack((self.concentrations[i], concentrations))
 
         # Reinstall the model and the restoration
         self.model = model_cache
