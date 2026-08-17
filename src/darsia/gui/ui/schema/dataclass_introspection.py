@@ -10,6 +10,7 @@ from darsia.presets.workflows.config.calibration import CalibrationConfig
 from darsia.presets.workflows.config.corrections import CorrectionsConfig
 from darsia.presets.workflows.config.data import DataConfig
 from darsia.presets.workflows.config.depth import DepthConfig
+from darsia.presets.workflows.config.download import DownloadConfig
 from darsia.presets.workflows.config.facies import FaciesConfig
 from darsia.presets.workflows.config.helper import HelperConfig
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
@@ -17,6 +18,8 @@ from darsia.presets.workflows.config.labeling import LabelingConfig
 from darsia.presets.workflows.config.protocols import ProtocolsConfig
 from darsia.presets.workflows.config.restoration import RestorationConfig
 from darsia.presets.workflows.config.rig import RigConfig
+from darsia.presets.workflows.config.video import VideoConfig
+from darsia.presets.workflows.config.workflow_utils import WorkflowUtilsConfig
 
 # Mapping from section name to its config dataclass
 SECTION_TO_DATACLASS = {
@@ -25,6 +28,7 @@ SECTION_TO_DATACLASS = {
     "corrections": CorrectionsConfig,
     "data": DataConfig,
     "depth": DepthConfig,
+    "download": DownloadConfig,
     "facies": FaciesConfig,
     "helper": HelperConfig,
     "image_porosity": ImagePorosityConfig,
@@ -32,7 +36,29 @@ SECTION_TO_DATACLASS = {
     "protocols": ProtocolsConfig,
     "restoration": RestorationConfig,
     "rig": RigConfig,
+    "video": VideoConfig,
+    "workflow_utils": WorkflowUtilsConfig,
 }
+
+# Ordered list of all fixed-schema sections for full-config view.
+# Mirrors FluidFlowerConfig.__init__'s load order to maintain dependencies.
+ALL_SECTIONS = [
+    "data",
+    "rig",
+    "corrections",
+    "restoration",
+    "labeling",
+    "facies",
+    "depth",
+    "image_porosity",
+    "protocols",
+    "calibration",
+    "analysis",
+    "helper",
+    "download",
+    "workflow_utils",
+    "video",
+]
 
 
 def _unwrap_optional(field_type: Any) -> Any:
