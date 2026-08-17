@@ -56,13 +56,14 @@ class MenuBuilder:
         )
 
         view_menu = menu_bar.addMenu("&View")
+        theme_menu = view_menu.addMenu("Switch &Theme")
         theme_group = QActionGroup(self.main_window)
         theme_group.setExclusive(True)
 
         current_theme = get_theme()
         for theme_name in ["System", "Light", "Dark"]:
             action = self._add_action(
-                view_menu,
+                theme_menu,
                 f"&{theme_name}",
                 partial(self.main_window.set_theme, theme_name),
             )
