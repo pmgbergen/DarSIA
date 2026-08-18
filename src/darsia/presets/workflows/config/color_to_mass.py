@@ -30,7 +30,7 @@ class ColorToMassConfig:
     """Calibration mode (e.g., 'manual', 'automatic')."""
     fluid: str | None = "co2"
     """Fluid type for mass analysis (e.g., 'tracer', 'co2')."""
-    data: TimeData | None = None
+    data: TimeData | None = field(default=None, metadata={"hidden": True})
     """Calibration data configuration."""
     calibration_folder: Path = field(default_factory=Path)
     """Path to the calibration folder."""
