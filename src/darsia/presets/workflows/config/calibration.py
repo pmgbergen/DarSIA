@@ -152,10 +152,15 @@ class CalibrationConfig:
         # Resolve the data_selection against the registry
         try:
             self.data = (
-                data_registry.resolve(self.data_selection) if data_registry and self.data_selection else None
+                data_registry.resolve(self.data_selection)
+                if data_registry and self.data_selection
+                else None
             )
         except KeyError:
-            warn("No data found for calibration. Use [calibration].data_selection with a registry entry name.")
+            warn(
+                "No data found for calibration. Use [calibration].data_selection with a "
+                "registry entry name."
+            )
             self.data = None
 
         return self

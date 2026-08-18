@@ -5,7 +5,6 @@ from pathlib import Path
 from warnings import warn
 
 from .analysis import AnalysisConfig
-from .utils import _get_section_from_toml
 from .calibration import CalibrationConfig
 from .color_embedding_registry import ColorEmbeddingRegistry
 from .corrections import CorrectionsConfig
@@ -24,6 +23,7 @@ from .rig import RigConfig
 from .roi_registry import RoiRegistry
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
+from .utils import _get_section_from_toml
 from .video import VideoConfig
 from .workflow_utils import WorkflowUtilsConfig
 
