@@ -5,7 +5,6 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .data_registry import DataRegistry
 from .utils import _get_key, _get_section_from_toml
 
 logger = logging.getLogger(__name__)
@@ -97,12 +96,6 @@ class DataConfig:
         },
     )
     """Whether to use the cache folder for reading/writing cached images."""
-    registry: DataRegistry | None = field(
-        default=None,
-        metadata={"hidden": True},
-    )
-    """Optional global data registry loaded from [data.interval.*], [data.time.*],
-    and [data.path.*] sub-sections."""
 
     @property
     def folder(self) -> Path:
@@ -226,23 +219,6 @@ class DataConfig:
                 ) from e
         else:
             self.cache = None
-
-        # Attempt to load global DataRegistry from [data.interval.*], [data.time.*],
-        # and [data.path.*] sub-sections. This is optional; if none are present the
-        # registry is set to None.
-        has_registry_sections = any(key in sec for key in ("interval", "time", "path"))
-        if has_registry_sections:
-            try:
-                self.registry = DataRegistry().load(sec, self.folders)
-            except Exception as e:
-                logger.warning(f"Failed to load DataRegistry: {e}")
-                raise ValueError(
-                    "Failed to load DataRegistry from [data] section. "
-                    "Ensure that any 'interval', 'time', and 'path' sub-sections are "
-                    "correctly formatted."
-                ) from e
-        else:
-            self.registry = None
 
         return self
 
