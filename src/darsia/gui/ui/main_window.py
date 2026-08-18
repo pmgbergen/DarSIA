@@ -135,6 +135,7 @@ class MainWindow(QMainWindow):
         self.config_file = ""
         self.config_dict = {}
         self.settings_inputs = {}  # Store setting input widgets
+        self._last_settings_view = None  # Track the last displayed settings view for refresh after save
 
         # Create logging container with its own scroll area
         log_container = QWidget()
@@ -445,6 +446,30 @@ class MainWindow(QMainWindow):
             with open(self.config_file, "w") as f:
                 toml.dump(self.config_dict, f)
             self.print_log(f"Settings saved to {self.config_file}")
+
+            # Refresh the currently-displayed settings panel if one is open, so
+            # newly added registry entries immediately appear in dropdowns etc.
+            if self._last_settings_view:
+                # Capture the currently active tab index
+                current_tab_index = None
+                if self.settings_layout.count() > 0:
+                    widget = self.settings_layout.itemAt(0).widget()
+                    if isinstance(widget, QTabWidget):
+                        current_tab_index = widget.currentIndex()
+
+                # Replay the last view to refresh
+                if self._last_settings_view[0] == "full":
+                    self.display_full_settings()
+                elif self._last_settings_view[0] == "action":
+                    _, action, checked_ids = self._last_settings_view
+                    self.display_settings(action, checked_ids)
+
+                # Restore the tab index if possible
+                if current_tab_index is not None:
+                    widget = self.settings_layout.itemAt(0).widget()
+                    if isinstance(widget, QTabWidget):
+                        if 0 <= current_tab_index < widget.count():
+                            widget.setCurrentIndex(current_tab_index)
         else:
             self.print_log("Settings not saved, please choose a config file")
 
@@ -621,6 +646,7 @@ class MainWindow(QMainWindow):
 
     def display_settings(self, action, checked_ids):
         """Display the relevant settings based on the action being used."""
+        self._last_settings_view = ("action", action, checked_ids)
         relevant_settings = self.settings_factory.get_relevant_settings(
             action, checked_ids
         )
@@ -628,6 +654,7 @@ class MainWindow(QMainWindow):
 
     def display_full_settings(self):
         """Display all fixed-schema sections in the settings panel."""
+        self._last_settings_view = ("full",)
         all_settings = self.settings_factory.get_all_settings()
         self._render_settings_tabs(all_settings)
 
