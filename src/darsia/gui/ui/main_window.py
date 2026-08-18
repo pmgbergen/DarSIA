@@ -222,11 +222,16 @@ class MainWindow(QMainWindow):
             # Skip group dicts with checkboxes (already handled above)
             if isinstance(value, dict) and "checkbox" in value:
                 continue
-            # Skip path_map, int_group_list, and int_list_map dicts (handled below)
+            # Skip path_map, int_group_list, int_list_map, time_interval_map, time_window_map, time_data_map, path_data_map, registry_key_list dicts (handled below)
             if isinstance(value, dict) and (
                 "path_map" in value
                 or "int_group_list" in value
                 or "int_list_map" in value
+                or "time_interval_map" in value
+                or "time_window_map" in value
+                or "time_data_map" in value
+                or "path_data_map" in value
+                or "registry_key_list" in value
             ):
                 continue
             # Skip sub-inputs of unchecked groups
@@ -327,7 +332,89 @@ class MainWindow(QMainWindow):
                 else:
                     self.settings_factory.set_value(self.config_dict, key, result)
 
-        # Sixth pass: write all active lists
+        # Sixth pass: parse time_interval_map rows into dict[str, {start/end/num/tol}]
+        for key, value in self.settings_inputs.items():
+            if isinstance(value, dict) and "time_interval_map" in value:
+                result = {}
+                for name_edit, start_edit, end_edit, num_edit, tol_edit in value["rows"]:
+                    name_text = name_edit.text().strip()
+                    if not name_text:
+                        continue
+                    result[name_text] = {
+                        "start": start_edit.text().strip() or "00:00:00",
+                        "end": end_edit.text().strip() or "00:00:00",
+                        "num": int(num_edit.text().strip()) if num_edit.text().strip().isdigit() else 0,
+                        "tol": tol_edit.text().strip() or "00:00:00",
+                    }
+                self.settings_factory.set_value(self.config_dict, key, result)
+
+        # Seventh pass: parse time_window_map rows into dict[str, {start/end}]
+        for key, value in self.settings_inputs.items():
+            if isinstance(value, dict) and "time_window_map" in value:
+                result = {}
+                for name_edit, start_edit, end_edit in value["rows"]:
+                    name_text = name_edit.text().strip()
+                    if not name_text:
+                        continue
+                    result[name_text] = {
+                        "start": start_edit.text().strip() or "00:00:00",
+                        "end": end_edit.text().strip() or "00:00:00",
+                    }
+                self.settings_factory.set_value(self.config_dict, key, result)
+
+        # Eighth pass: parse time_data_map rows into dict[str, {times}]
+        for key, value in self.settings_inputs.items():
+            if isinstance(value, dict) and "time_data_map" in value:
+                result = {}
+                for name_edit, times_edit in value["rows"]:
+                    name_text = name_edit.text().strip()
+                    if not name_text:
+                        continue
+                    times_text = times_edit.text().strip()
+                    if times_text:
+                        # Parse comma-separated times
+                        times_list = [t.strip() for t in times_text.split(",") if t.strip()]
+                        result[name_text] = {"times": times_list}
+                    else:
+                        result[name_text] = {"times": []}
+                self.settings_factory.set_value(self.config_dict, key, result)
+
+        # Ninth pass: parse path_data_map rows into dict[str, {paths}]
+        for key, value in self.settings_inputs.items():
+            if isinstance(value, dict) and "path_data_map" in value:
+                result = {}
+                for name_edit, paths_edit in value["rows"]:
+                    name_text = name_edit.text().strip()
+                    if not name_text:
+                        continue
+                    paths_text = paths_edit.text().strip()
+                    if paths_text:
+                        # Parse comma-separated paths
+                        paths_list = [p.strip() for p in paths_text.split(",") if p.strip()]
+                        result[name_text] = {"paths": paths_list}
+                    else:
+                        result[name_text] = {"paths": []}
+                self.settings_factory.set_value(self.config_dict, key, result)
+
+        # Tenth pass: parse registry_key_list rows into list[str]
+        for key, value in self.settings_inputs.items():
+            if isinstance(value, dict) and "registry_key_list" in value:
+                result = []
+                seen = set()
+                for combo in value["rows"]:
+                    text = combo.currentText().strip()
+                    if text and text not in seen:
+                        result.append(text)
+                        seen.add(text)
+                # Write as list[str] (empty list if no selections, never None)
+                if result:
+                    self.settings_factory.set_value(self.config_dict, key, result)
+                else:
+                    # Empty selection: delete the key (or set to empty list)
+                    # For now, set to empty list to match the field's Optional nature
+                    self.settings_factory.set_value(self.config_dict, key, None)
+
+        # Eleventh pass: write all active lists
         for active_list_key, names in group_active_names.items():
             self.settings_factory.set_value(
                 self.config_dict, active_list_key, sorted(names)
