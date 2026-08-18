@@ -29,6 +29,11 @@ class SettingsFactory:
         "path_map",
         "int_group_list",
         "int_list_map",
+        "time_interval_map",
+        "time_window_map",
+        "time_data_map",
+        "path_data_map",
+        "registry_key_list",
     }
 
     def __init__(self, main_window):
@@ -366,11 +371,662 @@ class SettingsFactory:
             return self.create_int_list_map_input(
                 setting_dict, form_context=form_context
             )
+        elif setting_type == "time_interval_map":
+            return self.create_time_interval_map_input(
+                setting_dict, form_context=form_context
+            )
+        elif setting_type == "time_window_map":
+            return self.create_time_window_map_input(
+                setting_dict, form_context=form_context
+            )
+        elif setting_type == "time_data_map":
+            return self.create_time_data_map_input(
+                setting_dict, form_context=form_context
+            )
+        elif setting_type == "path_data_map":
+            return self.create_path_data_map_input(
+                setting_dict, form_context=form_context
+            )
+        elif setting_type == "registry_key_list":
+            return self.create_registry_key_list_input(
+                setting_dict, form_context=form_context
+            )
         else:
             self.main_window.print_log(
                 f"Setting type {setting_type} not supported yet, using simple input"
             )
             return self.create_simple_input(setting_dict)
+
+    def create_time_interval_map_input(self, setting_dict, form_context=None):
+        """Create a hardcoded dict[str, TimeInterval] editor with name + start/end/num/tol per row.
+
+        Each row is: name (entry name) + start (HH:MM:SS) + end (HH:MM:SS) +
+        num (image count) + tol (tolerance HH:MM:SS) + Remove button.
+
+        Returns (display_name, enriched_dict) where enriched_dict has "widget"
+        for form insertion and "rows" (list of 5-tuples of QLineEdits) for
+        save_settings to parse.
+        """
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+        values = self.get_value(self.main_window.config_dict, key)
+        if values is None:
+            values = {}
+
+        row_data_list = []  # Track (widget, remove_button, (name, start, end, num, tol))
+        row_edits = []  # List of 5-tuples: (name_edit, start_edit, end_edit, num_edit, tol_edit)
+
+        def refresh_remove_buttons():
+            show_remove = len(row_data_list) > 1
+            for row_data in row_data_list:
+                row_data["remove_button"].setVisible(show_remove)
+
+        add_button = QPushButton("Add interval")
+
+        if form_context:
+            form = form_context["form"]
+
+            # Build header widget
+            header_widget = QWidget()
+            header_layout = QHBoxLayout(header_widget)
+            header_layout.setContentsMargins(0, 0, 0, 0)
+            header_layout.setSpacing(4)
+            header_layout.addWidget(add_button, stretch=1)
+            header_layout.addWidget(build_help_column(setting_dict))
+
+            # Add header row to form
+            form.addRow("", header_widget)
+
+            def add_row(entry_name="", entry_data=None):
+                """Add a row with name + start/end/num/tol fields."""
+                if entry_data is None:
+                    entry_data = {}
+
+                row_widget = QWidget()
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(4, 4, 4, 4)
+                row_layout.setSpacing(4)
+                row_widget.setMinimumHeight(28)
+
+                # Name field
+                name_edit = QLineEdit()
+                name_edit.setPlaceholderText("Entry name")
+                name_edit.setMaximumWidth(100)
+                if entry_name:
+                    name_edit.setText(str(entry_name))
+                row_layout.addWidget(name_edit, 0)
+
+                # Start field
+                start_edit = QLineEdit()
+                start_edit.setPlaceholderText("Start HH:MM:SS")
+                start_edit.setMaximumWidth(100)
+                if "start" in entry_data:
+                    start_edit.setText(str(entry_data["start"]))
+                row_layout.addWidget(start_edit, 0)
+
+                # End field
+                end_edit = QLineEdit()
+                end_edit.setPlaceholderText("End HH:MM:SS")
+                end_edit.setMaximumWidth(100)
+                if "end" in entry_data:
+                    end_edit.setText(str(entry_data["end"]))
+                row_layout.addWidget(end_edit, 0)
+
+                # Num field
+                num_edit = QLineEdit()
+                num_edit.setPlaceholderText("Num images")
+                num_edit.setMaximumWidth(80)
+                if "num" in entry_data:
+                    num_edit.setText(str(entry_data["num"]))
+                row_layout.addWidget(num_edit, 0)
+
+                # Tolerance field
+                tol_edit = QLineEdit()
+                tol_edit.setPlaceholderText("Tol HH:MM:SS")
+                tol_edit.setMaximumWidth(100)
+                if "tol" in entry_data:
+                    tol_edit.setText(str(entry_data["tol"]))
+                row_layout.addWidget(tol_edit, 0)
+
+                # Remove button
+                remove_button = QPushButton("Remove")
+                remove_button.setMaximumWidth(80)
+
+                def remove():
+                    row_idx, _ = form.getWidgetPosition(row_widget)
+                    form.removeRow(row_idx)
+                    if row_data in row_data_list:
+                        row_data_list.remove(row_data)
+                    if edits in row_edits:
+                        row_edits.remove(edits)
+                    refresh_remove_buttons()
+
+                remove_button.clicked.connect(remove)
+                row_layout.addWidget(remove_button, 0)
+
+                # Add row to form
+                header_idx, _ = form.getWidgetPosition(header_widget)
+                if row_data_list:
+                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
+                    insert_idx = last_idx + 1
+                else:
+                    insert_idx = header_idx + 1
+
+                form.insertRow(insert_idx, "", row_widget)
+
+                edits = (name_edit, start_edit, end_edit, num_edit, tol_edit)
+                row_data = {
+                    "widget": row_widget,
+                    "remove_button": remove_button,
+                }
+                row_data_list.append(row_data)
+                row_edits.append(edits)
+                refresh_remove_buttons()
+
+            # Connect add button
+            add_button.clicked.connect(lambda: add_row())
+
+            # Prefill existing rows
+            for entry_name, entry_data in (values or {}).items():
+                add_row(entry_name, entry_data if isinstance(entry_data, dict) else {})
+
+            # Return enriched dict
+            return display_name, {
+                "widget": header_widget,
+                "time_interval_map": True,
+                "rows": row_edits,
+            }
+
+        else:
+            # Fallback (should not be reached in current app)
+            return display_name, {"time_interval_map": True, "rows": []}
+
+    def create_time_window_map_input(self, setting_dict, form_context=None):
+        """Create a hardcoded dict[str, TimeWindow] editor with name + start/end per row.
+
+        Each row is: name (entry name) + start (HH:MM:SS) + end (HH:MM:SS) + Remove button.
+
+        Returns (display_name, enriched_dict) with "widget" and "rows" (list of
+        3-tuples of QLineEdits: (name_edit, start_edit, end_edit)).
+        """
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+        values = self.get_value(self.main_window.config_dict, key)
+        if values is None:
+            values = {}
+
+        row_data_list = []
+        row_edits = []  # List of 3-tuples: (name_edit, start_edit, end_edit)
+
+        def refresh_remove_buttons():
+            show_remove = len(row_data_list) > 1
+            for row_data in row_data_list:
+                row_data["remove_button"].setVisible(show_remove)
+
+        add_button = QPushButton("Add window")
+
+        if form_context:
+            form = form_context["form"]
+
+            # Build header widget
+            header_widget = QWidget()
+            header_layout = QHBoxLayout(header_widget)
+            header_layout.setContentsMargins(0, 0, 0, 0)
+            header_layout.setSpacing(4)
+            header_layout.addWidget(add_button, stretch=1)
+            header_layout.addWidget(build_help_column(setting_dict))
+            form.addRow("", header_widget)
+
+            def add_row(entry_name="", entry_data=None):
+                """Add a row with name + start/end fields."""
+                if entry_data is None:
+                    entry_data = {}
+
+                row_widget = QWidget()
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(4, 4, 4, 4)
+                row_layout.setSpacing(4)
+                row_widget.setMinimumHeight(28)
+
+                # Name field
+                name_edit = QLineEdit()
+                name_edit.setPlaceholderText("Entry name")
+                name_edit.setMaximumWidth(100)
+                if entry_name:
+                    name_edit.setText(str(entry_name))
+                row_layout.addWidget(name_edit, 0)
+
+                # Start field
+                start_edit = QLineEdit()
+                start_edit.setPlaceholderText("Start HH:MM:SS")
+                start_edit.setMaximumWidth(100)
+                if "start" in entry_data:
+                    start_edit.setText(str(entry_data["start"]))
+                row_layout.addWidget(start_edit, 0)
+
+                # End field
+                end_edit = QLineEdit()
+                end_edit.setPlaceholderText("End HH:MM:SS")
+                end_edit.setMaximumWidth(100)
+                if "end" in entry_data:
+                    end_edit.setText(str(entry_data["end"]))
+                row_layout.addWidget(end_edit, 0)
+
+                # Remove button
+                remove_button = QPushButton("Remove")
+                remove_button.setMaximumWidth(80)
+
+                def remove():
+                    row_idx, _ = form.getWidgetPosition(row_widget)
+                    form.removeRow(row_idx)
+                    if row_data in row_data_list:
+                        row_data_list.remove(row_data)
+                    if edits in row_edits:
+                        row_edits.remove(edits)
+                    refresh_remove_buttons()
+
+                remove_button.clicked.connect(remove)
+                row_layout.addWidget(remove_button, 0)
+
+                # Add row to form
+                header_idx, _ = form.getWidgetPosition(header_widget)
+                if row_data_list:
+                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
+                    insert_idx = last_idx + 1
+                else:
+                    insert_idx = header_idx + 1
+
+                form.insertRow(insert_idx, "", row_widget)
+
+                edits = (name_edit, start_edit, end_edit)
+                row_data = {
+                    "widget": row_widget,
+                    "remove_button": remove_button,
+                }
+                row_data_list.append(row_data)
+                row_edits.append(edits)
+                refresh_remove_buttons()
+
+            # Connect add button
+            add_button.clicked.connect(lambda: add_row())
+
+            # Prefill existing rows
+            for entry_name, entry_data in (values or {}).items():
+                add_row(entry_name, entry_data if isinstance(entry_data, dict) else {})
+
+            # Return enriched dict
+            return display_name, {
+                "widget": header_widget,
+                "time_window_map": True,
+                "rows": row_edits,
+            }
+
+        else:
+            return display_name, {"time_window_map": True, "rows": []}
+
+    def create_time_data_map_input(self, setting_dict, form_context=None):
+        """Create a hardcoded dict[str, ImageTimeData] editor with name + times per row.
+
+        Each row is: name (entry name) + times (comma-separated list) + Remove button.
+
+        Returns (display_name, enriched_dict) with "widget" and "rows" (list of
+        2-tuples of QLineEdits: (name_edit, times_edit)).
+        """
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+        values = self.get_value(self.main_window.config_dict, key)
+        if values is None:
+            values = {}
+
+        row_data_list = []
+        row_edits = []  # List of 2-tuples: (name_edit, times_edit)
+
+        def refresh_remove_buttons():
+            show_remove = len(row_data_list) > 1
+            for row_data in row_data_list:
+                row_data["remove_button"].setVisible(show_remove)
+
+        add_button = QPushButton("Add entry")
+
+        if form_context:
+            form = form_context["form"]
+
+            # Build header widget
+            header_widget = QWidget()
+            header_layout = QHBoxLayout(header_widget)
+            header_layout.setContentsMargins(0, 0, 0, 0)
+            header_layout.setSpacing(4)
+            header_layout.addWidget(add_button, stretch=1)
+            header_layout.addWidget(build_help_column(setting_dict))
+            form.addRow("", header_widget)
+
+            def add_row(entry_name="", entry_data=None):
+                """Add a row with name + times fields."""
+                if entry_data is None:
+                    entry_data = {}
+
+                row_widget = QWidget()
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(4, 4, 4, 4)
+                row_layout.setSpacing(4)
+                row_widget.setMinimumHeight(28)
+
+                # Name field
+                name_edit = QLineEdit()
+                name_edit.setPlaceholderText("Entry name")
+                name_edit.setMaximumWidth(100)
+                if entry_name:
+                    name_edit.setText(str(entry_name))
+                row_layout.addWidget(name_edit, 0)
+
+                # Times field (comma-separated)
+                times_edit = QLineEdit()
+                times_edit.setPlaceholderText("Times (comma-separated HH:MM:SS)")
+                times_edit.setMinimumWidth(300)
+                if "times" in entry_data:
+                    times_list = entry_data["times"]
+                    if isinstance(times_list, list):
+                        times_edit.setText(", ".join(str(t) for t in times_list))
+                    else:
+                        times_edit.setText(str(times_list))
+                row_layout.addWidget(times_edit, 1)
+
+                # Remove button
+                remove_button = QPushButton("Remove")
+                remove_button.setMaximumWidth(80)
+
+                def remove():
+                    row_idx, _ = form.getWidgetPosition(row_widget)
+                    form.removeRow(row_idx)
+                    if row_data in row_data_list:
+                        row_data_list.remove(row_data)
+                    if edits in row_edits:
+                        row_edits.remove(edits)
+                    refresh_remove_buttons()
+
+                remove_button.clicked.connect(remove)
+                row_layout.addWidget(remove_button, 0)
+
+                # Add row to form
+                header_idx, _ = form.getWidgetPosition(header_widget)
+                if row_data_list:
+                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
+                    insert_idx = last_idx + 1
+                else:
+                    insert_idx = header_idx + 1
+
+                form.insertRow(insert_idx, "", row_widget)
+
+                edits = (name_edit, times_edit)
+                row_data = {"widget": row_widget, "remove_button": remove_button}
+                row_data_list.append(row_data)
+                row_edits.append(edits)
+                refresh_remove_buttons()
+
+            # Connect add button
+            add_button.clicked.connect(lambda: add_row())
+
+            # Prefill existing rows
+            for entry_name, entry_data in (values or {}).items():
+                add_row(entry_name, entry_data if isinstance(entry_data, dict) else {})
+
+            # Return enriched dict
+            return display_name, {
+                "widget": header_widget,
+                "time_data_map": True,
+                "rows": row_edits,
+            }
+
+        else:
+            return display_name, {"time_data_map": True, "rows": []}
+
+    def create_path_data_map_input(self, setting_dict, form_context=None):
+        """Create a hardcoded dict[str, PathData] editor with name + paths per row.
+
+        Each row is: name (entry name) + paths (comma-separated list) + Remove button.
+
+        Returns (display_name, enriched_dict) with "widget" and "rows" (list of
+        2-tuples of QLineEdits: (name_edit, paths_edit)).
+        """
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+        values = self.get_value(self.main_window.config_dict, key)
+        if values is None:
+            values = {}
+
+        row_data_list = []
+        row_edits = []  # List of 2-tuples: (name_edit, paths_edit)
+
+        def refresh_remove_buttons():
+            show_remove = len(row_data_list) > 1
+            for row_data in row_data_list:
+                row_data["remove_button"].setVisible(show_remove)
+
+        add_button = QPushButton("Add entry")
+
+        if form_context:
+            form = form_context["form"]
+
+            # Build header widget
+            header_widget = QWidget()
+            header_layout = QHBoxLayout(header_widget)
+            header_layout.setContentsMargins(0, 0, 0, 0)
+            header_layout.setSpacing(4)
+            header_layout.addWidget(add_button, stretch=1)
+            header_layout.addWidget(build_help_column(setting_dict))
+            form.addRow("", header_widget)
+
+            def add_row(entry_name="", entry_data=None):
+                """Add a row with name + paths fields."""
+                if entry_data is None:
+                    entry_data = {}
+
+                row_widget = QWidget()
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(4, 4, 4, 4)
+                row_layout.setSpacing(4)
+                row_widget.setMinimumHeight(28)
+
+                # Name field
+                name_edit = QLineEdit()
+                name_edit.setPlaceholderText("Entry name")
+                name_edit.setMaximumWidth(100)
+                if entry_name:
+                    name_edit.setText(str(entry_name))
+                row_layout.addWidget(name_edit, 0)
+
+                # Paths field (comma-separated)
+                paths_edit = QLineEdit()
+                paths_edit.setPlaceholderText("Paths (comma-separated, supports glob *)")
+                paths_edit.setMinimumWidth(300)
+                if "paths" in entry_data:
+                    paths_list = entry_data["paths"]
+                    if isinstance(paths_list, list):
+                        paths_edit.setText(", ".join(str(p) for p in paths_list))
+                    else:
+                        paths_edit.setText(str(paths_list))
+                row_layout.addWidget(paths_edit, 1)
+
+                # Remove button
+                remove_button = QPushButton("Remove")
+                remove_button.setMaximumWidth(80)
+
+                def remove():
+                    row_idx, _ = form.getWidgetPosition(row_widget)
+                    form.removeRow(row_idx)
+                    if row_data in row_data_list:
+                        row_data_list.remove(row_data)
+                    if edits in row_edits:
+                        row_edits.remove(edits)
+                    refresh_remove_buttons()
+
+                remove_button.clicked.connect(remove)
+                row_layout.addWidget(remove_button, 0)
+
+                # Add row to form
+                header_idx, _ = form.getWidgetPosition(header_widget)
+                if row_data_list:
+                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
+                    insert_idx = last_idx + 1
+                else:
+                    insert_idx = header_idx + 1
+
+                form.insertRow(insert_idx, "", row_widget)
+
+                edits = (name_edit, paths_edit)
+                row_data = {"widget": row_widget, "remove_button": remove_button}
+                row_data_list.append(row_data)
+                row_edits.append(edits)
+                refresh_remove_buttons()
+
+            # Connect add button
+            add_button.clicked.connect(lambda: add_row())
+
+            # Prefill existing rows
+            for entry_name, entry_data in (values or {}).items():
+                add_row(entry_name, entry_data if isinstance(entry_data, dict) else {})
+
+            # Return enriched dict
+            return display_name, {
+                "widget": header_widget,
+                "path_data_map": True,
+                "rows": row_edits,
+            }
+
+        else:
+            return display_name, {"path_data_map": True, "rows": []}
+
+    def create_registry_key_list_input(self, setting_dict, form_context=None):
+        """Create a multi-row registry-key selector with dropdowns.
+
+        Each row is a QComboBox (non-editable) populated with available registry keys.
+        On save, the union of all selected keys becomes data_selection as a list[str].
+
+        Returns (display_name, enriched_dict) with "widget" and "rows" (list of
+        QComboBox widgets).
+        """
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+
+        # Gather available registry keys
+        registry = self.main_window.config_dict.get("registry", {})
+        available_keys = sorted(
+            set(registry.get("interval_registry", {}))
+            | set(registry.get("window_registry", {}))
+            | set(registry.get("time_registry", {}))
+            | set(registry.get("path_registry", {}))
+        )
+
+        # Get current value and normalize to list
+        value = self.get_value(self.main_window.config_dict, key)
+        if value is None:
+            current_keys = []
+        elif isinstance(value, str):
+            current_keys = [value]
+        elif isinstance(value, list):
+            current_keys = value
+        else:
+            current_keys = []
+
+        row_data_list = []  # Track (widget, combo, remove_button)
+        row_combos = []  # List of QComboBox widgets for save_settings
+
+        def refresh_remove_buttons():
+            show_remove = len(row_data_list) > 1
+            for row_data in row_data_list:
+                row_data["remove_button"].setVisible(show_remove)
+
+        add_button = QPushButton("Add key")
+
+        if form_context:
+            form = form_context["form"]
+
+            # Build header widget
+            header_widget = QWidget()
+            header_layout = QHBoxLayout(header_widget)
+            header_layout.setContentsMargins(0, 0, 0, 0)
+            header_layout.setSpacing(4)
+            header_layout.addWidget(add_button, stretch=1)
+            header_layout.addWidget(build_help_column(setting_dict))
+            form.addRow("", header_widget)
+
+            def add_row(selected_key=""):
+                """Add a row with a registry-key dropdown."""
+                row_widget = QWidget()
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(4, 4, 4, 4)
+                row_layout.setSpacing(4)
+                row_widget.setMinimumHeight(28)
+
+                # Dropdown with available keys + any stale current selection
+                combo = QComboBox()
+                combo.setEditable(False)
+                all_options = list(available_keys)
+                # Add selected_key if it's not already in the list (stale/deleted entry)
+                if selected_key and selected_key not in all_options:
+                    all_options.append(selected_key)
+                    all_options.sort()
+                combo.addItems(all_options)
+                if selected_key:
+                    combo.setCurrentText(selected_key)
+                elif all_options:
+                    combo.setCurrentIndex(0)
+                row_layout.addWidget(combo, 1)
+
+                # Remove button
+                remove_button = QPushButton("Remove")
+                remove_button.setMaximumWidth(80)
+
+                def remove():
+                    row_idx, _ = form.getWidgetPosition(row_widget)
+                    form.removeRow(row_idx)
+                    if row_data in row_data_list:
+                        row_data_list.remove(row_data)
+                    if combo in row_combos:
+                        row_combos.remove(combo)
+                    refresh_remove_buttons()
+
+                remove_button.clicked.connect(remove)
+                row_layout.addWidget(remove_button, 0)
+
+                # Add row to form
+                header_idx, _ = form.getWidgetPosition(header_widget)
+                if row_data_list:
+                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
+                    insert_idx = last_idx + 1
+                else:
+                    insert_idx = header_idx + 1
+
+                form.insertRow(insert_idx, "", row_widget)
+
+                row_data = {
+                    "widget": row_widget,
+                    "remove_button": remove_button,
+                }
+                row_data_list.append(row_data)
+                row_combos.append(combo)
+                refresh_remove_buttons()
+
+            # Connect add button
+            add_button.clicked.connect(lambda: add_row())
+
+            # Prefill existing selections
+            if current_keys:
+                for key_name in current_keys:
+                    add_row(key_name)
+            else:
+                # Always at least one empty row
+                add_row()
+
+            # Return enriched dict
+            return display_name, {
+                "widget": header_widget,
+                "registry_key_list": True,
+                "rows": row_combos,
+            }
+
+        else:
+            return display_name, {"registry_key_list": True, "rows": []}
 
     def create_simple_input(self, setting_dict):
         """Create a line edit input for numeric or string values.
