@@ -54,7 +54,7 @@ class CalibrationMassConfig:
     color: "ColorEmbedding | None" = None
     mode: str = "manual"
     fluid: str | None = "co2"
-    data: TimeData | None = None
+    data: TimeData | None = field(default=None, metadata={"hidden": True})
     threshold: float = 0.2
     rois: list[str] = field(default_factory=list)
 
@@ -104,9 +104,12 @@ class CalibrationMassConfig:
 class CalibrationConfig:
     """Root calibration config container."""
 
+    data_selection: str | list[str] | None = None
+    """Name(s) of data registry entries to use for calibration."""
     color: CalibrationColorConfig | None = None
     mass: CalibrationMassConfig | None = None
-    data: TimeData | None = None
+    data: TimeData | None = field(default=None, metadata={"hidden": True})
+    """Resolved calibration data (derived from data_selection via registry lookup)."""
 
     def load(
         self,
@@ -138,12 +141,21 @@ class CalibrationConfig:
         except KeyError:
             self.mass = None
 
+        # Load data selection (registry reference)
+        self.data_selection = _get_key(
+            sec, "data_selection", required=False, default=None
+        )
+        # Fallback to deprecated 'data' key for backward compat
+        if self.data_selection is None:
+            self.data_selection = _get_key(sec, "data", required=False, default=None)
+
+        # Resolve the data_selection against the registry
         try:
             self.data = (
-                data_registry.resolve(sec.get("data")) if data_registry else None
+                data_registry.resolve(self.data_selection) if data_registry and self.data_selection else None
             )
         except KeyError:
-            warn("No data found for calibration. Use [calibration].data.")
+            warn("No data found for calibration. Use [calibration].data_selection with a registry entry name.")
             self.data = None
 
         return self
