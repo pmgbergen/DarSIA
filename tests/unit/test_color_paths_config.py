@@ -41,7 +41,7 @@ def _make_data_registry(tmp_path: Path) -> DataRegistry:
     dummy = tmp_path / "dummy.jpg"
     dummy.touch()
     sec = {
-        "path": {
+        "path_registry": {
             "baseline_imgs": {"paths": ["dummy.jpg"]},
             "cal_imgs": {"paths": ["dummy.jpg"]},
         }

@@ -13,7 +13,7 @@ from darsia.presets.workflows.config.time_data import TimeData
 def _make_registry_sec():
     """Return a sample [data] section dict with all three sub-registries."""
     return {
-        "interval": {
+        "interval_registry": {
             "calibration1": {
                 "start": "01:00:00",
                 "end": "23:00:00",
@@ -33,7 +33,7 @@ def _make_registry_sec():
                 "tol": "00:01:00",
             },
         },
-        "time": {
+        "time_registry": {
             "manual_snap": {
                 "times": ["00:30:00", "01:00:00"],
                 "tol": "00:05:00",
@@ -75,7 +75,7 @@ class TestDataRegistryLoad:
         # Create dummy files so validation doesn't warn
         dummy = tmp_path / "img.jpg"
         dummy.touch()
-        sec = {"path": {"imgs": {"paths": ["img.jpg"]}}}
+        sec = {"path_registry": {"imgs": {"paths": ["img.jpg"]}}}
         reg = DataRegistry().load(sec, data_folder=tmp_path)
         td = reg.resolve("imgs")
         assert len(td.image_paths) == 1
@@ -85,8 +85,8 @@ class TestDataRegistryLoad:
 class TestDataRegistryDuplicateCheck:
     def test_duplicate_interval_and_time(self):
         sec = {
-            "interval": {"dup": {"start": "01:00:00", "end": "02:00:00", "num": 2}},
-            "time": {"dup": {"times": ["01:30:00"], "tol": "00:05:00"}},
+            "interval_registry": {"dup": {"start": "01:00:00", "end": "02:00:00", "num": 2}},
+            "time_registry": {"dup": {"times": ["01:30:00"], "tol": "00:05:00"}},
         }
         with pytest.raises(ValueError, match="duplicate"):
             DataRegistry().load(sec)
@@ -94,8 +94,8 @@ class TestDataRegistryDuplicateCheck:
     def test_duplicate_interval_and_path(self, tmp_path):
         (tmp_path / "x.jpg").touch()
         sec = {
-            "interval": {"dup": {"start": "01:00:00", "end": "02:00:00", "num": 2}},
-            "path": {"dup": {"paths": ["x.jpg"]}},
+            "interval_registry": {"dup": {"start": "01:00:00", "end": "02:00:00", "num": 2}},
+            "path_registry": {"dup": {"paths": ["x.jpg"]}},
         }
         with pytest.raises(ValueError, match="duplicate"):
             DataRegistry().load(sec, data_folder=tmp_path)
@@ -103,16 +103,16 @@ class TestDataRegistryDuplicateCheck:
     def test_duplicate_time_and_path(self, tmp_path):
         (tmp_path / "x.jpg").touch()
         sec = {
-            "time": {"dup": {"times": ["01:00:00"], "tol": "00:05:00"}},
-            "path": {"dup": {"paths": ["x.jpg"]}},
+            "time_registry": {"dup": {"times": ["01:00:00"], "tol": "00:05:00"}},
+            "path_registry": {"dup": {"paths": ["x.jpg"]}},
         }
         with pytest.raises(ValueError, match="duplicate"):
             DataRegistry().load(sec, data_folder=tmp_path)
 
     def test_no_duplicate_distinct_keys(self):
         sec = {
-            "interval": {"cal": {"start": "01:00:00", "end": "02:00:00", "num": 2}},
-            "time": {"snap": {"times": ["01:30:00"], "tol": "00:05:00"}},
+            "interval_registry": {"cal": {"start": "01:00:00", "end": "02:00:00", "num": 2}},
+            "time_registry": {"snap": {"times": ["01:30:00"], "tol": "00:05:00"}},
         }
         reg = DataRegistry().load(sec)  # must not raise
         assert set(reg.keys()) == {"cal", "snap"}

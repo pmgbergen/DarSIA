@@ -329,7 +329,7 @@ data = "analysis_set"
     )
     data_registry = DataRegistry().load(
         {
-            "time": {
+            "time_registry": {
                 "analysis_set": {
                     "times": ["01:00:00", "02:00:00"],
                     "tol": "00:05:00",
