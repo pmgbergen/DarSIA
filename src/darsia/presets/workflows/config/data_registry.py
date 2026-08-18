@@ -160,9 +160,7 @@ class DataRegistry:
                 # Store the raw window object
                 if window_data.windows:
                     # Get the single window value from the dict
-                    self.window_registry[key] = next(
-                        iter(window_data.windows.values())
-                    )
+                    self.window_registry[key] = next(iter(window_data.windows.values()))
 
         # --- time sub-registry ---
         time_sec = sec.get("time_registry", {})

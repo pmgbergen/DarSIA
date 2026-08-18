@@ -398,7 +398,8 @@ class SettingsFactory:
             return self.create_simple_input(setting_dict)
 
     def create_time_interval_map_input(self, setting_dict, form_context=None):
-        """Create a hardcoded dict[str, TimeInterval] editor with name + start/end/num/tol per row.
+        """Create a hardcoded dict[str, TimeInterval] editor with name + start/end/num/tol
+        per row.
 
         Each row is: name (entry name) + start (HH:MM:SS) + end (HH:MM:SS) +
         num (image count) + tol (tolerance HH:MM:SS) + Remove button.
@@ -413,8 +414,11 @@ class SettingsFactory:
         if values is None:
             values = {}
 
-        row_data_list = []  # Track (widget, remove_button, (name, start, end, num, tol))
-        row_edits = []  # List of 5-tuples: (name_edit, start_edit, end_edit, num_edit, tol_edit)
+        row_data_list = (
+            []
+        )  # Track (widget, remove_button, (name, start, end, num, tol))
+        # List of 5-tuples: (name_edit, start_edit, end_edit, num_edit, tol_edit)
+        row_edits = []
 
         def refresh_remove_buttons():
             show_remove = len(row_data_list) > 1
@@ -837,7 +841,9 @@ class SettingsFactory:
 
                 # Paths field (comma-separated)
                 paths_edit = QLineEdit()
-                paths_edit.setPlaceholderText("Paths (comma-separated, supports glob *)")
+                paths_edit.setPlaceholderText(
+                    "Paths (comma-separated, supports glob *)"
+                )
                 paths_edit.setMinimumWidth(300)
                 if "paths" in entry_data:
                     paths_list = entry_data["paths"]

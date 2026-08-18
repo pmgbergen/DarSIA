@@ -222,7 +222,8 @@ class MainWindow(QMainWindow):
             # Skip group dicts with checkboxes (already handled above)
             if isinstance(value, dict) and "checkbox" in value:
                 continue
-            # Skip path_map, int_group_list, int_list_map, time_interval_map, time_window_map, time_data_map, path_data_map, registry_key_list dicts (handled below)
+            # Skip path_map, int_group_list, int_list_map, time_interval_map, time_window_map,
+            # time_data_map, path_data_map, registry_key_list dicts (handled below)
             if isinstance(value, dict) and (
                 "path_map" in value
                 or "int_group_list" in value
@@ -336,14 +337,20 @@ class MainWindow(QMainWindow):
         for key, value in self.settings_inputs.items():
             if isinstance(value, dict) and "time_interval_map" in value:
                 result = {}
-                for name_edit, start_edit, end_edit, num_edit, tol_edit in value["rows"]:
+                for name_edit, start_edit, end_edit, num_edit, tol_edit in value[
+                    "rows"
+                ]:
                     name_text = name_edit.text().strip()
                     if not name_text:
                         continue
                     result[name_text] = {
                         "start": start_edit.text().strip() or "00:00:00",
                         "end": end_edit.text().strip() or "00:00:00",
-                        "num": int(num_edit.text().strip()) if num_edit.text().strip().isdigit() else 0,
+                        "num": (
+                            int(num_edit.text().strip())
+                            if num_edit.text().strip().isdigit()
+                            else 0
+                        ),
                         "tol": tol_edit.text().strip() or "00:00:00",
                     }
                 self.settings_factory.set_value(self.config_dict, key, result)
@@ -373,7 +380,9 @@ class MainWindow(QMainWindow):
                     times_text = times_edit.text().strip()
                     if times_text:
                         # Parse comma-separated times
-                        times_list = [t.strip() for t in times_text.split(",") if t.strip()]
+                        times_list = [
+                            t.strip() for t in times_text.split(",") if t.strip()
+                        ]
                         result[name_text] = {"times": times_list}
                     else:
                         result[name_text] = {"times": []}
@@ -390,7 +399,9 @@ class MainWindow(QMainWindow):
                     paths_text = paths_edit.text().strip()
                     if paths_text:
                         # Parse comma-separated paths
-                        paths_list = [p.strip() for p in paths_text.split(",") if p.strip()]
+                        paths_list = [
+                            p.strip() for p in paths_text.split(",") if p.strip()
+                        ]
                         result[name_text] = {"paths": paths_list}
                     else:
                         result[name_text] = {"paths": []}

@@ -286,7 +286,7 @@ class AnalysisSegmentationConfig:
 
     def error(self):
         raise ValueError(
-            f"Use [analysis.segmentation] in the config file to load segmentation."
+            "Use [analysis.segmentation] in the config file to load segmentation."
         )
 
 
@@ -590,7 +590,7 @@ class AnalysisFingersConfig:
         return self
 
     def error(self):
-        raise ValueError(f"Use [analysis.fingers] in the config file to load fingers.")
+        raise ValueError("Use [analysis.fingers] in the config file to load fingers.")
 
 
 @dataclass
@@ -628,7 +628,7 @@ class AnalysisConfig:
             "widget": "registry_key_list",
         },
     )
-    """Name(s) of data registry entries to use for analysis (e.g., 'injection', ['calibration', 'analysis'])."""
+    """Name(s) of data registry entries to use for analysis."""
     data: TimeData | None = field(default=None, metadata={"hidden": True})
     """Resolved analysis data (derived from data_selection via registry lookup)."""
     random_traverse: bool = False
@@ -675,10 +675,15 @@ class AnalysisConfig:
         # Resolve the data_selection against the registry
         try:
             self.data = (
-                data_registry.resolve(self.data_selection) if data_registry and self.data_selection else None
+                data_registry.resolve(self.data_selection)
+                if data_registry and self.data_selection
+                else None
             )
         except KeyError:
-            warn("No analysis data found. Use [analysis].data_selection with a registry entry name.")
+            warn(
+                "No analysis data found. Use [analysis].data_selection with "
+                "a registry entry name."
+            )
             self.data = None
 
         self.random_traverse = _get_key(
