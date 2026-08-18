@@ -29,13 +29,14 @@ data = "sel"
     config = HelperConfig().load(
         config_path,
         data=tmp_path,
-        data_registry=data_registry,
     )
 
     assert config.roi is not None
     assert config.roi.mode == "none"
-    assert config.roi.data is not None
-    assert config.roi.data.image_times == pytest.approx([1.0])
+    assert config.roi.data_selection == "sel"
+    # Verify resolution works when called downstream
+    resolved = data_registry.resolve(config.roi.data_selection)
+    assert resolved.image_times == pytest.approx([1.0])
 
 
 def test_helper_roi_config_rejects_invalid_mode(tmp_path: Path) -> None:
@@ -47,15 +48,11 @@ mode = "invalid_mode"
 data = "sel"
 """.strip(),
     )
-    data_registry = DataRegistry().load(
-        {"time_registry": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
-    )
 
     with pytest.raises(ValueError, match=r"Unsupported helper\.roi\.mode"):
         HelperConfig().load(
             config_path,
             data=tmp_path,
-            data_registry=data_registry,
         )
 
 
@@ -101,12 +98,13 @@ data = "sel"
     config = HelperConfig().load(
         config_path,
         data=tmp_path,
-        data_registry=data_registry,
     )
 
     assert config.roi_viewer is not None
-    assert config.roi_viewer.data is not None
-    assert config.roi_viewer.data.image_times == pytest.approx([1.0])
+    assert config.roi_viewer.data_selection == "sel"
+    # Verify resolution works when called downstream
+    resolved = data_registry.resolve(config.roi_viewer.data_selection)
+    assert resolved.image_times == pytest.approx([1.0])
 
 
 def test_helper_roi_viewer_config_loads_with_data_selection(tmp_path: Path) -> None:
@@ -124,12 +122,13 @@ data_selection = "sel"
     config = HelperConfig().load(
         config_path,
         data=tmp_path,
-        data_registry=data_registry,
     )
 
     assert config.roi_viewer is not None
-    assert config.roi_viewer.data is not None
-    assert config.roi_viewer.data.image_times == pytest.approx([1.0])
+    assert config.roi_viewer.data_selection == "sel"
+    # Verify resolution works when called downstream
+    resolved = data_registry.resolve(config.roi_viewer.data_selection)
+    assert resolved.image_times == pytest.approx([1.0])
 
 
 def test_helper_results_config_loads_with_registry_validation(tmp_path: Path) -> None:
@@ -152,16 +151,12 @@ cmap = "matplotlib.viridis"
 roi = ["main"]
 """.strip(),
     )
-    data_registry = DataRegistry().load(
-        {"time_registry": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
-    )
     format_registry = FormatRegistry().load(config_path)
     roi_registry = RoiRegistry().load(config_path)
 
     config = HelperConfig().load(
         config_path,
         data=tmp_path,
-        data_registry=data_registry,
         format_registry=format_registry,
         roi_registry=roi_registry,
     )
@@ -186,16 +181,12 @@ mode = "rescaled_mass"
 format = "preview"
 """.strip(),
     )
-    data_registry = DataRegistry().load(
-        {"time_registry": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
-    )
     format_registry = FormatRegistry().load(config_path)
 
     with pytest.raises(ValueError, match="helper\\.results\\.format"):
         HelperConfig().load(
             config_path,
             data=tmp_path,
-            data_registry=data_registry,
             format_registry=format_registry,
             roi_registry=None,
         )
