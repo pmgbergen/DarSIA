@@ -10,7 +10,6 @@ from warnings import warn
 
 import darsia
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
-from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.sections import (
     list_required_sections,
@@ -117,7 +116,6 @@ def select_image_paths(
     all: bool = False,
     sub_config=None,
     source: Path | None = None,
-    data_registry: DataRegistry | None = None,
 ) -> list[Path]:
     """Select image paths based on configuration and flags.
 
@@ -127,8 +125,6 @@ def select_image_paths(
         all: Whether to use all images.
         sub_config: Optional sub-configuration for the analysis.
         source: Optional source path for time-based image lookup.
-        data_registry: Optional global data registry for resolving registry-based
-            data references in the sub-configuration.
 
     Returns:
         List of image paths to analyze.
@@ -140,10 +136,10 @@ def select_image_paths(
         assert config.data.data is not None
         paths = config.data.data
         image_paths = experiment.find_images_for_paths(paths=paths)
-    elif hasattr(sub_config, "data") and isinstance(sub_config.data, (str, list)):
-        # Resolve registry reference if sub_config.data is a (list of) raw registry key
-        if data_registry is not None:
-            resolved = data_registry.resolve(sub_config.data) if data_registry else None
+    elif hasattr(sub_config, "data_selection") and isinstance(sub_config.data_selection, (str, list)):
+        # Resolve registry reference if sub_config.data_selection is a (list of) raw registry key
+        if config.registry is not None:
+            resolved = config.registry.resolve(sub_config.data_selection)
             if len(resolved.image_paths) > 0:
                 image_paths = experiment.find_images_for_paths(
                     paths=resolved.image_paths
@@ -154,8 +150,8 @@ def select_image_paths(
                 )
         else:
             raise ValueError(
-                "sub_config.data is a registry key reference but no data_registry "
-                "was provided to resolve it."
+                "sub_config.data_selection is a registry key reference but no registry "
+                "is available on the config to resolve it."
             )
     elif hasattr(sub_config, "data") and isinstance(sub_config.data, TimeData):
         image_paths = []
@@ -333,7 +329,6 @@ def prepare_analysis_context(
         experiment,
         all=all,
         sub_config=sub_config,
-        data_registry=config.data.registry,
     )
 
     # ! ---- RESTORATION ----

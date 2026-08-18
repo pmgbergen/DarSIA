@@ -5,10 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
-from warnings import warn
 
-from .data_registry import DataRegistry
-from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
 
 if TYPE_CHECKING:
@@ -63,7 +60,6 @@ class CalibrationMassConfig:
         },
     )
     """Name(s) of data registry entries to use for mass calibration."""
-    data: TimeData | None = field(default=None, metadata={"hidden": True})
     threshold: float = 0.2
     rois: list[str] = field(default_factory=list)
 
@@ -72,7 +68,6 @@ class CalibrationMassConfig:
         sec: dict,
         *,
         data: Path | None,
-        data_registry: DataRegistry | None = None,
         color_embedding_registry: "ColorEmbeddingRegistry | None" = None,
     ) -> "CalibrationMassConfig":
         color_key = _get_key(sec, "color", required=True, type_=str).strip()
@@ -106,18 +101,6 @@ class CalibrationMassConfig:
         )
         if self.data_selection is None:
             self.data_selection = _get_key(sec, "data", required=False, default=None)
-        try:
-            self.data = (
-                data_registry.resolve(self.data_selection)
-                if data_registry and self.data_selection
-                else None
-            )
-        except KeyError:
-            warn(
-                "No data found for calibration.mass. Use [calibration.mass].data_selection "
-                "or [calibration.mass].data."
-            )
-            self.data = None
         return self
 
 
@@ -136,15 +119,12 @@ class CalibrationConfig:
     """Name(s) of data registry entries to use for calibration."""
     color: CalibrationColorConfig | None = None
     mass: CalibrationMassConfig | None = None
-    data: TimeData | None = field(default=None, metadata={"hidden": True})
-    """Resolved calibration data (derived from data_selection via registry lookup)."""
 
     def load(
         self,
         path: Path | list[Path],
         *,
         data: Path | None,
-        data_registry: DataRegistry | None = None,
         color_embedding_registry: "ColorEmbeddingRegistry | None" = None,
     ) -> "CalibrationConfig":
         sec = _get_section_from_toml(path, "calibration")
@@ -163,7 +143,6 @@ class CalibrationConfig:
             self.mass = CalibrationMassConfig().load(
                 _get_section(sec, "mass"),
                 data=data,
-                data_registry=data_registry,
                 color_embedding_registry=color_embedding_registry,
             )
         except KeyError:
@@ -176,19 +155,5 @@ class CalibrationConfig:
         # Fallback to deprecated 'data' key for backward compat
         if self.data_selection is None:
             self.data_selection = _get_key(sec, "data", required=False, default=None)
-
-        # Resolve the data_selection against the registry
-        try:
-            self.data = (
-                data_registry.resolve(self.data_selection)
-                if data_registry and self.data_selection
-                else None
-            )
-        except KeyError:
-            warn(
-                "No data found for calibration. Use [calibration].data_selection with a "
-                "registry entry name."
-            )
-            self.data = None
 
         return self

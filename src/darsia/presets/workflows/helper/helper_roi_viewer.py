@@ -155,7 +155,6 @@ def helper_roi_viewer(
         experiment,
         all=False,
         sub_config=helper_config,
-        data_registry=config.data.registry,
     )
     source_images = load_images_with_cache(
         rig=fluidflower,
