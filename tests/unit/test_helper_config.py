@@ -23,7 +23,7 @@ data = "sel"
 """.strip(),
     )
     data_registry = DataRegistry().load(
-        {"time": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
+        {"time_registry": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
     )
 
     config = HelperConfig().load(
@@ -48,7 +48,7 @@ data = "sel"
 """.strip(),
     )
     data_registry = DataRegistry().load(
-        {"time": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
+        {"time_registry": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
     )
 
     with pytest.raises(ValueError, match=r"Unsupported helper\.roi\.mode"):
@@ -95,7 +95,7 @@ data = "sel"
 """.strip(),
     )
     data_registry = DataRegistry().load(
-        {"time": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
+        {"time_registry": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
     )
 
     config = HelperConfig().load(
@@ -118,7 +118,7 @@ data = "sel"
 """.strip(),
     )
     data_registry = DataRegistry().load(
-        {"time": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
+        {"time_registry": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
     )
 
     config = HelperConfig().load(
@@ -153,7 +153,7 @@ roi = ["main"]
 """.strip(),
     )
     data_registry = DataRegistry().load(
-        {"time": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
+        {"time_registry": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
     )
     format_registry = FormatRegistry().load(config_path)
     roi_registry = RoiRegistry().load(config_path)
@@ -187,7 +187,7 @@ format = "preview"
 """.strip(),
     )
     data_registry = DataRegistry().load(
-        {"time": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
+        {"time_registry": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
     )
     format_registry = FormatRegistry().load(config_path)
 
