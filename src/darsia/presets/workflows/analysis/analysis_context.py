@@ -136,8 +136,11 @@ def select_image_paths(
         assert config.data.data is not None
         paths = config.data.data
         image_paths = experiment.find_images_for_paths(paths=paths)
-    elif hasattr(sub_config, "data_selection") and isinstance(sub_config.data_selection, (str, list)):
-        # Resolve registry reference if sub_config.data_selection is a (list of) raw registry key
+    elif hasattr(sub_config, "data_selection") and isinstance(
+        sub_config.data_selection, (str, list)
+    ):
+        # Resolve registry reference if sub_config.data_selection is a (list of)
+        # raw registry key
         if config.registry is not None:
             resolved = config.registry.resolve(sub_config.data_selection)
             if len(resolved.image_paths) > 0:
