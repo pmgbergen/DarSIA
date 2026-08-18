@@ -620,8 +620,17 @@ class AnalysisCroppingConfig:
 
 @dataclass
 class AnalysisConfig:
-    data: TimeData | None = None
-    """Analysis data configuration."""
+    data_selection: str | list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Data selection",
+            "help": "Registry key name(s) whose data is unioned for analysis.",
+            "widget": "registry_key_list",
+        },
+    )
+    """Name(s) of data registry entries to use for analysis (e.g., 'injection', ['calibration', 'analysis'])."""
+    data: TimeData | None = field(default=None, metadata={"hidden": True})
+    """Resolved analysis data (derived from data_selection via registry lookup)."""
     random_traverse: bool = False
     """Whether to randomly traverse the data."""
     formats: list[str] | None = None
@@ -655,13 +664,21 @@ class AnalysisConfig:
     ) -> "AnalysisConfig":
         sec = _get_section_from_toml(path, "analysis")
 
-        # Config to load analysis data – centralized selector resolution.
+        # Config to load analysis data selection (registry reference)
+        self.data_selection = _get_key(
+            sec, "data_selection", required=False, default=None
+        )
+        # Fallback to deprecated 'data' key for backward compat
+        if self.data_selection is None:
+            self.data_selection = _get_key(sec, "data", required=False, default=None)
+
+        # Resolve the data_selection against the registry
         try:
             self.data = (
-                data_registry.resolve(sec.get("data")) if data_registry else None
+                data_registry.resolve(self.data_selection) if data_registry and self.data_selection else None
             )
         except KeyError:
-            warn("No analysis data found. Use [analysis.data].")
+            warn("No analysis data found. Use [analysis].data_selection with a registry entry name.")
             self.data = None
 
         self.random_traverse = _get_key(
