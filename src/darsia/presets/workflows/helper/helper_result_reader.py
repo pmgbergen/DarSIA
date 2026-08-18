@@ -197,7 +197,6 @@ def helper_result_reader(
         experiment,
         all=False,
         sub_config=helper_config,
-        data_registry=config.data.registry,
     )
     format_spec = _resolve_result_format(config, helper_config.format)
     result_folder = config.data.results / helper_config.mode / format_spec.folder_name

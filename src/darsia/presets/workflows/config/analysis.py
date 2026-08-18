@@ -12,11 +12,9 @@ import darsia
 from darsia.presets.workflows.mode_resolution import validate_mode_syntax
 
 from .contour_smoother import SavitzkyGolaySmootherConfig
-from .data_registry import DataRegistry
 from .fingers import FingersConfig
 from .roi import RoiAndLabelConfig, RoiConfig
 from .segmentation import SegmentationConfig
-from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
 
 if TYPE_CHECKING:
@@ -629,8 +627,6 @@ class AnalysisConfig:
         },
     )
     """Name(s) of data registry entries to use for analysis."""
-    data: TimeData | None = field(default=None, metadata={"hidden": True})
-    """Resolved analysis data (derived from data_selection via registry lookup)."""
     random_traverse: bool = False
     """Whether to randomly traverse the data."""
     formats: list[str] | None = None
@@ -657,7 +653,6 @@ class AnalysisConfig:
         path: Path,
         data: Path | None,
         results: Path | None,
-        data_registry: DataRegistry | None = None,
         roi_registry: RoiRegistry | None = None,
         format_registry: FormatRegistry | None = None,
         color_embedding_registry: ColorEmbeddingRegistry | None = None,
@@ -671,20 +666,6 @@ class AnalysisConfig:
         # Fallback to deprecated 'data' key for backward compat
         if self.data_selection is None:
             self.data_selection = _get_key(sec, "data", required=False, default=None)
-
-        # Resolve the data_selection against the registry
-        try:
-            self.data = (
-                data_registry.resolve(self.data_selection)
-                if data_registry and self.data_selection
-                else None
-            )
-        except KeyError:
-            warn(
-                "No analysis data found. Use [analysis].data_selection with "
-                "a registry entry name."
-            )
-            self.data = None
 
         self.random_traverse = _get_key(
             sec, "random_traverse", required=False, default=False, type_=bool

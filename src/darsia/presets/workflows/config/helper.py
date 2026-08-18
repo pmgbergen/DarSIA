@@ -5,10 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .data_registry import DataRegistry
 from .format_registry import FormatRegistry
 from .roi_registry import RoiRegistry
-from .time_data import TimeData
 from .utils import _convert_none, _get_key, _get_section, _get_section_from_toml
 
 
@@ -26,7 +24,6 @@ class HelperRoiConfig:
         },
     )
     """Name(s) of data registry entries to use for ROI helper."""
-    data: TimeData | None = field(default=None, metadata={"hidden": True})
 
     SUPPORTED_MODES = {
         "none",
@@ -46,7 +43,6 @@ class HelperRoiConfig:
         sec: dict,
         *,
         data: Path | None,
-        data_registry: DataRegistry | None,
     ) -> "HelperRoiConfig":
         """Load ROI-helper configuration into this instance and return ``self``."""
         sub_sec = _get_section(sec, "roi")
@@ -68,14 +64,6 @@ class HelperRoiConfig:
             self.data_selection = _get_key(
                 sub_sec, "data", required=False, default=None
             )
-        try:
-            self.data = (
-                data_registry.resolve(self.data_selection)
-                if data_registry and self.data_selection
-                else None
-            )
-        except KeyError:
-            self.data = None
         return self
 
 
@@ -92,14 +80,12 @@ class HelperRoiViewerConfig:
         },
     )
     """Name(s) of data registry entries to use for ROI viewer helper."""
-    data: TimeData | None = field(default=None, metadata={"hidden": True})
 
     def load(
         self,
         sec: dict,
         *,
         data: Path | None,
-        data_registry: DataRegistry | None,
     ) -> "HelperRoiViewerConfig":
         # Load data selection
         self.data_selection = _get_key(
@@ -107,14 +93,6 @@ class HelperRoiViewerConfig:
         )
         if self.data_selection is None:
             self.data_selection = _get_key(sec, "data", required=False, default=None)
-        try:
-            self.data = (
-                data_registry.resolve(self.data_selection)
-                if data_registry and self.data_selection
-                else None
-            )
-        except KeyError:
-            self.data = None
         return self
 
 
@@ -131,7 +109,6 @@ class HelperResultsConfig:
         },
     )
     """Name(s) of data registry entries to use for results helper."""
-    data: TimeData | None = field(default=None, metadata={"hidden": True})
     mode: str = "rescaled_mass"
     format: str = "npz"
     cmap: str | None = None
@@ -142,7 +119,6 @@ class HelperResultsConfig:
         sec: dict,
         *,
         data: Path | None,
-        data_registry: DataRegistry | None,
         format_registry: FormatRegistry | None,
         roi_registry: RoiRegistry | None,
     ) -> "HelperResultsConfig":
@@ -152,14 +128,6 @@ class HelperResultsConfig:
         )
         if self.data_selection is None:
             self.data_selection = _get_key(sec, "data", required=False, default=None)
-        try:
-            self.data = (
-                data_registry.resolve(self.data_selection)
-                if data_registry and self.data_selection
-                else None
-            )
-        except KeyError:
-            self.data = None
 
         self.mode = str(_get_key(sec, "mode", required=True, type_=str)).strip()
         if self.mode == "":
@@ -237,14 +205,12 @@ class HelperColorConfig:
         },
     )
     """Name(s) of data registry entries to use for color helper."""
-    data: TimeData | None = field(default=None, metadata={"hidden": True})
 
     def load(
         self,
         sec: dict,
         *,
         data: Path | None,
-        data_registry: DataRegistry | None,
     ) -> "HelperColorConfig":
         # Load data selection
         self.data_selection = _get_key(
@@ -252,14 +218,6 @@ class HelperColorConfig:
         )
         if self.data_selection is None:
             self.data_selection = _get_key(sec, "data", required=False, default=None)
-        try:
-            self.data = (
-                data_registry.resolve(self.data_selection)
-                if data_registry and self.data_selection
-                else None
-            )
-        except KeyError:
-            self.data = None
         return self
 
 
@@ -276,7 +234,6 @@ class HelperConfig:
         },
     )
     """Name(s) of data registry entries to use for helper."""
-    data: TimeData | None = field(default=None, metadata={"hidden": True})
     roi: HelperRoiConfig | None = None
     roi_viewer: HelperRoiViewerConfig | None = None
     results: HelperResultsConfig | None = None
@@ -287,7 +244,6 @@ class HelperConfig:
         path: Path | list[Path],
         *,
         data: Path | None,
-        data_registry: DataRegistry | None,
         format_registry: FormatRegistry | None = None,
         roi_registry: RoiRegistry | None = None,
     ) -> "HelperConfig":
@@ -300,18 +256,9 @@ class HelperConfig:
         if self.data_selection is None:
             self.data_selection = _get_key(sec, "data", required=False, default=None)
         try:
-            self.data = (
-                data_registry.resolve(self.data_selection)
-                if data_registry and self.data_selection
-                else None
-            )
-        except KeyError:
-            self.data = None
-        try:
             self.roi = HelperRoiConfig().load(
                 sec,
                 data=data,
-                data_registry=data_registry,
             )
         except KeyError:
             self.roi = None
@@ -321,7 +268,6 @@ class HelperConfig:
             self.roi_viewer = HelperRoiViewerConfig().load(
                 _get_section(sec, "roi_viewer"),
                 data=data,
-                data_registry=data_registry,
             )
 
         self.results = None
@@ -329,7 +275,6 @@ class HelperConfig:
             self.results = HelperResultsConfig().load(
                 _get_section(sec, "results"),
                 data=data,
-                data_registry=data_registry,
                 format_registry=format_registry,
                 roi_registry=roi_registry,
             )
@@ -339,6 +284,5 @@ class HelperConfig:
             self.color = HelperColorConfig().load(
                 _get_section(sec, "color"),
                 data=data,
-                data_registry=data_registry,
             )
         return self

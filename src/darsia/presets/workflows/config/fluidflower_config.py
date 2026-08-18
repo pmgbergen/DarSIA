@@ -215,7 +215,6 @@ class FluidFlowerConfig:
             lambda: self.calibration.load(
                 path=path,
                 data=self.data.folder if self.data else None,
-                data_registry=self.registry,
                 color_embedding_registry=self.color,
             ),
             warn_on_missing=False,
@@ -238,7 +237,6 @@ class FluidFlowerConfig:
                 path,
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
-                data_registry=self.registry,
                 roi_registry=self.roi_registry,
                 format_registry=self.format_registry,
                 color_embedding_registry=self.color,
@@ -253,7 +251,6 @@ class FluidFlowerConfig:
             lambda: self.helper.load(
                 path,
                 data=self.data.folder if self.data else None,
-                data_registry=self.registry,
                 format_registry=self.format_registry,
                 roi_registry=self.roi_registry,
             ),
@@ -268,7 +265,6 @@ class FluidFlowerConfig:
                 path,
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
-                data_registry=self.registry,
             ),
             warn_on_missing=True,
         )

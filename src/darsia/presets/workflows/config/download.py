@@ -3,10 +3,7 @@
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from warnings import warn
 
-from .data_registry import DataRegistry
-from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
 
 logger = logging.getLogger(__name__)
@@ -25,8 +22,6 @@ class DownloadConfig:
         },
     )
     """Name(s) of data registry entries to use for download."""
-    data: TimeData | None = field(default=None, metadata={"hidden": True})
-    """Download data selection configuration (derived from data_selection)."""
     skip_existing: bool = True
     """Flag for skipping existing data."""
     folder: Path | None = None
@@ -38,7 +33,6 @@ class DownloadConfig:
         path: Path,
         data: Path | None,
         results: Path | None,
-        data_registry: DataRegistry | None,
     ) -> "DownloadConfig":
         sec = _get_section_from_toml(path, "download")
 
@@ -64,17 +58,6 @@ class DownloadConfig:
         )
         if self.data_selection is None:
             self.data_selection = _get_key(sec, "data", required=False, default=None)
-        try:
-            self.data = (
-                data_registry.resolve(self.data_selection)
-                if data_registry and self.data_selection
-                else None
-            )
-        except KeyError:
-            warn(
-                "No download data found. Use [download.data_selection] or [download.data]."
-            )
-            self.data = None
 
         # Config to skip existing files
         self.skip_existing = sec.get("skip_existing", True)

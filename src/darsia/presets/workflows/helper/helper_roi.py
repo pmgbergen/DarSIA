@@ -260,7 +260,6 @@ def helper_roi(cls: type[Rig], path: Path | list[Path], show: bool = False) -> N
         experiment,
         all=False,
         sub_config=helper_config,
-        data_registry=config.data.registry,
     )
     source_images = load_images_with_cache(
         rig=fluidflower,
