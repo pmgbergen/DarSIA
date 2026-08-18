@@ -342,11 +342,12 @@ data = "analysis_set"
         path=config_path,
         data=tmp_path,
         results=tmp_path,
-        data_registry=data_registry,
     )
 
-    assert config.data is not None
-    assert config.data.image_times == pytest.approx([1.0, 2.0])
+    assert config.data_selection == "analysis_set"
+    # Verify resolution works when called downstream
+    resolved = data_registry.resolve(config.data_selection)
+    assert resolved.image_times == pytest.approx([1.0, 2.0])
 
 
 def test_analysis_formats_load_from_registry_identifiers(tmp_path: Path) -> None:

@@ -46,13 +46,13 @@ def test_select_image_paths_resolves_registry_reference_to_paths(
         {"path_registry": {"imgs": {"paths": ["img.jpg"]}}}, data_folder=tmp_path
     )
     experiment = experiment_factory(image_path)
-    sub_config = SimpleNamespace(data="imgs")
+    sub_config = SimpleNamespace(data_selection="imgs")
+    config_stub.registry = registry
 
     resolved = select_image_paths(
         config=config_stub,
         experiment=experiment,
         sub_config=sub_config,
-        data_registry=registry,
     )
 
     assert resolved == [image_path]
@@ -67,13 +67,13 @@ def test_select_image_paths_resolves_registry_reference_to_times(
     output_path.touch()
     registry = DataRegistry().load({"time_registry": {"snap": {"times": ["01:00:00"]}}})
     experiment = experiment_factory(output_path)
-    sub_config = SimpleNamespace(data="snap")
+    sub_config = SimpleNamespace(data_selection="snap")
+    config_stub.registry = registry
 
     resolved = select_image_paths(
         config=config_stub,
         experiment=experiment,
         sub_config=sub_config,
-        data_registry=registry,
     )
 
     assert resolved == [output_path]
