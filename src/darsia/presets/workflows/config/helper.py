@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .data_registry import DataRegistry
@@ -17,7 +17,7 @@ class HelperRoiConfig:
     """Configuration for ROI helper."""
 
     mode: str = "none"
-    data: TimeData | None = None
+    data: TimeData | None = field(default=None, metadata={"hidden": True})
 
     SUPPORTED_MODES = {
         "none",
@@ -60,7 +60,7 @@ class HelperRoiConfig:
 class HelperRoiViewerConfig:
     """Configuration for ROI viewer helper."""
 
-    data: TimeData | None = None
+    data: TimeData | None = field(default=None, metadata={"hidden": True})
 
     def load(
         self,
@@ -77,7 +77,7 @@ class HelperRoiViewerConfig:
 class HelperResultsConfig:
     """Configuration for result reader helper."""
 
-    data: TimeData | None = None
+    data: TimeData | None = field(default=None, metadata={"hidden": True})
     mode: str = "rescaled_mass"
     format: str = "npz"
     cmap: str | None = None
@@ -160,7 +160,7 @@ class HelperResultsConfig:
 class HelperColorConfig:
     """Configuration for color helper."""
 
-    data: TimeData | None = None
+    data: TimeData | None = field(default=None, metadata={"hidden": True})
 
     def load(
         self,
@@ -182,7 +182,7 @@ class HelperColorConfig:
 class HelperConfig:
     """Configuration for helper workflows."""
 
-    data: TimeData | None = None
+    data: TimeData | None = field(default=None, metadata={"hidden": True})
     roi: HelperRoiConfig | None = None
     roi_viewer: HelperRoiViewerConfig | None = None
     results: HelperResultsConfig | None = None

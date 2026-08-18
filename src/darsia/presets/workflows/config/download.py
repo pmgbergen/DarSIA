@@ -1,7 +1,7 @@
 """Configuration for data download within analysis workflows."""
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from warnings import warn
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class DownloadConfig:
     source: Path | None = None
     """Source folder - if `None`, retrieved from arguments."""
-    data: TimeData | None = None
+    data: TimeData | None = field(default=None, metadata={"hidden": True})
     """Download data selection configuration."""
     skip_existing: bool = True
     """Flag for skipping existing data."""
