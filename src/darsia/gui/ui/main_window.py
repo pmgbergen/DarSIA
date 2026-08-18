@@ -135,7 +135,9 @@ class MainWindow(QMainWindow):
         self.config_file = ""
         self.config_dict = {}
         self.settings_inputs = {}  # Store setting input widgets
-        self._last_settings_view = None  # Track the last displayed settings view for refresh after save
+        self._last_settings_view = (
+            None  # Track the last displayed settings view for refresh after save
+        )
 
         # Create logging container with its own scroll area
         log_container = QWidget()
