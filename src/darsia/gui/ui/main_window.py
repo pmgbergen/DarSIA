@@ -184,8 +184,14 @@ class MainWindow(QMainWindow):
             "- <b><i>File > Open Recent</i></b> to open a recently-used config."
         )
 
-    def save_settings(self):
-        """Save the current settings to the loaded config file."""
+    def _sync_settings_inputs_to_config_dict(self):
+        """Flush all live settings widget values into self.config_dict.
+
+        Shared by save_settings() (before writing to disk) and
+        _render_settings_tabs() (before it deletes the current widgets and
+        resets settings_inputs), so in-progress edits are never silently
+        discarded by navigating between tabs before saving.
+        """
         # First pass: collect group checkbox states and determine which sub-inputs to skip
         group_active_names: dict[str, set[str]] = {}
         skip_keys: set[str] = set()
@@ -431,6 +437,10 @@ class MainWindow(QMainWindow):
                 self.config_dict, active_list_key, sorted(names)
             )
 
+    def save_settings(self):
+        """Save the current settings to the loaded config file."""
+        self._sync_settings_inputs_to_config_dict()
+
         if self.config_file != "":
             with open(self.config_file, "w") as f:
                 toml.dump(self.config_dict, f)
@@ -561,6 +571,12 @@ class MainWindow(QMainWindow):
         populating form inputs via settings_factory.build_tab_form.
         Shared with both display_settings and display_full_settings.
         """
+        # Flush any pending edits into config_dict before the widgets holding
+        # them are destroyed below, so switching tabs never silently drops
+        # unsaved changes (e.g. newly added registry rows).
+        if self.settings_inputs:
+            self._sync_settings_inputs_to_config_dict()
+
         while self.settings_layout.count():
             child = self.settings_layout.takeAt(0)
             if child.widget():

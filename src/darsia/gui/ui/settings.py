@@ -261,6 +261,31 @@ class SettingsFactory:
                         "section": field_or_result.get("section"),
                         "rows": field_or_result["rows"],
                     }
+                elif "time_interval_map" in field_or_result:
+                    self.main_window.settings_inputs[setting["key"]] = {
+                        "time_interval_map": True,
+                        "rows": field_or_result["rows"],
+                    }
+                elif "time_window_map" in field_or_result:
+                    self.main_window.settings_inputs[setting["key"]] = {
+                        "time_window_map": True,
+                        "rows": field_or_result["rows"],
+                    }
+                elif "time_data_map" in field_or_result:
+                    self.main_window.settings_inputs[setting["key"]] = {
+                        "time_data_map": True,
+                        "rows": field_or_result["rows"],
+                    }
+                elif "path_data_map" in field_or_result:
+                    self.main_window.settings_inputs[setting["key"]] = {
+                        "path_data_map": True,
+                        "rows": field_or_result["rows"],
+                    }
+                elif "registry_key_list" in field_or_result:
+                    self.main_window.settings_inputs[setting["key"]] = {
+                        "registry_key_list": True,
+                        "rows": field_or_result["rows"],
+                    }
                 else:
                     self.main_window.settings_inputs[setting["key"]] = field_or_result[
                         "rows"
