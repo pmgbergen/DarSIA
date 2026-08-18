@@ -109,12 +109,12 @@ data = "sel"
     assert config.roi_viewer.data.image_times == pytest.approx([1.0])
 
 
-def test_helper_roi_viewer_config_loads_shorthand_helper_data(tmp_path: Path) -> None:
+def test_helper_roi_viewer_config_loads_with_data_selection(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
-[helper]
-data = "sel"
+[helper.roi_viewer]
+data_selection = "sel"
 """.strip(),
     )
     data_registry = DataRegistry().load(
