@@ -14,15 +14,55 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TimeInterval:
-    start: float
+    start: float = field(
+        default=0.0,
+        metadata={
+            "name": "Start time",
+            # "help": "Start time of interval (HH:MM:SS format or hours).",
+            "placeholder": "Start time HH:MM:SS",
+            "group": "Interval",
+        },
+    )
     """Start time of the interval, relative to experiment start, in hours."""
-    end: float
+    end: float = field(
+        default=0.0,
+        metadata={
+            "name": "End time",
+            # "help": "End time of interval (HH:MM:SS format or hours).",
+            "placeholder": "End time HH:MM:SS",
+            "group": "Interval",
+        },
+    )
     """End time of the interval, relative to experiment start, in hours."""
-    step: float
+    step: float = field(
+        default=0.0,
+        metadata={
+            "name": "Step size",
+            # "help": "Step size between images (hours).",
+            "placeholder": "Step size HH:MM:SS",
+            "group": "Interval",
+        },
+    )
     """Step size between images, in hours."""
-    num: int
+    num: int = field(
+        default=0,
+        metadata={
+            "name": "Number of images",
+            # "help": "Number of images in the interval.",
+            "placeholder": "number, e.g., 10",
+            "group": "Interval",
+        },
+    )
     """Number of images in the interval."""
-    tol: float | None = None
+    tol: float | None = field(
+        default=None,
+        metadata={
+            "name": "Tolerance",
+            # "help": "Tolerance for time matching (hours).",
+            "placeholder": "tolerance HH:MM:SS",
+            "group": "Interval",
+        },
+    )
     """Tolerance for time matching, in hours."""
 
     def __init__(
@@ -57,9 +97,23 @@ class TimeInterval:
 
 @dataclass
 class TimeWindow:
-    start: float
+    start: float = field(
+        default=0.0,
+        metadata={
+            "name": "Start time",
+            "help": "Start time of window (HH:MM:SS format or hours).",
+            "group": "Window",
+        },
+    )
     """Start time of the window, relative to experiment start, in hours."""
-    end: float
+    end: float = field(
+        default=0.0,
+        metadata={
+            "name": "End time",
+            "help": "End time of window (HH:MM:SS format or hours).",
+            "group": "Window",
+        },
+    )
     """End time of the window, relative to experiment start, in hours."""
 
     def __init__(
@@ -78,9 +132,22 @@ class TimeWindow:
 class ImageTimeData:
     """Data specified as explicit image times."""
 
-    times: list[float] = field(default_factory=list)
+    times: list[float] = field(
+        default_factory=list,
+        metadata={
+            "name": "Image times",
+            "help": "List of image times (HH:MM:SS format or hours).",
+            "group": "Times",
+            "hidden": True,
+        },
+    )
     """List of image times in hours since experiment start."""
-    times_with_tolerance: list[tuple[float, float]] = field(default_factory=list)
+    times_with_tolerance: list[tuple[float, float]] = field(
+        default_factory=list,
+        metadata={
+            "hidden": True,
+        },
+    )
     """List of tuples (time, tolerance) for each image time."""
 
     def load(self, sec: dict) -> "ImageTimeData":
@@ -169,7 +236,15 @@ class ImageTimeIntervalData:
 class PathData:
     """Data specified as direct file paths."""
 
-    paths: list[Path] = field(default_factory=list)
+    paths: list[Path] = field(
+        default_factory=list,
+        metadata={
+            "name": "Image paths",
+            "help": "List of image file paths (supports glob patterns with *).",
+            "group": "Paths",
+            "widget": "multi_file",
+        },
+    )
     """List of image file paths."""
 
     def load(
@@ -272,7 +347,7 @@ class TimeData:
         mode_count = sum([has_times, has_intervals, has_windows, has_paths])
         if mode_count == 0:
             raise ValueError(
-                "No data specified. Use one of: 'time', " "'interval', or 'path'"
+                "No data specified. Use one of: 'time', 'interval', or 'path'"
             )
         elif mode_count > 1:
             self.mode = "mixed"
@@ -327,7 +402,7 @@ class TimeData:
 
     def error(self):
         raise ValueError(
-            f"Use key `data` within the considered subsection in the config file. "
-            f"Supported modes: time, interval, or path. "
-            f"Multiple modes can be combined."
+            "Use key `data` within the considered subsection in the config file. "
+            "Supported modes: time, interval, or path. "
+            "Multiple modes can be combined."
         )
