@@ -49,16 +49,53 @@ def _to_rgb(color: list[int] | tuple[int, int, int], name: str) -> tuple[int, in
 
 @dataclass
 class AnalysisThresholdingLegendConfig:
-    show: bool = True
-    font_scale: float = 0.7
-    thickness: int = 2
-    line_spacing: int = 8
-    position: tuple[int, int] = (20, 20)
-    text_color: tuple[int, int, int] = (255, 255, 255)
-    box_enabled: bool = True
-    box_color: tuple[int, int, int] = (0, 0, 0)
-    box_alpha: float = 0.4
-    box_padding: int = 10
+    show: bool = field(
+        default=True,
+        metadata={
+            "name": "Show",
+            "help": "Display legend overlay on thresholded images.",
+        },
+    )
+    font_scale: float = field(
+        default=0.7,
+        metadata={"name": "Font scale", "help": "Size scaling factor for legend text."},
+    )
+    thickness: int = field(
+        default=2,
+        metadata={"name": "Thickness", "help": "Stroke width for text rendering."},
+    )
+    line_spacing: int = field(
+        default=8,
+        metadata={
+            "name": "Line spacing",
+            "help": "Vertical gap between legend entries.",
+        },
+    )
+    position: tuple[int, int] = field(
+        default=(20, 20),
+        metadata={
+            "name": "Position",
+            "help": "Pixel coordinates [x, y] for legend placement.",
+        },
+    )
+    text_color: tuple[int, int, int] = field(
+        default=(255, 255, 255), metadata={"name": "Text color"}
+    )
+    box_enabled: bool = field(
+        default=True,
+        metadata={"name": "Box", "help": "Draw a background box behind legend text."},
+    )
+    box_color: tuple[int, int, int] = field(
+        default=(0, 0, 0), metadata={"name": "Box color"}
+    )
+    box_alpha: float = field(
+        default=0.4,
+        metadata={"name": "Box opacity", "help": "Background transparency [0-1]."},
+    )
+    box_padding: int = field(
+        default=10,
+        metadata={"name": "Box padding", "help": "Pixel margin inside background box."},
+    )
 
     def load(self, sec: dict) -> "AnalysisThresholdingLegendConfig":
         self.show = bool(_get_key(sec, "show", required=False, default=self.show))
@@ -103,14 +140,31 @@ class AnalysisThresholdingLegendConfig:
 class AnalysisThresholdingConfig:
     @dataclass
     class LayerConfig:
-        mode: str = "concentration_aq"
-        threshold_min: float | None = None
-        threshold_max: float | None = None
-        label: str = ""
-        fill: tuple[int, int, int] = (255, 255, 255)
-        stroke: tuple[int, int, int] = (0, 0, 0)
-        fill_alpha: float = 0.35
-        stroke_width: int = 2
+        mode: str = field(default="concentration_aq", metadata={"name": "Mode"})
+        threshold_min: float | None = field(
+            default=None, metadata={"name": "Min threshold"}
+        )
+        threshold_max: float | None = field(
+            default=None, metadata={"name": "Max threshold"}
+        )
+        label: str = field(
+            default="",
+            metadata={"name": "Label", "help": "Display name for this layer."},
+        )
+        fill: tuple[int, int, int] = field(
+            default=(255, 255, 255), metadata={"name": "Fill color"}
+        )
+        stroke: tuple[int, int, int] = field(
+            default=(0, 0, 0), metadata={"name": "Stroke color"}
+        )
+        fill_alpha: float = field(
+            default=0.35,
+            metadata={"name": "Fill opacity", "help": "Fill transparency [0-1]."},
+        )
+        stroke_width: int = field(
+            default=2,
+            metadata={"name": "Stroke width", "help": "Contour line thickness."},
+        )
 
         def load(
             self,
@@ -171,12 +225,23 @@ class AnalysisThresholdingConfig:
 
             return self
 
-    formats: list[str] = field(default_factory=lambda: ["jpg", "npz"])
-    layers: dict[str, LayerConfig] = field(default_factory=dict)
-    legend: AnalysisThresholdingLegendConfig = field(
-        default_factory=AnalysisThresholdingLegendConfig
+    formats: list[str] = field(
+        default_factory=lambda: ["jpg", "npz"],
+        metadata={"name": "Export formats", "help": "Image file formats to save."},
     )
-    folder: Path = field(default_factory=Path)
+    layers: dict[str, LayerConfig] = field(
+        default_factory=dict, metadata={"name": "Layers"}
+    )
+    legend: AnalysisThresholdingLegendConfig = field(
+        default_factory=AnalysisThresholdingLegendConfig, metadata={"name": "Legend"}
+    )
+    folder: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Output folder",
+            "help": "Directory for thresholded results.",
+        },
+    )
     """Path to the results folder for thresholding analysis."""
 
     def load(
@@ -239,9 +304,15 @@ class AnalysisThresholdingConfig:
 @dataclass
 class AnalysisSegmentationConfig:
     config: SegmentationConfig | dict[str, SegmentationConfig] = field(
-        default_factory=lambda: SegmentationConfig()
+        default_factory=lambda: SegmentationConfig(), metadata={"name": "Config"}
     )
-    folder: Path = field(default_factory=Path)
+    folder: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Output folder",
+            "help": "Directory for segmentation results.",
+        },
+    )
     """Path to the results folder for segmentation."""
 
     def load(
@@ -290,21 +361,36 @@ class AnalysisSegmentationConfig:
 
 @dataclass
 class AnalysisMassConfig:
-    color: "ColorEmbedding | None" = None
+    color: "ColorEmbedding | None" = field(
+        default=None, metadata={"name": "Color embedding"}
+    )
     """Color embedding identifier used for mass conversion.
 
     The value must be a non-empty key defined in the centralized
     ``[color.*.*]`` registry.
     """
-    roi: dict[str, RoiConfig] = field(default_factory=dict)
+    roi: dict[str, RoiConfig] = field(default_factory=dict, metadata={"name": "ROI"})
     """ROI configurations for mass analysis."""
-    roi_and_label: dict[str, RoiAndLabelConfig] = field(default_factory=dict)
+    roi_and_label: dict[str, RoiAndLabelConfig] = field(
+        default_factory=dict, metadata={"name": "ROI and label"}
+    )
     """ROI and label configurations for mass analysis."""
-    export: list[str] | None = None
+    export: list[str] | None = field(
+        default=None,
+        metadata={"name": "Export fields", "help": "Mass analysis scalars to save."},
+    )
     """Optional selection of mass-analysis scalar fields exported to disk."""
-    folder: Path = field(default_factory=Path)
+    folder: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Output folder",
+            "help": "Directory for mass analysis results.",
+        },
+    )
     """Path to the results folder for mass analysis."""
-    contour_smoother: darsia.ContourSmoother | None = None
+    contour_smoother: darsia.ContourSmoother | None = field(
+        default=None, metadata={"name": "Contour smoother"}
+    )
     """Optional contour smoother for finger contours."""
 
     def load(
@@ -425,11 +511,19 @@ class AnalysisMassConfig:
 
 @dataclass
 class AnalysisVolumeConfig:
-    roi: dict[str, RoiConfig] = field(default_factory=dict)
+    roi: dict[str, RoiConfig] = field(default_factory=dict, metadata={"name": "ROI"})
     """ROI configurations for volume analysis."""
-    roi_and_label: dict[str, RoiAndLabelConfig] = field(default_factory=dict)
+    roi_and_label: dict[str, RoiAndLabelConfig] = field(
+        default_factory=dict, metadata={"name": "ROI and label"}
+    )
     """ROI and label configurations for volume analysis."""
-    folder: Path = field(default_factory=Path)
+    folder: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Output folder",
+            "help": "Directory for volume analysis results.",
+        },
+    )
     """Path to the results folder for volume analysis."""
 
     def load(
@@ -489,9 +583,21 @@ class AnalysisVolumeConfig:
 class AnalysisExpertKnowledgeConfig:
     """Configuration for expert-knowledge ROI constraints on analysis fields."""
 
-    saturation_g: list[str] = field(default_factory=list)
+    saturation_g: list[str] = field(
+        default_factory=list,
+        metadata={
+            "name": "Saturation ROIs",
+            "help": "ROI keys where saturation_g constraints apply.",
+        },
+    )
     """ROI registry keys constraining where saturation_g may be non-zero."""
-    concentration_aq: list[str] = field(default_factory=list)
+    concentration_aq: list[str] = field(
+        default_factory=list,
+        metadata={
+            "name": "Concentration ROIs",
+            "help": "ROI keys where concentration_aq constraints apply.",
+        },
+    )
     """ROI registry keys constraining where concentration_aq may be non-zero."""
 
     def load(
@@ -537,11 +643,23 @@ class AnalysisExpertKnowledgeConfig:
 @dataclass
 class AnalysisFingersConfig:
     config: FingersConfig | dict[str, FingersConfig] = field(
-        default_factory=lambda: FingersConfig()
+        default_factory=lambda: FingersConfig(), metadata={"name": "Config"}
     )
-    folder: Path = field(default_factory=Path)
+    folder: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Output folder",
+            "help": "Directory for fingers analysis results.",
+        },
+    )
     """Path to the results folder for segmentation."""
-    img_folder: Path = field(default_factory=Path)
+    img_folder: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Image folder",
+            "help": "Directory for finger image exports.",
+        },
+    )
     """Path to the image results folder."""
 
     def load(
@@ -593,7 +711,10 @@ class AnalysisFingersConfig:
 
 @dataclass
 class AnalysisCroppingConfig:
-    formats: list[str] = field(default_factory=lambda: ["jpg"])
+    formats: list[str] = field(
+        default_factory=lambda: ["jpg"],
+        metadata={"name": "Export formats", "help": "Image file formats to save."},
+    )
     """Output formats for cropping images."""
 
     def load(self, sec: dict) -> "AnalysisCroppingConfig":
@@ -627,24 +748,47 @@ class AnalysisConfig:
         },
     )
     """Name(s) of data registry entries to use for analysis."""
-    random_traverse: bool = False
+    random_traverse: bool = field(
+        default=False,
+        metadata={
+            "name": "Random traverse",
+            "help": "Process images in random order instead of chronological.",
+        },
+    )
     """Whether to randomly traverse the data."""
-    formats: list[str] | None = None
+    formats: list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Export formats",
+            "help": "Global export format identifiers for all analyses.",
+        },
+    )
     """Optional analysis-wide export format identifiers."""
-    cropping: AnalysisCroppingConfig | None = None
+    cropping: AnalysisCroppingConfig | None = field(
+        default=None, metadata={"name": "Cropping"}
+    )
     """Analysis cropping configuration."""
-    segmentation: AnalysisSegmentationConfig | None = None
+    segmentation: AnalysisSegmentationConfig | None = field(
+        default=None, metadata={"name": "Segmentation"}
+    )
     """Analysis segmentation configuration."""
-    mass: AnalysisMassConfig | None = None
+    mass: AnalysisMassConfig | None = field(default=None, metadata={"name": "Mass"})
     """Analysis mass configuration."""
-    volume: AnalysisVolumeConfig | None = None
+    volume: AnalysisVolumeConfig | None = field(
+        default=None, metadata={"name": "Volume"}
+    )
     """Analysis volume configuration."""
-    fingers: AnalysisFingersConfig | None = None
+    fingers: AnalysisFingersConfig | None = field(
+        default=None, metadata={"name": "Fingers"}
+    )
     """Analysis fingers configuration."""
-    thresholding: AnalysisThresholdingConfig | None = None
+    thresholding: AnalysisThresholdingConfig | None = field(
+        default=None, metadata={"name": "Thresholding"}
+    )
     """Analysis thresholding configuration."""
     expert_knowledge: AnalysisExpertKnowledgeConfig = field(
-        default_factory=AnalysisExpertKnowledgeConfig
+        default_factory=AnalysisExpertKnowledgeConfig,
+        metadata={"name": "Expert knowledge"},
     )
     """Expert knowledge constraints for selected scalar analysis fields."""
 
