@@ -3,12 +3,13 @@
 import types
 from dataclasses import MISSING, fields, is_dataclass
 from pathlib import Path
-from typing import Any, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from darsia.presets.workflows.config.analysis import AnalysisConfig
 from darsia.presets.workflows.config.calibration import CalibrationConfig
 from darsia.presets.workflows.config.corrections import CorrectionsConfig
 from darsia.presets.workflows.config.data import DataConfig
+from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.depth import DepthConfig
 from darsia.presets.workflows.config.download import DownloadConfig
 from darsia.presets.workflows.config.facies import FaciesConfig
@@ -34,6 +35,7 @@ SECTION_TO_DATACLASS = {
     "image_porosity": ImagePorosityConfig,
     "labeling": LabelingConfig,
     "protocols": ProtocolsConfig,
+    "registry": DataRegistry,
     "restoration": RestorationConfig,
     "rig": RigConfig,
     "video": VideoConfig,
@@ -44,6 +46,7 @@ SECTION_TO_DATACLASS = {
 # Mirrors FluidFlowerConfig.__init__'s load order to maintain dependencies.
 ALL_SECTIONS = [
     "data",
+    "registry",
     "rig",
     "corrections",
     "restoration",
@@ -184,14 +187,22 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
         List of setting dicts with key, type, help, link, options, fields (for groups),
         list_type (for lists), default, etc.
     """
+    # Use get_type_hints to resolve string annotations (from __future__ import annotations)
+    try:
+        type_hints = get_type_hints(dataclass_type)
+    except Exception:
+        type_hints = {}
+
     settings = []
     for field in fields(dataclass_type):
+        # Use resolved type hint if available, otherwise use field.type
+        field_type = type_hints.get(field.name, field.type)
         # Skip fields marked as hidden (outputs, derived fields)
         if field.metadata.get("hidden", False):
             continue
 
         key = f"{key_prefix}.{field.name}"
-        inner_type = _unwrap_optional(field.type)
+        inner_type = _unwrap_optional(field_type)
 
         # Check if this is an Optional[dataclass] field — render as a group
         if is_dataclass(inner_type):
@@ -213,7 +224,7 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "fields": _build_fields(inner_type, key),
             }
         else:
-            widget_type = _infer_widget_type(field.type, field.metadata)
+            widget_type = _infer_widget_type(field_type, field.metadata)
             setting_dict = {
                 "key": key,
                 "type": widget_type,
@@ -234,7 +245,7 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
 
             # For list/tuple types, add the element type label
             if widget_type == "list":
-                setting_dict["list_type"] = _infer_list_type(field.type)
+                setting_dict["list_type"] = _infer_list_type(field_type)
 
         # Remove None values to keep the dict clean
         setting_dict = {k: v for k, v in setting_dict.items() if v is not None}
