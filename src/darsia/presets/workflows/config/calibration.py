@@ -54,6 +54,15 @@ class CalibrationMassConfig:
     color: "ColorEmbedding | None" = None
     mode: str = "manual"
     fluid: str | None = "co2"
+    data_selection: str | list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Data selection",
+            "help": "Registry key name(s) whose data is unioned for mass calibration.",
+            "widget": "registry_key_list",
+        },
+    )
+    """Name(s) of data registry entries to use for mass calibration."""
     data: TimeData | None = field(default=None, metadata={"hidden": True})
     threshold: float = 0.2
     rois: list[str] = field(default_factory=list)
@@ -90,12 +99,24 @@ class CalibrationMassConfig:
         )
         # This threshold is currently only meaningful for color-path embeddings.
         self.rois = _get_key(sec, "rois", default=[], required=False, type_=list)
+
+        # Load data selection
+        self.data_selection = _get_key(
+            sec, "data_selection", required=False, default=None
+        )
+        if self.data_selection is None:
+            self.data_selection = _get_key(sec, "data", required=False, default=None)
         try:
             self.data = (
-                data_registry.resolve(sec.get("data")) if data_registry else None
+                data_registry.resolve(self.data_selection)
+                if data_registry and self.data_selection
+                else None
             )
         except KeyError:
-            warn("No data found for calibration.mass. Use [calibration.mass].data.")
+            warn(
+                "No data found for calibration.mass. Use [calibration.mass].data_selection "
+                "or [calibration.mass].data."
+            )
             self.data = None
         return self
 
@@ -104,7 +125,14 @@ class CalibrationMassConfig:
 class CalibrationConfig:
     """Root calibration config container."""
 
-    data_selection: str | list[str] | None = None
+    data_selection: str | list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Data selection",
+            "help": "Registry key name(s) whose data is unioned for calibration.",
+            "widget": "registry_key_list",
+        },
+    )
     """Name(s) of data registry entries to use for calibration."""
     color: CalibrationColorConfig | None = None
     mass: CalibrationMassConfig | None = None

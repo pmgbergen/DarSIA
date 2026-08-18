@@ -7,7 +7,7 @@ from warnings import warn
 
 from .data_registry import DataRegistry
 from .time_data import TimeData
-from .utils import _get_section_from_toml
+from .utils import _get_key, _get_section_from_toml
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +16,17 @@ logger = logging.getLogger(__name__)
 class DownloadConfig:
     source: Path | None = None
     """Source folder - if `None`, retrieved from arguments."""
+    data_selection: str | list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Data selection",
+            "help": "Registry key name(s) whose data is unioned for download.",
+            "widget": "registry_key_list",
+        },
+    )
+    """Name(s) of data registry entries to use for download."""
     data: TimeData | None = field(default=None, metadata={"hidden": True})
-    """Download data selection configuration."""
+    """Download data selection configuration (derived from data_selection)."""
     skip_existing: bool = True
     """Flag for skipping existing data."""
     folder: Path | None = None
@@ -50,12 +59,21 @@ class DownloadConfig:
             )
 
         # Config to load download data
+        self.data_selection = _get_key(
+            sec, "data_selection", required=False, default=None
+        )
+        if self.data_selection is None:
+            self.data_selection = _get_key(sec, "data", required=False, default=None)
         try:
             self.data = (
-                data_registry.resolve(sec.get("data")) if data_registry else None
+                data_registry.resolve(self.data_selection)
+                if data_registry and self.data_selection
+                else None
             )
         except KeyError:
-            warn("No download data found. Use [download.data].")
+            warn(
+                "No download data found. Use [download.data_selection] or [download.data]."
+            )
             self.data = None
 
         # Config to skip existing files
