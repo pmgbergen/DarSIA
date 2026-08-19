@@ -111,7 +111,7 @@ class ImageExportFormats:
                         f"Unsupported export format key '{key}'. "
                         f"Known format types: {sorted(SUPPORTED_EXPORT_FORMATS)}."
                     )
-                specs = [ImageExportFormat(type=format_type, identifier=format_type)]
+                specs = [ImageExportFormat(type=format_type, name=format_type)]
             for spec in specs:
                 if spec.folder_name in seen:
                     continue
@@ -171,7 +171,7 @@ class ImageExportFormats:
     def _filename_stem(
         self, image: darsia.Image, stem: str, spec: ImageExportFormat
     ) -> str:
-        name = spec.name
+        name = spec.filename_pattern
         seconds = _seconds_from_image(image)
 
         if NAME_IDENTIFIER_PATTERN.search(name) is not None:
@@ -219,7 +219,7 @@ class ImageExportFormats:
                     logger.info(
                         "Skipping csv export for non-scalar image '%s' in format '%s'.",
                         stem,
-                        spec.identifier,
+                        spec.name,
                     )
                     continue
                 if hasattr(prepared, "to_csv"):
