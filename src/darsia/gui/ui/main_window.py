@@ -232,7 +232,7 @@ class MainWindow(QMainWindow):
             if isinstance(value, dict) and "checkbox" in value:
                 continue
             # Skip path_map, int_group_list, int_list_map, time_interval_map, time_window_map,
-            # time_data_map, path_data_map, registry_key_list dicts (handled below)
+            # time_data_map, path_data_map, registry_key_list, format_map dicts (handled below)
             if isinstance(value, dict) and (
                 "path_map" in value
                 or "int_group_list" in value
@@ -242,6 +242,7 @@ class MainWindow(QMainWindow):
                 or "time_data_map" in value
                 or "path_data_map" in value
                 or "registry_key_list" in value
+                or "format_map" in value
             ):
                 continue
             # Skip sub-inputs of unchecked groups
@@ -434,7 +435,100 @@ class MainWindow(QMainWindow):
                     # For now, set to empty list to match the field's Optional nature
                     self.settings_factory.set_value(self.config_dict, key, None)
 
-        # Eleventh pass: write all active lists
+        # Eleventh pass: parse format_map rows into list[dict] for [[format]] TOML shape
+        for key, value in self.settings_inputs.items():
+            if isinstance(value, dict) and "format_map" in value:
+                result = []
+                for (
+                    name_edit,
+                    type_combo,
+                    filename_pattern_combo,
+                    resolution_edit,
+                    keep_ratio_check,
+                    dpi_edit,
+                    cmap_edit,
+                    quality_edit,
+                    compression_edit,
+                    dtype_edit,
+                    delimiter_edit,
+                    header_edit,
+                    float_format_edit,
+                ) in value["rows"]:
+                    name_text = name_edit.text().strip()
+                    if not name_text:
+                        continue
+
+                    # Always-required fields
+                    entry = {
+                        "type": type_combo.currentText().strip(),
+                        "name": name_text,
+                        "filename_pattern": filename_pattern_combo.currentText().strip(),
+                    }
+
+                    # Optional fields: empty text means None/omit
+                    # resolution: comma-separated rows,cols
+                    res_text = resolution_edit.text().strip()
+                    if res_text:
+                        parts = [p.strip() for p in res_text.split(",")]
+                        if len(parts) == 2:
+                            try:
+                                entry["resolution"] = [int(parts[0]), int(parts[1])]
+                            except ValueError:
+                                pass
+
+                    # keep_ratio (bool)
+                    if keep_ratio_check.isChecked():
+                        entry["keep_ratio"] = True
+
+                    # Type-specific optional fields
+                    dpi_text = dpi_edit.text().strip()
+                    if dpi_text:
+                        try:
+                            entry["dpi"] = int(dpi_text)
+                        except ValueError:
+                            pass
+
+                    cmap_text = cmap_edit.text().strip()
+                    if cmap_text:
+                        entry["cmap"] = cmap_text
+
+                    quality_text = quality_edit.text().strip()
+                    if quality_text:
+                        try:
+                            entry["quality"] = int(quality_text)
+                        except ValueError:
+                            pass
+
+                    compression_text = compression_edit.text().strip()
+                    if compression_text:
+                        try:
+                            entry["compression"] = int(compression_text)
+                        except ValueError:
+                            pass
+
+                    dtype_text = dtype_edit.text().strip()
+                    if dtype_text:
+                        entry["dtype"] = dtype_text
+
+                    # CSV-specific fields
+                    delimiter_text = delimiter_edit.text().strip()
+                    if delimiter_text and delimiter_text != ",":
+                        entry["delimiter"] = delimiter_text
+
+                    header_text = header_edit.text().strip()
+                    if header_text:
+                        entry["header"] = header_text
+
+                    float_format_text = float_format_edit.text().strip()
+                    if float_format_text and float_format_text != "{:.2e}":
+                        entry["float_format"] = float_format_text
+
+                    result.append(entry)
+
+                # Write as list[dict] directly to config_dict["format"]
+                self.config_dict["format"] = result
+
+        # Twelfth pass: write all active lists
         for active_list_key, names in group_active_names.items():
             self.settings_factory.set_value(
                 self.config_dict, active_list_key, sorted(names)

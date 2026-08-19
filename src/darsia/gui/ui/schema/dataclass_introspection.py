@@ -13,6 +13,7 @@ from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.depth import DepthConfig
 from darsia.presets.workflows.config.download import DownloadConfig
 from darsia.presets.workflows.config.facies import FaciesConfig
+from darsia.presets.workflows.config.format_registry import FormatRegistry
 from darsia.presets.workflows.config.helper import HelperConfig
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.config.labeling import LabelingConfig
@@ -31,6 +32,7 @@ SECTION_TO_DATACLASS = {
     "depth": DepthConfig,
     "download": DownloadConfig,
     "facies": FaciesConfig,
+    "format_registry": FormatRegistry,
     "helper": HelperConfig,
     "image_porosity": ImagePorosityConfig,
     "labeling": LabelingConfig,
@@ -47,6 +49,7 @@ SECTION_TO_DATACLASS = {
 ALL_SECTIONS = [
     "data",
     "registry",
+    "format_registry",
     "rig",
     "corrections",
     "restoration",
