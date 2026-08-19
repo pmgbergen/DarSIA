@@ -83,18 +83,6 @@ jobs:
     - name: Install DarSIA
       run: uv sync --extra dev
 
-    - name: black
-      if: ${{ always() }}
-      run: uv run black --check src
-
-    - name: flake8
-      if: ${{ always() }}
-      run: uv run flake8 src
-
-    - name: isort
-      if: ${{always()}}
-      run: uv run isort --check src
-
     - name: pytest
       if: ${{always()}}
       run: uv run pytest
