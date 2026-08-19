@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .utils import _convert_none, _get_section_from_toml
+from .utils import _convert_none
 
 SUPPORTED_EXPORT_FORMATS = {"jpg", "png", "npz", "npy", "csv"}
 NAME_IDENTIFIER_PATTERN = re.compile(
@@ -20,8 +20,8 @@ class ImageExportFormat:
     """Export format specification resolved from the format registry."""
 
     type: str
-    identifier: str
-    name: str = "stem"
+    name: str
+    filename_pattern: str = "stem"
     resolution: tuple[int, int] | None = None
     dpi: int | None = None
     cmap: str | None = None
@@ -35,7 +35,7 @@ class ImageExportFormat:
 
     @property
     def folder_name(self) -> str:
-        return self.identifier
+        return self.name
 
 
 def _validate_name_mask(name: str, context: str) -> None:
@@ -63,34 +63,92 @@ def _parse_resolution(value) -> tuple[int, int] | None:
 class FormatRegistry:
     """Registry for named export format presets."""
 
-    _registry: dict[str, ImageExportFormat] = field(default_factory=dict)
+    formats: dict[str, ImageExportFormat] = field(
+        default_factory=dict,
+        metadata={
+            "name": "Format Entries",
+            "help": "Named export format specifications (jpg, csv, npz, etc.).",
+            "widget": "format_map",
+        },
+    )
 
     def load(self, path: Path | list[Path]) -> "FormatRegistry":
-        sec = _get_section_from_toml(path, "format")
-        self._registry = {}
-        for format_type, entries in sec.items():
-            _type = str(format_type).strip().lower()
-            if _type not in SUPPORTED_EXPORT_FORMATS:
+        # Get the raw TOML to handle array-of-tables format: [[format]]
+        try:
+            import tomllib
+
+            use_tomllib = True
+        except ImportError:
+            use_tomllib = False
+
+        if isinstance(path, Path):
+            paths = [path]
+        else:
+            paths = path
+
+        self.formats = {}
+
+        for p in paths:
+            if not p.exists():
+                continue
+
+            with open(p, "rb" if use_tomllib else "r") as f:
+                if use_tomllib:
+                    data = tomllib.load(f)
+                else:
+                    import toml
+
+                    data = toml.load(f)
+
+            if "format" not in data:
+                continue
+
+            format_data = data["format"]
+
+            # Handle array-of-tables format: [[format]]
+            if not isinstance(format_data, list):
                 raise ValueError(
-                    f"Unsupported format type '{format_type}'. "
-                    f"Supported: {sorted(SUPPORTED_EXPORT_FORMATS)}"
+                    "[format] section must be an array-of-tables "
+                    "(use [[format]]), not nested tables."
                 )
-            if not isinstance(entries, dict):
-                raise ValueError(f"[format.{_type}] must be a table of named entries.")
-            for identifier, entry in entries.items():
-                if identifier in self._registry:
-                    raise ValueError(
-                        f"Format identifier '{identifier}' is duplicated across "
-                        "format sections. Identifiers must be globally unique."
-                    )
+
+            format_list = format_data
+
+            for idx, entry in enumerate(format_list):
                 if not isinstance(entry, dict):
+                    raise ValueError(f"[[format]] entry {idx} must be a table/dict.")
+
+                # Extract required fields
+                format_type = entry.get("type")
+                if format_type is None:
                     raise ValueError(
-                        f"[format.{_type}.{identifier}] must be a table/dict."
+                        f"[[format]] entry {idx} is missing required 'type' field."
                     )
 
-                spec = ImageExportFormat(type=_type, identifier=str(identifier))
-                spec.name = str(entry.get("name", "stem")).strip()
-                _validate_name_mask(spec.name, f"[format.{_type}.{identifier}]")
+                name = entry.get("name")
+                if name is None:
+                    raise ValueError(
+                        f"[[format]] entry {idx} is missing required 'name'"
+                        " field (the registry key)."
+                    )
+
+                _type = str(format_type).strip().lower()
+                if _type not in SUPPORTED_EXPORT_FORMATS:
+                    raise ValueError(
+                        f"Unsupported format type '{format_type}' in [[format]] entry {idx}. "
+                        f"Supported: {sorted(SUPPORTED_EXPORT_FORMATS)}"
+                    )
+
+                name = str(name).strip()
+                if name in self.formats:
+                    raise ValueError(
+                        f"Format name '{name}' is duplicated. Names must be globally unique."
+                    )
+
+                spec = ImageExportFormat(type=_type, name=name)
+                filename_pattern = str(entry.get("filename_pattern", "stem")).strip()
+                _validate_name_mask(filename_pattern, f"[[format]] entry '{name}'")
+                spec.filename_pattern = filename_pattern
                 spec.resolution = _parse_resolution(entry.get("resolution"))
                 spec.keep_ratio = bool(entry.get("keep_ratio", False))
 
@@ -103,7 +161,7 @@ class FormatRegistry:
                     spec.quality = None if quality is None else int(quality)
                     if spec.quality is not None and not (0 <= spec.quality <= 100):
                         raise ValueError(
-                            f"quality in [format.{_type}.{identifier}] must be in [0, 100]."
+                            f"quality in [[format]] entry '{name}' must be in [0, 100]."
                         )
                     compression = _convert_none(entry.get("compression"))
                     spec.compression = None if compression is None else int(compression)
@@ -111,7 +169,7 @@ class FormatRegistry:
                         0 <= spec.compression <= 9
                     ):
                         raise ValueError(
-                            f"compression in [format.{_type}.{identifier}] must be in [0, 9]."
+                            f"compression in [[format]] entry '{name}' must be in [0, 9]."
                         )
 
                 if _type in {"npz", "npy", "csv"}:
@@ -124,21 +182,62 @@ class FormatRegistry:
                     spec.header = None if header is None else str(header)
                     spec.float_format = str(entry.get("float_format", "{:.2e}"))
 
-                self._registry[spec.identifier] = spec
+                self.formats[spec.name] = spec
+
         return self
 
     def keys(self) -> list[str]:
-        return sorted(self._registry.keys())
+        return sorted(self.formats.keys())
 
     def resolve(self, keys: str | list[str]) -> list[ImageExportFormat]:
         if isinstance(keys, str):
             keys = [keys]
         specs: list[ImageExportFormat] = []
         for key in keys:
-            if key not in self._registry:
+            if key not in self.formats:
                 raise KeyError(
                     f"Format key '{key}' not found in format registry. "
-                    f"Available keys: {sorted(self._registry.keys())}"
+                    f"Available keys: {sorted(self.formats.keys())}"
                 )
-            specs.append(self._registry[key])
+            specs.append(self.formats[key])
         return specs
+
+    def to_toml_dict(self) -> dict:
+        """Serialize registry to TOML-compatible dict for save round-trips."""
+        format_list = []
+        for spec in sorted(self.formats.values(), key=lambda s: s.name):
+            entry = {
+                "type": spec.type,
+                "name": spec.name,
+                "filename_pattern": spec.filename_pattern,
+            }
+            if spec.resolution is not None:
+                entry["resolution"] = list(spec.resolution)
+            if spec.keep_ratio:
+                entry["keep_ratio"] = True
+
+            if spec.type in {"jpg", "png"}:
+                if spec.dpi is not None:
+                    entry["dpi"] = spec.dpi
+                if spec.cmap is not None:
+                    entry["cmap"] = spec.cmap
+                if spec.quality is not None:
+                    entry["quality"] = spec.quality
+                if spec.compression is not None:
+                    entry["compression"] = spec.compression
+
+            if spec.type in {"npz", "npy", "csv"}:
+                if spec.dtype is not None:
+                    entry["dtype"] = spec.dtype
+
+            if spec.type == "csv":
+                if spec.delimiter != ",":
+                    entry["delimiter"] = spec.delimiter
+                if spec.header is not None:
+                    entry["header"] = spec.header
+                if spec.float_format != "{:.2e}":
+                    entry["float_format"] = spec.float_format
+
+            format_list.append(entry)
+
+        return {"format": format_list}
