@@ -965,22 +965,11 @@ class PatchwiseIlluminationCorrectionConfig:
     """Configuration for patchwise illumination correction.
 
     Attributes:
-        image_path: Path to the primary image for patchwise illumination correction.
         baseline_paths: Paths to baseline images (not yet GUI-editable; edit via TOML).
-        limit: Pixels to exclude from top of image for patch sampling (default: 1450).
         nw: Number of patches in the width direction (default: 1000).
         eps: Small constant to avoid division by zero (default: 1e-6).
     """
 
-    image_path: Path = field(
-        default=Path(),
-        metadata={
-            "name": "Image path",
-            "help": "Path to the primary image for patchwise illumination correction.",
-            "widget": "file",
-        },
-    )
-    """Path to image for patchwise illumination correction."""
     baseline_paths: list[Path] = field(
         default_factory=list,
         metadata={
@@ -994,16 +983,6 @@ class PatchwiseIlluminationCorrectionConfig:
         },
     )
     """Paths to baseline images for patchwise illumination correction."""
-    limit: int = field(
-        default=1450,
-        metadata={
-            "name": "Top exclusion limit",
-            "help": "Pixels to exclude from the top of the image for patch sampling.",
-            "placeholder": "e.g., 1000",
-            "group": "Options",
-        },
-    )
-    """Limit in pixels to exclude from top of image for patch sampling."""
     nw: int = field(
         default=1000,
         metadata={
@@ -1035,10 +1014,8 @@ class PatchwiseIlluminationCorrectionConfig:
             self with loaded configuration
 
         """
-        self.image_path = Path(sec.get("image_path", self.image_path))
         _baseline_paths = sec.get("baseline_paths", self.baseline_paths)
         self.baseline_paths = [Path(p) for p in _baseline_paths]
-        self.limit = sec.get("limit", self.limit)
         self.nw = sec.get("nw", self.nw)
         self.eps = sec.get("eps", self.eps)
         return self

@@ -620,27 +620,25 @@ class Rig:
         config: PatchwiseIlluminationCorrectionConfig | None,
         show_plot: bool = False,
     ) -> darsia.PatchwiseIlluminationCorrection:
-        """Setup and return illumination correction.
+        """Setup and return patchwise illumination correction.
 
         Args:
             config (PatchwiseIlluminationCorrectionConfig | None): Configuration for
-                the illumination correction. If provided, it will set up the illumination
+                the patchwise illumination correction. If provided, it will set up the
                 correction based on this configuration.
 
         Notes:
-            Illumination calibration in Rig intentionally uses the shape-corrected
-            baseline as setup input.
+            Patchwise illumination calibration uses the labels image to enable
+            per-label reference color computation within each patch, ensuring
+            heterogeneous regions contribute equally by material.
 
         """
-        # Preload image
-        image = self.read_image(config.image_path)
         baseline_images = [self.read_image(path) for path in config.baseline_paths]
 
         illumination_correction = darsia.PatchwiseIlluminationCorrection(
-            image=image,
             baseline_images=baseline_images,
+            labels=self.labels,
             nw=config.nw,
-            limit=config.limit,
             eps=config.eps,
             show_images=show_plot,
         )

@@ -13,45 +13,35 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
 
     def __init__(
         self,
-        image: str | darsia.Image | None = None,
         baseline_images: list[str] | list[darsia.Image] | None = None,
+        labels: darsia.Image | None = None,
         nw: int = 100,
-        limit: int = 1450,
         eps: float = 1e-6,
         show_images: bool = True,
     ):
         """Initialize the PatchwiseIlluminationCorrection class.
 
         Args:
-            image (str | darsia.Image): Input image for correction.
             baseline_images (list[str] | list[darsia.Image]): List of baseline images for
                 correction.
+            labels (darsia.Image): Label image defining regions for per-label reference
+                color computation within each patch. All unique labels in this image are
+                used for calibration.
             nw (int): Number of patches in width direction for patchwise illumination
                 correction. Default is 100.
-            limit (int): Limit in pixels to exclude from top of image for patch sampling.
-                Default is 1450.
             eps (float): Small constant to avoid division by zero in patchwise illumination
                 correction. Default is 1e-6.
             show_images (bool): Flag to control whether to display the calibrated image.
 
         """
-        if image is None or baseline_images is None:
+        if baseline_images is None or labels is None:
             self.r_diff = None
             self.g_diff = None
             self.b_diff = None
             return
 
         self.nw = nw
-        self.limit = limit
         self.eps = eps
-
-        if isinstance(image, str):
-            self.img = cv2.imread(image)
-            self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
-            if self.img is None:
-                raise ValueError(f"Image not found : {image}")
-        else:
-            self.img = image.img
 
         self.baseline_images = []
         for baseline in baseline_images:
@@ -66,9 +56,21 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
 
         n_baseline_images = len(self.baseline_images)
 
-        self.height, self.width = self.img.shape[:2]
-        self.nh = int((self.height - self.limit) * self.nw / self.width)
-        self.dh = (self.height - self.limit) / self.nh
+        if labels is None:
+            raise NotImplementedError(
+                "Labels image must be provided for patchwise illumination correction."
+            )
+        self.height, self.width = labels.img.shape[:2]
+
+        # Assert shapes match baseline images to catch alignment issues early
+        for baseline in self.baseline_images:
+            assert baseline.shape[:2] == (self.height, self.width), (
+                f"Baseline image shape {baseline.shape[:2]} does not match "
+                f"labels shape ({self.height}, {self.width})"
+            )
+
+        self.nh = int(self.height * self.nw / self.width)
+        self.dh = self.height / self.nh
         self.dw = self.width / self.nw
 
         r, g, b = [], [], []
@@ -76,7 +78,7 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
 
         for i in range(n_baseline_images):
             ri, gi, bi = self.extract_color_values_patches(
-                self.baseline_images[i], full=False
+                self.baseline_images[i], labels
             )
             r.append(ri)
             g.append(gi)
@@ -88,15 +90,23 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
             g_mean.append(g_m)
             b_mean.append(b_m)
 
-        self.r_diff = self.compute_correction(r, r_mean)
-        self.g_diff = self.compute_correction(g, g_mean)
-        self.b_diff = self.compute_correction(b, b_mean)
+        self.r_diff = cv2.resize(
+            self.compute_correction(r, r_mean).astype(np.float32),
+            (self.width, self.height),
+            interpolation=cv2.INTER_LINEAR,
+        )
+        self.g_diff = cv2.resize(
+            self.compute_correction(g, g_mean).astype(np.float32),
+            (self.width, self.height),
+            interpolation=cv2.INTER_LINEAR,
+        )
+        self.b_diff = cv2.resize(
+            self.compute_correction(b, b_mean).astype(np.float32),
+            (self.width, self.height),
+            interpolation=cv2.INTER_LINEAR,
+        )
 
-        self.r_diff = self.extend_correction_coefficients(self.r_diff)
-        self.g_diff = self.extend_correction_coefficients(self.g_diff)
-        self.b_diff = self.extend_correction_coefficients(self.b_diff)
-
-        image_calibrated = self.correct_array(self.img)
+        image_calibrated = self.correct_array(self.baseline_images[0])
 
         if show_images:
             image_calibrated = cv2.cvtColor(image_calibrated, cv2.COLOR_RGB2BGR)
@@ -105,40 +115,49 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
             cv2.destroyAllWindows()
 
     def extract_color_values_patches(
-        self, image: np.ndarray
+        self, image: np.ndarray, labels: darsia.Image
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Extract RGB values from image patches.
+        """Extract RGB values from image patches, averaged per-label within each patch.
+
+        For each patch, computes the mean color per unique label present in that patch,
+        then averages those per-label means (unweighted). This ensures heterogeneous
+        patches (straddling multiple materials) contribute equally per material,
+        regardless of pixel-count distribution.
 
         Args:
-            image (np.ndarray): Input image.
+            image (np.ndarray): Input image (RGB, same shape as labels).
+            labels (darsia.Image): Label image defining regions for per-label reference
+                color computation within each patch. All unique labels in this image are
+                used for calibration.
 
         Returns:
-            Tuple containing R, G, B matrices.
+            Tuple containing R, G, B matrices (shape nh x nw).
         """
         nh = self.nh
-        limit = self.limit
-
         r = np.zeros((nh, self.nw), dtype=np.float32)
         g = np.zeros((nh, self.nw), dtype=np.float32)
         b = np.zeros((nh, self.nw), dtype=np.float32)
 
         for i in range(nh):
-            y0 = max(limit + int(round((i - 0.5) * self.dh)), 0)
-            y1 = min(limit + int(round((i + 0.5) * self.dh)), self.height)
-
-            y0 = max(self.limit + int(round((i - 0.5) * self.dh)), 0)
-            y1 = min(self.limit + int(round((i + 0.5) * self.dh)), self.height)
+            y0 = max(int(round((i - 0.5) * self.dh)), 0)
+            y1 = min(int(round((i + 0.5) * self.dh)), self.height)
 
             for j in range(self.nw):
                 x0 = max(int(round((j - 0.5) * self.dw)), 0)
                 x1 = min(int(round((j + 0.5) * self.dw)), self.width)
 
                 roi = image[y0:y1, x0:x1]
+                label_roi = labels.img[y0:y1, x0:x1]
 
-                mean_color = cv2.mean(roi)
+                patch_labels = np.unique(label_roi)
+                per_label_means = np.array(
+                    [
+                        cv2.mean(roi, mask=(label_roi == lbl).astype(np.uint8))
+                        for lbl in patch_labels
+                    ]
+                )
+                mean_color = per_label_means.mean(axis=0)
 
-                # TODO: Consider what if colors are in int.
                 r[i, j] = mean_color[0]
                 g[i, j] = mean_color[1]
                 b[i, j] = mean_color[2]
@@ -172,30 +191,6 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
             correction += weight * (r_m / (r + self.eps))
 
         return 1.0 / (correction + self.eps)
-
-    def extend_correction_coefficients(self, corr: np.ndarray) -> np.ndarray:
-        """Extend correction coefficients to the upper part of the image.
-
-        Args:
-            corr (np.ndarray): Array of correction coefficients for the lower part of the
-                image.
-
-        Returns:
-            np.ndarray: Extended array of correction coefficients for the entire image.
-
-        """
-        new_corr = np.zeros((int(self.limit / self.dh), self.nw))
-        lim = int(self.nh / 3)
-        for col in range(self.nw):
-            avg_top = np.mean(corr[:lim, col])
-            new_corr[:, col] = avg_top
-        full_corr = np.vstack((new_corr, corr))
-        extended_corr = cv2.resize(
-            full_corr.astype(np.float32),
-            (self.width, self.height),
-            interpolation=cv2.INTER_LINEAR,
-        )
-        return extended_corr
 
     def correct_array(self, img: np.ndarray) -> np.ndarray:
         """Apply patchwise illumination correction to the input image.
@@ -232,6 +227,7 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
             path (Path): Path to the file where coefficients will be saved.
 
         """
+        # TODO: Find memory efficient way of saving coefficients (polynomials per label?)
         np.savez(
             path,
             class_name=type(self).__name__,
@@ -241,7 +237,6 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
                 "b_diff": self.b_diff,
                 "nh": self.nh,
                 "nw": self.nw,
-                "limit": self.limit,
                 "eps": self.eps,
                 "dh": self.dh,
                 "dw": self.dw,
@@ -269,7 +264,6 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         self.b_diff = data["b_diff"]
         self.nh = data["nh"]
         self.nw = data["nw"]
-        self.limit = data["limit"]
         self.eps = data["eps"]
         self.dh = data["dh"]
         self.dw = data["dw"]
