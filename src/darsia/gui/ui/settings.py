@@ -33,6 +33,7 @@ class SettingsFactory:
         "time_window_map",
         "time_data_map",
         "path_data_map",
+        "format_map",
         "registry_key_list",
     }
 
@@ -281,6 +282,11 @@ class SettingsFactory:
                         "path_data_map": True,
                         "rows": field_or_result["rows"],
                     }
+                elif "format_map" in field_or_result:
+                    self.main_window.settings_inputs[setting["key"]] = {
+                        "format_map": True,
+                        "rows": field_or_result["rows"],
+                    }
                 elif "registry_key_list" in field_or_result:
                     self.main_window.settings_inputs[setting["key"]] = {
                         "registry_key_list": True,
@@ -412,6 +418,8 @@ class SettingsFactory:
             return self.create_path_data_map_input(
                 setting_dict, form_context=form_context
             )
+        elif setting_type == "format_map":
+            return self.create_format_map_input(setting_dict, form_context=form_context)
         elif setting_type == "registry_key_list":
             return self.create_registry_key_list_input(
                 setting_dict, form_context=form_context
@@ -926,6 +934,304 @@ class SettingsFactory:
 
         else:
             return display_name, {"path_data_map": True, "rows": []}
+
+    def create_format_map_input(self, setting_dict, form_context=None):
+        """Create a dict[str, ImageExportFormat] editor with type-conditional field visibility.
+
+        Each row has 13 widgets: name, type (combo, driver for visibility), filename_pattern,
+        resolution, keep_ratio (checkbox), then type-specific fields that toggle visibility:
+        - dpi, cmap, quality, compression for jpg/png
+        - dtype for npz/npy/csv
+        - delimiter, header, float_format for csv
+
+        Returns (display_name, enriched_dict) with "widget" and "rows" (list of 13-tuples).
+        """
+        from darsia.presets.workflows.config.format_registry import (
+            SUPPORTED_EXPORT_FORMATS,
+        )
+
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+
+        # Read directly from config_dict["format"] (list of dicts) instead of the
+        # dotted key path, since raw TOML has [[format]] array-of-tables, not
+        # [format_registry.formats] nested tables. Keyed-dict for prefill.
+        format_list = self.main_window.config_dict.get("format", [])
+        value = {
+            entry.get("name", ""): entry for entry in format_list if entry.get("name")
+        }
+
+        row_data_list = []
+        row_edits = []
+
+        def refresh_remove_buttons():
+            show_remove = len(row_data_list) > 1
+            for row_data in row_data_list:
+                row_data["remove_button"].setVisible(show_remove)
+
+        add_button = QPushButton("Add format")
+
+        if form_context:
+            form = form_context["form"]
+
+            # Build header widget
+            header_widget = QWidget()
+            header_layout = QHBoxLayout(header_widget)
+            header_layout.setContentsMargins(0, 0, 0, 0)
+            header_layout.setSpacing(4)
+            header_layout.addWidget(add_button, stretch=1)
+            header_layout.addWidget(build_help_column(setting_dict))
+            form.addRow("", header_widget)
+
+            def add_row(entry_name="", entry_data=None):
+                """Add one format entry row with 13 widgets and type-conditional visibility."""
+                if entry_data is None:
+                    entry_data = {}
+
+                row_widget = QWidget()
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(4, 4, 4, 4)
+                row_layout.setSpacing(4)
+                row_widget.setMinimumHeight(28)
+
+                # 1. name (entry key for the registry)
+                name_edit = QLineEdit()
+                name_edit.setPlaceholderText("Entry name")
+                name_edit.setMaximumWidth(80)
+                if entry_name:
+                    name_edit.setText(str(entry_name))
+                row_layout.addWidget(name_edit, 0)
+
+                # 2. type (combo, driver field for visibility)
+                type_combo = QComboBox()
+                type_combo.setEditable(False)
+                type_combo.addItems(sorted(SUPPORTED_EXPORT_FORMATS))
+                type_combo.setMaximumWidth(80)
+                if "type" in entry_data:
+                    type_combo.setCurrentText(str(entry_data["type"]))
+                row_layout.addWidget(type_combo, 0)
+
+                # 3. filename_pattern (preset dropdown)
+                filename_pattern_preset = [
+                    "stem",
+                    "stem_HH",
+                    "stem_HH:MM",
+                    "stem_HH:MM:SS",
+                    "stem_MM:SS",
+                    "stem_DD:HH",
+                    "stem_DD:HH:MM",
+                    "spatial_map_HH",
+                    "spatial_map_HH:MM",
+                    "spatial_map_HH:MM:SS",
+                    "spatial_map_MM:SS",
+                    "spatial_map_DD:HH",
+                    "spatial_map_DD:HH:MM",
+                ]
+                filename_pattern_combo = QComboBox()
+                filename_pattern_combo.setEditable(False)
+                filename_pattern_combo.addItems(filename_pattern_preset)
+                filename_pattern_combo.setMaximumWidth(140)
+
+                current_pattern = entry_data.get("filename_pattern", "stem")
+                # Add stale value if not in preset list (so it doesn't get silently clobbered)
+                if current_pattern not in filename_pattern_preset:
+                    filename_pattern_combo.addItem(current_pattern)
+                    filename_pattern_combo.setCurrentText(current_pattern)
+                else:
+                    filename_pattern_combo.setCurrentText(current_pattern)
+
+                row_layout.addWidget(filename_pattern_combo, 0)
+
+                # 4. resolution (comma-separated "rows,cols")
+                resolution_edit = QLineEdit()
+                resolution_edit.setPlaceholderText("rows,cols")
+                resolution_edit.setMaximumWidth(100)
+                if "resolution" in entry_data and entry_data["resolution"]:
+                    res = entry_data["resolution"]
+                    resolution_edit.setText(f"{res[0]},{res[1]}")
+                row_layout.addWidget(resolution_edit, 0)
+
+                # 5. keep_ratio (checkbox)
+                keep_ratio_check = QCheckBox("Keep ratio")
+                keep_ratio_check.setMaximumWidth(100)
+                if "keep_ratio" in entry_data:
+                    keep_ratio_check.setChecked(bool(entry_data["keep_ratio"]))
+                row_layout.addWidget(keep_ratio_check, 0)
+
+                # Type-specific fields: jpg/png only
+                # 6. dpi
+                dpi_edit = QLineEdit()
+                dpi_edit.setPlaceholderText("dpi")
+                dpi_edit.setMaximumWidth(60)
+                if "dpi" in entry_data and entry_data["dpi"]:
+                    dpi_edit.setText(str(entry_data["dpi"]))
+                row_layout.addWidget(dpi_edit, 0)
+
+                # 7. cmap
+                cmap_edit = QLineEdit()
+                cmap_edit.setPlaceholderText("cmap")
+                cmap_edit.setMaximumWidth(100)
+                if "cmap" in entry_data and entry_data["cmap"]:
+                    cmap_edit.setText(str(entry_data["cmap"]))
+                row_layout.addWidget(cmap_edit, 0)
+
+                # 8. quality (jpg/png)
+                quality_edit = QLineEdit()
+                quality_edit.setPlaceholderText("quality")
+                quality_edit.setMaximumWidth(70)
+                if "quality" in entry_data and entry_data["quality"]:
+                    quality_edit.setText(str(entry_data["quality"]))
+                row_layout.addWidget(quality_edit, 0)
+
+                # 9. compression (jpg/png)
+                compression_edit = QLineEdit()
+                compression_edit.setPlaceholderText("compression")
+                compression_edit.setMaximumWidth(90)
+                if "compression" in entry_data and entry_data["compression"]:
+                    compression_edit.setText(str(entry_data["compression"]))
+                row_layout.addWidget(compression_edit, 0)
+
+                # Type-specific fields: npz/npy/csv
+                # 10. dtype
+                dtype_edit = QLineEdit()
+                dtype_edit.setPlaceholderText("dtype")
+                dtype_edit.setMaximumWidth(80)
+                if "dtype" in entry_data and entry_data["dtype"]:
+                    dtype_edit.setText(str(entry_data["dtype"]))
+                row_layout.addWidget(dtype_edit, 0)
+
+                # Type-specific fields: csv only
+                # 11. delimiter
+                delimiter_edit = QLineEdit()
+                delimiter_edit.setPlaceholderText("delimiter")
+                delimiter_edit.setMaximumWidth(70)
+                if "delimiter" in entry_data:
+                    delimiter_edit.setText(str(entry_data["delimiter"]))
+                else:
+                    delimiter_edit.setText(",")
+                row_layout.addWidget(delimiter_edit, 0)
+
+                # 12. header
+                header_edit = QLineEdit()
+                header_edit.setPlaceholderText("header")
+                header_edit.setMaximumWidth(70)
+                if "header" in entry_data and entry_data["header"]:
+                    header_edit.setText(str(entry_data["header"]))
+                row_layout.addWidget(header_edit, 0)
+
+                # 13. float_format
+                float_format_edit = QLineEdit()
+                float_format_edit.setPlaceholderText("float_format")
+                float_format_edit.setMaximumWidth(90)
+                if "float_format" in entry_data:
+                    float_format_edit.setText(str(entry_data["float_format"]))
+                else:
+                    float_format_edit.setText("{:.2e}")
+                row_layout.addWidget(float_format_edit, 0)
+
+                # Remove button
+                remove_button = QPushButton("Remove")
+                remove_button.setMaximumWidth(80)
+
+                def remove():
+                    row_idx, _ = form.getWidgetPosition(row_widget)
+                    form.removeRow(row_idx)
+                    if row_data in row_data_list:
+                        row_data_list.remove(row_data)
+                    if edits in row_edits:
+                        row_edits.remove(edits)
+                    refresh_remove_buttons()
+
+                remove_button.clicked.connect(remove)
+                row_layout.addWidget(remove_button, 0)
+
+                # Insert row into form
+                header_idx, _ = form.getWidgetPosition(header_widget)
+                if row_data_list:
+                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
+                    insert_idx = last_idx + 1
+                else:
+                    insert_idx = header_idx + 1
+
+                form.insertRow(insert_idx, "", row_widget)
+
+                # Wire up type-conditional visibility using the depends_on pattern
+                type_specific_widgets = {
+                    "jpg_png": [dpi_edit, cmap_edit, quality_edit, compression_edit],
+                    "npz_npy_csv": [dtype_edit],
+                    "csv": [delimiter_edit, header_edit, float_format_edit],
+                }
+
+                def make_visibility_handler():
+                    def handler(current_type):
+                        # Always show: name, type, filename_pattern, resolution, keep_ratio
+                        # Conditionally show type-specific fields
+                        is_jpg_png = current_type in {"jpg", "png"}
+                        is_npz_npy_csv = current_type in {"npz", "npy", "csv"}
+                        is_csv = current_type == "csv"
+
+                        for widget in type_specific_widgets["jpg_png"]:
+                            widget.setVisible(is_jpg_png)
+                        for widget in type_specific_widgets["npz_npy_csv"]:
+                            widget.setVisible(is_npz_npy_csv)
+                        for widget in type_specific_widgets["csv"]:
+                            widget.setVisible(is_csv)
+
+                    return handler
+
+                # Connect type combo to visibility handler
+                handler = make_visibility_handler()
+                type_combo.currentTextChanged.connect(handler)
+
+                # Set initial visibility based on current type
+                if "type" in entry_data:
+                    handler(entry_data["type"])
+                else:
+                    handler(type_combo.currentText())
+
+                # Store row data and edits
+                row_data = {"widget": row_widget, "remove_button": remove_button}
+                edits = (
+                    name_edit,
+                    type_combo,
+                    filename_pattern_combo,
+                    resolution_edit,
+                    keep_ratio_check,
+                    dpi_edit,
+                    cmap_edit,
+                    quality_edit,
+                    compression_edit,
+                    dtype_edit,
+                    delimiter_edit,
+                    header_edit,
+                    float_format_edit,
+                )
+                row_data_list.append(row_data)
+                row_edits.append(edits)
+                refresh_remove_buttons()
+
+            # Connect add button
+            add_button.clicked.connect(lambda: add_row())
+
+            # Prefill existing entries
+            if value:
+                for entry_name, entry_data in value.items():
+                    add_row(
+                        entry_name, entry_data if isinstance(entry_data, dict) else {}
+                    )
+            else:
+                # At least one empty row
+                add_row()
+
+            # Return enriched dict
+            return display_name, {
+                "widget": header_widget,
+                "format_map": True,
+                "rows": row_edits,
+            }
+
+        else:
+            return display_name, {"format_map": True, "rows": []}
 
     def create_registry_key_list_input(self, setting_dict, form_context=None):
         """Create a multi-row registry-key selector with dropdowns.
