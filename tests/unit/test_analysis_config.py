@@ -52,7 +52,7 @@ def test_analysis_cropping_formats_reject_invalid_entries(tmp_path: Path) -> Non
         """
 [analysis]
 [analysis.cropping]
-formats = ["npz", "png"]
+formats = ["npz", "xyz"]
 """.strip(),
     )
 
@@ -146,7 +146,7 @@ def test_analysis_thresholding_rejects_invalid_formats(tmp_path: Path) -> None:
         """
 [analysis]
 [analysis.thresholding]
-formats = ["jpg", "png"]
+formats = ["jpg", "xyz"]
 [analysis.thresholding.layer.gas]
 mode = "saturation_g"
 threshold_min = 0.1
