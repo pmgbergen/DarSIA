@@ -110,7 +110,19 @@ class HelperResultsConfig:
     )
     """Name(s) of data registry entries to use for results helper."""
     mode: str = "rescaled_mass"
-    format: str = "npz"
+    format: str = field(
+        default="npz",
+        metadata={
+            "name": "Result format",
+            "help": (
+                "Export format for the results helper. Must resolve to csv or "
+                "npz (required for read-back)."
+            ),
+            "widget": "format_key_list",
+            "format_types": {"csv", "npz"},
+            "max_rows": 1,
+        },
+    )
     cmap: str | None = None
     roi: list[str] | None = None
 
