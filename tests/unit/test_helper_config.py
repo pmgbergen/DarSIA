@@ -135,8 +135,10 @@ def test_helper_results_config_loads_with_registry_validation(tmp_path: Path) ->
     config_path = _write(
         tmp_path / "config.toml",
         """
-[format.csv.csv_default]
-name = "stem"
+[[format]]
+type = "csv"
+name = "csv_default"
+filename_pattern = "stem"
 
 [roi.main]
 name = "main"
@@ -172,8 +174,10 @@ def test_helper_results_config_rejects_unsupported_format(tmp_path: Path) -> Non
     config_path = _write(
         tmp_path / "config.toml",
         """
-[format.jpg.preview]
-name = "stem"
+[[format]]
+type = "jpg"
+name = "preview"
+filename_pattern = "stem"
 
 [helper.results]
 data = "sel"

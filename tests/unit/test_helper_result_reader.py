@@ -16,8 +16,10 @@ def test_resolve_result_format_accepts_registry_key(tmp_path: Path) -> None:
     config_path = tmp_path / "config.toml"
     config_path.write_text(
         """
-[format.csv.csv_default]
-name = "stem"
+[[format]]
+type = "csv"
+name = "csv_default"
+filename_pattern = "stem"
 """.strip()
     )
     registry = FormatRegistry().load(config_path)

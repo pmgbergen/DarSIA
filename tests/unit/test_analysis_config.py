@@ -357,10 +357,16 @@ def test_analysis_formats_load_from_registry_identifiers(tmp_path: Path) -> None
 [analysis]
 formats = ["my_npy", "4k"]
 
-[format.npy.my_npy]
+[[format]]
+type = "npy"
+name = "my_npy"
+filename_pattern = "stem"
 dtype = "np.float32"
 
-[format.jpg.4k]
+[[format]]
+type = "jpg"
+name = "4k"
+filename_pattern = "stem"
 resolution = [2160, 4096]
 """.strip(),
     )
