@@ -73,7 +73,10 @@ jobs:
       uses: astral-sh/setup-uv@v5
       with:
         enable-cache: true
-        
+
+    - name: Work around flaky Azure apt mirror
+      run: echo "https://archive.ubuntu.com/ubuntu" | sudo tee /etc/apt/apt-mirrors.txt
+
     - name: Install Qt system libraries
       uses: tlambert03/setup-qt-libs@v1
 
@@ -113,6 +116,9 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         architecture: x64
+
+    - name: Work around flaky Azure apt mirror
+      run: echo "https://archive.ubuntu.com/ubuntu" | sudo tee /etc/apt/apt-mirrors.txt
 
     - name: Install Qt system libraries
       uses: tlambert03/setup-qt-libs@v1
