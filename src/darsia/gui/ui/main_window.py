@@ -243,6 +243,7 @@ class MainWindow(QMainWindow):
                 or "path_data_map" in value
                 or "registry_key_list" in value
                 or "format_map" in value
+                or "format_key_list" in value
             ):
                 continue
             # Skip sub-inputs of unchecked groups
@@ -528,7 +529,26 @@ class MainWindow(QMainWindow):
                 # Write as list[dict] directly to config_dict["format"]
                 self.config_dict["format"] = result
 
-        # Twelfth pass: write all active lists
+        # Twelfth pass: parse format_key_list rows into list[str] (or single str)
+        for key, value in self.settings_inputs.items():
+            if isinstance(value, dict) and "format_key_list" in value:
+                result = []
+                seen = set()
+                for combo in value["rows"]:
+                    text = combo.currentText().strip()
+                    if text and text not in seen:
+                        result.append(text)
+                        seen.add(text)
+                if value.get("max_rows") == 1:
+                    self.settings_factory.set_value(
+                        self.config_dict, key, result[0] if result else None
+                    )
+                else:
+                    self.settings_factory.set_value(
+                        self.config_dict, key, result if result else None
+                    )
+
+        # Thirteenth pass: write all active lists
         for active_list_key, names in group_active_names.items():
             self.settings_factory.set_value(
                 self.config_dict, active_list_key, sorted(names)
