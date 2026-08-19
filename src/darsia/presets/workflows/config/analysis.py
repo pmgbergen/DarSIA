@@ -47,6 +47,32 @@ def _to_rgb(color: list[int] | tuple[int, int, int], name: str) -> tuple[int, in
     return vals
 
 
+def _validate_format_keys(
+    formats: list[str],
+    format_registry: "FormatRegistry | None",
+    allowed_types: set[str],
+    context: str,
+) -> None:
+    """Validate that each formats entry resolves (via registry, by type) or is a raw
+    type string, in both cases restricted to allowed_types."""
+    invalid = []
+    for key in formats:
+        if format_registry is not None and key in format_registry.keys():
+            spec_type = format_registry.resolve(key)[0].type
+            if spec_type not in allowed_types:
+                invalid.append(key)
+        elif key.lower() in allowed_types:
+            continue
+        else:
+            invalid.append(key)
+    if invalid:
+        raise ValueError(
+            f"Unsupported {context} entries: {', '.join(sorted(invalid))}. "
+            f"Supported types: {', '.join(sorted(allowed_types))}, or a "
+            f"[[format]] registry key resolving to one of these types."
+        )
+
+
 @dataclass
 class AnalysisThresholdingLegendConfig:
     show: bool = field(
@@ -227,7 +253,15 @@ class AnalysisThresholdingConfig:
 
     formats: list[str] = field(
         default_factory=lambda: ["jpg", "npz"],
-        metadata={"name": "Export formats", "help": "Image file formats to save."},
+        metadata={
+            "name": "Export formats",
+            "help": (
+                "Image/mask formats to save for thresholding. Registry entries of any type "
+                "are offered."
+            ),
+            "widget": "format_key_list",
+            "format_types": {"jpg", "png", "npz", "npy", "csv"},
+        },
     )
     layers: dict[str, LayerConfig] = field(
         default_factory=dict, metadata={"name": "Layers"}
@@ -249,6 +283,7 @@ class AnalysisThresholdingConfig:
         sec: dict,
         results: Path | None,
         color_embedding_registry: ColorEmbeddingRegistry | None = None,
+        format_registry: "FormatRegistry | None" = None,
     ) -> "AnalysisThresholdingConfig":
         sub_sec = _get_section(sec, "thresholding")
 
@@ -260,14 +295,12 @@ class AnalysisThresholdingConfig:
         self.formats = [fmt.strip().lower() for fmt in raw_formats if fmt.strip()]
         if len(self.formats) == 0:
             raise ValueError("analysis.thresholding.formats must not be empty.")
-        supported_formats = {"jpg", "npz"}
-        invalid_formats = sorted(set(self.formats) - supported_formats)
-        if len(invalid_formats) > 0:
-            raise ValueError(
-                "Unsupported [analysis.thresholding].formats entries: "
-                f"{', '.join(invalid_formats)}. Supported formats: "
-                f"{', '.join(sorted(supported_formats))}."
-            )
+        _validate_format_keys(
+            self.formats,
+            format_registry,
+            {"jpg", "png", "npz", "npy", "csv"},
+            "[analysis.thresholding].formats",
+        )
 
         raw_layers = _get_key(sub_sec, "layer", required=False, default={})
         if not isinstance(raw_layers, dict):
@@ -713,11 +746,21 @@ class AnalysisFingersConfig:
 class AnalysisCroppingConfig:
     formats: list[str] = field(
         default_factory=lambda: ["jpg"],
-        metadata={"name": "Export formats", "help": "Image file formats to save."},
+        metadata={
+            "name": "Export formats",
+            "help": (
+                "Image formats to save for cropping. Only registry entries of type "
+                "jpg, npz, png, or npy are offered."
+            ),
+            "widget": "format_key_list",
+            "format_types": {"jpg", "npz", "png", "npy"},
+        },
     )
     """Output formats for cropping images."""
 
-    def load(self, sec: dict) -> "AnalysisCroppingConfig":
+    def load(
+        self, sec: dict, format_registry: "FormatRegistry | None" = None
+    ) -> "AnalysisCroppingConfig":
         sub_sec = _get_section(sec, "cropping")
 
         raw_formats = _get_key(sub_sec, "formats", default=["jpg"], required=False)
@@ -726,14 +769,12 @@ class AnalysisCroppingConfig:
         if not all(isinstance(fmt, str) for fmt in raw_formats):
             raise ValueError("analysis.cropping.formats entries must be strings.")
         self.formats = [fmt.strip().lower() for fmt in raw_formats]
-        SUPPORTED_CROPPING_FORMATS = {"jpg", "npz"}
-        invalid_formats = sorted(set(self.formats) - SUPPORTED_CROPPING_FORMATS)
-        if len(invalid_formats) > 0:
-            raise ValueError(
-                "Unsupported [analysis.cropping].formats entries: "
-                f"{', '.join(invalid_formats)}. "
-                f"Supported formats: {', '.join(sorted(SUPPORTED_CROPPING_FORMATS))}."
-            )
+        _validate_format_keys(
+            self.formats,
+            format_registry,
+            {"jpg", "npz", "png", "npy"},
+            "[analysis.cropping].formats",
+        )
         return self
 
 
@@ -760,7 +801,11 @@ class AnalysisConfig:
         default=None,
         metadata={
             "name": "Export formats",
-            "help": "Global export format identifiers for all analyses.",
+            "help": (
+                "Global export format identifiers for all analyses "
+                "(any registered format)."
+            ),
+            "widget": "format_key_list",
         },
     )
     """Optional analysis-wide export format identifiers."""
@@ -844,7 +889,9 @@ class AnalysisConfig:
 
         # Config to load analysis cropping
         try:
-            self.cropping = AnalysisCroppingConfig().load(sec)
+            self.cropping = AnalysisCroppingConfig().load(
+                sec, format_registry=format_registry
+            )
         except KeyError:
             warn("No analysis cropping found. Use [analysis.cropping].")
             self.cropping = AnalysisCroppingConfig()  # Default to empty cropping config
@@ -899,6 +946,7 @@ class AnalysisConfig:
                 sec,
                 results,
                 color_embedding_registry=color_embedding_registry,
+                format_registry=format_registry,
             )
         except KeyError:
             warn("No analysis thresholding found. Use [analysis.thresholding].")
