@@ -54,7 +54,7 @@ def _resolve_result_format(
         spec = specs[0]
     else:
         key = format_key.strip().lower()
-        spec = ImageExportFormat(type=key, identifier=key)
+        spec = ImageExportFormat(type=key, name=key)
     if spec.type not in {"npz", "csv"}:
         raise ValueError("ResultViewer supports only npz and csv formats.")
     return spec
