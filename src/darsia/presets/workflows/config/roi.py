@@ -18,7 +18,9 @@ class RoiConfig:
     roi: CoordinateArray = field(default_factory=CoordinateArray)
     """ROI coordinates."""
     name: str = ""
-    """Name of the ROI."""
+    """Unique registry key for this ROI (e.g., 'full', 'calibration', 'storage')."""
+    label: int | None = None
+    """Optional label restriction: None means applies to all labels, int means restricted to this label."""
 
     def load(self, sec: dict) -> "RoiConfig":
         self.roi = CoordinateArray(
@@ -28,8 +30,8 @@ class RoiConfig:
             ]
         )
 
-        name = _get_key(sec, "name", required=True, type_=str)
-        self.name = name
+        self.name = _get_key(sec, "name", required=True, type_=str)
+        self.label = _get_key(sec, "label", required=False, type_=int, default=None)
         return self
 
 
@@ -49,33 +51,13 @@ class MultiRoiConfig:
         return self
 
 
-@dataclass
-class RoiAndLabelConfig:
-    """Configuration for an ROI with an associated label."""
-
-    roi: CoordinateArray = field(default_factory=CoordinateArray)
-    """ROI coordinates."""
-    name: str = ""
-    """Name of the ROI."""
-    label: int = -1
-    """Label associated with the ROI."""
-
-    def load(self, sec: dict) -> "RoiAndLabelConfig":
-        self.roi = CoordinateArray(
-            [
-                _get_key(sec, "corner_1", required=True, type_=list),
-                _get_key(sec, "corner_2", required=True, type_=list),
-            ]
-        )
-
-        self.name = _get_key(sec, "name", required=True, type_=str)
-        self.label = _get_key(sec, "label", required=True, type_=int)
-        return self
+RoiAndLabelConfig = RoiConfig
+"""Deprecated alias for RoiConfig. Kept for backward compatibility."""
 
 
 @dataclass
 class RoiAndSubroiConfig(RoiConfig):
-    """Configuration for an ROI with a sub-ROI."""
+    """Configuration for an ROI with a sub-ROI (inherits optional label from RoiConfig)."""
 
     subroi_config: RoiConfig = field(default_factory=RoiConfig)
     """Sub-ROI configuration."""
