@@ -128,6 +128,9 @@ def analysis_fingers_from_context(
     # Extract finger analysis config (asserted not None above)
     fingers_config = ctx.config.analysis.fingers.config
     assert fingers_config.roi is not None
+
+    resolved_roi = ctx.config.roi_registry.resolve_rois(fingers_config.roi)
+
     requires_color_to_mass = mode_requires_color_to_mass(fingers_config.mode)
     if requires_color_to_mass and ctx.color_to_mass_analysis is None:
         raise ValueError(
@@ -229,7 +232,7 @@ def analysis_fingers_from_context(
     for key in path_categories:
         path_statistics[key] = {
             key: {"roi": roi_config.roi.tolist()}
-            for key, roi_config in fingers_config.roi.items()
+            for key, roi_config in resolved_roi.items()
         }
     path_statistics["times"] = []
     path_statistics["images"] = []
@@ -315,7 +318,7 @@ def analysis_fingers_from_context(
         path_statistics["images"].append(path.name)
 
         # Contour and skeleton analysis.
-        for key, roi_config in fingers_config.roi.items():
+        for key, roi_config in resolved_roi.items():
             # Perform finger analysis if configured
             contour_analysis.load(
                 img=img,

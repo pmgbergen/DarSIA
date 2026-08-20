@@ -51,26 +51,23 @@ def analysis_volume_from_context(
     # ! ---- ENSURE VOLUME CONFIGURATION ----
     if config.analysis.volume is None:
         config.analysis.volume = AnalysisVolumeConfig().load(
-            sec={
-                "volume": {
-                    "roi": {
-                        "full": {
-                            "name": "full",
-                            "corner_1": fluidflower.baseline.origin,
-                            "corner_2": fluidflower.baseline.opposite_corner,
-                        }
-                    }
-                }
-            },
+            sec={"volume": {}},
             results=config.data.results,
+            roi_registry=config.roi_registry,
         )
+
+    # Resolve ROI registry keys to actual ROI configs
+    resolved_roi = config.roi_registry.resolve_rois(config.analysis.volume.roi)
+    resolved_roi_and_label = config.roi_registry.resolve_roi_and_labels(
+        config.analysis.volume.roi_and_label
+    )
 
     # ! ---- GEOMETRY FOR INTEGRATION ----
     geometry = {}
     geometry.update(
         {
             roi_config.name: fluidflower.geometry.subregion(roi_config.roi)
-            for roi_config in config.analysis.volume.roi.values()
+            for roi_config in resolved_roi.values()
         }
     )
     geometry.update(
@@ -78,31 +75,28 @@ def analysis_volume_from_context(
             roi_and_label_config.name: fluidflower.geometry.subregion(
                 roi_and_label_config.roi
             )
-            for roi_and_label_config in config.analysis.volume.roi_and_label.values()
+            for roi_and_label_config in resolved_roi_and_label.values()
         }
     )
 
     # Initialize DataFrame for storing integrated masses
     detected_cols = [
-        f"{roi_config.name}_detected_volume"
-        for roi_config in config.analysis.volume.roi.values()
+        f"{roi_config.name}_detected_volume" for roi_config in resolved_roi.values()
     ] + [
         f"{roi_and_label_config.name}_detected_volume"
-        for roi_and_label_config in config.analysis.volume.roi_and_label.values()
+        for roi_and_label_config in resolved_roi_and_label.values()
     ]
     detected_cols_g = [
-        f"{roi_config.name}_detected_volume_g"
-        for roi_config in config.analysis.volume.roi.values()
+        f"{roi_config.name}_detected_volume_g" for roi_config in resolved_roi.values()
     ] + [
         f"{roi_and_label_config.name}_detected_volume_g"
-        for roi_and_label_config in config.analysis.volume.roi_and_label.values()
+        for roi_and_label_config in resolved_roi_and_label.values()
     ]
     detected_cols_aq = [
-        f"{roi_config.name}_detected_volume_aq"
-        for roi_config in config.analysis.volume.roi.values()
+        f"{roi_config.name}_detected_volume_aq" for roi_config in resolved_roi.values()
     ] + [
         f"{roi_and_label_config.name}_detected_volume_aq"
-        for roi_and_label_config in config.analysis.volume.roi_and_label.values()
+        for roi_and_label_config in resolved_roi_and_label.values()
     ]
     columns = (
         ["time", "datetime", "stem"]
@@ -169,7 +163,7 @@ def analysis_volume_from_context(
         row_data = {"time": image_time, "datetime": img.date, "stem": path.stem}
 
         # Compute exact mass in ROIs and add to row data
-        for roi_config in config.analysis.volume.roi.values():
+        for roi_config in resolved_roi.values():
             key = roi_config.name
             roi = roi_config.roi
 
@@ -183,7 +177,7 @@ def analysis_volume_from_context(
             row_data[f"{key}_detected_volume_g"] = volume_g_roi
             row_data[f"{key}_detected_volume_aq"] = volume_aq_roi
 
-        for roi_and_label_config in config.analysis.volume.roi_and_label.values():
+        for roi_and_label_config in resolved_roi_and_label.values():
             key = roi_and_label_config.name
             label = roi_and_label_config.label
             roi = roi_and_label_config.roi
@@ -213,7 +207,7 @@ def analysis_volume_from_context(
         logger.info(f"Processed {path.stem} at time {image_time}")
 
         # Log the current analysis results
-        for roi_config in config.analysis.volume.roi.values():
+        for roi_config in resolved_roi.values():
             key = roi_config.name
             detected = row_data[f"{key}_detected_volume"]
             detected_g = row_data[f"{key}_detected_volume_g"]
