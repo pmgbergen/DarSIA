@@ -2244,7 +2244,8 @@ class SettingsFactory:
         discarded by navigating between tabs before saving.
         """
         import re
-        from PySide6.QtWidgets import QLineEdit, QComboBox, QCheckBox
+
+        from PySide6.QtWidgets import QCheckBox, QComboBox, QLineEdit
 
         # First pass: collect group checkbox states and determine which sub-inputs to skip
         group_active_names: dict[str, set[str]] = {}
@@ -2309,16 +2310,16 @@ class SettingsFactory:
             try:
                 if isinstance(value, QLineEdit):
                     self.set_value(
-                        self.main_window.config_dict, key, ast.literal_eval(value.text())
+                        self.main_window.config_dict,
+                        key,
+                        ast.literal_eval(value.text()),
                     )
                 elif isinstance(value, QComboBox):
                     self.set_value(
                         self.main_window.config_dict, key, value.currentText()
                     )
                 elif isinstance(value, QCheckBox):
-                    self.set_value(
-                        self.main_window.config_dict, key, value.isChecked()
-                    )
+                    self.set_value(self.main_window.config_dict, key, value.isChecked())
                 elif isinstance(value, list):
                     if len(value) > 0:
                         if isinstance(value[0], QCheckBox):
@@ -2606,9 +2607,7 @@ class SettingsFactory:
 
         # Thirteenth pass: write all active lists
         for active_list_key, names in group_active_names.items():
-            self.set_value(
-                self.main_window.config_dict, active_list_key, sorted(names)
-            )
+            self.set_value(self.main_window.config_dict, active_list_key, sorted(names))
 
     def save_settings(self):
         """Save the current settings to the loaded config file."""
@@ -2649,7 +2648,9 @@ class SettingsFactory:
                         if 0 <= current_tab_index < widget.count():
                             widget.setCurrentIndex(current_tab_index)
         else:
-            self.main_window.print_log("Settings not saved, please choose a config file")
+            self.main_window.print_log(
+                "Settings not saved, please choose a config file"
+            )
 
     def _render_settings_tabs(self, settings_by_section):
         """Render settings_by_section dict into tabbed layout.
@@ -2658,7 +2659,7 @@ class SettingsFactory:
         populating form inputs via settings_factory.build_tab_form.
         Shared with both display_settings and display_full_settings.
         """
-        from PySide6.QtWidgets import QTabWidget, QVBoxLayout, QLabel
+        from PySide6.QtWidgets import QLabel, QTabWidget, QVBoxLayout
 
         # Flush any pending edits into config_dict before the widgets holding
         # them are destroyed below, so switching tabs never silently drops
@@ -2693,9 +2694,7 @@ class SettingsFactory:
             form_context = {"form": tab_form}
 
             # Build rows in the form, handling grouping via group_name metadata
-            self.build_tab_form(
-                tab_form, settings_list, form_context=form_context
-            )
+            self.build_tab_form(tab_form, settings_list, form_context=form_context)
 
             # Add stretch at the end of the section (QFormLayout doesn't auto-stretch rows)
             tab_form.setRowWrapPolicy(QFormLayout.WrapLongRows)
