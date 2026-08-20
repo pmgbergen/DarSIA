@@ -13,7 +13,7 @@ from darsia.presets.workflows.mode_resolution import validate_mode_syntax
 
 from .contour_smoother import SavitzkyGolaySmootherConfig
 from .fingers import FingersConfig
-from .roi import RoiAndLabelConfig, RoiConfig
+from .roi import RoiConfig
 from .segmentation import SegmentationConfig
 from .utils import _get_key, _get_section, _get_section_from_toml
 
@@ -404,13 +404,23 @@ class AnalysisMassConfig:
     ``[color.*.*]`` registry.
     """
     roi: dict[str, RoiConfig] = field(
-        default_factory=dict, metadata={"name": "ROI", "hidden": True}
+        default_factory=dict,
+        metadata={
+            "name": "ROIs",
+            "help": "ROI definitions with no label restriction.",
+            "widget": "roi_key_list",
+        },
     )
-    """ROI configurations for mass analysis."""
-    roi_and_label: dict[str, RoiAndLabelConfig] = field(
-        default_factory=dict, metadata={"name": "ROI and label", "hidden": True}
+    """ROI names (with no label restriction) for mass analysis."""
+    roi_and_label: dict[str, RoiConfig] = field(
+        default_factory=dict,
+        metadata={
+            "name": "ROIs with labels",
+            "help": "ROI definitions restricted to specific labels.",
+            "widget": "roi_key_list",
+        },
     )
-    """ROI and label configurations for mass analysis."""
+    """ROI names (label-restricted) for mass analysis."""
     export: list[str] | None = field(
         default=None,
         metadata={"name": "Export fields", "help": "Mass analysis scalars to save."},
@@ -474,7 +484,7 @@ class AnalysisMassConfig:
         elif isinstance(roi_label_raw, dict):
             self.roi_and_label = {}
             for key in roi_label_raw.keys():
-                self.roi_and_label[key] = RoiAndLabelConfig().load(
+                self.roi_and_label[key] = RoiConfig().load(
                     _get_section(roi_label_raw, key)
                 )
         else:
@@ -482,7 +492,7 @@ class AnalysisMassConfig:
                 roi_label_sec = _get_section(sub_sec, "roi_and_label")
                 self.roi_and_label = {}
                 for key in roi_label_sec.keys():
-                    self.roi_and_label[key] = RoiAndLabelConfig().load(
+                    self.roi_and_label[key] = RoiConfig().load(
                         _get_section(roi_label_sec, key)
                     )
             except KeyError:
@@ -548,13 +558,23 @@ class AnalysisMassConfig:
 @dataclass
 class AnalysisVolumeConfig:
     roi: dict[str, RoiConfig] = field(
-        default_factory=dict, metadata={"name": "ROI", "hidden": True}
+        default_factory=dict,
+        metadata={
+            "name": "ROIs",
+            "help": "ROI definitions with no label restriction.",
+            "widget": "roi_key_list",
+        },
     )
-    """ROI configurations for volume analysis."""
-    roi_and_label: dict[str, RoiAndLabelConfig] = field(
-        default_factory=dict, metadata={"name": "ROI and label", "hidden": True}
+    """ROI names (with no label restriction) for volume analysis."""
+    roi_and_label: dict[str, RoiConfig] = field(
+        default_factory=dict,
+        metadata={
+            "name": "ROIs with labels",
+            "help": "ROI definitions restricted to specific labels.",
+            "widget": "roi_key_list",
+        },
     )
-    """ROI and label configurations for volume analysis."""
+    """ROI names (label-restricted) for volume analysis."""
     folder: Path = field(
         default_factory=Path,
         metadata={
@@ -596,7 +616,7 @@ class AnalysisVolumeConfig:
         elif isinstance(roi_label_raw, dict):
             self.roi_and_label = {}
             for key in roi_label_raw.keys():
-                self.roi_and_label[key] = RoiAndLabelConfig().load(
+                self.roi_and_label[key] = RoiConfig().load(
                     _get_section(roi_label_raw, key)
                 )
         else:
@@ -604,7 +624,7 @@ class AnalysisVolumeConfig:
                 roi_label_sec = _get_section(sub_sec, "roi_and_label")
                 self.roi_and_label = {}
                 for key in roi_label_sec.keys():
-                    self.roi_and_label[key] = RoiAndLabelConfig().load(
+                    self.roi_and_label[key] = RoiConfig().load(
                         _get_section(roi_label_sec, key)
                     )
             except KeyError:
@@ -626,7 +646,7 @@ class AnalysisExpertKnowledgeConfig:
         metadata={
             "name": "Saturation ROIs",
             "help": "ROI keys where saturation_g constraints apply.",
-            "hidden": True,
+            "widget": "roi_key_list",
         },
     )
     """ROI registry keys constraining where saturation_g may be non-zero."""
@@ -635,7 +655,7 @@ class AnalysisExpertKnowledgeConfig:
         metadata={
             "name": "Concentration ROIs",
             "help": "ROI keys where concentration_aq constraints apply.",
-            "hidden": True,
+            "widget": "roi_key_list",
         },
     )
     """ROI registry keys constraining where concentration_aq may be non-zero."""

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import darsia
@@ -28,7 +28,14 @@ class FingersConfig:
     """Type for segmentation."""
     threshold: float = 0.0
     """Threshold for segmentation."""
-    roi: dict[str, RoiConfig] | None = None
+    roi: dict[str, RoiConfig] | None = field(
+        default=None,
+        metadata={
+            "name": "ROIs",
+            "help": "ROI definitions for finger analysis.",
+            "widget": "roi_key_list",
+        },
+    )
     """ROIs for analysis."""
     contour_smoother: darsia.ContourSmoother | None = None
     """Optional contour smoother for finger contours."""

@@ -61,7 +61,14 @@ class CalibrationMassConfig:
     )
     """Name(s) of data registry entries to use for mass calibration."""
     threshold: float = 0.2
-    rois: list[str] = field(default_factory=list)
+    rois: list[str] = field(
+        default_factory=list,
+        metadata={
+            "name": "ROIs",
+            "help": "ROI names for mass calibration.",
+            "widget": "roi_key_list",
+        },
+    )
 
     def load(
         self,

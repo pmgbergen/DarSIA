@@ -100,14 +100,10 @@ class ColorToMassConfig:
         # Handle inline [color_to_mass.roi.*] sub-sections: parse and inject into
         # the shared registry for key-based lookup.
         if "roi" in sec and isinstance(sec["roi"], dict) and roi_registry is not None:
-            from .roi import RoiAndLabelConfig, RoiConfig
+            from .roi import RoiConfig
 
             for key, entry in sec["roi"].items():
-                roi_obj: RoiConfig | RoiAndLabelConfig
-                if "label" in entry:
-                    roi_obj = RoiAndLabelConfig().load(entry)
-                else:
-                    roi_obj = RoiConfig().load(entry)
+                roi_obj = RoiConfig().load(entry)
                 roi_registry.register(key, roi_obj)
                 if key not in self.rois:
                     self.rois.append(key)
