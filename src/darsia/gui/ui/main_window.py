@@ -21,7 +21,7 @@ from .config_controller import ConfigController
 from .helper import HelperTab
 from .menu import MenuBuilder
 from .process_runner import ProcessRunner
-from .settings import SettingsFactory, unwrap_composite_widget
+from .settings import SettingsFactory
 from .setup import SetupTab
 from .theme import apply_theme
 from .theme import set_theme as save_theme
@@ -168,13 +168,15 @@ class MainWindow(QMainWindow):
         self.showMaximized()
 
         # Display welcome message
-        self.print_log("No config loaded. Use:")
-        self.print_log("- <b><i>File > New</i></b> to start a new config, ")
+        self.welcome_message()
+
+    def welcome_message(self):
+        """Display a welcome message in the log window."""
+        self.print_log("Welcome to DarSIA!")
+        self.print_log("Load a config file to get started, or create a new one.")
+        self.print_log("Use the tabs above to navigate through the application.")
         self.print_log(
-            "- <b><i>File > Open Config...</i></b> to open an existing one, or "
-        )
-        self.print_log(
-            "- <b><i>File > Open Recent</i></b> to open a recently-used config."
+            "For help, visit the <a href='https://docs.darsia.xyz'>DarSIA documentation</a>."
         )
 
     def get_checked_checkbox_ids(self, checkboxes):
