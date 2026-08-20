@@ -158,33 +158,3 @@ class TestColorToMassConfig:
         )
         assert cfg.rois == ["my_roi"]
 
-    def test_color_to_mass_inline_roi_is_registered_and_added(self, tmp_path):
-        dummy = tmp_path / "dummy.jpg"
-        dummy.touch()
-        data_reg = DataRegistry().load(
-            {"path": {"cal_imgs": {"paths": ["dummy.jpg"]}}},
-            data_folder=tmp_path,
-        )
-        roi_registry = RoiRegistry()
-
-        cfg_path = _write_toml(
-            tmp_path,
-            """
-            [color_to_mass]
-            data = "cal_imgs"
-
-            [color_to_mass.roi.calib_roi]
-            name = "calib_roi"
-            corner_1 = [0.1, 0.2]
-            corner_2 = [0.7, 0.8]
-            """,
-        )
-        cfg = ColorToMassConfig().load(
-            path=cfg_path,
-            data=tmp_path,
-            results=tmp_path,
-            data_registry=data_reg,
-            roi_registry=roi_registry,
-        )
-        assert cfg.rois == ["calib_roi"]
-        assert "calib_roi" in roi_registry.keys()

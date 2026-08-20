@@ -140,7 +140,7 @@ type = "csv"
 name = "csv_default"
 filename_pattern = "stem"
 
-[roi.main]
+[[roi]]
 name = "main"
 corner_1 = [0.0, 0.0]
 corner_2 = [1.0, 1.0]
