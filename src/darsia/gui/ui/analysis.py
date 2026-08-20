@@ -58,7 +58,7 @@ class AnalysisTab:
         checked_ids = self.main_window.get_checked_checkbox_ids(
             self.analysis_checkboxes
         )
-        self.main_window.display_settings("analysis", checked_ids)
+        self.main_window.settings_factory.display_settings("analysis", checked_ids)
 
     def on_run_clicked(self):
         """Handle run button click."""

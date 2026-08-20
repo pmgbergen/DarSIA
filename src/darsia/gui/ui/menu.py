@@ -21,22 +21,22 @@ class MenuBuilder:
 
         file_menu = menu_bar.addMenu("&File")
         self.new_action = self._add_action(
-            file_menu, "&New", self.main_window.new_config, "Ctrl+N"
+            file_menu, "&New", self.main_window.config_controller.new_config, "Ctrl+N"
         )
         file_menu.addSeparator()
         self.open_action = self._add_action(
-            file_menu, "&Open Config...", self.main_window.open_config, "Ctrl+O"
+            file_menu, "&Open Config...", self.main_window.config_controller.open_config, "Ctrl+O"
         )
         self.recent_menu = file_menu.addMenu("Open &Recent")
         self.recent_menu.aboutToShow.connect(self._populate_recent_menu)
         file_menu.addSeparator()
         self.save_action = self._add_action(
-            file_menu, "&Save Config", self.main_window.save_settings, "Ctrl+S"
+            file_menu, "&Save Config", self.main_window.settings_factory.save_settings, "Ctrl+S"
         )
         self._add_action(
             file_menu,
             "Save Config &As...",
-            self.main_window.save_config_as,
+            self.main_window.config_controller.save_config_as,
             "Ctrl+Shift+S",
         )
         file_menu.addSeparator()
@@ -51,7 +51,7 @@ class MenuBuilder:
         self.open_full_config_action = self._add_action(
             settings_menu,
             "Open &Full Config",
-            self.main_window.display_full_settings,
+            self.main_window.settings_factory.display_full_settings,
             "Ctrl+E",
         )
 
@@ -96,7 +96,7 @@ class MenuBuilder:
             return
         for path in recent:
             action = QAction(path, self.main_window)
-            action.triggered.connect(partial(self.main_window.open_recent_config, path))
+            action.triggered.connect(partial(self.main_window.config_controller.open_recent_config, path))
             self.recent_menu.addAction(action)
         self.recent_menu.addSeparator()
         clear_action = QAction("Clear Recent", self.main_window)
