@@ -498,7 +498,9 @@ class SettingsFactory:
         if values is None:
             values = {}
 
-        row_data_list = []  # Track (widget, remove_button, (name, start, end, num, tol))
+        row_data_list = (
+            []
+        )  # Track (widget, remove_button, (name, start, end, num, tol))
         # List of 5-tuples: (name_edit, start_edit, end_edit, num_edit, tol_edit)
         row_edits = []
 
@@ -2411,7 +2413,9 @@ class SettingsFactory:
         group_form.setContentsMargins(8, 10, 8, 8)  # Padding: left, top, right, bottom
         sub_inputs = {}
         field_row_map = {}  # Map unqualified_key -> (row_index, field_widget)
-        group_forms = {}  # For nested multi-row fields, reuse _get_or_create_group_form helper
+        group_forms = (
+            {}
+        )  # For nested multi-row fields, reuse _get_or_create_group_form helper
 
         for sub_setting in setting_dict["fields"]:
             sub_setting_type = sub_setting.get("type")
