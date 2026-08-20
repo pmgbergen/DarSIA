@@ -59,12 +59,27 @@ def _get_section_from_toml(path: Path | list[Path], section: str) -> dict:
 
 
 def _get_key(section: dict, key: str, default=None, required=True, type_=None) -> Any:
-    """Utility to get a key from a section with type conversion and default value."""
+    """Utility to get a key from a section with type conversion and default value.
+
+    Handles blank strings ("") gracefully for int/float types: a blank value with
+    required=False returns default (matching the behavior when the key is absent),
+    while required=True raises a clear ValueError naming the key/type.
+    """
     if required and key not in section:
         raise KeyError(f"Missing key '{key}' in section {section}.")
 
     if key in section:
         value = section[key]
+        # Handle blank strings for int/float: treat as "not provided" for optional
+        # fields, or raise a clear error for required fields (not the cryptic
+        # "invalid literal for int() with base 10: ''" traceback).
+        if type_ in (int, float) and isinstance(value, str) and value.strip() == "":
+            if required:
+                raise ValueError(
+                    f"Key '{key}' in section {section} is blank; "
+                    f"expected a {type_.__name__}."
+                )
+            return default
         return type_(value) if type_ else value
     else:
         return default
