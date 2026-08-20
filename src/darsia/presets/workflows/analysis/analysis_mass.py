@@ -95,12 +95,18 @@ def analysis_mass_from_context(
     if config.analysis.mass is None:
         raise ValueError("Mass analysis requires an explicit [analysis.mass] section.")
 
+    # Resolve ROI registry keys to actual ROI configs
+    resolved_roi = config.roi_registry.resolve_rois(config.analysis.mass.roi)
+    resolved_roi_and_label = config.roi_registry.resolve_roi_and_labels(
+        config.analysis.mass.roi_and_label
+    )
+
     # ! ---- GEOMETRY FOR INTEGRATION ----
     geometry = {}
     geometry.update(
         {
             roi_config.name: fluidflower.geometry.subregion(roi_config.roi)
-            for roi_config in config.analysis.mass.roi.values()
+            for roi_config in resolved_roi.values()
         }
     )
     geometry.update(
@@ -108,7 +114,7 @@ def analysis_mass_from_context(
             roi_and_label_config.name: fluidflower.geometry.subregion(
                 roi_and_label_config.roi
             )
-            for roi_and_label_config in config.analysis.mass.roi_and_label.values()
+            for roi_and_label_config in resolved_roi_and_label.values()
         }
     )
 
@@ -165,29 +171,25 @@ def analysis_mass_from_context(
 
     # Initialize DataFrame for storing integrated masses
     detected_cols = [
-        f"{roi_config.name}_detected_mass"
-        for roi_config in config.analysis.mass.roi.values()
+        f"{roi_config.name}_detected_mass" for roi_config in resolved_roi.values()
     ] + [
         f"{roi_and_label_config.name}_detected_mass"
-        for roi_and_label_config in config.analysis.mass.roi_and_label.values()
+        for roi_and_label_config in resolved_roi_and_label.values()
     ]
     detected_cols_g = [
-        f"{roi_config.name}_detected_mass_g"
-        for roi_config in config.analysis.mass.roi.values()
+        f"{roi_config.name}_detected_mass_g" for roi_config in resolved_roi.values()
     ] + [
         f"{roi_and_label_config.name}_detected_mass_g"
-        for roi_and_label_config in config.analysis.mass.roi_and_label.values()
+        for roi_and_label_config in resolved_roi_and_label.values()
     ]
     detected_cols_aq = [
-        f"{roi_config.name}_detected_mass_aq"
-        for roi_config in config.analysis.mass.roi.values()
+        f"{roi_config.name}_detected_mass_aq" for roi_config in resolved_roi.values()
     ] + [
         f"{roi_and_label_config.name}_detected_mass_aq"
-        for roi_and_label_config in config.analysis.mass.roi_and_label.values()
+        for roi_and_label_config in resolved_roi_and_label.values()
     ]
     exact_cols = [
-        f"{roi_config.name}_exact_mass"
-        for roi_config in config.analysis.mass.roi.values()
+        f"{roi_config.name}_exact_mass" for roi_config in resolved_roi.values()
     ]
     columns = (
         [
@@ -287,7 +289,7 @@ def analysis_mass_from_context(
         row_data["mass_scaling_factor"] = rescaled.mass_scaling_factor
 
         # Compute exact mass in ROIs and add to row data
-        for roi_config in config.analysis.mass.roi.values():
+        for roi_config in resolved_roi.values():
             key = roi_config.name
             roi = roi_config.roi
             # Fetch exact mass from injection protocol
@@ -307,7 +309,7 @@ def analysis_mass_from_context(
             row_data[f"{key}_detected_mass_aq"] = mass_aq_roi
 
         # Compute integrated mass, mass_g, mass_aq in sub-ROIs and add to row data
-        for roi_and_label_config in config.analysis.mass.roi_and_label.values():
+        for roi_and_label_config in resolved_roi_and_label.values():
             key = roi_and_label_config.name
             label = roi_and_label_config.label
             roi = roi_and_label_config.roi
@@ -341,7 +343,7 @@ def analysis_mass_from_context(
         mass_df.to_csv(csv_path, index=False)  # Log the current analysis results
         logger.info(f"Processed {path.stem} at time {image_time}")
 
-        for roi_config in config.analysis.mass.roi.values():
+        for roi_config in resolved_roi.values():
             key = roi_config.name
             exact = row_data[f"{key}_exact_mass"]
             detected = row_data[f"{key}_detected_mass"]
