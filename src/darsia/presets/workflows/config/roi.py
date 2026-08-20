@@ -44,6 +44,7 @@ class MultiRoiConfig:
     """Dictionary of ROI configurations."""
 
     def load(self, path: Path) -> "MultiRoiConfig":
+        raise NotImplementedError("TBC. Does not use the ROI style.")
         # Load the entire TOML data to access events section
         roi_sec = _get_section_from_toml(path, "roi")
         self.roi = {}

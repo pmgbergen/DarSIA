@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .format_registry import FormatRegistry
-from .roi_registry import RoiRegistry
+from .roi_registry import RoiRegistry, _load_roi_key_list
 from .utils import _convert_none, _get_key, _get_section, _get_section_from_toml
 
 
@@ -182,31 +182,15 @@ class HelperResultsConfig:
         if self.cmap == "":
             self.cmap = None
 
-        roi_value = _convert_none(_get_key(sec, "roi", default=None, required=False))
-        if roi_value is None:
-            self.roi = None
-        else:
-            if isinstance(roi_value, str):
-                roi_keys = [roi_value]
-            elif isinstance(roi_value, list):
-                roi_keys = [str(key) for key in roi_value]
-            else:
-                raise ValueError(
-                    "helper.results.roi must be None, a string, or a list of strings."
-                )
-            if roi_registry is None:
-                raise ValueError(
-                    "helper.results.roi references ROI keys, but no ROI registry "
-                    "is available. Define top-level [roi.*] entries."
-                )
-            resolved = roi_registry.resolve_rois(roi_keys)
-            missing = [key for key in roi_keys if key not in resolved]
-            if missing:
-                raise ValueError(
-                    f"helper.results.roi contains non-plain ROI entries or unknown keys: "
-                    f"{missing}"
-                )
-            self.roi = roi_keys
+        self.roi = _load_roi_key_list(
+            sec,
+            "roi",
+            context="helper.results.roi",
+            roi_registry=roi_registry,
+            restricted=False,
+            allow_str=True,
+            none_if_absent=True,
+        )
 
         return self
 

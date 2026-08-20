@@ -216,6 +216,7 @@ class FluidFlowerConfig:
                 path=path,
                 data=self.data.folder if self.data else None,
                 color_embedding_registry=self.color,
+                roi_registry=self.roi_registry,
             ),
             warn_on_missing=False,
             exception_types=(ValueError, KeyError),

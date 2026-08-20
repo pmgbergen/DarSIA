@@ -6,8 +6,92 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .roi import RoiAndSubroiConfig, RoiConfig
+from .utils import _convert_none
 
 logger = logging.getLogger(__name__)
+
+
+def _load_roi_key_list(
+    sub_sec: dict,
+    key: str,
+    *,
+    context: str,
+    roi_registry: "RoiRegistry | None",
+    restricted: bool,
+    allow_str: bool = False,
+    none_if_absent: bool = False,
+) -> list[str] | None:
+    """Validate and normalize a ROI-registry-key-reference field.
+
+    Reads `sub_sec[key]`, validates it's a list[str] (or a bare str if `allow_str`),
+    and validates each entry resolves in `roi_registry` — using `resolve_roi_and_labels`
+    if `restricted` else `resolve_rois`. Returns the validated list[str] unresolved
+    (resolution to RoiConfig objects happens at point of use, not here).
+
+    Args:
+        sub_sec: Section dict to read from.
+        key: Key name within the section.
+        context: Human-readable context for error messages (e.g. "analysis.mass.roi").
+        roi_registry: ROI registry to validate keys against (required if keys are present).
+        restricted: If True, use resolve_roi_and_labels (label-restricted). If False,
+            use resolve_rois (plain ROIs only).
+        allow_str: If True, accept a bare string and wrap as single-entry list.
+        none_if_absent: If True, return None when the key is absent. If False, return [].
+
+    Returns:
+        Validated list[str] (or None if `none_if_absent=True` and key is absent).
+
+    Raises:
+        ValueError: If the value is not a valid list[str]/str, if the registry is
+            missing when keys are present, or if any key doesn't resolve or has
+            the wrong type (label-restricted vs. plain).
+    """
+    raw_value = _convert_none(sub_sec.get(key))
+
+    if raw_value is None:
+        return None if none_if_absent else []
+
+    # Normalize to list[str]
+    if isinstance(raw_value, str):
+        if not allow_str:
+            raise ValueError(f"{context} must be a list of ROI registry keys.")
+        roi_keys = [raw_value]
+    elif isinstance(raw_value, list):
+        roi_keys = [str(k).strip() for k in raw_value]
+    else:
+        msg = (
+            f"{context} must be None, a string, or a list of strings."
+            if allow_str
+            else f"{context} must be a list of ROI registry keys."
+        )
+        raise ValueError(msg)
+
+    if not roi_keys:
+        return None if none_if_absent else []
+
+    # Validate registry is available
+    if roi_registry is None:
+        raise ValueError(
+            f"{context} references ROI keys, but no ROI registry is available. "
+            "Define top-level [[roi]] entries."
+        )
+
+    # Validate each key resolves and has the correct type
+    if restricted:
+        resolved = roi_registry.resolve_roi_and_labels(roi_keys)
+        unrestricted_keys = [k for k in roi_keys if k not in resolved]
+        if unrestricted_keys:
+            raise ValueError(
+                f"{context} contains unknown or unrestricted ROI keys: "
+                f"{unrestricted_keys}"
+            )
+    else:
+        resolved = roi_registry.resolve_rois(roi_keys)
+        missing_keys = [k for k in roi_keys if k not in resolved]
+        if missing_keys:
+            raise ValueError(f"{context} contains unknown ROI keys: {missing_keys}")
+
+    return roi_keys
 
 
 @dataclass
