@@ -35,6 +35,27 @@ class FileDialogHelper:
         if selected:
             line_edit.setText(selected)
 
+    def browse_file(self, key):
+        """Open file/folder dialog and store selected path."""
+        file_info = self.main_window.chosen_files[key]
+        is_directory = file_info["is_directory"]
+        file_filter = file_info["filter"]
+
+        if is_directory:
+            selected_path = QFileDialog.getExistingDirectory(
+                self.main_window, f"Select {key.replace('_', ' ')}"
+            )
+        else:
+            selected_path, _ = QFileDialog.getOpenFileName(
+                self.main_window, f"Select {key.replace('_', ' ')}", "", file_filter
+            )
+
+        if selected_path:
+            self.main_window.chosen_files[key]["path"] = selected_path
+            file_info["label"].setText(selected_path)
+            file_info["label"].setStyleSheet("color: white;")
+            self.main_window.print_log(f"Selected {key}: {selected_path}")
+
     def _remove_form_row(
         self,
         form,
@@ -105,7 +126,7 @@ class FileDialogHelper:
                 "is_directory": is_directory,
                 "filter": file_filter,
             }
-            browse_button.clicked.connect(lambda: self.main_window.browse_file(key))
+            browse_button.clicked.connect(lambda: self.browse_file(key))
 
         # Build composite field widget
         field_widget = QWidget()
