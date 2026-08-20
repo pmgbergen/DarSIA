@@ -10,8 +10,8 @@ import darsia
 from darsia.presets.workflows.mode_resolution import validate_mode_syntax
 
 from .contour_smoother import SavitzkyGolaySmootherConfig
-from .roi import RoiConfig
-from .utils import _get_key, _get_section
+from .roi_registry import _load_roi_key_list
+from .utils import _get_key
 
 if TYPE_CHECKING:
     from .color_embedding_registry import ColorEmbeddingRegistry
@@ -28,7 +28,7 @@ class FingersConfig:
     """Type for segmentation."""
     threshold: float = 0.0
     """Threshold for segmentation."""
-    roi: dict[str, RoiConfig] | None = field(
+    roi: list[str] | None = field(
         default=None,
         metadata={
             "name": "ROIs",
@@ -64,24 +64,15 @@ class FingersConfig:
         )
         self.threshold = _get_key(sec, "threshold", required=True, type_=float)
 
-        # Load ROIs – support both registry-key references and inline definitions.
-        roi_raw = sec.get("roi")
-        if isinstance(roi_raw, list) and roi_registry is not None:
-            # New format: roi = ["key1", "key2"] resolved via registry
-            self.roi = roi_registry.resolve_rois(roi_raw)
-        elif isinstance(roi_raw, dict):
-            # Old inline format: [analysis.fingers.roi.*] sub-sections
-            self.roi = {}
-            for key in roi_raw.keys():
-                self.roi[key] = RoiConfig().load(_get_section(roi_raw, key))
-        else:
-            try:
-                roi_sec = _get_section(sec, "roi")
-                self.roi = {}
-                for key in roi_sec.keys():
-                    self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
-            except KeyError:
-                self.roi = {}
+        # Load ROIs – support registry-key references as list[str].
+        self.roi = _load_roi_key_list(
+            sec,
+            "roi",
+            context="analysis.fingers.roi",
+            roi_registry=roi_registry,
+            restricted=False,
+            none_if_absent=True,
+        )
 
         # Load contour smoother
         contour_smoother = _get_key(

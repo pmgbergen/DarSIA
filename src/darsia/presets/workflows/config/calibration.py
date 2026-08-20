@@ -6,12 +6,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from .roi_registry import _load_roi_key_list
 from .utils import _get_key, _get_section, _get_section_from_toml
 
 if TYPE_CHECKING:
     from darsia.signals.color import ColorEmbedding
 
     from .color_embedding_registry import ColorEmbeddingRegistry
+    from .roi_registry import RoiRegistry
 
 
 @dataclass
@@ -76,6 +78,7 @@ class CalibrationMassConfig:
         *,
         data: Path | None,
         color_embedding_registry: "ColorEmbeddingRegistry | None" = None,
+        roi_registry: "RoiRegistry | None" = None,
     ) -> "CalibrationMassConfig":
         color_key = _get_key(sec, "color", required=True, type_=str).strip()
         if color_embedding_registry is None:
@@ -100,7 +103,13 @@ class CalibrationMassConfig:
             sec, "threshold", default=0.2, required=False, type_=float
         )
         # This threshold is currently only meaningful for color-path embeddings.
-        self.rois = _get_key(sec, "rois", default=[], required=False, type_=list)
+        self.rois = _load_roi_key_list(
+            sec,
+            "rois",
+            context="calibration.mass.rois",
+            roi_registry=roi_registry,
+            restricted=False,
+        )
 
         # Load data selection
         self.data_selection = _get_key(
@@ -133,6 +142,7 @@ class CalibrationConfig:
         *,
         data: Path | None,
         color_embedding_registry: "ColorEmbeddingRegistry | None" = None,
+        roi_registry: "RoiRegistry | None" = None,
     ) -> "CalibrationConfig":
         sec = _get_section_from_toml(path, "calibration")
         if not isinstance(sec, dict):
@@ -151,6 +161,7 @@ class CalibrationConfig:
                 _get_section(sec, "mass"),
                 data=data,
                 color_embedding_registry=color_embedding_registry,
+                roi_registry=roi_registry,
             )
         except KeyError:
             self.mass = None

@@ -16,11 +16,11 @@ from darsia.signals.color import (
     parse_color_embedding_basis,
 )
 
+from .roi_registry import RoiRegistry, _load_roi_key_list
 from .utils import _convert_none, _get_section_from_toml, _validate_choice
 
 if TYPE_CHECKING:
     from .data_registry import DataRegistry
-    from .roi_registry import RoiRegistry
 
 
 def _parse_mode(value: str, *, context: str) -> darsia.ColorMode:
@@ -72,6 +72,14 @@ def parse_color_path_embedding(
         key="calibration_mode",
     )
 
+    rois = _load_roi_key_list(
+        cfg,
+        "rois",
+        context=f"color.path.{embedding_id}.rois",
+        roi_registry=roi_registry,
+        restricted=False,
+    )
+
     embedding = ColorPathEmbedding(
         embedding_id=embedding_id,
         mode=mode,
@@ -83,7 +91,7 @@ def parse_color_path_embedding(
         threshold_baseline=float(cfg.get("threshold_baseline", 0.0)),
         threshold_calibration=float(cfg.get("threshold_calibration", 0.0)),
         reference_label=int(cfg.get("reference_label", 0)),
-        rois=list(cfg.get("rois", [])),
+        rois=rois,
         ignore_baseline_spectrum=ignore_baseline_spectrum,
         histogram_weighting=histogram_weighting,
         calibration_mode=calibration_mode,
@@ -92,14 +100,6 @@ def parse_color_path_embedding(
         data_registry.resolve(cfg["baseline"]) if data_registry else None
     )
     embedding.data = data_registry.resolve(cfg["data"]) if data_registry else None
-    if "roi" in cfg and isinstance(cfg["roi"], dict) and roi_registry is not None:
-        from .roi import RoiConfig
-
-        for key, entry in cfg["roi"].items():
-            roi_obj = RoiConfig().load(entry)
-            roi_registry.register(key, roi_obj)
-            if key not in embedding.rois:
-                embedding.rois.append(key)
     return embedding
 
 

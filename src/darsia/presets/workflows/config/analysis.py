@@ -13,7 +13,7 @@ from darsia.presets.workflows.mode_resolution import validate_mode_syntax
 
 from .contour_smoother import SavitzkyGolaySmootherConfig
 from .fingers import FingersConfig
-from .roi import RoiConfig
+from .roi_registry import _load_roi_key_list
 from .segmentation import SegmentationConfig
 from .utils import _get_key, _get_section, _get_section_from_toml
 
@@ -403,8 +403,8 @@ class AnalysisMassConfig:
     The value must be a non-empty key defined in the centralized
     ``[color.*.*]`` registry.
     """
-    roi: dict[str, RoiConfig] = field(
-        default_factory=dict,
+    roi: list[str] = field(
+        default_factory=list,
         metadata={
             "name": "ROIs",
             "help": "ROI definitions with no label restriction.",
@@ -412,8 +412,8 @@ class AnalysisMassConfig:
         },
     )
     """ROI names (with no label restriction) for mass analysis."""
-    roi_and_label: dict[str, RoiConfig] = field(
-        default_factory=dict,
+    roi_and_label: list[str] = field(
+        default_factory=list,
         metadata={
             "name": "ROIs with labels",
             "help": "ROI definitions restricted to specific labels.",
@@ -460,43 +460,23 @@ class AnalysisMassConfig:
                 f"Unknown analysis.mass.color embedding '{color_key}'."
             ) from exc
 
-        # Load ROIs – support registry-key references (list) and inline dicts.
-        roi_raw = sub_sec.get("roi")
-        if isinstance(roi_raw, list) and roi_registry is not None:
-            self.roi = roi_registry.resolve_rois(roi_raw)
-        elif isinstance(roi_raw, dict):
-            self.roi = {}
-            for key in roi_raw.keys():
-                self.roi[key] = RoiConfig().load(_get_section(roi_raw, key))
-        else:
-            try:
-                roi_sec = _get_section(sub_sec, "roi")
-                self.roi = {}
-                for key in roi_sec.keys():
-                    self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
-            except KeyError:
-                self.roi = {}
+        # Load ROIs – support registry-key references as list[str].
+        self.roi = _load_roi_key_list(
+            sub_sec,
+            "roi",
+            context="analysis.mass.roi",
+            roi_registry=roi_registry,
+            restricted=False,
+        )
 
-        # Load ROIs with labels – support registry-key references and inline dicts.
-        roi_label_raw = sub_sec.get("roi_and_label")
-        if isinstance(roi_label_raw, list) and roi_registry is not None:
-            self.roi_and_label = roi_registry.resolve_roi_and_labels(roi_label_raw)
-        elif isinstance(roi_label_raw, dict):
-            self.roi_and_label = {}
-            for key in roi_label_raw.keys():
-                self.roi_and_label[key] = RoiConfig().load(
-                    _get_section(roi_label_raw, key)
-                )
-        else:
-            try:
-                roi_label_sec = _get_section(sub_sec, "roi_and_label")
-                self.roi_and_label = {}
-                for key in roi_label_sec.keys():
-                    self.roi_and_label[key] = RoiConfig().load(
-                        _get_section(roi_label_sec, key)
-                    )
-            except KeyError:
-                self.roi_and_label = {}
+        # Load ROIs with labels – support registry-key references as list[str].
+        self.roi_and_label = _load_roi_key_list(
+            sub_sec,
+            "roi_and_label",
+            context="analysis.mass.roi_and_label",
+            roi_registry=roi_registry,
+            restricted=True,
+        )
 
         raw_export = _get_key(sub_sec, "export", required=False, default=None)
         if raw_export is None:
@@ -557,8 +537,8 @@ class AnalysisMassConfig:
 
 @dataclass
 class AnalysisVolumeConfig:
-    roi: dict[str, RoiConfig] = field(
-        default_factory=dict,
+    roi: list[str] = field(
+        default_factory=list,
         metadata={
             "name": "ROIs",
             "help": "ROI definitions with no label restriction.",
@@ -566,8 +546,8 @@ class AnalysisVolumeConfig:
         },
     )
     """ROI names (with no label restriction) for volume analysis."""
-    roi_and_label: dict[str, RoiConfig] = field(
-        default_factory=dict,
+    roi_and_label: list[str] = field(
+        default_factory=list,
         metadata={
             "name": "ROIs with labels",
             "help": "ROI definitions restricted to specific labels.",
@@ -592,43 +572,23 @@ class AnalysisVolumeConfig:
     ) -> "AnalysisVolumeConfig":
         sub_sec = _get_section(sec, "volume")
 
-        # Load ROIs – support registry-key references (list) and inline dicts.
-        roi_raw = sub_sec.get("roi")
-        if isinstance(roi_raw, list) and roi_registry is not None:
-            self.roi = roi_registry.resolve_rois(roi_raw)
-        elif isinstance(roi_raw, dict):
-            self.roi = {}
-            for key in roi_raw.keys():
-                self.roi[key] = RoiConfig().load(_get_section(roi_raw, key))
-        else:
-            try:
-                roi_sec = _get_section(sub_sec, "roi")
-                self.roi = {}
-                for key in roi_sec.keys():
-                    self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
-            except KeyError:
-                self.roi = {}
+        # Load ROIs – support registry-key references as list[str].
+        self.roi = _load_roi_key_list(
+            sub_sec,
+            "roi",
+            context="analysis.volume.roi",
+            roi_registry=roi_registry,
+            restricted=False,
+        )
 
-        # Load ROIs with labels – support registry-key references and inline dicts.
-        roi_label_raw = sub_sec.get("roi_and_label")
-        if isinstance(roi_label_raw, list) and roi_registry is not None:
-            self.roi_and_label = roi_registry.resolve_roi_and_labels(roi_label_raw)
-        elif isinstance(roi_label_raw, dict):
-            self.roi_and_label = {}
-            for key in roi_label_raw.keys():
-                self.roi_and_label[key] = RoiConfig().load(
-                    _get_section(roi_label_raw, key)
-                )
-        else:
-            try:
-                roi_label_sec = _get_section(sub_sec, "roi_and_label")
-                self.roi_and_label = {}
-                for key in roi_label_sec.keys():
-                    self.roi_and_label[key] = RoiConfig().load(
-                        _get_section(roi_label_sec, key)
-                    )
-            except KeyError:
-                self.roi_and_label = {}
+        # Load ROIs with labels – support registry-key references as list[str].
+        self.roi_and_label = _load_roi_key_list(
+            sub_sec,
+            "roi_and_label",
+            context="analysis.volume.roi_and_label",
+            roi_registry=roi_registry,
+            restricted=True,
+        )
 
         folder = _get_key(sub_sec, "folder", required=False, type_=Path)
         if not folder:

@@ -13,11 +13,12 @@ from darsia.signals.color.color_embedding import (
 )
 
 from .data_registry import DataRegistry
+from .roi_registry import RoiRegistry, _load_roi_key_list
 from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
 
 if TYPE_CHECKING:
-    from .roi_registry import RoiRegistry
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,13 @@ class ColorToMassConfig:
         self.threshold = _get_key(
             sec, "threshold", default=0.2, required=False, type_=float
         )
-        self.rois = _get_key(sec, "rois", default=[], required=False, type_=list)
+        self.rois = _load_roi_key_list(
+            sec,
+            "rois",
+            context="color_to_mass.rois",
+            roi_registry=roi_registry,
+            restricted=False,
+        )
 
         # Calibration data – centralized selector resolution.
         try:
@@ -96,16 +103,5 @@ class ColorToMassConfig:
                 / "color_to_mass"
                 / calibration_basis_folder(self.basis)
             )
-
-        # Handle inline [color_to_mass.roi.*] sub-sections: parse and inject into
-        # the shared registry for key-based lookup.
-        if "roi" in sec and isinstance(sec["roi"], dict) and roi_registry is not None:
-            from .roi import RoiConfig
-
-            for key, entry in sec["roi"].items():
-                roi_obj = RoiConfig().load(entry)
-                roi_registry.register(key, roi_obj)
-                if key not in self.rois:
-                    self.rois.append(key)
 
         return self
