@@ -1,7 +1,6 @@
 from pathlib import Path
 
-import psutil
-from PySide6.QtCore import QProcess, Qt, Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QLabel,
@@ -21,6 +20,7 @@ from .comparison import ComparisonTab
 from .config_controller import ConfigController
 from .helper import HelperTab
 from .menu import MenuBuilder
+from .process_runner import ProcessRunner
 from .settings import SettingsFactory, unwrap_composite_widget
 from .setup import SetupTab
 from .theme import apply_theme
@@ -65,6 +65,9 @@ class MainWindow(QMainWindow):
 
         # Initialize config controller before menu builder (which uses it)
         self.config_controller = ConfigController(self)
+
+        # Initialize process runner
+        self.process_runner = ProcessRunner(self)
 
         # Set up the menu bar
         self.menu_builder = MenuBuilder(self)
@@ -210,66 +213,3 @@ class MainWindow(QMainWindow):
         """Slot that appends text to log window and prints to console."""
         self.log_text.append(text)
         print(text)
-
-    def start_workflow_process(self, argv, run_button, abort_button, cwd=None):
-        """Launch argv as a QProcess, streaming merged stdout/stderr to the log.
-        Disables run_button and shows/enables abort_button while running; restores
-        button state and logs completion/abort/error when the process finishes.
-        Returns the QProcess (caller must keep a reference alive, e.g. on the tab,
-        and call abort_workflow_process(process) to abort it).
-        """
-        process = QProcess(self)
-        process.setProgram(argv[0])
-        process.setArguments(argv[1:])
-        if cwd:
-            process.setWorkingDirectory(str(cwd))
-        process.setProcessChannelMode(QProcess.MergedChannels)
-
-        def handle_output():
-            data = bytes(process.readAllStandardOutput()).decode(errors="replace")
-            for line in data.splitlines():
-                if line:
-                    self.print_log(line)
-
-        def handle_finished(exit_code, exit_status):
-            run_button.setEnabled(True)
-            abort_button.setVisible(False)
-            abort_button.setEnabled(False)
-            if exit_status == QProcess.CrashExit:
-                self.print_log("Process aborted.")
-            elif exit_code != 0:
-                self.print_log(f"Process exited with code {exit_code}.")
-            else:
-                self.print_log("Completed successfully!")
-
-        process.readyReadStandardOutput.connect(handle_output)
-        process.finished.connect(handle_finished)
-        run_button.setEnabled(False)
-        abort_button.setVisible(True)
-        abort_button.setEnabled(True)
-        process.start()
-        return process
-
-    def abort_workflow_process(self, process):
-        """Abort a process started via start_workflow_process, killing its whole tree."""
-        if process is None or process.state() == QProcess.NotRunning:
-            return
-        self._kill_process_tree(process.processId())
-
-    @staticmethod
-    def _kill_process_tree(pid):
-        """Best-effort kill of a process and all its descendants (children, grandchildren)."""
-        try:
-            parent = psutil.Process(pid)
-        except psutil.NoSuchProcess:
-            return
-        children = parent.children(recursive=True)
-        for child in children:
-            try:
-                child.kill()
-            except psutil.NoSuchProcess:
-                pass
-        try:
-            parent.kill()
-        except psutil.NoSuchProcess:
-            pass
