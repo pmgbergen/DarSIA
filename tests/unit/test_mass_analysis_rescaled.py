@@ -14,6 +14,7 @@ from darsia.presets.workflows.analysis import analysis_mass as analysis_mass_mod
 from darsia.presets.workflows.analysis.analysis_mass import analysis_mass_from_context
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.config.roi import RoiConfig
+from darsia.presets.workflows.config.roi_registry import RoiRegistry
 
 
 def _make_co2_mass_analysis(shape: tuple[int, int]) -> CO2MassAnalysis:
@@ -116,8 +117,9 @@ def test_analysis_mass_writes_default_artifacts_only(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
             analysis=SimpleNamespace(
-                mass=SimpleNamespace(roi={}, roi_and_label={}), random_traverse=False
+                mass=SimpleNamespace(roi=[], roi_and_label=[]), random_traverse=False
             ),
+            roi_registry=RoiRegistry(),
         ),
         experiment=SimpleNamespace(injection_protocol=_FakeInjectionProtocol()),
         fluidflower=_FakeFluidFlower(),
@@ -217,10 +219,11 @@ def test_analysis_mass_writes_configured_export_subset_with_extensive_modes(
             data=SimpleNamespace(results=tmp_path),
             analysis=SimpleNamespace(
                 mass=SimpleNamespace(
-                    roi={}, roi_and_label={}, export=configured_export
+                    roi=[], roi_and_label=[], export=configured_export
                 ),
                 random_traverse=False,
             ),
+            roi_registry=RoiRegistry(),
         ),
         experiment=SimpleNamespace(injection_protocol=_FakeInjectionProtocol()),
         fluidflower=_FakeFluidFlower(),
@@ -314,12 +317,13 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
             data=SimpleNamespace(results=tmp_path),
             analysis=SimpleNamespace(
                 mass=SimpleNamespace(
-                    roi={},
-                    roi_and_label={},
+                    roi=[],
+                    roi_and_label=[],
                     export=["rescaled_saturation_g", "rescaled_concentration_aq"],
                 ),
                 random_traverse=False,
             ),
+            roi_registry=RoiRegistry(),
         ),
         experiment=SimpleNamespace(injection_protocol=_FakeInjectionProtocol()),
         fluidflower=_FakeFluidFlower(),
@@ -410,10 +414,11 @@ def test_analysis_mass_passes_natural_scalar_write_bounds(
             data=SimpleNamespace(results=tmp_path),
             analysis=SimpleNamespace(
                 mass=SimpleNamespace(
-                    roi={}, roi_and_label={}, export=configured_export
+                    roi=[], roi_and_label=[], export=configured_export
                 ),
                 random_traverse=False,
             ),
+            roi_registry=RoiRegistry(),
         ),
         experiment=SimpleNamespace(injection_protocol=_FakeInjectionProtocol()),
         fluidflower=_FakeFluidFlower(),
