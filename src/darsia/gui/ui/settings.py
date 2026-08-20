@@ -53,6 +53,8 @@ class SettingsFactory:
         "format_map",
         "format_key_list",
         "registry_key_list",
+        "roi_map",
+        "roi_key_list",
     }
 
     def __init__(self, main_window):
@@ -318,6 +320,19 @@ class SettingsFactory:
                     if "max_rows" in field_or_result:
                         result_dict["max_rows"] = field_or_result["max_rows"]
                     self.main_window.settings_inputs[setting["key"]] = result_dict
+                elif "roi_map" in field_or_result:
+                    self.main_window.settings_inputs[setting["key"]] = {
+                        "roi_map": True,
+                        "rows": field_or_result["rows"],
+                    }
+                elif "roi_key_list" in field_or_result:
+                    result_dict = {
+                        "roi_key_list": True,
+                        "rows": field_or_result["rows"],
+                    }
+                    if "max_rows" in field_or_result:
+                        result_dict["max_rows"] = field_or_result["max_rows"]
+                    self.main_window.settings_inputs[setting["key"]] = result_dict
                 else:
                     self.main_window.settings_inputs[setting["key"]] = field_or_result[
                         "rows"
@@ -454,6 +469,10 @@ class SettingsFactory:
             return self.create_format_key_list_input(
                 setting_dict, form_context=form_context
             )
+        elif setting_type == "roi_map":
+            return self.create_roi_map_input(setting_dict, form_context=form_context)
+        elif setting_type == "roi_key_list":
+            return self.create_roi_key_list_input(setting_dict, form_context=form_context)
         else:
             self.main_window.print_log(
                 f"Setting type {setting_type} not supported yet, using simple input"
@@ -1263,6 +1282,147 @@ class SettingsFactory:
         else:
             return display_name, {"format_map": True, "rows": []}
 
+    def create_roi_map_input(self, setting_dict, form_context=None):
+        """Create a dict[str, RoiConfig] editor with name, corner_1, corner_2, and optional label.
+
+        Each row has 4 fields: name (entry key), corner_1 (comma-separated x,y floats),
+        corner_2 (comma-separated x,y floats), and label (optional int, blank = unrestricted).
+
+        Returns (display_name, enriched_dict) with "widget" and "rows" (list of 4-tuples).
+        """
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+
+        # Read directly from config_dict["roi"] (list of dicts) instead of dotted-key path,
+        # since raw TOML has [[roi]] array-of-tables.
+        roi_list = self.main_window.config_dict.get("roi", [])
+        value = {
+            entry.get("name", ""): entry for entry in roi_list if entry.get("name")
+        }
+
+        row_data_list = []
+        row_edits = []
+
+        def refresh_remove_buttons():
+            show_remove = len(row_data_list) > 1
+            for row_data in row_data_list:
+                row_data["remove_button"].setVisible(show_remove)
+
+        add_button = QPushButton("Add ROI")
+
+        if form_context:
+            form = form_context["form"]
+
+            # Build header widget
+            header_widget = QWidget()
+            header_layout = QHBoxLayout(header_widget)
+            header_layout.setContentsMargins(0, 0, 0, 0)
+            header_layout.setSpacing(4)
+            header_layout.addWidget(add_button, stretch=1)
+            header_layout.addWidget(build_help_column(setting_dict))
+            form.addRow("", header_widget)
+
+            def add_row(entry_name="", entry_data=None):
+                """Add one ROI entry row with 4 widgets: name, corner_1, corner_2, label."""
+                if entry_data is None:
+                    entry_data = {}
+
+                row_widget = QWidget()
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(4, 4, 4, 4)
+                row_layout.setSpacing(4)
+                row_widget.setMinimumHeight(28)
+
+                # 1. name (entry key for the registry)
+                name_edit = QLineEdit()
+                name_edit.setPlaceholderText("ROI name")
+                name_edit.setMaximumWidth(100)
+                if entry_name:
+                    name_edit.setText(str(entry_name))
+                row_layout.addWidget(name_edit, 0)
+
+                # 2. corner_1 (comma-separated x,y floats)
+                corner_1_edit = QLineEdit()
+                corner_1_edit.setPlaceholderText("x,y")
+                corner_1_edit.setMaximumWidth(100)
+                if "corner_1" in entry_data and entry_data["corner_1"]:
+                    c1 = entry_data["corner_1"]
+                    corner_1_edit.setText(f"{c1[0]},{c1[1]}")
+                row_layout.addWidget(corner_1_edit, 0)
+
+                # 3. corner_2 (comma-separated x,y floats)
+                corner_2_edit = QLineEdit()
+                corner_2_edit.setPlaceholderText("x,y")
+                corner_2_edit.setMaximumWidth(100)
+                if "corner_2" in entry_data and entry_data["corner_2"]:
+                    c2 = entry_data["corner_2"]
+                    corner_2_edit.setText(f"{c2[0]},{c2[1]}")
+                row_layout.addWidget(corner_2_edit, 0)
+
+                # 4. label (optional int, blank = unrestricted)
+                label_edit = QLineEdit()
+                label_edit.setPlaceholderText("Label (optional)")
+                label_edit.setMaximumWidth(100)
+                if "label" in entry_data and entry_data["label"] is not None:
+                    label_edit.setText(str(entry_data["label"]))
+                row_layout.addWidget(label_edit, 0)
+
+                # Remove button
+                remove_button = QPushButton("Remove")
+                remove_button.setMaximumWidth(80)
+
+                def remove():
+                    row_idx, _ = form.getWidgetPosition(row_widget)
+                    form.removeRow(row_idx)
+                    if row_data in row_data_list:
+                        row_data_list.remove(row_data)
+                    if edits in row_edits:
+                        row_edits.remove(edits)
+                    refresh_remove_buttons()
+
+                remove_button.clicked.connect(remove)
+                row_layout.addWidget(remove_button, 0)
+
+                # Insert row into form
+                header_idx, _ = form.getWidgetPosition(header_widget)
+                if row_data_list:
+                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
+                    insert_idx = last_idx + 1
+                else:
+                    insert_idx = header_idx + 1
+
+                form.insertRow(insert_idx, "", row_widget)
+
+                # Store row data and edits
+                row_data = {"widget": row_widget, "remove_button": remove_button}
+                edits = (name_edit, corner_1_edit, corner_2_edit, label_edit)
+                row_data_list.append(row_data)
+                row_edits.append(edits)
+                refresh_remove_buttons()
+
+            # Connect add button
+            add_button.clicked.connect(lambda: add_row())
+
+            # Prefill existing entries
+            if value:
+                for entry_name, entry_data in value.items():
+                    add_row(
+                        entry_name, entry_data if isinstance(entry_data, dict) else {}
+                    )
+            else:
+                # At least one empty row
+                add_row()
+
+            # Return enriched dict
+            return display_name, {
+                "widget": header_widget,
+                "roi_map": True,
+                "rows": row_edits,
+            }
+
+        else:
+            return display_name, {"roi_map": True, "rows": []}
+
     def create_registry_key_list_input(self, setting_dict, form_context=None):
         """Create a multi-row registry-key selector with dropdowns.
 
@@ -1551,6 +1711,146 @@ class SettingsFactory:
 
         else:
             return display_name, {"format_key_list": True, "rows": []}
+
+    def create_roi_key_list_input(self, setting_dict, form_context=None):
+        """Create a multi-row ROI-registry-key selector with dropdowns.
+
+        Reads from the [[roi]] array-of-tables TOML shape.
+        Each row is a QComboBox populated with available ROI registry entry names.
+
+        Returns (display_name, enriched_dict) with "widget" and "rows".
+        """
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+
+        # Gather available ROI-registry keys from the raw [[roi]] array-of-tables
+        roi_list = self.main_window.config_dict.get("roi", [])
+        available_keys = sorted(
+            {entry.get("name", "") for entry in roi_list if entry.get("name")}
+        )
+
+        # Get current value and normalize to list
+        value = self.get_value(self.main_window.config_dict, key)
+        if value is None:
+            current_keys = []
+        elif isinstance(value, str):
+            current_keys = [value]
+        elif isinstance(value, list):
+            current_keys = value
+        else:
+            current_keys = []
+
+        # For single-value fields (max_rows=1), cap the selection
+        max_rows = setting_dict.get("max_rows")
+        if max_rows == 1:
+            current_keys = current_keys[:1]
+
+        row_data_list = []
+        row_combos = []
+
+        def refresh_remove_buttons():
+            show_remove = len(row_data_list) > 1
+            for row_data in row_data_list:
+                row_data["remove_button"].setVisible(show_remove)
+
+        add_button = QPushButton("Add ROI")
+
+        if form_context:
+            form = form_context["form"]
+
+            # Build header widget
+            header_widget = QWidget()
+            header_layout = QHBoxLayout(header_widget)
+            header_layout.setContentsMargins(0, 0, 0, 0)
+            header_layout.setSpacing(4)
+
+            if max_rows != 1:
+                header_layout.addWidget(add_button, stretch=1)
+            header_layout.addWidget(build_help_column(setting_dict))
+            form.addRow("", header_widget)
+
+            def add_row(selected_key=""):
+                """Add a row with a ROI-key dropdown."""
+                row_widget = QWidget()
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(4, 4, 4, 4)
+                row_layout.setSpacing(4)
+                row_widget.setMinimumHeight(28)
+
+                # Dropdown with available keys + stale/appended values
+                combo = QComboBox()
+                combo.setEditable(False)
+                all_options = list(available_keys)
+
+                # Add selected_key if not already in options (stale/filtered-out value)
+                if selected_key and selected_key not in all_options:
+                    all_options.append(selected_key)
+                    all_options.sort()
+
+                combo.addItems(all_options)
+                if selected_key:
+                    combo.setCurrentText(selected_key)
+                elif all_options:
+                    combo.setCurrentIndex(0)
+                row_layout.addWidget(combo, 1)
+
+                # Remove button
+                remove_button = QPushButton("Remove")
+                remove_button.setMaximumWidth(80)
+
+                def remove():
+                    row_idx, _ = form.getWidgetPosition(row_widget)
+                    form.removeRow(row_idx)
+                    if row_data in row_data_list:
+                        row_data_list.remove(row_data)
+                    if combo in row_combos:
+                        row_combos.remove(combo)
+                    refresh_remove_buttons()
+
+                remove_button.clicked.connect(remove)
+                row_layout.addWidget(remove_button, 0)
+
+                # Insert row into form
+                header_idx, _ = form.getWidgetPosition(header_widget)
+                if row_data_list:
+                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
+                    insert_idx = last_idx + 1
+                else:
+                    insert_idx = header_idx + 1
+
+                form.insertRow(insert_idx, "", row_widget)
+
+                # Store row data
+                row_data = {"widget": row_widget, "remove_button": remove_button}
+                row_data_list.append(row_data)
+                row_combos.append(combo)
+                refresh_remove_buttons()
+
+            # Connect add button if not single-value field
+            if max_rows != 1:
+                add_button.clicked.connect(lambda: add_row())
+
+            # Prefill existing selections
+            if current_keys:
+                for key_name in current_keys:
+                    add_row(key_name)
+            else:
+                # Always at least one empty row
+                add_row()
+
+            # Return enriched dict with roi_key_list marker and max_rows if set
+            result_dict = {
+                "widget": header_widget,
+                "roi_key_list": True,
+                "rows": row_combos,
+            }
+            if max_rows is not None:
+                result_dict["max_rows"] = max_rows
+
+            return display_name, result_dict
+
+        else:
+            return display_name, {"roi_key_list": True, "rows": []}
 
     def create_simple_input(self, setting_dict):
         """Create a line edit input for numeric or string values.
@@ -2284,7 +2584,7 @@ class SettingsFactory:
             if isinstance(value, dict) and "checkbox" in value:
                 continue
             # Skip path_map, int_group_list, int_list_map, time_interval_map, time_window_map,
-            # time_data_map, path_data_map, registry_key_list, format_map dicts (handled below)
+            # time_data_map, path_data_map, registry_key_list, format_map, roi_map, roi_key_list dicts (handled below)
             if isinstance(value, dict) and (
                 "path_map" in value
                 or "int_group_list" in value
@@ -2296,6 +2596,8 @@ class SettingsFactory:
                 or "registry_key_list" in value
                 or "format_map" in value
                 or "format_key_list" in value
+                or "roi_map" in value
+                or "roi_key_list" in value
             ):
                 continue
             # Skip sub-inputs of unchecked groups
@@ -2605,7 +2907,80 @@ class SettingsFactory:
                         self.main_window.config_dict, key, result if result else None
                     )
 
-        # Thirteenth pass: write all active lists
+        # Thirteenth pass: parse roi_map rows into list[dict] for [[roi]] TOML shape
+        for key, value in self.main_window.settings_inputs.items():
+            if isinstance(value, dict) and "roi_map" in value:
+                result = []
+                seen_names = set()
+                for (name_edit, corner_1_edit, corner_2_edit, label_edit) in value["rows"]:
+                    name_text = name_edit.text().strip()
+                    if not name_text:
+                        continue
+
+                    # Enforce unique name client-side
+                    if name_text in seen_names:
+                        self.main_window.print_log(
+                            f"Warning: duplicate ROI name '{name_text}' skipped during save"
+                        )
+                        continue
+                    seen_names.add(name_text)
+
+                    # Required fields: name, corner_1, corner_2
+                    entry = {"name": name_text}
+
+                    # corner_1: parse comma-separated x,y floats
+                    c1_text = corner_1_edit.text().strip()
+                    if c1_text:
+                        parts = [p.strip() for p in c1_text.split(",")]
+                        if len(parts) == 2:
+                            try:
+                                entry["corner_1"] = [float(parts[0]), float(parts[1])]
+                            except ValueError:
+                                pass
+
+                    # corner_2: parse comma-separated x,y floats
+                    c2_text = corner_2_edit.text().strip()
+                    if c2_text:
+                        parts = [p.strip() for p in c2_text.split(",")]
+                        if len(parts) == 2:
+                            try:
+                                entry["corner_2"] = [float(parts[0]), float(parts[1])]
+                            except ValueError:
+                                pass
+
+                    # label: optional int, blank/empty -> omit (None)
+                    label_text = label_edit.text().strip()
+                    if label_text:
+                        try:
+                            entry["label"] = int(label_text)
+                        except ValueError:
+                            pass
+
+                    result.append(entry)
+
+                # Write as list[dict] directly to config_dict["roi"]
+                self.main_window.config_dict["roi"] = result
+
+        # Fourteenth pass: parse roi_key_list rows into list[str] (or single str)
+        for key, value in self.main_window.settings_inputs.items():
+            if isinstance(value, dict) and "roi_key_list" in value:
+                result = []
+                seen = set()
+                for combo in value["rows"]:
+                    text = combo.currentText().strip()
+                    if text and text not in seen:
+                        result.append(text)
+                        seen.add(text)
+                if value.get("max_rows") == 1:
+                    self.set_value(
+                        self.main_window.config_dict, key, result[0] if result else None
+                    )
+                else:
+                    self.set_value(
+                        self.main_window.config_dict, key, result if result else None
+                    )
+
+        # Fifteenth pass: write all active lists
         for active_list_key, names in group_active_names.items():
             self.set_value(self.main_window.config_dict, active_list_key, sorted(names))
 
