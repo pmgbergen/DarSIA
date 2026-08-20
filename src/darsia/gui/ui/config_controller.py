@@ -17,7 +17,10 @@ class ConfigController:
     def new_config(self):
         """Create a new empty config file at a chosen path and open it."""
         file, _ = QFileDialog.getSaveFileName(
-            self.main_window, "New Config File", "", "TOML Files (*.toml);;All Files (*)"
+            self.main_window,
+            "New Config File",
+            "",
+            "TOML Files (*.toml);;All Files (*)",
         )
         if not file:
             return
@@ -36,7 +39,10 @@ class ConfigController:
     def open_config(self):
         """Open a config file via dialog and load it immediately."""
         file, _ = QFileDialog.getOpenFileName(
-            self.main_window, "Open Config File", "", "TOML Files (*.toml);;All Files (*)"
+            self.main_window,
+            "Open Config File",
+            "",
+            "TOML Files (*.toml);;All Files (*)",
         )
         if not file:
             return

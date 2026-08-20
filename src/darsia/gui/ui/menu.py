@@ -25,13 +25,19 @@ class MenuBuilder:
         )
         file_menu.addSeparator()
         self.open_action = self._add_action(
-            file_menu, "&Open Config...", self.main_window.config_controller.open_config, "Ctrl+O"
+            file_menu,
+            "&Open Config...",
+            self.main_window.config_controller.open_config,
+            "Ctrl+O",
         )
         self.recent_menu = file_menu.addMenu("Open &Recent")
         self.recent_menu.aboutToShow.connect(self._populate_recent_menu)
         file_menu.addSeparator()
         self.save_action = self._add_action(
-            file_menu, "&Save Config", self.main_window.settings_factory.save_settings, "Ctrl+S"
+            file_menu,
+            "&Save Config",
+            self.main_window.settings_factory.save_settings,
+            "Ctrl+S",
         )
         self._add_action(
             file_menu,
@@ -96,7 +102,9 @@ class MenuBuilder:
             return
         for path in recent:
             action = QAction(path, self.main_window)
-            action.triggered.connect(partial(self.main_window.config_controller.open_recent_config, path))
+            action.triggered.connect(
+                partial(self.main_window.config_controller.open_recent_config, path)
+            )
             self.recent_menu.addAction(action)
         self.recent_menu.addSeparator()
         clear_action = QAction("Clear Recent", self.main_window)
