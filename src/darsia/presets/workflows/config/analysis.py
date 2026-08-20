@@ -337,7 +337,8 @@ class AnalysisThresholdingConfig:
 @dataclass
 class AnalysisSegmentationConfig:
     config: SegmentationConfig | dict[str, SegmentationConfig] = field(
-        default_factory=lambda: SegmentationConfig(), metadata={"name": "Config"}
+        default_factory=lambda: SegmentationConfig(),
+        metadata={"name": "Config", "hidden": True},
     )
     folder: Path = field(
         default_factory=Path,
@@ -402,10 +403,12 @@ class AnalysisMassConfig:
     The value must be a non-empty key defined in the centralized
     ``[color.*.*]`` registry.
     """
-    roi: dict[str, RoiConfig] = field(default_factory=dict, metadata={"name": "ROI"})
+    roi: dict[str, RoiConfig] = field(
+        default_factory=dict, metadata={"name": "ROI", "hidden": True}
+    )
     """ROI configurations for mass analysis."""
     roi_and_label: dict[str, RoiAndLabelConfig] = field(
-        default_factory=dict, metadata={"name": "ROI and label"}
+        default_factory=dict, metadata={"name": "ROI and label", "hidden": True}
     )
     """ROI and label configurations for mass analysis."""
     export: list[str] | None = field(
@@ -422,7 +425,7 @@ class AnalysisMassConfig:
     )
     """Path to the results folder for mass analysis."""
     contour_smoother: darsia.ContourSmoother | None = field(
-        default=None, metadata={"name": "Contour smoother"}
+        default=None, metadata={"name": "Contour smoother", "hidden": True}
     )
     """Optional contour smoother for finger contours."""
 
@@ -544,10 +547,12 @@ class AnalysisMassConfig:
 
 @dataclass
 class AnalysisVolumeConfig:
-    roi: dict[str, RoiConfig] = field(default_factory=dict, metadata={"name": "ROI"})
+    roi: dict[str, RoiConfig] = field(
+        default_factory=dict, metadata={"name": "ROI", "hidden": True}
+    )
     """ROI configurations for volume analysis."""
     roi_and_label: dict[str, RoiAndLabelConfig] = field(
-        default_factory=dict, metadata={"name": "ROI and label"}
+        default_factory=dict, metadata={"name": "ROI and label", "hidden": True}
     )
     """ROI and label configurations for volume analysis."""
     folder: Path = field(
@@ -621,6 +626,7 @@ class AnalysisExpertKnowledgeConfig:
         metadata={
             "name": "Saturation ROIs",
             "help": "ROI keys where saturation_g constraints apply.",
+            "hidden": True,
         },
     )
     """ROI registry keys constraining where saturation_g may be non-zero."""
@@ -629,6 +635,7 @@ class AnalysisExpertKnowledgeConfig:
         metadata={
             "name": "Concentration ROIs",
             "help": "ROI keys where concentration_aq constraints apply.",
+            "hidden": True,
         },
     )
     """ROI registry keys constraining where concentration_aq may be non-zero."""
@@ -676,7 +683,8 @@ class AnalysisExpertKnowledgeConfig:
 @dataclass
 class AnalysisFingersConfig:
     config: FingersConfig | dict[str, FingersConfig] = field(
-        default_factory=lambda: FingersConfig(), metadata={"name": "Config"}
+        default_factory=lambda: FingersConfig(),
+        metadata={"name": "Config", "hidden": True},
     )
     folder: Path = field(
         default_factory=Path,

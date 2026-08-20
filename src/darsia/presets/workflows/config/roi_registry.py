@@ -1,6 +1,7 @@
 """Registry for ROI configurations loaded from a top-level [roi.*] TOML section."""
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 from .roi import RoiAndLabelConfig, RoiAndSubroiConfig, RoiConfig
@@ -9,6 +10,7 @@ from .utils import _get_section_from_toml
 logger = logging.getLogger(__name__)
 
 
+@dataclass
 class RoiRegistry:
     """A registry of named ROI entries loaded from a top-level [roi.*] TOML section.
 

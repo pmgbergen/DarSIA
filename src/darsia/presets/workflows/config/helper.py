@@ -124,7 +124,9 @@ class HelperResultsConfig:
         },
     )
     cmap: str | None = None
-    roi: list[str] | None = None
+    roi: list[str] | None = field(
+        default=None, metadata={"name": "ROI", "hidden": True}
+    )
 
     def load(
         self,
