@@ -119,6 +119,9 @@ class FileDialogHelper:
         # Right column: help button or spacer (fixed 40px)
         field_layout.addWidget(build_help_column(setting_dict))
 
+        # Store reference to the real control for unwrapping in sync
+        field_widget.setProperty("value_widget", path_edit)
+
         return display_name, field_widget
 
     def create_multi_file_input(

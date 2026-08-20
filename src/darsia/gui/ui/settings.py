@@ -19,6 +19,21 @@ from .schema.dataclass_introspection import ALL_SECTIONS, get_section_fields
 from .schema.section_registry import get_required_sections
 
 
+def unwrap_composite_widget(value):
+    """Extract the real editable control from a composite field wrapper.
+
+    Composite field widgets built by create_simple_input(), create_bool_input(),
+    create_dropdown_input(), and create_file_chooser() are QWidget wrappers that
+    store their real control via setProperty("value_widget", ...). If value isn't
+    such a wrapper, it is returned unchanged.
+    """
+    if type(value) is QWidget:
+        unwrapped = value.property("value_widget")
+        if unwrapped is not None:
+            return unwrapped
+    return value
+
+
 class SettingsFactory:
     """Factory for creating settings input widgets and managing settings."""
 
@@ -1594,6 +1609,9 @@ class SettingsFactory:
         # Right column: help button or spacer (fixed 40px)
         field_layout.addWidget(build_help_column(setting_dict))
 
+        # Store reference to the real control for unwrapping in sync
+        field_widget.setProperty("value_widget", setting_edit)
+
         return display_name, field_widget
 
     def create_bool_input(self, setting_dict):
@@ -1624,6 +1642,9 @@ class SettingsFactory:
 
         # Right column: help button or spacer (fixed 40px)
         field_layout.addWidget(build_help_column(setting_dict))
+
+        # Store reference to the real control for unwrapping in sync
+        field_widget.setProperty("value_widget", setting_checkbox)
 
         return display_name, field_widget
 
