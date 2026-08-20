@@ -20,6 +20,7 @@ from darsia.presets.workflows.config.labeling import LabelingConfig
 from darsia.presets.workflows.config.protocols import ProtocolsConfig
 from darsia.presets.workflows.config.restoration import RestorationConfig
 from darsia.presets.workflows.config.rig import RigConfig
+from darsia.presets.workflows.config.roi_registry import RoiRegistryConfig
 from darsia.presets.workflows.config.video import VideoConfig
 from darsia.presets.workflows.config.workflow_utils import WorkflowUtilsConfig
 
@@ -40,6 +41,7 @@ SECTION_TO_DATACLASS = {
     "registry": DataRegistry,
     "restoration": RestorationConfig,
     "rig": RigConfig,
+    "roi": RoiRegistryConfig,
     "video": VideoConfig,
     "workflow_utils": WorkflowUtilsConfig,
 }
@@ -50,6 +52,7 @@ ALL_SECTIONS = [
     "data",
     "registry",
     "format_registry",
+    "roi",
     "rig",
     "corrections",
     "restoration",
