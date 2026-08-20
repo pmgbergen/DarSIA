@@ -33,6 +33,7 @@ class RoiConfig:
         return self
 
 
+@dataclass
 class MultiRoiConfig:
     """Configuration for multiple ROIs."""
 

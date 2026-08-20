@@ -71,7 +71,9 @@ class TVDConfig:
 @dataclass
 class RestorationConfig:
     method: Literal["volume_average", "tvd"] | None = "volume_average"
-    options: VolumeAveragingConfig | TVDConfig | None = None
+    options: VolumeAveragingConfig | TVDConfig | None = field(
+        default=None, metadata={"name": "Options", "hidden": True}
+    )
     ignore: list[str] = field(default_factory=list)
 
     def load(self, path: Path | dict) -> "RestorationConfig":
