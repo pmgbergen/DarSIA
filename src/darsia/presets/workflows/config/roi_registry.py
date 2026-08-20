@@ -35,7 +35,8 @@ class RoiRegistry:
             self
 
         Raises:
-            ValueError: If the [roi] section is not an array-of-tables (strict format enforcement).
+            ValueError: If the [roi] section is not an array-of-tables (strict format
+                enforcement).
             ValueError: If any ROI entry has a duplicate name (checked during load).
         """
         paths = [path] if isinstance(path, Path) else path
@@ -55,13 +56,16 @@ class RoiRegistry:
             # Strict format: [[roi]] is a list, not nested dicts like [roi.*]
             if not isinstance(roi_data, list):
                 raise ValueError(
-                    "The [roi] section must be an array-of-tables format (use [[roi]]), not nested tables."
+                    "The [roi] section must be an array-of-tables format (use [[roi]]), not"
+                    "nested tables."
                 )
 
             for entry in roi_data:
                 name = entry.get("name")
                 if name is None:
-                    raise ValueError("Each [[roi]] entry must have a required 'name' field.")
+                    raise ValueError(
+                        "Each [[roi]] entry must have a required 'name' field."
+                    )
                 name = str(name).strip()
 
                 if name in seen_names:
@@ -201,7 +205,8 @@ class RoiRegistryConfig:
         """
         registry = RoiRegistry().load(path)
         self.rois = {
-            k: v for k, v in registry._registry.items()
+            k: v
+            for k, v in registry._registry.items()
             if isinstance(v, RoiConfig) and not isinstance(v, RoiAndSubroiConfig)
         }
         return self

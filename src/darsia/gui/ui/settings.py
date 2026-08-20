@@ -472,7 +472,9 @@ class SettingsFactory:
         elif setting_type == "roi_map":
             return self.create_roi_map_input(setting_dict, form_context=form_context)
         elif setting_type == "roi_key_list":
-            return self.create_roi_key_list_input(setting_dict, form_context=form_context)
+            return self.create_roi_key_list_input(
+                setting_dict, form_context=form_context
+            )
         else:
             self.main_window.print_log(
                 f"Setting type {setting_type} not supported yet, using simple input"
@@ -496,9 +498,7 @@ class SettingsFactory:
         if values is None:
             values = {}
 
-        row_data_list = (
-            []
-        )  # Track (widget, remove_button, (name, start, end, num, tol))
+        row_data_list = []  # Track (widget, remove_button, (name, start, end, num, tol))
         # List of 5-tuples: (name_edit, start_edit, end_edit, num_edit, tol_edit)
         row_edits = []
 
@@ -1283,10 +1283,12 @@ class SettingsFactory:
             return display_name, {"format_map": True, "rows": []}
 
     def create_roi_map_input(self, setting_dict, form_context=None):
-        """Create a dict[str, RoiConfig] editor with name, corner_1, corner_2, and optional label.
+        """Create a dict[str, RoiConfig] editor with name, corner_1, corner_2, and optional
+        label.
 
         Each row has 4 fields: name (entry key), corner_1 (comma-separated x,y floats),
-        corner_2 (comma-separated x,y floats), and label (optional int, blank = unrestricted).
+        corner_2 (comma-separated x,y floats), and label
+        (optional int, blank = unrestricted).
 
         Returns (display_name, enriched_dict) with "widget" and "rows" (list of 4-tuples).
         """
@@ -2409,9 +2411,7 @@ class SettingsFactory:
         group_form.setContentsMargins(8, 10, 8, 8)  # Padding: left, top, right, bottom
         sub_inputs = {}
         field_row_map = {}  # Map unqualified_key -> (row_index, field_widget)
-        group_forms = (
-            {}
-        )  # For nested multi-row fields, reuse _get_or_create_group_form helper
+        group_forms = {}  # For nested multi-row fields, reuse _get_or_create_group_form helper
 
         for sub_setting in setting_dict["fields"]:
             sub_setting_type = sub_setting.get("type")
@@ -2584,7 +2584,8 @@ class SettingsFactory:
             if isinstance(value, dict) and "checkbox" in value:
                 continue
             # Skip path_map, int_group_list, int_list_map, time_interval_map, time_window_map,
-            # time_data_map, path_data_map, registry_key_list, format_map, roi_map, roi_key_list dicts (handled below)
+            # time_data_map, path_data_map, registry_key_list, format_map, roi_map,
+            # roi_key_list dicts (handled below)
             if isinstance(value, dict) and (
                 "path_map" in value
                 or "int_group_list" in value
@@ -2912,7 +2913,9 @@ class SettingsFactory:
             if isinstance(value, dict) and "roi_map" in value:
                 result = []
                 seen_names = set()
-                for (name_edit, corner_1_edit, corner_2_edit, label_edit) in value["rows"]:
+                for name_edit, corner_1_edit, corner_2_edit, label_edit in value[
+                    "rows"
+                ]:
                     name_text = name_edit.text().strip()
                     if not name_text:
                         continue
