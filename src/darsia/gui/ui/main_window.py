@@ -39,6 +39,36 @@ from .toolbar import ToolbarBuilder
 from .utils_tab import UtilsTab
 
 
+def _unwrap_composite_widget(value):
+    """Unwrap a composite field widget to extract the real editable control.
+
+    Composite field widgets returned by create_simple_input(), create_bool_input(),
+    create_dropdown_input(), and create_file_chooser() are QWidget wrappers
+    containing [control + type_label + help_button] in a QHBoxLayout.
+
+    This helper finds and returns the actual editable control (QLineEdit, QComboBox,
+    or QCheckBox) embedded inside such a wrapper. If value is not a composite wrapper,
+    or is already a bare control widget, it is returned unchanged.
+
+    NOTE: Necessary for making saving settings work.
+
+    Args:
+        value: A widget or other value from settings_inputs.
+
+    Returns:
+        The unwrapped editable control if value is a composite wrapper; value itself
+        otherwise.
+    """
+    if (
+        type(value) is QWidget
+    ):  # Exact type, not isinstance (to avoid unwrapping subclasses)
+        for widget_type in (QLineEdit, QComboBox, QCheckBox):
+            found = value.findChild(widget_type)
+            if found is not None:
+                return found
+    return value
+
+
 class MainWindow(QMainWindow):
     """The main class containing the window and the relevant methods for the visualization."""
 
@@ -249,6 +279,10 @@ class MainWindow(QMainWindow):
             # Skip sub-inputs of unchecked groups
             if key in skip_keys:
                 continue
+
+            # Unwrap composite field widgets (wrapper widget containing type label + help button)
+            # to extract the actual editable control (QLineEdit, QComboBox, QCheckBox)
+            value = _unwrap_composite_widget(value)
 
             try:
                 if isinstance(value, QLineEdit):
