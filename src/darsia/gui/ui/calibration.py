@@ -65,7 +65,7 @@ class CalibrationTab:
     def on_abort_clicked(self):
         """Handle abort button click."""
         if self.process is not None:
-            self.main_window.abort_workflow_process(self.process)
+            self.main_window.process_runner.abort_workflow_process(self.process)
 
     def run_calibration(self):
         """Run calibration workflow based on checked checkboxes."""
@@ -117,6 +117,6 @@ class CalibrationTab:
             argv.append("--show")
 
         # Launch workflow in a separate process
-        self.process = self.main_window.start_workflow_process(
+        self.process = self.main_window.process_runner.start_workflow_process(
             argv, self.run_button, self.abort_button, cwd=Path.cwd()
         )

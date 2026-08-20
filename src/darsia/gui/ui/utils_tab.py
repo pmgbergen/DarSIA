@@ -117,4 +117,4 @@ class UtilsTab:
     def on_abort_clicked(self):
         """Handle abort button click."""
         if self.process is not None:
-            self.main_window.abort_workflow_process(self.process)
+            self.main_window.process_runner.abort_workflow_process(self.process)
