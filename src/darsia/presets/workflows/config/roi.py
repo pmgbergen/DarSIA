@@ -20,7 +20,8 @@ class RoiConfig:
     name: str = ""
     """Unique registry key for this ROI (e.g., 'full', 'calibration', 'storage')."""
     label: int | None = None
-    """Optional label restriction: None means applies to all labels, int means restricted to this label."""
+    """Optional label restriction: None means applies to all labels, int means restricted to
+    this label."""
 
     def load(self, sec: dict) -> "RoiConfig":
         self.roi = CoordinateArray(
