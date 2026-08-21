@@ -134,7 +134,9 @@ class SidebarRow(QWidget):
             bg_base = pal.color(QPalette.Button)
             is_dark_mode = pal.color(QPalette.Window).lightnessF() < 0.5
             bg_color = bg_base.lighter(130) if is_dark_mode else bg_base.darker(120)
-            hover_color = bg_color.lighter(115)
+            hover_color = (
+                bg_color.lighter(170) if is_dark_mode else bg_color.darker(170)
+            )
             text_color = hover_color.name()
             icon_color = hover_color
         else:
