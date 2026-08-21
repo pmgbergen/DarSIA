@@ -128,3 +128,68 @@ class AnalysisTab:
         self.process = self.main_window.process_runner.start_workflow_process(
             argv, self.run_button, self.abort_button, cwd=Path.cwd()
         )
+
+    def sidebar_items(self):
+        """Return sidebar data structure for Analysis category."""
+        from .help_text import get_help_text
+
+        return [
+            (
+                "Analysis steps",
+                [
+                    (
+                        "Cropping",
+                        "cropping",
+                        "fa5s.circle",
+                        get_help_text("analysis", "cropping", "Cropping"),
+                    ),
+                    (
+                        "Segmentation",
+                        "segmentation",
+                        "fa5s.circle",
+                        get_help_text("analysis", "segmentation", "Segmentation"),
+                    ),
+                    (
+                        "Fingers",
+                        "fingers",
+                        "fa5s.circle",
+                        get_help_text("analysis", "fingers", "Fingers"),
+                    ),
+                    (
+                        "Mass",
+                        "mass",
+                        "fa5s.circle",
+                        get_help_text("analysis", "mass", "Mass"),
+                    ),
+                    (
+                        "Volume",
+                        "volume",
+                        "fa5s.circle",
+                        get_help_text("analysis", "volume", "Volume"),
+                    ),
+                    (
+                        "Thresholding",
+                        "thresholding",
+                        "fa5s.circle",
+                        get_help_text("analysis", "thresholding", "Thresholding"),
+                    ),
+                ],
+            ),
+            (
+                "Options",
+                [
+                    (
+                        "All images",
+                        "all",
+                        "fa5s.circle",
+                        get_help_text("analysis", "all", "All images"),
+                    ),
+                    (
+                        "Show plots",
+                        "show",
+                        "fa5s.circle",
+                        get_help_text("analysis", "show", "Show plots"),
+                    ),
+                ],
+            ),
+        ]

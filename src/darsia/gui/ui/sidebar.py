@@ -1,17 +1,17 @@
 """Two-level accordion sidebar navigation for the DarSIA GUI."""
 
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
     QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Qt, Signal, QTimer
 
-from .icons import qta_icon
 from .help import HelpPopup
+from .icons import qta_icon
 
 
 class SidebarRow(QWidget):

@@ -120,3 +120,63 @@ class CalibrationTab:
         self.process = self.main_window.process_runner.start_workflow_process(
             argv, self.run_button, self.abort_button, cwd=Path.cwd()
         )
+
+    def sidebar_items(self):
+        """Return sidebar data structure for Calibration category."""
+        from .help_text import get_help_text
+
+        return [
+            (
+                "Actions",
+                [
+                    (
+                        "Color Path",
+                        "color",
+                        "fa5s.circle",
+                        get_help_text("calibration", "color", "Color Path"),
+                    ),
+                    (
+                        "Mass",
+                        "mass",
+                        "fa5s.circle",
+                        get_help_text("calibration", "mass", "Mass"),
+                    ),
+                    (
+                        "Default mass",
+                        "default_mass",
+                        "fa5s.circle",
+                        get_help_text("calibration", "default_mass", "Default mass"),
+                    ),
+                ],
+            ),
+            (
+                "Danger zone",
+                [
+                    (
+                        "Delete all calibrations",
+                        "delete",
+                        "fa5s.circle",
+                        get_help_text(
+                            "calibration", "delete", "Delete all calibrations"
+                        ),
+                    ),
+                ],
+            ),
+            (
+                "Options",
+                [
+                    (
+                        "Reset mass calibration",
+                        "reset",
+                        "fa5s.circle",
+                        get_help_text("calibration", "reset", "Reset mass calibration"),
+                    ),
+                    (
+                        "Show plots",
+                        "show",
+                        "fa5s.circle",
+                        get_help_text("calibration", "show", "Show plots"),
+                    ),
+                ],
+            ),
+        ]
