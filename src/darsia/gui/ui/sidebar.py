@@ -216,14 +216,17 @@ class CategorySection(QWidget):
         )
         self.header_button.setMinimumHeight(40)
         pal = QApplication.instance().palette()
-        bg = pal.color(QPalette.Button).name()
+        bg_base = pal.color(QPalette.Button)
+        is_dark_mode = pal.color(QPalette.Window).lightnessF() < 0.5
+        bg = (bg_base.lighter(130) if is_dark_mode else bg_base.darker(120)).name()
         border = pal.color(QPalette.Mid).name()
         btn_color = pal.color(QPalette.Button)
         hover = btn_color.lighter(115).name()
         pressed = btn_color.darker(110).name()
         self.header_button.setStyleSheet(
             f"QPushButton {{ text-align: left; padding-left: 8px; "
-            f"background-color: {bg}; border-bottom: 1px solid {border}; }}"
+            f"background-color: {bg}; border: none; "
+            f"border-bottom: 1px solid {border}; }}"
             f"QPushButton:hover {{ background-color: {hover}; }}"
             f"QPushButton:pressed {{ background-color: {pressed}; }}"
         )
