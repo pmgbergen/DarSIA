@@ -233,7 +233,7 @@ def collect_existing_calibration_paths_to_delete(path: Path | list[Path]) -> lis
 
     paths_to_delete: list[Path] = []
     if config.color is not None:
-        for embedding in config.color.embeddings.values():
+        for embedding in config.color.resolve_all().values():
             paths_to_delete.append(embedding.calibration_root)
     if config.data is not None and config.data.cache is not None:
         paths_to_delete.append(config.data.cache)

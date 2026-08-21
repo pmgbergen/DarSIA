@@ -47,10 +47,7 @@ def validate_mode_syntax(
     mode = mode.strip()
     if mode in LEGACY_COLOR_TO_MASS_MODES or mode in SCALAR_PRODUCT_MODES:
         return
-    if (
-        color_embedding_registry is not None
-        and mode in color_embedding_registry.embeddings
-    ):
+    if color_embedding_registry is not None and mode in color_embedding_registry:
         return
     raise ValueError(
         f"Unsupported {key} '{mode}'. Supported modes "
@@ -116,10 +113,7 @@ def resolve_mode_image(
     if mode in LEGACY_COLOR_TO_MASS_MODES:
         return _resolve_legacy_mode(mode, mass_analysis_result)
     # Color embeddings.
-    if (
-        color_embedding_registry is not None
-        and mode in color_embedding_registry.embeddings
-    ):
+    if color_embedding_registry is not None and mode in color_embedding_registry:
         return _resolve_color_mode(
             mode,
             image,
