@@ -390,3 +390,51 @@ class ColorEmbeddingRegistry:
             Dict mapping embedding names to their ColorEmbedding objects.
         """
         return dict(self._embeddings)
+
+
+@dataclass
+class ColorEmbeddingRegistryConfig:
+    """GUI-editable view of the [[color]] TOML array-of-tables split by type.
+
+    This dataclass exists purely for GUI schema introspection and does not replace
+    ColorEmbeddingRegistry, which remains the canonical runtime registry.
+    ColorEmbeddingRegistryConfig fields are never directly loaded or instantiated
+    by the GUI—instead, the GUI reads raw TOML dicts from config_dict["color"]
+    directly and manages three separate multi-row widget groups by type.
+
+    Each field's metadata declares its widget type so the schema introspection
+    system knows to create the corresponding multi-row editor.
+    """
+
+    color_path_embeddings: dict[str, ColorPathEmbedding] = field(
+        default_factory=dict,
+        metadata={
+            "name": "Color Paths",
+            "help": "Color path embeddings for calibration and analysis.",
+            "group": "Color Paths",
+            "widget": "color_path_map",
+        },
+    )
+    """Dict of color path embeddings, keyed by name."""
+
+    color_range_embeddings: dict[str, ColorRangeEmbedding] = field(
+        default_factory=dict,
+        metadata={
+            "name": "Color Ranges",
+            "help": "Color range embeddings (HSV/RGB bounds).",
+            "group": "Color Ranges",
+            "widget": "color_range_map",
+        },
+    )
+    """Dict of color range embeddings, keyed by name."""
+
+    color_channel_embeddings: dict[str, ColorChannelEmbedding] = field(
+        default_factory=dict,
+        metadata={
+            "name": "Color Channels",
+            "help": "Color channel embeddings with optional masks.",
+            "group": "Color Channels",
+            "widget": "color_channel_map",
+        },
+    )
+    """Dict of color channel embeddings, keyed by name."""
