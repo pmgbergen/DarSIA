@@ -190,7 +190,7 @@ class FluidFlowerConfig:
             "roi_registry",
             RoiRegistry(),
             lambda: self.roi_registry.load(path),
-            warn_on_missing=False,
+            warn_on_missing=True,
         )
 
         _load_section(
@@ -243,6 +243,7 @@ class FluidFlowerConfig:
                 color_embedding_registry=self.color,
             ),
             warn_on_missing=True,
+            exception_types=(ValueError, KeyError),
         )
 
         _load_section(

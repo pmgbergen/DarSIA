@@ -20,7 +20,14 @@ if TYPE_CHECKING:
 class CalibrationColorConfig:
     """Config for selecting a color embedding for color calibration."""
 
-    color: "ColorEmbedding | None" = None
+    color: "ColorEmbedding | None" = field(
+        default=None,
+        metadata={
+            "name": "Color embedding",
+            "widget": "color_key_list",
+            "max_rows": 1,
+        },
+    )
 
     def load(
         self,
@@ -50,7 +57,14 @@ class CalibrationColorConfig:
 class CalibrationMassConfig:
     """Config for mass calibration using a selected color embedding."""
 
-    color: "ColorEmbedding | None" = None
+    color: "ColorEmbedding | None" = field(
+        default=None,
+        metadata={
+            "name": "Color embedding",
+            "widget": "color_key_list",
+            "max_rows": 1,
+        },
+    )
     mode: str = "manual"
     fluid: str | None = "co2"
     data_selection: str | list[str] | None = field(

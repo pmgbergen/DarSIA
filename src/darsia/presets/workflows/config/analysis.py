@@ -396,7 +396,12 @@ class AnalysisSegmentationConfig:
 @dataclass
 class AnalysisMassConfig:
     color: "ColorEmbedding | None" = field(
-        default=None, metadata={"name": "Color embedding"}
+        default=None,
+        metadata={
+            "name": "Color embedding",
+            "widget": "color_key_list",
+            "max_rows": 1,
+        },
     )
     """Color embedding identifier used for mass conversion.
 
