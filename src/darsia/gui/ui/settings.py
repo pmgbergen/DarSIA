@@ -3443,7 +3443,8 @@ class SettingsFactory:
 
             try:
                 if isinstance(value, QLineEdit):
-                    # Skip writing file/folder fields that are empty or still have the placeholder
+                    # Skip writing file/folder fields that are empty or still have the
+                    # placeholder
                     if value.text() == NO_FILE_CHOSEN or value.text().strip() == "":
                         continue
                     self.set_value(
@@ -3473,7 +3474,8 @@ class SettingsFactory:
                             )
             except (ValueError, SyntaxError):
                 if hasattr(value, "text"):
-                    # Skip writing file/folder fields that are empty or still have the placeholder
+                    # Skip writing file/folder fields that are empty or still have
+                    # the placeholder
                     if value.text() == NO_FILE_CHOSEN or value.text().strip() == "":
                         continue
                     self.set_value(self.main_window.config_dict, key, value.text())
