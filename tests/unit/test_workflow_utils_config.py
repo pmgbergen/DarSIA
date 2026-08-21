@@ -76,7 +76,9 @@ folder = "{data_folder.as_posix()}"
 baseline = "baseline.jpg"
 results = "{(tmp_path / "results").as_posix()}"
 
-[color.channel.red_channel]
+[[color]]
+type = "channel"
+name = "red_channel"
 mode = "absolute"
 basis = "global"
 color_space = "RGB"
