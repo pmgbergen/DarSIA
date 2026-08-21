@@ -57,6 +57,7 @@ dependencies = [
   "openpyxl",
   "toml",
   "PySide6",
+  "qtawesome",
 ]
 
 [project.urls]
