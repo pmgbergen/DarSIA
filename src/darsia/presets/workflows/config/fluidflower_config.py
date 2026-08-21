@@ -269,6 +269,7 @@ class FluidFlowerConfig:
                 results=self.data.results if self.data else None,
             ),
             warn_on_missing=True,
+            exception_types=(ValueError, KeyError),
         )
 
         _load_section(
