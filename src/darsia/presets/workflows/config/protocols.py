@@ -101,21 +101,33 @@ class ProtocolsConfig:
 
         try:
             injection_protocol = sec["injection"]
-            self.injection = self._parse_protocol_value(injection_protocol)
+            if isinstance(injection_protocol, str) and not injection_protocol.strip():
+                self.injection = None
+            else:
+                self.injection = self._parse_protocol_value(injection_protocol)
         except KeyError:
             self.injection = None
 
         try:
             blacklist_protocol = sec["blacklist"]
-            self.blacklist = self._parse_protocol_value(blacklist_protocol)
+            if isinstance(blacklist_protocol, str) and not blacklist_protocol.strip():
+                self.blacklist = None
+            else:
+                self.blacklist = self._parse_protocol_value(blacklist_protocol)
         except KeyError:
             self.blacklist = None
 
         try:
             pressure_temperature_protocol = sec["pressure_temperature"]
-            self.pressure_temperature = self._parse_protocol_value(
-                pressure_temperature_protocol
-            )
+            if (
+                isinstance(pressure_temperature_protocol, str)
+                and not pressure_temperature_protocol.strip()
+            ):
+                self.pressure_temperature = None
+            else:
+                self.pressure_temperature = self._parse_protocol_value(
+                    pressure_temperature_protocol
+                )
         except KeyError:
             self.pressure_temperature = None
 
