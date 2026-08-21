@@ -143,7 +143,9 @@ class TestScalarWidgetSaveRoundtrip:
         settings_inputs["data.baseline"] = wrapper
 
         # Create mock main_window with the two dicts that _sync_settings_inputs_to_config_dict needs
-        mock_main_window = MagicMock(config_dict=config_dict, settings_inputs=settings_inputs)
+        mock_main_window = MagicMock(
+            config_dict=config_dict, settings_inputs=settings_inputs
+        )
 
         # Drive SettingsFactory to sync the edited value
         factory = SettingsFactory(mock_main_window)
@@ -176,7 +178,9 @@ class TestScalarWidgetSaveRoundtrip:
         settings_inputs["protocols.imaging_mode"] = wrapper
 
         # Create mock main_window with the two dicts that _sync_settings_inputs_to_config_dict needs
-        mock_main_window = MagicMock(config_dict=config_dict, settings_inputs=settings_inputs)
+        mock_main_window = MagicMock(
+            config_dict=config_dict, settings_inputs=settings_inputs
+        )
 
         # Drive SettingsFactory to sync the edited value
         factory = SettingsFactory(mock_main_window)
