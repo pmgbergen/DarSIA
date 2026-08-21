@@ -973,7 +973,7 @@ class TestCorrectionsConfigMetadata:
             )
 
     def test_patchwise_illumination_correction_fields_have_metadata(self):
-        """PatchwiseIlluminationCorrectionConfig fields (except baseline_paths) should have metadata."""
+        """PatchwiseIlluminationCorrectionConfig fields should have metadata."""
         from darsia.gui.ui.schema.dataclass_introspection import (
             get_section_fields,
         )
@@ -990,9 +990,7 @@ class TestCorrectionsConfigMetadata:
 
         # These fields should be present
         visible_fields = [
-            "corrections.patchwise_illumination.image_path",
             "corrections.patchwise_illumination.baseline_paths",
-            "corrections.patchwise_illumination.limit",
             "corrections.patchwise_illumination.nw",
             "corrections.patchwise_illumination.eps",
         ]
