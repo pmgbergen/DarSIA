@@ -167,12 +167,16 @@ def test_analysis_thresholding_accepts_extended_modes(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
-[color.channel.red_channel]
+[[color]]
+type = "channel"
+name = "red_channel"
 mode = "absolute"
 color_space = "RGB"
 channel = "r"
 
-[color.range.green_band]
+[[color]]
+type = "range"
+name = "green_band"
 mode = "relative"
 color_space = "RGB"
 range = [[0.0, 1.0], [0.2, 0.8], [0.0, 1.0]]
@@ -223,7 +227,9 @@ def test_analysis_thresholding_rejects_invalid_color_mode_token(tmp_path: Path) 
     config_path = _write(
         tmp_path / "config.toml",
         """
-[color.channel.red_channel]
+[[color]]
+type = "channel"
+name = "red_channel"
 mode = "absolute"
 color_space = "RGB"
 channel = "r"
@@ -386,7 +392,9 @@ def test_analysis_mass_export_defaults_to_none(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
-[color.channel.my_colorpath]
+[[color]]
+type = "channel"
+name = "my_colorpath"
 mode = "absolute"
 basis = "global"
 color_space = "RGB"
@@ -414,7 +422,9 @@ def test_analysis_mass_export_accepts_supported_modes(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
-[color.channel.my_colorpath]
+[[color]]
+type = "channel"
+name = "my_colorpath"
 mode = "absolute"
 basis = "global"
 color_space = "RGB"
@@ -447,7 +457,9 @@ def test_analysis_mass_export_rejects_unsupported_modes(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
-[color.channel.my_colorpath]
+[[color]]
+type = "channel"
+name = "my_colorpath"
 mode = "absolute"
 basis = "global"
 color_space = "RGB"

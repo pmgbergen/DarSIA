@@ -50,15 +50,17 @@ def _make_data_registry(tmp_path: Path) -> DataRegistry:
 
 
 def _minimal_color_path_embedding_toml(extra: str = "", rois_line: str = "") -> str:
-    """Return a minimal [color.path.*] TOML section using registry references.
+    """Return a minimal [[color]] array-of-tables TOML using registry references.
 
     Args:
-        extra: Additional TOML lines to insert inside [color.path.*].
+        extra: Additional TOML lines to insert inside [[color]].
         rois_line: A ``rois = ...`` line to inject (empty → key absent).
     """
     return textwrap.dedent(
         f"""\
-[color.path.default]
+[[color]]
+type = "path"
+name = "default"
 baseline = "baseline_imgs"
 data     = "cal_imgs"
 {rois_line}
