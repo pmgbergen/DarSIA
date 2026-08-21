@@ -215,3 +215,45 @@ imaging_mode = "ctime"
 
     with pytest.raises(ValueError, match="per-folder table"):
         setup_imaging_protocol(config_path, force=False)
+
+
+def test_protocol_config_treats_blank_strings_as_absent(tmp_path: Path) -> None:
+    """Blank/empty-string protocol files should load as None, matching absent-key behavior."""
+    config_path = tmp_path / "config.toml"
+    _write_config(
+        config_path,
+        """
+[protocols]
+injection = ""
+blacklist = ""
+pressure_temperature = ""
+""",
+    )
+
+    config = ProtocolsConfig().load(config_path)
+    assert config.injection is None
+    assert config.blacklist is None
+    assert config.pressure_temperature is None
+
+
+def test_protocol_config_real_path_values_still_parse(tmp_path: Path) -> None:
+    """Real non-blank protocol paths should still parse to Path objects."""
+    config_path = tmp_path / "config.toml"
+    injection_file = tmp_path / "injection.csv"
+    blacklist_file = tmp_path / "blacklist.csv"
+    pressure_file = tmp_path / "pressure.csv"
+
+    _write_config(
+        config_path,
+        f"""
+[protocols]
+injection = "{injection_file.as_posix()}"
+blacklist = "{blacklist_file.as_posix()}"
+pressure_temperature = "{pressure_file.as_posix()}"
+""",
+    )
+
+    config = ProtocolsConfig().load(config_path)
+    assert config.injection == injection_file
+    assert config.blacklist == blacklist_file
+    assert config.pressure_temperature == pressure_file
