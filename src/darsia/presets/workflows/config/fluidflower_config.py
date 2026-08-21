@@ -289,6 +289,7 @@ class FluidFlowerConfig:
                 results=self.data.results if self.data else None,
             ),
             warn_on_missing=False,
+            exception_types=(ValueError, KeyError),
         )
 
     def _check(self, key: str):
