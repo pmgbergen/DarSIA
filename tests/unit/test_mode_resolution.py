@@ -1,3 +1,4 @@
+import textwrap
 from pathlib import Path
 
 import numpy as np
@@ -13,10 +14,8 @@ from darsia.presets.workflows.mode_resolution import (
 )
 from darsia.presets.workflows.segmentation_contours import SimpleSegmentation
 from darsia.signals.color import (
-    ColorChannelEmbedding,
     ColorEmbeddingBasis,
     ColorEmbeddingRuntime,
-    ColorRangeEmbedding,
 )
 
 
@@ -37,7 +36,14 @@ def _runtime(baseline: darsia.OpticalImage):
     return ColorEmbeddingRuntime(rig=_Rig(baseline))
 
 
-def test_resolve_color_channel_by_registry_key() -> None:
+def _registry_from_toml(tmp_path: Path, toml_text: str) -> ColorEmbeddingRegistry:
+    """Load ColorEmbeddingRegistry from in-memory [[color]] TOML fixture."""
+    p = tmp_path / "config.toml"
+    p.write_text(textwrap.dedent(toml_text))
+    return ColorEmbeddingRegistry().load(path=p, data=None, results=None)
+
+
+def test_resolve_color_channel_by_registry_key(tmp_path: Path) -> None:
     arr = (
         np.array(
             [
@@ -49,17 +55,15 @@ def test_resolve_color_channel_by_registry_key() -> None:
         / 255.0
     )  # Apply scaling to [0,1] range for RGB mode
     img = _optical_image(arr)
-    registry = ColorEmbeddingRegistry(
-        embeddings={
-            "red_channel": ColorChannelEmbedding(
-                embedding_id="red_channel",
-                mode=darsia.ColorMode.ABSOLUTE,
-                basis=ColorEmbeddingBasis.GLOBAL,
-                calibration_root=Path("."),
-                color_space="RGB",
-                channel="r",
-            )
-        }
+    registry = _registry_from_toml(
+        tmp_path,
+        """
+        [[color]]
+        type = "channel"
+        name = "red_channel"
+        color_space = "RGB"
+        channel = "r"
+        """,
     )
     signal = resolve_mode_image(
         "red_channel",
@@ -80,20 +84,18 @@ def test_resolve_color_mode_rejects_invalid_token() -> None:
         resolve_mode_image("color.rgb.r", img)
 
 
-def test_resolve_color_range_hsv_binary_mask() -> None:
+def test_resolve_color_range_hsv_binary_mask(tmp_path: Path) -> None:
     arr = np.array([[[255, 0, 0], [0, 255, 0], [0, 0, 255]]], dtype=np.uint8)
     img = _optical_image(arr)
-    registry = ColorEmbeddingRegistry(
-        embeddings={
-            "custom_range": ColorRangeEmbedding(
-                embedding_id="custom_range",
-                mode=darsia.ColorMode.ABSOLUTE,
-                basis=ColorEmbeddingBasis.GLOBAL,
-                calibration_root=Path("."),
-                color_space="HSV",
-                ranges=[(0.2, 0.4), (0.5, None), (0.8, None)],
-            )
-        }
+    registry = _registry_from_toml(
+        tmp_path,
+        """
+        [[color]]
+        type = "range"
+        name = "custom_range"
+        color_space = "HSV"
+        range = [[0.2, 0.4], [0.5, "None"], [0.8, "None"]]
+        """,
     )
     mask = resolve_mode_image(
         "custom_range",
@@ -107,20 +109,20 @@ def test_resolve_color_range_hsv_binary_mask() -> None:
     )
 
 
-def test_simple_segmentation_supports_color_mode_without_mass_inputs() -> None:
+def test_simple_segmentation_supports_color_mode_without_mass_inputs(
+    tmp_path: Path,
+) -> None:
     arr = np.array([[[0, 0, 0], [255, 0, 0]]], dtype=np.uint8)
     img = _optical_image(arr)
-    registry = ColorEmbeddingRegistry(
-        embeddings={
-            "red_channel": ColorChannelEmbedding(
-                embedding_id="red_channel",
-                mode=darsia.ColorMode.ABSOLUTE,
-                basis=ColorEmbeddingBasis.GLOBAL,
-                calibration_root=Path("."),
-                color_space="RGB",
-                channel="r",
-            )
-        }
+    registry = _registry_from_toml(
+        tmp_path,
+        """
+        [[color]]
+        type = "channel"
+        name = "red_channel"
+        color_space = "RGB"
+        channel = "r"
+        """,
     )
     segmentation = SimpleSegmentation(mode="red_channel", threshold=0.5)
     mask = segmentation(
