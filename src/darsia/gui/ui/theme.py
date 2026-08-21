@@ -2,6 +2,7 @@
 
 from PySide6.QtCore import QObject, QSettings, Qt, Signal
 from PySide6.QtGui import QColor, QPalette
+from PySide6.QtWidgets import QApplication
 
 _original_style = None
 _original_palette = None
@@ -78,7 +79,7 @@ def apply_theme(app, mode: str) -> None:
         palette.setColor(QPalette.ToolTipBase, Qt.white)
         palette.setColor(QPalette.ToolTipText, Qt.black)
         palette.setColor(QPalette.Text, Qt.black)
-        palette.setColor(QPalette.Button, QColor(240, 240, 240))
+        palette.setColor(QPalette.Button, QColor(225, 225, 225))
         palette.setColor(QPalette.ButtonText, Qt.black)
         palette.setColor(QPalette.BrightText, Qt.white)
         palette.setColor(QPalette.Link, QColor(0, 0, 255))
@@ -105,7 +106,7 @@ def apply_theme(app, mode: str) -> None:
         palette.setColor(QPalette.ToolTipBase, dark_color)
         palette.setColor(QPalette.ToolTipText, Qt.white)
         palette.setColor(QPalette.Text, Qt.white)
-        palette.setColor(QPalette.Button, dark_color)
+        palette.setColor(QPalette.Button, QColor(68, 68, 68))
         palette.setColor(QPalette.ButtonText, Qt.white)
         palette.setColor(QPalette.BrightText, Qt.white)
         palette.setColor(QPalette.Link, QColor(42, 130, 218))
@@ -117,8 +118,17 @@ def apply_theme(app, mode: str) -> None:
         app.setPalette(palette)
         app.styleHints().setColorScheme(Qt.ColorScheme.Dark)
 
-    # Emit theme-change signal so already-built widgets can refresh
+    # Emit theme-change signal so already-built widgets can refresh (especially for
+    # icon rebuilding)
     theme_signal.theme_changed.emit(mode)
+
+    # Force full repaint of every widget to avoid containers (Sidebar, QScrollArea, etc.)
+    # lagging one theme-switch behind. This is centralized, dynamic, and self-healing for
+    # any future widgets added without explicit theme-change wiring.
+    for widget in QApplication.instance().allWidgets():
+        widget.style().unpolish(widget)
+        widget.style().polish(widget)
+        widget.update()
 
 
 def get_theme() -> str:
