@@ -6,7 +6,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QStyle
 
-from .icons import qta_icon
+from .icons import themed_icon
+from .theme import theme_signal
 
 _ICON_DIR = Path(__file__).parent.parent / "icons"
 
@@ -34,6 +35,7 @@ class ToolbarBuilder:
     def __init__(self, main_window, menu_builder):
         self.main_window = main_window
         self.menu_builder = menu_builder
+        self._themed_actions = {}  # key -> QAction (for live refresh)
 
     def build(self):
         toolbar = self.main_window.addToolBar("Main")
@@ -70,9 +72,18 @@ class ToolbarBuilder:
         self._configure(self.stop_action, "stop", "Stop Workflow")
         toolbar.addAction(self.stop_action)
 
+        theme_signal.theme_changed.connect(self.refresh_icons)
+
     def _configure(self, action, key, tooltip):
         action.setIcon(self._load_icon(key))
         action.setToolTip(tooltip)
+        if key in _QTA_ICONS:
+            self._themed_actions[key] = action
+
+    def refresh_icons(self):
+        """Rebuild all qtawesome-backed icons from current palette."""
+        for key, action in self._themed_actions.items():
+            action.setIcon(self._load_icon(key))
 
     def _on_play(self):
         """Handle Play button: dispatch to selected workflow."""
@@ -103,9 +114,9 @@ class ToolbarBuilder:
         if custom_path.exists():
             return QIcon(str(custom_path))
 
-        # Try qtawesome icon
+        # Try qtawesome icon (palette-aware)
         if key in _QTA_ICONS:
-            return qta_icon(_QTA_ICONS[key])
+            return themed_icon(_QTA_ICONS[key])
 
         # Fallback to standard Qt icon
         return self.main_window.style().standardIcon(_STANDARD_ICONS[key])

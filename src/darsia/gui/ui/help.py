@@ -1,7 +1,9 @@
 import webbrowser
 
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import (
+    QApplication,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -10,6 +12,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .theme import theme_signal
+
 
 class HelpPopup(QFrame):
     """Custom styled help popup that appears on hover."""
@@ -17,32 +21,45 @@ class HelpPopup(QFrame):
     def __init__(self, help_text):
         super().__init__()
         self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
-        self.setStyleSheet(
-            """
-            HelpPopup {
-                background-color: #f0f0f0;
-                border: 1px solid #888;
-                border-radius: 4px;
-                padding: 8px;
-            }
-            HelpPopup QLabel {
-                color: #333;
-            }
-        """
-        )
+        self._help_text = help_text
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(4)
 
         # Help text label
-        help_label = QLabel(help_text)
-        help_label.setWordWrap(True)
-        help_label.setMaximumWidth(300)
-        layout.addWidget(help_label)
+        self._help_label = QLabel(help_text)
+        self._help_label.setWordWrap(True)
+        self._help_label.setMaximumWidth(300)
+        layout.addWidget(self._help_label)
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.refresh_style()
+        theme_signal.theme_changed.connect(self.refresh_style)
         self.hide()
+
+    def refresh_style(self):
+        """Rebuild styling from current palette."""
+        pal = QApplication.instance().palette()
+        bg = pal.color(QPalette.ToolTipBase).name()
+        border = pal.color(QPalette.Mid).name()
+        text = pal.color(QPalette.ToolTipText).name()
+        self.setStyleSheet(
+            f"""
+            HelpPopup {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 4px;
+                padding: 8px;
+            }}
+            HelpPopup QLabel {{
+                color: {text};
+            }}
+        """
+        )
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
 
 
 class HelpButton(QPushButton):
@@ -57,53 +74,56 @@ class HelpButton(QPushButton):
 
         # Style the help button as a square
         self.setFixedSize(32, 32)
-
-        # Apply different styles based on whether a link is provided
-        if link_url:
-            self.setStyleSheet(
-                """
-                QPushButton {
-                    background-color: #0d47a1;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    font-weight: bold;
-                    font-size: 16px;
-                    padding: 0px;
-                }
-                QPushButton:hover {
-                    background-color: #1565c0;
-                }
-                QPushButton:pressed {
-                    background-color: #0c3aa3;
-                }
-            """
-            )
-            self.setEnabled(True)
-        else:
-            self.setStyleSheet(
-                """
-                QPushButton {
-                    background-color: #999999;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    font-weight: bold;
-                    font-size: 16px;
-                    padding: 0px;
-                }
-                QPushButton:hover {
-                    background-color: #555555;
-                }
-                QPushButton:pressed {
-                    background-color: #555555;
-                }
-            """
-            )
-            self.setEnabled(False)
-
         self.setFocusPolicy(Qt.NoFocus)
         self.clicked.connect(self.on_click)
+
+        self.setEnabled(bool(link_url))
+        self.refresh_style()
+        theme_signal.theme_changed.connect(self.refresh_style)
+
+    def refresh_style(self):
+        """Rebuild styling from current palette."""
+        pal = QApplication.instance().palette()
+        if self.link_url:
+            base = pal.color(QPalette.Highlight).name()
+            hover = pal.color(QPalette.Highlight).lighter(115).name()
+            pressed = pal.color(QPalette.Highlight).darker(115).name()
+            self.setStyleSheet(
+                f"""
+                QPushButton {{
+                    background-color: {base};
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    font-weight: bold;
+                    font-size: 16px;
+                    padding: 0px;
+                }}
+                QPushButton:hover {{ background-color: {hover}; }}
+                QPushButton:pressed {{ background-color: {pressed}; }}
+            """
+            )
+        else:
+            bg = pal.color(QPalette.Mid).name()
+            text = pal.color(QPalette.ButtonText).name()
+            self.setStyleSheet(
+                f"""
+                QPushButton {{
+                    background-color: {bg};
+                    color: {text};
+                    border: none;
+                    border-radius: 4px;
+                    font-weight: bold;
+                    font-size: 16px;
+                    padding: 0px;
+                }}
+                QPushButton:hover {{ background-color: {bg}; }}
+                QPushButton:pressed {{ background-color: {bg}; }}
+            """
+            )
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
 
     def on_click(self):
         """Handle button click: open link if available."""

@@ -1,7 +1,9 @@
 """Two-level accordion sidebar navigation for the DarSIA GUI."""
 
 from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -11,7 +13,8 @@ from PySide6.QtWidgets import (
 )
 
 from .help import HelpPopup
-from .icons import qta_icon
+from .icons import themed_icon
+from .theme import muted_text_color, theme_signal
 
 
 class SidebarRow(QWidget):
@@ -37,16 +40,14 @@ class SidebarRow(QWidget):
         layout.setContentsMargins(8, 4, 8, 4)
         layout.setSpacing(8)
 
-        # Icon
-        icon = qta_icon(icon_name, scale_factor=1.0)
-        icon_label = QLabel()
-        icon_label.setPixmap(icon.pixmap(16, 16))
-        layout.addWidget(icon_label)
+        # Icon — promoted to self so refresh_style can update it
+        self._icon_label = QLabel()
+        layout.addWidget(self._icon_label)
 
-        # Text label
-        text_label = QLabel(label)
-        text_label.setStyleSheet("color: inherit; font-size: 12px;")
-        layout.addWidget(text_label)
+        # Text label — no stylesheet, let it inherit WindowText from palette
+        self._text_label = QLabel(label)
+        self._text_label.setStyleSheet("font-size: 12px;")
+        layout.addWidget(self._text_label)
 
         layout.addStretch()
         self.setLayout(layout)
@@ -54,7 +55,8 @@ class SidebarRow(QWidget):
         # Styling
         self.setCursor(Qt.PointingHandCursor)
         self.setMinimumHeight(32)
-        self.update_selection_style()
+        self.refresh_style()
+        theme_signal.theme_changed.connect(self.refresh_style)
 
     def mousePressEvent(self, event):
         """Emit clicked signal on mouse press."""
@@ -89,16 +91,30 @@ class SidebarRow(QWidget):
         self._is_selected = selected
         self.update_selection_style()
 
+    def refresh_style(self):
+        """Rebuild icon and selection styling from current palette."""
+        icon = themed_icon(self.icon_name, scale_factor=1.0)
+        self._icon_label.setPixmap(icon.pixmap(16, 16))
+        self.update_selection_style()
+
     def update_selection_style(self):
-        """Apply or remove selection styling."""
+        """Apply or remove selection styling with palette-derived colors."""
+        pal = QApplication.instance().palette()
         if self._is_selected:
+            highlight = pal.color(QPalette.Highlight)
+            tint = pal.color(QPalette.Highlight)
+            tint.setAlpha(76)
             stylesheet = (
-                "QWidget { background-color: rgba(59, 89, 152, 0.3); "
-                "border-left: 3px solid #3b5998; }"
+                f"QWidget {{ background-color: rgba({tint.red()}, {tint.green()}, "
+                f"{tint.blue()}, {tint.alpha()}); "
+                f"border-left: 3px solid {highlight.name()}; }}"
             )
         else:
             stylesheet = "QWidget { background-color: transparent; }"
         self.setStyleSheet(stylesheet)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
 
 
 class GroupHeaderLabel(QLabel):
@@ -106,10 +122,20 @@ class GroupHeaderLabel(QLabel):
 
     def __init__(self, text: str):
         super().__init__(text)
+        self.refresh_style()
+        theme_signal.theme_changed.connect(self.refresh_style)
+
+    def refresh_style(self):
+        """Rebuild styling from current palette."""
+        pal = QApplication.instance().palette()
+        muted = muted_text_color(pal).name()
         self.setStyleSheet(
-            "QLabel { color: #888; font-weight: bold; font-size: 11px; "
-            "margin-top: 8px; margin-bottom: 4px; }"
+            f"QLabel {{ color: {muted}; font-weight: bold; font-size: 11px; "
+            f"margin-top: 8px; margin-bottom: 4px; }}"
         )
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
 
 
 class CategorySection(QWidget):
@@ -167,25 +193,38 @@ class CategorySection(QWidget):
         self.items_container.setVisible(False)
         layout.addWidget(self.items_container)
 
+        self.refresh_style()
+        theme_signal.theme_changed.connect(self.refresh_style)
+
     def _toggle_expand(self):
         """Toggle accordion expand/collapse."""
         self._is_expanded = not self._is_expanded
         self.items_container.setVisible(self._is_expanded)
+        self.refresh_style()
+
+    def refresh_style(self):
+        """Rebuild header styling and icon from current palette."""
         self._update_header()
 
     def _update_header(self):
-        """Update header button text and chevron icon."""
-        icon = qta_icon(self.category_icon, scale_factor=1.0)
+        """Update header button text, icon, and styling with palette colors."""
+        icon = themed_icon(self.category_icon, scale_factor=1.0)
         self.header_button.setIcon(icon)
         self.header_button.setText(self.category_label)
         self.header_button.setIconSize(
             __import__("PySide6.QtCore", fromlist=["QSize"]).QSize(16, 16)
         )
         self.header_button.setMinimumHeight(40)
+        pal = QApplication.instance().palette()
+        bg = pal.color(QPalette.Button).name()
+        border = pal.color(QPalette.Mid).name()
         self.header_button.setStyleSheet(
-            "QPushButton { text-align: left; padding-left: 8px; "
-            "background-color: #f0f0f0; border-bottom: 1px solid #ddd; }"
+            f"QPushButton {{ text-align: left; padding-left: 8px; "
+            f"background-color: {bg}; border-bottom: 1px solid {border}; }}"
         )
+        self.header_button.style().unpolish(self.header_button)
+        self.header_button.style().polish(self.header_button)
+        self.header_button.update()
 
     def _on_row_clicked(self, checkbox_id: str):
         """Emit selection change when a row is clicked."""
