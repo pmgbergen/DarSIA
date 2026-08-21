@@ -35,13 +35,46 @@ def _to_rgb(color: list[int] | tuple[int, int, int], name: str) -> tuple[int, in
 
 @dataclass
 class VideoSourceConfig:
-    folder: Path | None = None
-    pattern: str | None = None
-    extensions: list[str] = field(
-        default_factory=lambda: [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"]
+    folder: Path | None = field(
+        default=None,
+        metadata={
+            "name": "Video source folder",
+            "help": "Directory containing source images/frames for video/GIF creation.",
+            "widget": "folder",
+            "placeholder": "Select a folder containing images",
+        },
     )
-    recursive: bool = False
-    sorting: str = "protocols"
+    pattern: str | None = field(
+        default=None,
+        metadata={
+            "name": "File name pattern",
+            "help": "Glob pattern to match image files (e.g., '*.jpg' or 'frame_*.png').",
+        },
+    )
+    extensions: list[str] = field(
+        default_factory=lambda: [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"],
+        metadata={
+            "name": "File extensions",
+            "help": (
+                "List of file extensions to include (e.g., ['.jpg', '.png']). "
+                "Will be normalized automatically."
+            ),
+        },
+    )
+    recursive: bool = field(
+        default=False,
+        metadata={
+            "name": "Search recursively",
+            "help": "Whether to search subdirectories for image files.",
+        },
+    )
+    sorting: str = field(
+        default="protocols",
+        metadata={
+            "name": "Sorting method",
+            "help": "Method to sort images: 'protocols' (default) or 'name'.",
+        },
+    )
 
     ALLOWED_SORTING_METHODS = {"protocols", "name"}
 
@@ -62,12 +95,54 @@ class VideoSourceConfig:
 
 @dataclass
 class VideoOutputConfig:
-    formats: list[str] = field(default_factory=lambda: ["mp4"])
-    fps: float = 6.0
-    resolution: tuple[int, int] | None = None
-    filename: str | None = None
-    codec: str = "mp4v"
-    quality: int = 95
+    formats: list[str] = field(
+        default_factory=lambda: ["mp4"],
+        metadata={
+            "name": "Output formats",
+            "help": "List of output formats: 'mp4' and/or 'gif'.",
+        },
+    )
+    fps: float = field(
+        default=6.0,
+        metadata={
+            "name": "Frames per second (FPS)",
+            "help": "Playback speed for the video/GIF (must be positive).",
+        },
+    )
+    resolution: tuple[int, int] | None = field(
+        default=None,
+        metadata={
+            "name": "Output resolution",
+            "help": (
+                "Video resolution as [width, height] pixels. "
+                "Leave empty to auto-detect."
+            ),
+        },
+    )
+    filename: str | None = field(
+        default=None,
+        metadata={
+            "name": "Output filename",
+            "help": (
+                "Base name for output files (without extension). "
+                "Auto-generated if not set."
+            ),
+        },
+    )
+    codec: str = field(
+        default="mp4v",
+        metadata={
+            "name": "Video codec",
+            "help": "Codec for MP4 output (typically 'mp4v' or 'avc1').",
+        },
+    )
+    quality: int = field(
+        default=95,
+        metadata={
+            "name": "Quality (1-100)",
+            "help": "Video/GIF quality on a scale of 1-100 (higher = better).",
+        },
+    )
 
     def load(self, sec: dict) -> "VideoOutputConfig":
         out = sec.get("output", {})
@@ -103,19 +178,100 @@ class VideoOutputConfig:
 
 @dataclass
 class VideoOverlayConfig:
-    show_elapsed_time: bool = True
-    elapsed_time_format: str = "Elapsed: {:.2f} h"
-    show_note: bool = True
-    note: str = ""
-    font_scale: float = 0.7
-    text_color: tuple[int, int, int] = (255, 255, 255)
-    thickness: int = 2
-    line_spacing: int = 8
-    position: tuple[int, int] = (20, 20)
-    box_enabled: bool = True
-    box_color: tuple[int, int, int] = (0, 0, 0)
-    box_alpha: float = 0.4
-    box_padding: int = 10
+    show_elapsed_time: bool = field(
+        default=True,
+        metadata={
+            "name": "Show elapsed time",
+            "help": "Display elapsed time overlay on the video.",
+        },
+    )
+    elapsed_time_format: str = field(
+        default="Elapsed: {:.2f} h",
+        metadata={
+            "name": "Elapsed time format",
+            "help": (
+                "Format string for elapsed time (Python format, e.g., "
+                "'Elapsed: {:.2f} h')."
+            ),
+        },
+    )
+    show_note: bool = field(
+        default=True,
+        metadata={
+            "name": "Show note",
+            "help": "Display custom note overlay on the video.",
+        },
+    )
+    note: str = field(
+        default="",
+        metadata={
+            "name": "Custom note text",
+            "help": "Text to display as overlay (if show_note is enabled).",
+        },
+    )
+    font_scale: float = field(
+        default=0.7,
+        metadata={
+            "name": "Font scale",
+            "help": "Font size scale for overlay text.",
+        },
+    )
+    text_color: tuple[int, int, int] = field(
+        default=(255, 255, 255),
+        metadata={
+            "name": "Text color [R, G, B]",
+            "help": "RGB color for overlay text (values 0-255).",
+        },
+    )
+    thickness: int = field(
+        default=2,
+        metadata={
+            "name": "Text thickness",
+            "help": "Thickness of text strokes.",
+        },
+    )
+    line_spacing: int = field(
+        default=8,
+        metadata={
+            "name": "Line spacing",
+            "help": "Spacing between lines in multi-line overlays.",
+        },
+    )
+    position: tuple[int, int] = field(
+        default=(20, 20),
+        metadata={
+            "name": "Overlay position [x, y]",
+            "help": "Position of overlay in pixels from top-left corner.",
+        },
+    )
+    box_enabled: bool = field(
+        default=True,
+        metadata={
+            "name": "Enable background box",
+            "help": "Draw a semi-transparent background box behind overlay text.",
+        },
+    )
+    box_color: tuple[int, int, int] = field(
+        default=(0, 0, 0),
+        metadata={
+            "name": "Box color [R, G, B]",
+            "help": "RGB color for background box (values 0-255).",
+        },
+    )
+    box_alpha: float = field(
+        default=0.4,
+        metadata={
+            "name": "Box alpha (0-1)",
+            "help": "Transparency of background box (0=transparent, 1=opaque).",
+        },
+    )
+    box_padding: int = field(
+        default=10,
+        metadata={
+            "name": "Box padding",
+            "help": "Padding in pixels around overlay text inside the box.",
+        },
+    )
 
     def load(self, sec: dict) -> "VideoOverlayConfig":
         overlay = sec.get("overlay", {})
@@ -175,10 +331,37 @@ class VideoOverlayConfig:
 
 @dataclass
 class VideoConfig:
-    source: VideoSourceConfig = field(default_factory=VideoSourceConfig)
-    output: VideoOutputConfig = field(default_factory=VideoOutputConfig)
-    overlay: VideoOverlayConfig = field(default_factory=VideoOverlayConfig)
-    folder: Path = field(default_factory=Path)
+    source: VideoSourceConfig = field(
+        default_factory=VideoSourceConfig,
+        metadata={
+            "name": "Video source",
+            "help": "Settings for video/GIF source images.",
+        },
+    )
+    output: VideoOutputConfig = field(
+        default_factory=VideoOutputConfig,
+        metadata={
+            "name": "Video output",
+            "help": "Settings for video/GIF output (format, quality, resolution).",
+        },
+    )
+    overlay: VideoOverlayConfig = field(
+        default_factory=VideoOverlayConfig,
+        metadata={
+            "name": "Video overlay",
+            "help": "Settings for overlay text/graphics on video.",
+        },
+    )
+    folder: Path = field(
+        default_factory=Path,
+        metadata={
+            "name": "Video output folder",
+            "help": (
+                "Destination folder for generated videos (auto-set to "
+                "[data.results]/videos)."
+            ),
+        },
+    )
 
     def load(self, path: Path | list[Path], results: Path | None) -> "VideoConfig":
         sec = _get_section_from_toml(path, "video")
