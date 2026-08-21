@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -17,7 +18,7 @@ from darsia.signals.color import (
 )
 
 from .roi_registry import RoiRegistry, _load_roi_key_list
-from .utils import _convert_none, _get_section_from_toml, _validate_choice
+from .utils import _convert_none, _validate_choice
 
 if TYPE_CHECKING:
     from .data_registry import DataRegistry
@@ -218,11 +219,14 @@ def parse_color_channel_embedding(
     return embedding
 
 
+SUPPORTED_COLOR_TYPES = {"path", "range", "channel"}
+
+
 @dataclass
 class ColorEmbeddingRegistry:
-    """Registry of configured color embeddings."""
+    """Registry of configured color embeddings loaded from [[color]] array-of-tables."""
 
-    embeddings: dict[str, ColorEmbedding] = field(default_factory=dict)
+    _embeddings: dict[str, ColorEmbedding] = field(default_factory=dict, repr=False)
 
     def load(
         self,
@@ -233,71 +237,122 @@ class ColorEmbeddingRegistry:
         data_registry: DataRegistry | None = None,
         roi_registry: "RoiRegistry | None" = None,
     ) -> "ColorEmbeddingRegistry":
-        sec = _get_section_from_toml(path, "color")
-        if not isinstance(sec, dict):
-            raise ValueError("[color] must be a table.")
+        """Load color embeddings from [[color]] array-of-tables in TOML.
 
-        self.embeddings = {}
-        seen: set[str] = set()
+        Hand-parses TOML (like FormatRegistry and RoiRegistry) since array-of-tables
+        is not supported by the generic _get_section_from_toml helper.
+
+        Args:
+            path: Path or list of Paths to TOML config file(s).
+            data: Data folder path.
+            results: Results folder path.
+            data_registry: Optional DataRegistry for resolving data references.
+            roi_registry: Optional RoiRegistry for validating ROI references.
+
+        Returns:
+            self
+
+        Raises:
+            ValueError: If the [color] section is not an array-of-tables, if any
+                entry is missing required fields (type, name), or if types/names
+                are invalid or duplicated.
+        """
+        paths = [path] if isinstance(path, Path) else path
+        self._embeddings = {}
         color_root = results / "calibration" / "color" if results is not None else None
 
-        # [color.path.<id>]
-        path_sec = sec.get("path", {})
-        if isinstance(path_sec, dict):
-            for embedding_id, cfg in path_sec.items():
-                self._update_seen(embedding_id, seen)
-                self.embeddings[embedding_id] = parse_color_path_embedding(
-                    cfg=cfg,
-                    embedding_id=embedding_id,
-                    color_root=color_root,
-                    data=data,
-                    data_registry=data_registry,
-                    roi_registry=roi_registry,
+        for p in paths:
+            if not p.exists():
+                continue
+
+            with open(p, "rb") as f:
+                toml_data = tomllib.load(f)
+
+            if "color" not in toml_data:
+                continue
+
+            color_data = toml_data["color"]
+
+            # Strict format: [[color]] is a list, not nested dicts like [color.*]
+            if not isinstance(color_data, list):
+                raise ValueError(
+                    "The [color] section must be an array-of-tables format "
+                    "(use [[color]]), not nested tables."
                 )
 
-        # [color.range.<id>]
-        range_sec = sec.get("range", {})
-        if isinstance(range_sec, dict):
-            for embedding_id, cfg in range_sec.items():
-                self._update_seen(embedding_id, seen)
-                self.embeddings[embedding_id] = parse_color_range_embedding(
-                    cfg=cfg,
-                    embedding_id=embedding_id,
-                    color_root=color_root,
-                    data=data,
-                    data_registry=data_registry,
-                    roi_registry=roi_registry,
-                )
+            for idx, entry in enumerate(color_data):
+                if not isinstance(entry, dict):
+                    raise ValueError(f"[[color]] entry {idx} must be a table/dict.")
 
-        # [color.channel.<id>]
-        channel_sec = sec.get("channel", {})
-        if isinstance(channel_sec, dict):
-            for embedding_id, cfg in channel_sec.items():
-                self._update_seen(embedding_id, seen)
-                self.embeddings[embedding_id] = parse_color_channel_embedding(
-                    cfg=cfg,
-                    embedding_id=embedding_id,
-                    color_root=color_root,
-                    data=data,
-                    data_registry=data_registry,
-                    roi_registry=roi_registry,
-                )
+                # Extract required fields
+                entry_type = entry.get("type")
+                if entry_type is None:
+                    raise ValueError(
+                        f"[[color]] entry {idx} is missing required 'type' field."
+                    )
+
+                entry_name = entry.get("name")
+                if entry_name is None:
+                    raise ValueError(
+                        f"[[color]] entry {idx} is missing required 'name' "
+                        "field (the registry key)."
+                    )
+
+                entry_type = str(entry_type).strip().lower()
+                if entry_type not in SUPPORTED_COLOR_TYPES:
+                    raise ValueError(
+                        f"Unsupported color type '{entry_type}' in [[color]] entry {idx}. "
+                        f"Supported: {sorted(SUPPORTED_COLOR_TYPES)}"
+                    )
+
+                entry_name = str(entry_name).strip()
+                if entry_name in self._embeddings:
+                    raise ValueError(
+                        f"Color embedding name '{entry_name}' is duplicated. "
+                        "Names must be globally unique."
+                    )
+
+                # Extract config (exclude type and name)
+                cfg = {k: v for k, v in entry.items() if k not in ("type", "name")}
+
+                # Dispatch to the appropriate parser based on type
+                if entry_type == "path":
+                    self._embeddings[entry_name] = parse_color_path_embedding(
+                        cfg=cfg,
+                        embedding_id=entry_name,
+                        color_root=color_root,
+                        data=data,
+                        data_registry=data_registry,
+                        roi_registry=roi_registry,
+                    )
+                elif entry_type == "range":
+                    self._embeddings[entry_name] = parse_color_range_embedding(
+                        cfg=cfg,
+                        embedding_id=entry_name,
+                        color_root=color_root,
+                        data=data,
+                        data_registry=data_registry,
+                        roi_registry=roi_registry,
+                    )
+                elif entry_type == "channel":
+                    self._embeddings[entry_name] = parse_color_channel_embedding(
+                        cfg=cfg,
+                        embedding_id=entry_name,
+                        color_root=color_root,
+                        data=data,
+                        data_registry=data_registry,
+                        roi_registry=roi_registry,
+                    )
 
         return self
 
-    def _update_seen(self, embedding_id: str, seen: set[str]) -> None:
-        """Auxiliary method to check for duplicate embedding IDs.
+    def keys(self) -> list[str]:
+        """Return all registered embedding names."""
+        return list(self._embeddings.keys())
 
-        Args:
-            embedding_id: The embedding identifier to check.
-            seen: A set of already seen embedding identifiers. If embedding_id is in
-                this set, a ValueError is raised. Otherwise, embedding_id is added to
-                the set.
-
-        """
-        if embedding_id in seen:
-            raise ValueError(f"Duplicate color embedding identifier '{embedding_id}'.")
-        seen.add(embedding_id)
+    def __contains__(self, name: str) -> bool:
+        """Check if an embedding name is registered (supports 'name in registry')."""
+        return name in self._embeddings
 
     def resolve(self, embedding: str | ColorEmbedding) -> ColorEmbedding:
         """Resolve embedding identifier or object to embedding object.
@@ -305,25 +360,33 @@ class ColorEmbeddingRegistry:
         Args:
             embedding: Either a string identifier of a registered embedding, or a
                 ColorEmbedding object. If an object is provided, it is verified to be
-                registered in self.embeddings.
+                registered in self._embeddings.
 
         Returns:
             The corresponding ColorEmbedding object.
 
         """
         if isinstance(embedding, str):  # embedding_id
-            if embedding not in self.embeddings:
-                available = sorted(self.embeddings.keys())
+            if embedding not in self._embeddings:
+                available = sorted(self._embeddings.keys())
                 raise KeyError(
                     "ColorEmbeddingRegistry: key "
                     f"'{embedding}' not found. Available keys: {available}"
                 )
-            return self.embeddings[embedding]
+            return self._embeddings[embedding]
         else:  # embedding object
-            # Make sure embedding is registered in self.embeddings.
-            if embedding.embedding_id not in self.embeddings:
+            # Make sure embedding is registered in self._embeddings.
+            if embedding.embedding_id not in self._embeddings:
                 raise KeyError(
                     f"ColorEmbeddingRegistry: embedding with id "
                     f"'{embedding.embedding_id}' not found in registry."
                 )
         return embedding
+
+    def resolve_all(self) -> dict[str, ColorEmbedding]:
+        """Return a dict of all registered embeddings (already resolved at load time).
+
+        Returns:
+            Dict mapping embedding names to their ColorEmbedding objects.
+        """
+        return dict(self._embeddings)
