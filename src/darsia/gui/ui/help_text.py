@@ -1,48 +1,48 @@
 """Central registry of help text for sidebar items, organized by category."""
 
 HELP_TEXT_SETUP = {
-    "depth": "Setup depth map from baseline image. TBC",
-    "segmentation": "Segment colored image. TBC",
-    "facies": "Setup facies. TBC",
-    "protocols": "Setup protocol CSV templates. TBC",
-    "rig": "Setup and store rig object. TBC",
-    "all": "Run all setup steps. TBC",
-    "show_plots": "Display plots during execution. TBC",
+    "depth": "Analyze depth images to create depth maps from a baseline.",
+    "segmentation": "Segment colored images to identify fluid phases and interfaces.",
+    "facies": "Define and configure geological layers (facies) for analysis.",
+    "protocols": "Configure imaging protocols, timing, and data collection schedules.",
+    "rig": "Initialize experimental rig geometry and hardware parameters.",
+    "all": "Execute all setup steps in sequence.",
+    "show_plots": "Display visualization plots during setup execution.",
 }
 
 HELP_TEXT_CALIBRATION = {
-    "color": "Calibrate color paths. TBC",
-    "mass": "Calibrate color to mass analysis. TBC",
-    "default_mass": "Set default mass calibration. TBC",
-    "delete": "Delete all calibrations (destructive). TBC",
-    "reset": "Reset mass calibration settings. TBC",
-    "show": "Display plots during calibration. TBC",
+    "color": "Calibrate color paths for RGB image analysis using color targets.",
+    "mass": "Calibrate color intensity to CO₂ mass relationships.",
+    "default_mass": "Set default mass calibration parameters for analysis.",
+    "delete": "Remove all existing calibration data (cannot be undone).",
+    "reset": "Reset mass calibration to default values.",
+    "show": "Display calibration plots and verification figures.",
 }
 
 HELP_TEXT_ANALYSIS = {
-    "cropping": "Crop image to region of interest. TBC",
-    "segmentation": "Segment images using analysis. TBC",
-    "fingers": "Analyze finger features. TBC",
-    "mass": "Analyze mass distribution. TBC",
-    "volume": "Analyze volume distribution. TBC",
-    "thresholding": "Apply thresholding to images. TBC",
-    "all": "Analyze all images. TBC",
-    "show": "Display plots during analysis. TBC",
+    "cropping": "Crop images to region of interest for focused analysis.",
+    "segmentation": "Segment images to identify and map fluid phases.",
+    "fingers": "Analyze viscous fingering features at fluid interfaces.",
+    "mass": "Quantify CO₂ mass distribution from segmented images.",
+    "volume": "Calculate volume metrics from segmented phases.",
+    "thresholding": "Apply intensity thresholding for phase separation.",
+    "all": "Process all images in the dataset.",
+    "show": "Display analysis results and plots.",
 }
 
 HELP_TEXT_HELPER = {
-    "color": "Color embedding helper. TBC",
-    "roi": "ROI helper tool. TBC",
-    "roi_viewer": "ROI viewer helper. TBC",
-    "results": "Results reader helper. TBC",
-    "show": "Display plots during helper. TBC",
+    "color": "Helper tool for color embedding and analysis.",
+    "roi": "Define and manage regions of interest for analysis.",
+    "roi_viewer": "Visualize and inspect defined regions of interest.",
+    "results": "Read and display analysis results.",
+    "show": "Display helper tool plots.",
 }
 
 HELP_TEXT_UTILS = {
-    "build_media": "Build protocol-time media (MP4/GIF). TBC",
-    "download_data": "Download/cache data. TBC",
-    "export_calibration": "Export calibration bundle. TBC",
-    "import_calibration": "Import calibration from file. TBC",
+    "build_media": "Create time-series MP4/GIF media from image sequence.",
+    "download_data": "Download and cache experimental data locally.",
+    "export_calibration": "Export calibration settings to a shareable bundle.",
+    "import_calibration": "Import calibration from an external bundle file.",
 }
 
 # Mapping of action -> help text dictionary
