@@ -1,10 +1,46 @@
 """Theme switcher for Light/Dark/System modes with persistence."""
 
-from PySide6.QtCore import QSettings, Qt
+from PySide6.QtCore import QObject, QSettings, Qt, Signal
 from PySide6.QtGui import QColor, QPalette
 
 _original_style = None
 _original_palette = None
+
+
+class _ThemeSignal(QObject):
+    """Singleton signal emitted when theme changes."""
+
+    theme_changed = Signal(str)
+
+
+theme_signal = _ThemeSignal()
+
+
+def muted_text_color(pal: QPalette, weight: float = 0.55) -> QColor:
+    """Blend WindowText toward Window background for theme-agnostic 'muted' text.
+
+    QPalette has no built-in secondary/muted-text role. This blends the foreground
+    text color toward the background color at a fixed ratio, self-inverting correctly
+    in both Light and Dark modes without per-theme branching.
+
+    Parameters
+    ----------
+    pal : QPalette
+        The application palette (from QApplication.instance().palette()).
+    weight : float
+        Blend weight (0-1) toward background; 0.55 is a good default for readable muted text.
+
+    Returns
+    -------
+    QColor
+        Blended color.
+    """
+    fg = pal.color(QPalette.WindowText)
+    bg = pal.color(QPalette.Window)
+    r = int(fg.red() * (1 - weight) + bg.red() * weight)
+    g = int(fg.green() * (1 - weight) + bg.green() * weight)
+    b = int(fg.blue() * (1 - weight) + bg.blue() * weight)
+    return QColor(r, g, b)
 
 
 def apply_theme(app, mode: str) -> None:
@@ -48,6 +84,7 @@ def apply_theme(app, mode: str) -> None:
         palette.setColor(QPalette.Link, QColor(0, 0, 255))
         palette.setColor(QPalette.Highlight, QColor(76, 163, 224))
         palette.setColor(QPalette.HighlightedText, Qt.white)
+        palette.setColor(QPalette.Mid, QColor(200, 200, 200))
         app.setPalette(palette)
         app.styleHints().setColorScheme(Qt.ColorScheme.Light)
     elif mode == "Dark":
@@ -76,8 +113,12 @@ def apply_theme(app, mode: str) -> None:
         palette.setColor(QPalette.HighlightedText, Qt.black)
         palette.setColor(QPalette.Disabled, QPalette.Text, disabled_color)
         palette.setColor(QPalette.Disabled, QPalette.ButtonText, disabled_color)
+        palette.setColor(QPalette.Mid, QColor(100, 100, 100))
         app.setPalette(palette)
         app.styleHints().setColorScheme(Qt.ColorScheme.Dark)
+
+    # Emit theme-change signal so already-built widgets can refresh
+    theme_signal.theme_changed.emit(mode)
 
 
 def get_theme() -> str:
