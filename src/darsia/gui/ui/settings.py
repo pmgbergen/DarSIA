@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .file_dialog import FileDialogHelper, NO_FILE_CHOSEN
+from .file_dialog import NO_FILE_CHOSEN, FileDialogHelper
 from .help import build_help_column
 from .schema.dataclass_introspection import ALL_SECTIONS, get_section_fields
 from .schema.section_registry import get_required_sections
