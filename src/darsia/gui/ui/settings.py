@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .file_dialog import FileDialogHelper
+from .file_dialog import FileDialogHelper, NO_FILE_CHOSEN
 from .help import build_help_column
 from .schema.dataclass_introspection import ALL_SECTIONS, get_section_fields
 from .schema.section_registry import get_required_sections
@@ -3443,6 +3443,9 @@ class SettingsFactory:
 
             try:
                 if isinstance(value, QLineEdit):
+                    # Skip writing file/folder fields that are empty or still have the placeholder
+                    if value.text() == NO_FILE_CHOSEN or value.text().strip() == "":
+                        continue
                     self.set_value(
                         self.main_window.config_dict,
                         key,
@@ -3470,6 +3473,9 @@ class SettingsFactory:
                             )
             except (ValueError, SyntaxError):
                 if hasattr(value, "text"):
+                    # Skip writing file/folder fields that are empty or still have the placeholder
+                    if value.text() == NO_FILE_CHOSEN or value.text().strip() == "":
+                        continue
                     self.set_value(self.main_window.config_dict, key, value.text())
 
         # Third pass: save path_map dicts (key -> value mappings)
