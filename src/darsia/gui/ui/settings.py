@@ -1687,9 +1687,10 @@ class SettingsFactory:
                 calibration_folder_edit = QLineEdit()
                 calibration_folder_edit.setPlaceholderText("calib_folder")
                 calibration_folder_edit.setMaximumWidth(100)
-                if "calibration_folder" in entry_data and entry_data[
-                    "calibration_folder"
-                ]:
+                if (
+                    "calibration_folder" in entry_data
+                    and entry_data["calibration_folder"]
+                ):
                     calibration_folder_edit.setText(
                         str(entry_data["calibration_folder"])
                     )
@@ -1878,9 +1879,10 @@ class SettingsFactory:
                 calibration_folder_edit = QLineEdit()
                 calibration_folder_edit.setPlaceholderText("calib_folder")
                 calibration_folder_edit.setMaximumWidth(100)
-                if "calibration_folder" in entry_data and entry_data[
-                    "calibration_folder"
-                ]:
+                if (
+                    "calibration_folder" in entry_data
+                    and entry_data["calibration_folder"]
+                ):
                     calibration_folder_edit.setText(
                         str(entry_data["calibration_folder"])
                     )
@@ -2038,9 +2040,10 @@ class SettingsFactory:
                 calibration_folder_edit = QLineEdit()
                 calibration_folder_edit.setPlaceholderText("calib_folder")
                 calibration_folder_edit.setMaximumWidth(100)
-                if "calibration_folder" in entry_data and entry_data[
-                    "calibration_folder"
-                ]:
+                if (
+                    "calibration_folder" in entry_data
+                    and entry_data["calibration_folder"]
+                ):
                     calibration_folder_edit.setText(
                         str(entry_data["calibration_folder"])
                     )
@@ -3408,7 +3411,8 @@ class SettingsFactory:
                 continue
             # Skip path_map, int_group_list, int_list_map, time_interval_map, time_window_map,
             # time_data_map, path_data_map, registry_key_list, format_map, roi_map,
-            # roi_key_list, color_path_map, color_range_map, color_channel_map dicts (handled below)
+            # roi_key_list, color_path_map, color_range_map, color_channel_map dicts
+            # (handled below)
             if isinstance(value, dict) and (
                 "path_map" in value
                 or "int_group_list" in value
@@ -3828,7 +3832,8 @@ class SettingsFactory:
                     # Check for duplicate names across all groups
                     if name_text in color_seen_names:
                         self.main_window.print_log(
-                            f"Warning: duplicate color embedding name '{name_text}' skipped during save"
+                            f"Warning: duplicate color embedding name '{name_text}' skipped "
+                            "during save"
                         )
                         continue
                     color_seen_names.add(name_text)
@@ -3839,7 +3844,9 @@ class SettingsFactory:
                     entry["name"] = name_text
                     entry["mode"] = mode_combo.currentText().strip()
                     entry["basis"] = basis_combo.currentText().strip()
-                    entry["calibration_mode"] = calibration_mode_combo.currentText().strip()
+                    entry["calibration_mode"] = (
+                        calibration_mode_combo.currentText().strip()
+                    )
 
                     # baseline/data dropdowns
                     baseline_text = baseline_combo.currentText().strip()
@@ -3852,17 +3859,23 @@ class SettingsFactory:
                     # rois: parse comma-separated list
                     rois_text = rois_edit.text().strip()
                     if rois_text:
-                        entry["rois"] = [r.strip() for r in rois_text.split(",") if r.strip()]
+                        entry["rois"] = [
+                            r.strip() for r in rois_text.split(",") if r.strip()
+                        ]
                     else:
                         entry["rois"] = []
 
                     # numeric fields
                     try:
-                        entry["num_segments"] = int(num_segments_edit.text().strip() or "1")
+                        entry["num_segments"] = int(
+                            num_segments_edit.text().strip() or "1"
+                        )
                     except ValueError:
                         pass
                     try:
-                        entry["resolution"] = int(resolution_edit.text().strip() or "51")
+                        entry["resolution"] = int(
+                            resolution_edit.text().strip() or "51"
+                        )
                     except ValueError:
                         pass
                     try:
@@ -3897,7 +3910,9 @@ class SettingsFactory:
                     entry["ignore_baseline_spectrum"] = (
                         ignore_baseline_combo.currentText().strip()
                     )
-                    entry["histogram_weighting"] = histogram_weighting_combo.currentText().strip()
+                    entry["histogram_weighting"] = (
+                        histogram_weighting_combo.currentText().strip()
+                    )
 
                     # calibration_folder (optional)
                     calibration_folder_text = calibration_folder_edit.text().strip()
@@ -3924,7 +3939,8 @@ class SettingsFactory:
 
                     if name_text in color_seen_names:
                         self.main_window.print_log(
-                            f"Warning: duplicate color embedding name '{name_text}' skipped during save"
+                            f"Warning: duplicate color embedding name '{name_text}' skipped "
+                            "during save"
                         )
                         continue
                     color_seen_names.add(name_text)
@@ -3984,7 +4000,8 @@ class SettingsFactory:
 
                     if name_text in color_seen_names:
                         self.main_window.print_log(
-                            f"Warning: duplicate color embedding name '{name_text}' skipped during save"
+                            f"Warning: duplicate color embedding name '{name_text}' skipped "
+                            "during save"
                         )
                         continue
                     color_seen_names.add(name_text)
