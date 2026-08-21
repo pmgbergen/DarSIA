@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import cv2
+from matplotlib import pyplot as plt
 import numpy as np
 
 import darsia
@@ -109,10 +110,9 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         image_calibrated = self.correct_array(self.baseline_images[0])
 
         if show_images:
-            image_calibrated = cv2.cvtColor(image_calibrated, cv2.COLOR_RGB2BGR)
-            cv2.imshow("calibrated image", image_calibrated)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+            plt.figure("Calibrated baseline image")
+            plt.imshow(image_calibrated)
+            plt.show()
 
     def extract_color_values_patches(
         self, image: np.ndarray, labels: darsia.Image
