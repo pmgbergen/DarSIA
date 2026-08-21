@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtWidgets import QCheckBox, QMessageBox, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QMessageBox
 
 
 class SetupTab:
@@ -11,51 +11,7 @@ class SetupTab:
 
     def __init__(self, main_window):
         self.main_window = main_window
-        self.setup_checkboxes = []
         self.process = None
-
-    def create_tab(self):
-        """Create and return the setup tab widget."""
-        container = QWidget()
-        layout = QVBoxLayout(container)
-
-        setup_items = [
-            ("All", "all"),
-            ("Depth", "depth"),
-            ("Segmentation", "segmentation"),
-            ("Facies", "facies"),
-            ("Protocols", "protocols"),
-            ("Rig", "rig"),
-            ("Show plots", "show_plots"),
-        ]
-
-        self.setup_checkboxes = []
-        for label, checkbox_id in setup_items:
-            checkbox = QCheckBox(label)
-            self.setup_checkboxes.append((checkbox_id, checkbox))
-            layout.addWidget(checkbox)
-
-        settings_button = QPushButton("Open Setup settings")
-        settings_button.clicked.connect(self.on_settings_clicked)
-        layout.addWidget(settings_button)
-
-        self.run_button = QPushButton("Run Setup")
-        self.run_button.clicked.connect(self.on_run_clicked)
-        layout.addWidget(self.run_button)
-
-        self.abort_button = QPushButton("Abort Setup")
-        self.abort_button.setVisible(False)
-        self.abort_button.setEnabled(False)
-        self.abort_button.clicked.connect(self.on_abort_clicked)
-        layout.addWidget(self.abort_button)
-
-        layout.addStretch()
-        return container
-
-    def on_settings_clicked(self):
-        """Handle settings button click."""
-        checked_ids = self.main_window.get_checked_checkbox_ids(self.setup_checkboxes)
-        self.main_window.settings_factory.display_settings("setup", checked_ids)
 
     def on_run_clicked(self):
         """Handle run button click."""
@@ -67,26 +23,26 @@ class SetupTab:
             self.main_window.process_runner.abort_workflow_process(self.process)
 
     def run_setup(self):
-        """Run setup workflow based on checked checkboxes."""
+        """Run setup workflow based on selected sidebar item."""
         config_file = self.main_window.config_path_label.text()
         if not config_file or config_file == "No file chosen":
             self.main_window.print_log("Please select a config file first.")
             return
 
-        checked_ids = self.main_window.get_checked_checkbox_ids(self.setup_checkboxes)
-        if not checked_ids:
-            self.main_window.print_log("Please select at least one setup option.")
+        selected_id = self.main_window.selected_checkbox_id
+        if not selected_id:
+            self.main_window.print_log("Please select an option in the sidebar.")
             return
 
         # Build options dictionary matching the CLI interface
         options = {
-            "all": "all" in checked_ids,
-            "depth": "depth" in checked_ids,
-            "segmentation": "segmentation" in checked_ids,
-            "facies": "facies" in checked_ids,
-            "protocols": "protocols" in checked_ids,
-            "rig": "rig" in checked_ids,
-            "show": "show_plots" in checked_ids,
+            "all": selected_id == "all",
+            "depth": selected_id == "depth",
+            "segmentation": selected_id == "segmentation",
+            "facies": selected_id == "facies",
+            "protocols": selected_id == "protocols",
+            "rig": selected_id == "rig",
+            "show": selected_id == "show_plots",
             "force": False,
         }
 
@@ -168,8 +124,10 @@ class SetupTab:
             argv.append("--show")
 
         # Launch workflow in a separate process
+        play_action = self.main_window.toolbar_builder.play_action
+        stop_action = self.main_window.toolbar_builder.stop_action
         self.process = self.main_window.process_runner.start_workflow_process(
-            argv, self.run_button, self.abort_button, cwd=Path.cwd()
+            argv, play_action, stop_action, cwd=Path.cwd()
         )
 
     def sidebar_items(self):

@@ -1,10 +1,12 @@
-"""Toolbar builder for icon buttons (New, Open, Save) below the menu bar."""
+"""Toolbar builder for icon buttons (New, Open, Save, Play, Stop) below the menu bar."""
 
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QStyle
+
+from .icons import qta_icon
 
 _ICON_DIR = Path(__file__).parent.parent / "icons"
 
@@ -13,6 +15,11 @@ _STANDARD_ICONS = {
     "open": QStyle.StandardPixmap.SP_DirOpenIcon,
     "save": QStyle.StandardPixmap.SP_DriveFDIcon,
     "settings": QStyle.StandardPixmap.SP_FileDialogDetailedView,
+}
+
+_QTA_ICONS = {
+    "play": "fa5s.play",
+    "stop": "fa5s.stop",
 }
 
 
@@ -49,12 +56,56 @@ class ToolbarBuilder:
         toolbar.addAction(self.menu_builder.save_action)
         toolbar.addAction(self.menu_builder.open_full_config_action)
 
+        # Add separator and Play/Stop actions for workflow control
+        toolbar.addSeparator()
+
+        self.play_action = QAction("Play")
+        self.play_action.triggered.connect(self._on_play)
+        self._configure(self.play_action, "play", "Run Selected Workflow")
+        toolbar.addAction(self.play_action)
+
+        self.stop_action = QAction("Stop")
+        self.stop_action.triggered.connect(self._on_stop)
+        self.stop_action.setEnabled(False)
+        self._configure(self.stop_action, "stop", "Stop Workflow")
+        toolbar.addAction(self.stop_action)
+
     def _configure(self, action, key, tooltip):
         action.setIcon(self._load_icon(key))
         action.setToolTip(tooltip)
+
+    def _on_play(self):
+        """Handle Play button: dispatch to selected workflow."""
+        if self.main_window.selected_action is None:
+            self.main_window.print_log("Select an item in the sidebar first.")
+            return
+
+        tab_manager = self.main_window.action_dispatch.get(
+            self.main_window.selected_action
+        )
+        if tab_manager:
+            tab_manager.on_run_clicked()
+
+    def _on_stop(self):
+        """Handle Stop button: abort selected workflow."""
+        if self.main_window.selected_action is None:
+            self.main_window.print_log("No workflow running.")
+            return
+
+        tab_manager = self.main_window.action_dispatch.get(
+            self.main_window.selected_action
+        )
+        if tab_manager:
+            tab_manager.on_abort_clicked()
 
     def _load_icon(self, key):
         custom_path = _ICON_DIR / f"{key}.png"
         if custom_path.exists():
             return QIcon(str(custom_path))
+
+        # Try qtawesome icon
+        if key in _QTA_ICONS:
+            return qta_icon(_QTA_ICONS[key])
+
+        # Fallback to standard Qt icon
         return self.main_window.style().standardIcon(_STANDARD_ICONS[key])
