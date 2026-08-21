@@ -58,6 +58,7 @@ dependencies = [
   "toml",
   "PySide6",
   "qtawesome",
+  "psutil"
 ]
 
 [project.urls]
