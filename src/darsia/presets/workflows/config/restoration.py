@@ -10,7 +10,13 @@ from .utils import _get_key, _get_section_from_toml
 
 @dataclass
 class VolumeAveragingConfig:
-    rev_size: int = 3
+    rev_size: int = field(
+        default=3,
+        metadata={
+            "name": "Revision size",
+            "help": "Size of the averaging kernel (number of neighboring voxels to average).",
+        },
+    )
 
     def load(self, sec: dict) -> "VolumeAveragingConfig":
         self.rev_size = _get_key(sec, "rev_size", self.rev_size, required=False)
@@ -38,13 +44,72 @@ class TVDConfig:
 
     method: Literal[
         "chambolle", "anisotropic bregman", "isotropic bregman", "heterogeneous bregman"
-    ] = "chambolle"
-    weight: Union[float, Literal["image_porosity", "boolean_porosity"]] = 0.1
-    max_num_iter: int = 200
-    eps: float = 2e-4
-    omega: float = 1.0
-    regularization: float = 1.0
-    kwargs: dict = field(default_factory=dict)
+    ] = field(
+        default="chambolle",
+        metadata={
+            "name": "TVD solver method",
+            "help": (
+                "Solver method for Total Variation Denoising. "
+                "'heterogeneous bregman' is automatically selected when weight is a "
+                "string (image_porosity/boolean_porosity)."
+            ),
+            "options": [
+                "chambolle",
+                "anisotropic bregman",
+                "isotropic bregman",
+                "heterogeneous bregman",
+            ],
+        },
+    )
+    weight: Union[float, Literal["image_porosity", "boolean_porosity"]] = field(
+        default=0.1,
+        metadata={
+            "name": "Regularization weight",
+            "help": (
+                "Regularization weight (float value) or special string: 'image_porosity' "
+                "(use fluidflower.image_porosity) or 'boolean_porosity' "
+                "(use fluidflower.boolean_porosity). String values automatically "
+                "select 'heterogeneous bregman' method."
+            ),
+            "placeholder": "e.g., 0.1 or 'image_porosity'",
+        },
+    )
+    max_num_iter: int = field(
+        default=200,
+        metadata={
+            "name": "Maximum iterations",
+            "help": "Maximum number of iterations for the TVD solver.",
+        },
+    )
+    eps: float = field(
+        default=2e-4,
+        metadata={
+            "name": "Convergence tolerance",
+            "help": "Convergence tolerance (epsilon) for the TVD solver.",
+        },
+    )
+    omega: float = field(
+        default=1.0,
+        metadata={
+            "name": "Data fidelity weight",
+            "help": "Data fidelity weight (only used for 'heterogeneous bregman' method).",
+        },
+    )
+    regularization: float = field(
+        default=1.0,
+        metadata={
+            "name": "Regularization parameter",
+            "help": "Regularization parameter (only used for 'heterogeneous bregman' method).",
+        },
+    )
+    kwargs: dict = field(
+        default_factory=dict,
+        metadata={
+            "name": "Additional options",
+            "help": "Additional keyword arguments passed to the TVD solver.",
+            "hidden": True,
+        },
+    )
 
     def load(self, sec: dict) -> "TVDConfig":
         self.method = _get_key(sec, "method", self.method, required=False, type_=str)
@@ -70,11 +135,28 @@ class TVDConfig:
 
 @dataclass
 class RestorationConfig:
-    method: Literal["volume_average", "tvd"] | None = "volume_average"
+    method: Literal["volume_average", "tvd"] | None = field(
+        default="volume_average",
+        metadata={
+            "name": "Restoration method",
+            "help": (
+                "Restoration method to apply: 'volume_average' (simple averaging) or "
+                "'tvd' (Total Variation Denoising)."
+            ),
+            "options": ["volume_average", "tvd"],
+        },
+    )
     options: VolumeAveragingConfig | TVDConfig | None = field(
         default=None, metadata={"name": "Options", "hidden": True}
     )
-    ignore: list[str] = field(default_factory=list)
+    ignore: list[str] = field(
+        default_factory=list,
+        metadata={
+            "name": "Ignore regions",
+            "help": "List of region/label names to exclude from restoration.",
+            "placeholder": "e.g., ['label1', 'label2']",
+        },
+    )
 
     def load(self, path: Path | dict) -> "RestorationConfig":
         if isinstance(path, dict):
