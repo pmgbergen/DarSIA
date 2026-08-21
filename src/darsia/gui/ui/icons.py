@@ -1,7 +1,7 @@
 """Shared qtawesome icon helper for the GUI."""
 
-from PySide6.QtGui import QIcon
 import qtawesome as qta
+from PySide6.QtGui import QIcon
 
 
 def qta_icon(name: str, **kwargs) -> QIcon:

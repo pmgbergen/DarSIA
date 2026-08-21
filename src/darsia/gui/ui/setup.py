@@ -171,3 +171,57 @@ class SetupTab:
         self.process = self.main_window.process_runner.start_workflow_process(
             argv, self.run_button, self.abort_button, cwd=Path.cwd()
         )
+
+    def sidebar_items(self):
+        """Return sidebar data structure for Setup category."""
+        from .help_text import get_help_text
+
+        return [
+            (
+                "Workflow steps",
+                [
+                    (
+                        "Depth",
+                        "depth",
+                        "fa5s.circle",
+                        get_help_text("setup", "depth", "Depth"),
+                    ),
+                    (
+                        "Segmentation",
+                        "segmentation",
+                        "fa5s.circle",
+                        get_help_text("setup", "segmentation", "Segmentation"),
+                    ),
+                    (
+                        "Facies",
+                        "facies",
+                        "fa5s.circle",
+                        get_help_text("setup", "facies", "Facies"),
+                    ),
+                    (
+                        "Protocols",
+                        "protocols",
+                        "fa5s.circle",
+                        get_help_text("setup", "protocols", "Protocols"),
+                    ),
+                    ("Rig", "rig", "fa5s.circle", get_help_text("setup", "rig", "Rig")),
+                ],
+            ),
+            (
+                "Run All",
+                [
+                    ("All", "all", "fa5s.circle", get_help_text("setup", "all", "All")),
+                ],
+            ),
+            (
+                "Options",
+                [
+                    (
+                        "Show plots",
+                        "show_plots",
+                        "fa5s.circle",
+                        get_help_text("setup", "show_plots", "Show plots"),
+                    ),
+                ],
+            ),
+        ]
