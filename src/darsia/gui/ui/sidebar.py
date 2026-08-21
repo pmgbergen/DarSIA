@@ -77,8 +77,12 @@ class SidebarRow(QWidget):
     def _show_help_popup(self):
         """Display the help popup near the cursor."""
         if not self._help_popup:
-            self._help_popup = HelpPopup(self.help_text, parent=self)
-        self._help_popup.show_at_cursor()
+            self._help_popup = HelpPopup(self.help_text)
+
+        # Position popup below and to the right of this row
+        pos = self.mapToGlobal(self.rect().bottomRight())
+        self._help_popup.move(pos.x() - 200, pos.y() + 5)
+        self._help_popup.show()
 
     def set_selected(self, selected: bool):
         """Update selection state and visual highlight."""
@@ -171,10 +175,7 @@ class CategorySection(QWidget):
 
     def _update_header(self):
         """Update header button text and chevron icon."""
-        chevron = "fa5s.chevron-down" if self._is_expanded else "fa5s.chevron-right"
         icon = qta_icon(self.category_icon, scale_factor=1.0)
-        chevron_icon = qta_icon(chevron, scale_factor=1.0)
-
         self.header_button.setIcon(icon)
         self.header_button.setText(self.category_label)
         self.header_button.setIconSize(
