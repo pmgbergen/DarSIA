@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (
 
 from .help import build_help_column
 
+NO_FILE_CHOSEN = "No file chosen"
+
 
 class FileDialogHelper:
     """Helper for creating file/folder selection UI components."""
@@ -106,7 +108,22 @@ class FileDialogHelper:
         browse_button.setMaximumWidth(100)
 
         # Path edit to display/edit selected path
-        path_edit = QLineEdit("No file chosen")
+        path_edit = QLineEdit()
+
+        # Set placeholder text (greyed-out hint) from metadata or default
+        if setting_dict and "metadata" in setting_dict:
+            placeholder = setting_dict["metadata"].get("placeholder")
+            if placeholder:
+                path_edit.setPlaceholderText(placeholder)
+
+        if not path_edit.placeholderText():
+            # Fallback placeholder if none provided in metadata
+            placeholder = (
+                "Select a folder or type a path"
+                if is_directory
+                else "Select a file or type a path"
+            )
+            path_edit.setPlaceholderText(placeholder)
 
         # Pre-fill from config or default if setting_dict is provided
         if setting_dict is not None:
