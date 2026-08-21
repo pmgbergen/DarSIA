@@ -218,9 +218,14 @@ class CategorySection(QWidget):
         pal = QApplication.instance().palette()
         bg = pal.color(QPalette.Button).name()
         border = pal.color(QPalette.Mid).name()
+        btn_color = pal.color(QPalette.Button)
+        hover = btn_color.lighter(115).name()
+        pressed = btn_color.darker(110).name()
         self.header_button.setStyleSheet(
             f"QPushButton {{ text-align: left; padding-left: 8px; "
             f"background-color: {bg}; border-bottom: 1px solid {border}; }}"
+            f"QPushButton:hover {{ background-color: {hover}; }}"
+            f"QPushButton:pressed {{ background-color: {pressed}; }}"
         )
         self.header_button.style().unpolish(self.header_button)
         self.header_button.style().polish(self.header_button)
