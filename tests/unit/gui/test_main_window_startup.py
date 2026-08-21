@@ -7,7 +7,7 @@ errors, layout crashes, and wiring mistakes across the entire GUI module.
 """
 
 import pytest
-from PySide6.QtWidgets import QTabWidget, QTextEdit, QToolBar
+from PySide6.QtWidgets import QTextEdit, QToolBar
 
 
 @pytest.fixture
@@ -28,18 +28,21 @@ def test_main_window_startup(main_window):
 
 
 def test_main_window_has_tabs(main_window):
-    """Test that the three workflow tabs (Setup, Calibration, Analysis) exist."""
-    # Find the main QTabWidget that contains the three tabs
-    tab_widgets = main_window.findChildren(QTabWidget)
-    assert len(tab_widgets) > 0, "No QTabWidget found in MainWindow"
+    """Test that the three workflow categories (Setup, Calibration, Analysis) exist in the sidebar."""
+    # The sidebar-based navigation replaces the old QTabWidget architecture.
+    # Check that the sidebar contains the expected workflow categories.
+    assert hasattr(main_window, "sidebar"), "MainWindow does not have a sidebar"
+    sidebar = main_window.sidebar
+    assert sidebar is not None, "Sidebar is None"
 
-    # Check that we have tabs for Setup, Calibration, and Analysis
-    # The main content area is the first (outermost) QTabWidget
-    main_tabs = tab_widgets[0]
-    tab_names = [main_tabs.tabText(i) for i in range(main_tabs.count())]
-    assert "Setup" in tab_names, f"Setup tab not found. Found tabs: {tab_names}"
-    assert "Calibration" in tab_names, f"Calibration tab not found. Found tabs: {tab_names}"
-    assert "Analysis" in tab_names, f"Analysis tab not found. Found tabs: {tab_names}"
+    # The sidebar has a _sections dict mapping action names to CategorySection objects
+    assert hasattr(sidebar, "_sections"), "Sidebar does not have _sections"
+    section_names = list(sidebar._sections.keys())
+
+    # Check that we have sections for Setup, Calibration, and Analysis
+    assert "setup" in section_names, f"Setup category not found. Found categories: {section_names}"
+    assert "calibration" in section_names, f"Calibration category not found. Found categories: {section_names}"
+    assert "analysis" in section_names, f"Analysis category not found. Found categories: {section_names}"
 
 
 def test_main_window_has_menu_bar(main_window):
