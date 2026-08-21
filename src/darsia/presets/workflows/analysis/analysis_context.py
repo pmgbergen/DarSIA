@@ -43,6 +43,10 @@ def infer_require_color_to_mass_from_config(
     if include_mass or include_volume:
         return True
 
+    # If no mode-based action was requested (e.g., cropping-only), color-to-mass is not needed
+    if not (include_segmentation or include_fingers or include_thresholding):
+        return False
+
     config = FluidFlowerConfig(path, require_results=True, require_data=True)
     if config.analysis is None:
         return True
@@ -71,6 +75,8 @@ def infer_require_color_to_mass_from_config(
             layer.mode for layer in config.analysis.thresholding.layers.values()
         )
 
+    # If a mode-based action was requested but no mode could be resolved, conservatively
+    # require color-to-mass
     if len(modes) == 0:
         return True
     return any(mode_requires_color_to_mass(mode) for mode in modes)
