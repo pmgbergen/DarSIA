@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QScrollArea,
     QSplitter,
-    QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -23,6 +22,7 @@ from .menu import MenuBuilder
 from .process_runner import ProcessRunner
 from .settings import SettingsFactory
 from .setup import SetupTab
+from .sidebar import Sidebar
 from .theme import apply_theme
 from .theme import set_theme as save_theme
 from .toolbar import ToolbarBuilder
@@ -101,9 +101,7 @@ class MainWindow(QMainWindow):
         # Add stretch to push the config label to the top
         upper_layout.addStretch()
 
-        # Setting up the middle upper layout with tabs
-        tabs = QTabWidget()
-
+        # Setting up the middle upper layout with sidebar
         # Initialize tab managers
         self.setup_tab = SetupTab(self)
         self.calibration_tab = CalibrationTab(self)
@@ -112,15 +110,38 @@ class MainWindow(QMainWindow):
         self.comparison_tab = ComparisonTab(self)
         self.utils_tab = UtilsTab(self)
 
-        # Add tabs
-        tabs.addTab(self.setup_tab.create_tab(), "Setup")
-        tabs.addTab(self.calibration_tab.create_tab(), "Calibration")
-        tabs.addTab(self.analysis_tab.create_tab(), "Analysis")
-        tabs.addTab(self.helper_tab.create_tab(), "Helper")
-        tabs.addTab(self.comparison_tab.create_tab(), "Comparison")
-        tabs.addTab(self.utils_tab.create_tab(), "Utils")
+        # Build action dispatch dict (needed by toolbar Play/Stop)
+        self.action_dispatch = {
+            "setup": self.setup_tab,
+            "calibration": self.calibration_tab,
+            "analysis": self.analysis_tab,
+            "helper": self.helper_tab,
+            "utils": self.utils_tab,
+        }
 
-        upper_mid_layout.addWidget(tabs)
+        # Build sidebar from tab-manager declarative data
+        sidebar_data = {
+            "setup": ("Setup", "fa5s.cogs", self.setup_tab.sidebar_items()),
+            "calibration": (
+                "Calibration",
+                "fa5s.balance-scale",
+                self.calibration_tab.sidebar_items(),
+            ),
+            "analysis": (
+                "Analysis",
+                "fa5s.chart-line",
+                self.analysis_tab.sidebar_items(),
+            ),
+            "helper": ("Helper", "fa5s.life-ring", self.helper_tab.sidebar_items()),
+            "utils": ("Utils", "fa5s.toolbox", self.utils_tab.sidebar_items()),
+        }
+        self.sidebar = Sidebar(sidebar_data)
+        self.sidebar.selection_changed.connect(self._on_sidebar_selection)
+        upper_mid_layout.addWidget(self.sidebar)
+
+        # Initialize selection state (will be set when sidebar row is clicked)
+        self.selected_action = None
+        self.selected_checkbox_id = None
 
         # Setting up the right upper layout
         # Add scroll area for settings
@@ -174,20 +195,18 @@ class MainWindow(QMainWindow):
         """Display a welcome message in the log window."""
         self.print_log("Welcome to DarSIA!")
         self.print_log("Load a config file to get started, or create a new one.")
-        self.print_log("Use the tabs above to navigate through the application.")
+        self.print_log(
+            "Use the sidebar on the left to navigate through the application."
+        )
         self.print_log(
             "For help, visit the <a href='https://docs.darsia.xyz'>DarSIA documentation</a>."
         )
 
-    def get_checked_checkbox_ids(self, checkboxes):
-        """
-        Function to get the ids of checked checkboxes from a list of (id, checkbox) tuples.
-        """
-        checked_ids = []
-        for checkbox_id, checkbox in checkboxes:
-            if checkbox.isChecked():
-                checked_ids.append(checkbox_id)
-        return checked_ids
+    def _on_sidebar_selection(self, action: str, checkbox_id: str):
+        """Handle sidebar row selection: update state and auto-open settings."""
+        self.selected_action = action
+        self.selected_checkbox_id = checkbox_id
+        self.settings_factory.display_settings(action, [checkbox_id])
 
     def set_theme(self, mode: str):
         """Set the application theme (System/Light/Dark).
