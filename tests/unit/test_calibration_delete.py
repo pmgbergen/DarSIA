@@ -4,12 +4,13 @@ from darsia.presets.workflows.calibration import calibration_color_paths as modu
 
 
 def _mock_config(calibration_root_1, calibration_root_2, cache):
+    embeddings_dict = {
+        "a": SimpleNamespace(calibration_root=calibration_root_1),
+        "b": SimpleNamespace(calibration_root=calibration_root_2),
+    }
     return SimpleNamespace(
         color=SimpleNamespace(
-            embeddings={
-                "a": SimpleNamespace(calibration_root=calibration_root_1),
-                "b": SimpleNamespace(calibration_root=calibration_root_2),
-            }
+            resolve_all=lambda: embeddings_dict
         ),
         data=SimpleNamespace(cache=cache),
     )
