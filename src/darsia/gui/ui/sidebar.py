@@ -1,7 +1,7 @@
 """Two-level accordion sidebar navigation for the DarSIA GUI."""
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QPalette
+from PySide6.QtGui import QColor, QPainter, QPalette, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -32,8 +32,10 @@ class SidebarRow(QWidget):
         self.icon_name = icon_name
         self.help_text = help_text
         self._is_selected = False
+        self._is_hovering = False
         self._help_timer = None
         self._help_popup = None
+        self._original_icon = None
 
         # Layout: icon + label
         layout = QHBoxLayout(self)
@@ -63,14 +65,18 @@ class SidebarRow(QWidget):
         self.clicked.emit()
 
     def enterEvent(self, event):
-        """Show help popup on mouse enter after 1s delay."""
+        """Show help popup on mouse enter after 1s delay and update hover styling."""
+        self._is_hovering = True
+        self.update_selection_style()
         if not self._help_timer:
             self._help_timer = QTimer()
             self._help_timer.timeout.connect(self._show_help_popup)
         self._help_timer.start(1000)
 
     def leaveEvent(self, event):
-        """Hide help popup on mouse leave."""
+        """Hide help popup on mouse leave and reset hover styling."""
+        self._is_hovering = False
+        self.update_selection_style()
         if self._help_timer:
             self._help_timer.stop()
         if self._help_popup:
@@ -94,24 +100,60 @@ class SidebarRow(QWidget):
     def refresh_style(self):
         """Rebuild icon and selection styling from current palette."""
         icon = themed_icon(self.icon_name, scale_factor=1.0)
-        self._icon_label.setPixmap(icon.pixmap(16, 16))
+        self._original_icon = icon.pixmap(16, 16)
+        self._icon_label.setPixmap(self._original_icon)
         self.update_selection_style()
 
+    def _tint_pixmap(self, pixmap, color):
+        """Tint a pixmap with a given color."""
+        if not pixmap or pixmap.isNull():
+            return pixmap
+        tinted = QPixmap(pixmap.size())
+        tinted.fill(QColor(0, 0, 0, 0))
+        painter = QPainter(tinted)
+        painter.drawPixmap(0, 0, pixmap)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.fillRect(tinted.rect(), color)
+        painter.end()
+        return tinted
+
     def update_selection_style(self):
-        """Apply or remove selection styling with palette-derived colors."""
+        """Apply or remove selection styling with text/icon color changes."""
+        if not self._original_icon:
+            return
+
         pal = QApplication.instance().palette()
+
+        # Determine colors based on state (matching category header button logic)
         if self._is_selected:
-            highlight = pal.color(QPalette.Highlight)
-            tint = pal.color(QPalette.Highlight)
-            tint.setAlpha(76)
-            stylesheet = (
-                f"QWidget {{ background-color: rgba({tint.red()}, {tint.green()}, "
-                f"{tint.blue()}, {tint.alpha()}); "
-                f"border-left: 3px solid {highlight.name()}; }}"
-            )
+            # Use Highlight color for selected state
+            text_color = pal.color(QPalette.Highlight).name()
+            icon_color = pal.color(QPalette.Highlight)
+        elif self._is_hovering:
+            # Use the exact same hover color calculation as category header button
+            bg_base = pal.color(QPalette.Button)
+            is_dark_mode = pal.color(QPalette.Window).lightnessF() < 0.5
+            bg_color = bg_base.lighter(130) if is_dark_mode else bg_base.darker(120)
+            hover_color = bg_color.lighter(115)
+            text_color = hover_color.name()
+            icon_color = hover_color
         else:
-            stylesheet = "QWidget { background-color: transparent; }"
+            # Default palette text color
+            text_color = pal.color(QPalette.WindowText).name()
+            icon_color = pal.color(QPalette.WindowText)
+
+        # Set text color via stylesheet
+        stylesheet = (
+            f"SidebarRow QLabel {{ "
+            f"background-color: transparent; "
+            f"color: {text_color}; }}"
+        )
         self.setStyleSheet(stylesheet)
+
+        # Tint and set the icon
+        tinted_icon = self._tint_pixmap(self._original_icon, icon_color)
+        self._icon_label.setPixmap(tinted_icon)
+
         self.style().unpolish(self)
         self.style().polish(self)
         self.update()
@@ -200,6 +242,11 @@ class CategorySection(QWidget):
         """Toggle accordion expand/collapse."""
         self._is_expanded = not self._is_expanded
         self.items_container.setVisible(self._is_expanded)
+        # Update active state to reflect expanded state
+        self.header_button.setProperty("active", self._is_expanded)
+        self.header_button.style().unpolish(self.header_button)
+        self.header_button.style().polish(self.header_button)
+        self.header_button.update()
         self.refresh_style()
 
     def refresh_style(self):
@@ -218,18 +265,22 @@ class CategorySection(QWidget):
         pal = QApplication.instance().palette()
         bg_base = pal.color(QPalette.Button)
         is_dark_mode = pal.color(QPalette.Window).lightnessF() < 0.5
-        bg = (bg_base.lighter(130) if is_dark_mode else bg_base.darker(120)).name()
+        bg_color = bg_base.lighter(130) if is_dark_mode else bg_base.darker(120)
+        bg = bg_color.name()
+        hover = bg_color.lighter(115).name()
+        pressed = bg_color.darker(110).name()
         border = pal.color(QPalette.Mid).name()
-        btn_color = pal.color(QPalette.Button)
-        hover = btn_color.lighter(115).name()
-        pressed = btn_color.darker(110).name()
         self.header_button.setStyleSheet(
             f"QPushButton {{ text-align: left; padding-left: 8px; "
             f"background-color: {bg}; border: none; "
             f"border-bottom: 1px solid {border}; }}"
             f"QPushButton:hover {{ background-color: {hover}; }}"
             f"QPushButton:pressed {{ background-color: {pressed}; }}"
+            f"QPushButton[active='true'] {{ background-color: {pressed}; }}"
+            f"QPushButton[active='true']:hover {{ background-color: {hover}; }}"
         )
+        # Apply active state if expanded
+        self.header_button.setProperty("active", self._is_expanded)
         self.header_button.style().unpolish(self.header_button)
         self.header_button.style().polish(self.header_button)
         self.header_button.update()
