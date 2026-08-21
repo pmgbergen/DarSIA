@@ -7,6 +7,9 @@ from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from darsia.presets.workflows.config.analysis import AnalysisConfig
 from darsia.presets.workflows.config.calibration import CalibrationConfig
+from darsia.presets.workflows.config.color_embedding_registry import (
+    ColorEmbeddingRegistryConfig,
+)
 from darsia.presets.workflows.config.corrections import CorrectionsConfig
 from darsia.presets.workflows.config.data import DataConfig
 from darsia.presets.workflows.config.data_registry import DataRegistry
@@ -28,6 +31,7 @@ from darsia.presets.workflows.config.workflow_utils import WorkflowUtilsConfig
 SECTION_TO_DATACLASS = {
     "analysis": AnalysisConfig,
     "calibration": CalibrationConfig,
+    "color": ColorEmbeddingRegistryConfig,
     "corrections": CorrectionsConfig,
     "data": DataConfig,
     "depth": DepthConfig,
@@ -53,6 +57,7 @@ ALL_SECTIONS = [
     "registry",
     "format_registry",
     "roi",
+    "color",
     "rig",
     "corrections",
     "restoration",
