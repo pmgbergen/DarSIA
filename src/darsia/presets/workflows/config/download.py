@@ -12,7 +12,14 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DownloadConfig:
-    source: Path | None = None
+    source: Path | None = field(
+        default=None,
+        metadata={
+            "name": "Source folder",
+            "help": "Directory containing data to download. If not set, uses [data] folder.",
+            "widget": "folder",
+        },
+    )
     """Source folder - if `None`, retrieved from arguments."""
     data_selection: str | list[str] | None = field(
         default=None,
@@ -23,9 +30,25 @@ class DownloadConfig:
         },
     )
     """Name(s) of data registry entries to use for download."""
-    skip_existing: bool = True
+    skip_existing: bool = field(
+        default=True,
+        metadata={
+            "name": "Skip existing files",
+            "help": "Skip downloading files that already exist.",
+        },
+    )
     """Flag for skipping existing data."""
-    folder: Path | None = None
+    folder: Path | None = field(
+        default=None,
+        metadata={
+            "name": "Download folder",
+            "help": (
+                "Destination folder for downloaded data. Defaults to [data.results/raw_data] "
+                "if not set."
+            ),
+            "widget": "folder",
+        },
+    )
     """Path to the folder where downloaded data will be stored.
     If not provided, defaults to [data.results/raw_data]."""
 
