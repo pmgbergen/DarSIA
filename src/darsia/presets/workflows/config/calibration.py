@@ -65,8 +65,23 @@ class CalibrationMassConfig:
             "max_rows": 1,
         },
     )
-    mode: str = "manual"
-    fluid: str | None = "co2"
+    mode: str = field(
+        default="manual",
+        metadata={
+            "name": "Calibration mode",
+            "help": "How the mass calibration threshold is determined: 'manual' "
+            "(use the configured threshold) or 'auto' (reserved for future automatic "
+            "calibration; not yet wired to any consumer).",
+            "options": ["manual", "auto"],
+        },
+    )
+    fluid: str | None = field(
+        default="co2",
+        metadata={
+            "name": "Fluid",
+            "help": "Fluid identifier for mass calibration (e.g. 'co2').",
+        },
+    )
     data_selection: str | list[str] | None = field(
         default=None,
         metadata={
@@ -76,7 +91,14 @@ class CalibrationMassConfig:
         },
     )
     """Name(s) of data registry entries to use for mass calibration."""
-    threshold: float = 0.2
+    threshold: float = field(
+        default=0.2,
+        metadata={
+            "name": "Threshold",
+            "help": "Mass calibration threshold. Currently only meaningful for "
+            "color-path embeddings.",
+        },
+    )
     rois: list[str] = field(
         default_factory=list,
         metadata={
@@ -147,8 +169,20 @@ class CalibrationConfig:
         },
     )
     """Name(s) of data registry entries to use for calibration."""
-    color: CalibrationColorConfig | None = None
-    mass: CalibrationMassConfig | None = None
+    color: CalibrationColorConfig | None = field(
+        default=None,
+        metadata={
+            "name": "Color calibration",
+            "help": "Color-embedding calibration entrypoint.",
+        },
+    )
+    mass: CalibrationMassConfig | None = field(
+        default=None,
+        metadata={
+            "name": "Mass calibration",
+            "help": "Mass calibration entrypoint, built on a color embedding.",
+        },
+    )
 
     def load(
         self,
