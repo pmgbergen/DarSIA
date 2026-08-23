@@ -58,13 +58,21 @@ dependencies = [
   "toml",
   "PySide6",
   "qtawesome",
-  "psutil"
+  "psutil",
+  "pywin32; sys_platform == 'win32'"
 ]
 
 [project.urls]
 Homepage = "https://github.com/pmgbergen/DarSIA"
 Repository = "https://github.com/pmgbergen/DarSIA.git"
 Issues = "https://github.com/pmgbergen/DarSIA/issues"
+
+# ── Entry points ──────────────────────────────────────────────────────────────
+[project.gui-scripts]
+darsia = "darsia.gui.__main__:main"
+
+[project.scripts]
+darsia-install-desktop = "darsia.gui.desktop_integration:main"
 
 # ── Optional dependencies (replaces extras_require in setup.py) ───────────────
 [project.optional-dependencies]
