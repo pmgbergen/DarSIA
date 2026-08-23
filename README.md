@@ -69,29 +69,36 @@ pip install .[dev]
 conda install -c conda-forge petsc petsc4py
 ```
 See also `conda_env.yaml` for a complete conda environment.
-## Usage
 
-The following Python script can be applied to the test image in the examples/images folder.
 
-```python
-import numpy as np
+## GUI
 
-# Create a darsia Image: An image that also contains information of physical entities
-image = darsia.imread("images/baseline.jpg", width=2.8, height=1.5)
+The DarSIA GUI provides an interactive interface for image analysis workflows.
 
-# Use the show method to take a look at the imported image.
-image.show()
+### Running the GUI
 
-# Copy the image and adds a grid on top of it.
-grid_image = image.add_grid(dx=0.1, dy=0.1)
-grid_image.show()
-
-# Extract region of interest (ROI) from image (box defined by two corners):
-ROI_image = image.subregion(coordinates=np.array([[1.5, 0], [2.8, 0.7]]))
-ROI_image.show()
+```bash
+uv run darsia
 ```
 
-Furthermore, we encourage any user to checkout the examples in the examples folder and the jupyter notebooks in the examples/notebooks folder.
+**Note:** `uv run python -m darsia.gui` is also supported and equivalent to the command above.
+
+### Desktop Integration (Optional)
+
+To make DarSIA appear in your Linux application menu or Windows Start Menu:
+
+```bash
+uv run darsia-install-desktop
+```
+
+To remove the desktop entry:
+
+```bash
+uv run darsia-install-desktop --uninstall
+```
+
+**Note:** On Windows, this feature requires `pywin32`, which is automatically installed when syncing the `darsia` package on Windows systems.
+
 
 ## Developing DarSIA
 
