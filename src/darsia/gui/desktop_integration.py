@@ -38,7 +38,9 @@ def _get_icon_path() -> Path:
     The icon is at darsia/presets/workflows/interface/DarSIA_Horisontal_Positiv_part.png.
     """
     module_dir = Path(__file__).parent
-    return (module_dir / "../presets/workflows/interface/DarSIA_Horisontal_Positiv_part.png").resolve()
+    return (
+        module_dir / "../presets/workflows/interface/DarSIA_Horisontal_Positiv_part.png"
+    ).resolve()
 
 
 def _ensure_icon_exists() -> bool:
@@ -57,7 +59,9 @@ def _get_icon_cache_dir() -> Path:
     On Linux/macOS: $XDG_CACHE_HOME/darsia or ~/.cache/darsia
     """
     if sys.platform == "win32":
-        localappdata = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
+        localappdata = os.environ.get(
+            "LOCALAPPDATA", str(Path.home() / "AppData" / "Local")
+        )
         return Path(localappdata) / "DarSIA"
     else:
         xdg_cache_home = os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))
@@ -92,7 +96,9 @@ def _install_linux() -> None:
     """
     from PIL import Image
 
-    xdg_data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
+    xdg_data_home = os.environ.get(
+        "XDG_DATA_HOME", str(Path.home() / ".local" / "share")
+    )
     applications_dir = Path(xdg_data_home) / "applications"
     icons_dir = Path(xdg_data_home) / "icons" / "hicolor" / "256x256" / "apps"
 
@@ -128,9 +134,13 @@ Terminal=false
 
 def _uninstall_linux() -> None:
     """Remove the DarSIA .desktop entry and icon from Linux application menu."""
-    xdg_data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
+    xdg_data_home = os.environ.get(
+        "XDG_DATA_HOME", str(Path.home() / ".local" / "share")
+    )
     desktop_path = Path(xdg_data_home) / "applications" / "darsia.desktop"
-    icon_path = Path(xdg_data_home) / "icons" / "hicolor" / "256x256" / "apps" / "darsia.png"
+    icon_path = (
+        Path(xdg_data_home) / "icons" / "hicolor" / "256x256" / "apps" / "darsia.png"
+    )
 
     removed = False
     if desktop_path.exists():
@@ -160,7 +170,6 @@ def _install_windows() -> None:
     Requires pywin32; uses only per-user Start Menu (no admin required).
     """
     import win32com.client  # noqa: F401; imported to trigger ImportError if unavailable
-
     from PIL import Image
 
     appdata = Path(os.environ.get("APPDATA", str(Path.home() / "AppData" / "Roaming")))
@@ -199,7 +208,9 @@ def _install_windows() -> None:
 def _uninstall_windows() -> None:
     """Remove the DarSIA Start Menu shortcut and icon cache from Windows."""
     appdata = Path(os.environ.get("APPDATA", str(Path.home() / "AppData" / "Roaming")))
-    shortcut_path = appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "DarSIA GUI.lnk"
+    shortcut_path = (
+        appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "DarSIA GUI.lnk"
+    )
 
     icon_cache_dir = _get_icon_cache_dir()
     ico_path = icon_cache_dir / "darsia.ico"
