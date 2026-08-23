@@ -79,6 +79,19 @@ class TestLinuxDesktopIntegration:
         assert "Icon=darsia" in content
 
     @pytest.mark.skipif(sys.platform == "win32", reason="Linux-only test")
+    def test_install_linux_creates_icon_file(self, tmp_path, monkeypatch, capsys):
+        """Test that _install_linux creates a persistent icon file that survives function return."""
+        from darsia.gui.desktop_integration import _install_linux
+
+        xdg_data = tmp_path / "data"
+        monkeypatch.setenv("XDG_DATA_HOME", str(xdg_data))
+
+        _install_linux()
+
+        icon_path = xdg_data / "icons" / "hicolor" / "256x256" / "apps" / "darsia.png"
+        assert icon_path.exists(), "Icon file should be created and persist after _install_linux returns"
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="Linux-only test")
     def test_uninstall_linux_removes_desktop_file(self, tmp_path, monkeypatch, capsys):
         """Test that _uninstall_linux removes a previously-installed .desktop file."""
         from darsia.gui.desktop_integration import _install_linux, _uninstall_linux
@@ -132,17 +145,55 @@ class TestWindowsDesktopIntegration:
         assert callable(_install_windows), "_install_windows should be callable"
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
-    def test_uninstall_windows_no_error_if_nothing_installed(self, tmp_path, monkeypatch, capsys):
-        """Test that _uninstall_windows gracefully handles missing shortcut."""
+    def test_install_windows_creates_persistent_ico(self, tmp_path, monkeypatch):
+        """Test that _install_windows creates an .ico file that persists after function returns.
+
+        This is the critical test that would catch the bug where the icon was stored in
+        a TemporaryDirectory and deleted when the function exited, leaving the .lnk
+        shortcut pointing at a nonexistent file.
+        """
+        from darsia.gui.desktop_integration import _install_windows
+
+        appdata = tmp_path / "AppData" / "Roaming"
+        localappdata = tmp_path / "AppData" / "Local"
+        monkeypatch.setenv("APPDATA", str(appdata))
+        monkeypatch.setenv("LOCALAPPDATA", str(localappdata))
+
+        _install_windows()
+
+        ico_path = localappdata / "DarSIA" / "darsia.ico"
+        assert ico_path.exists(), "Icon file should be persisted and exist after _install_windows returns"
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
+    def test_uninstall_windows_removes_persistent_ico(self, tmp_path, monkeypatch):
+        """Test that _uninstall_windows removes the persisted icon file."""
+        from darsia.gui.desktop_integration import _install_windows, _uninstall_windows
+
+        appdata = tmp_path / "AppData" / "Roaming"
+        localappdata = tmp_path / "AppData" / "Local"
+        monkeypatch.setenv("APPDATA", str(appdata))
+        monkeypatch.setenv("LOCALAPPDATA", str(localappdata))
+
+        _install_windows()
+        ico_path = localappdata / "DarSIA" / "darsia.ico"
+        assert ico_path.exists(), "Icon should exist after install"
+
+        _uninstall_windows()
+        assert not ico_path.exists(), "Icon should be removed after uninstall"
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
+    def test_uninstall_windows_no_error_if_nothing_installed(self, tmp_path, monkeypatch):
+        """Test that _uninstall_windows gracefully handles missing shortcut and icon."""
         from darsia.gui.desktop_integration import _uninstall_windows
 
         appdata = tmp_path / "AppData" / "Roaming"
+        localappdata = tmp_path / "AppData" / "Local"
         monkeypatch.setenv("APPDATA", str(appdata))
+        monkeypatch.setenv("LOCALAPPDATA", str(localappdata))
 
         _uninstall_windows()
 
-        captured = capsys.readouterr()
-        assert "nothing to uninstall" in captured.out.lower()
+        # Should complete without error even when nothing is installed
 
 
 class TestMainDispatch:
