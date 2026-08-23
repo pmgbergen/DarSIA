@@ -50,6 +50,37 @@ def _ensure_icon_exists() -> bool:
     return icon.exists()
 
 
+def _get_icon_cache_dir() -> Path:
+    r"""Get the per-user cache directory for persisting desktop integration icons.
+
+    On Windows: %LOCALAPPDATA%\DarSIA
+    On Linux/macOS: $XDG_CACHE_HOME/darsia or ~/.cache/darsia
+    """
+    if sys.platform == "win32":
+        localappdata = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
+        return Path(localappdata) / "DarSIA"
+    else:
+        xdg_cache_home = os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))
+        return Path(xdg_cache_home) / "darsia"
+
+
+def _pad_image_to_square(img):
+    """Pad an image to a square canvas, preserving aspect ratio.
+
+    Center the image on a transparent square canvas with dimensions equal to
+    the larger of the image's width or height. Returns a PIL Image object.
+    """
+    from PIL import Image
+
+    width, height = img.size
+    size = max(width, height)
+    square = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    offset_x = (size - width) // 2
+    offset_y = (size - height) // 2
+    square.paste(img, (offset_x, offset_y), img if img.mode == "RGBA" else None)
+    return square
+
+
 def _install_linux() -> None:
     """Install a .desktop entry for DarSIA in the Linux application menu.
 
@@ -87,7 +118,8 @@ Terminal=false
     if _ensure_icon_exists():
         src_icon = _get_icon_path()
         img = Image.open(src_icon)
-        img_resized = img.resize((256, 256), Image.Resampling.LANCZOS)
+        img_square = _pad_image_to_square(img)
+        img_resized = img_square.resize((256, 256), Image.Resampling.LANCZOS)
         img_resized.save(icon_path)
         print(f"✓ Copied icon: {icon_path}")
     else:
@@ -121,10 +153,12 @@ def _install_windows() -> None:
     Creates %APPDATA%\Microsoft\Windows\Start Menu\Programs\DarSIA GUI.lnk
     pointing to the 'darsia.exe' console script, with a converted .ico icon.
 
+    The icon is persisted at %LOCALAPPDATA%\DarSIA\darsia.ico so the shortcut
+    can reference it persistently (Windows shortcuts store path references,
+    not embedded icon data).
+
     Requires pywin32; uses only per-user Start Menu (no admin required).
     """
-    import tempfile
-
     import win32com.client  # noqa: F401; imported to trigger ImportError if unavailable
 
     from PIL import Image
@@ -133,42 +167,61 @@ def _install_windows() -> None:
     start_menu_dir = appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs"
     start_menu_dir.mkdir(parents=True, exist_ok=True)
 
+    icon_cache_dir = _get_icon_cache_dir()
+    icon_cache_dir.mkdir(parents=True, exist_ok=True)
+    ico_path = icon_cache_dir / "darsia.ico"
+
     darsia_exe = _get_darsia_executable()
     shortcut_path = start_menu_dir / "DarSIA GUI.lnk"
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        ico_path = Path(tmpdir) / "darsia.ico"
+    if _ensure_icon_exists():
+        src_icon = _get_icon_path()
+        img = Image.open(src_icon)
+        img_square = _pad_image_to_square(img)
+        img_resized = img_square.resize((256, 256), Image.Resampling.LANCZOS)
+        img_resized.save(ico_path, "ICO")
+        print(f"✓ Generated icon: {ico_path}")
+    else:
+        print("! Warning: icon file not found; shortcut created without icon")
 
-        if _ensure_icon_exists():
-            src_icon = _get_icon_path()
-            img = Image.open(src_icon)
-            img_resized = img.resize((256, 256), Image.Resampling.LANCZOS)
-            img_resized.save(ico_path, "ICO")
-            print(f"✓ Generated icon: {ico_path}")
-        else:
-            print("! Warning: icon file not found; shortcut created without icon")
-
-        shell = win32com.client.Dispatch("WScript.Shell")  # noqa: F821
-        shortcut = shell.CreateShortcut(str(shortcut_path))
-        shortcut.TargetPath = str(darsia_exe)
-        shortcut.WorkingDirectory = str(Path.home())
-        shortcut.WindowStyle = 1
-        if ico_path.exists():
-            shortcut.IconLocation = str(ico_path)
-        shortcut.Save()
+    shell = win32com.client.Dispatch("WScript.Shell")  # noqa: F821
+    shortcut = shell.CreateShortcut(str(shortcut_path))
+    shortcut.TargetPath = str(darsia_exe)
+    shortcut.WorkingDirectory = str(Path.home())
+    shortcut.WindowStyle = 1
+    if ico_path.exists():
+        shortcut.IconLocation = str(ico_path)
+    shortcut.Save()
 
     print(f"✓ Created Start Menu shortcut: {shortcut_path}")
 
 
 def _uninstall_windows() -> None:
-    """Remove the DarSIA Start Menu shortcut from Windows."""
+    """Remove the DarSIA Start Menu shortcut and icon cache from Windows."""
     appdata = Path(os.environ.get("APPDATA", str(Path.home() / "AppData" / "Roaming")))
     shortcut_path = appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "DarSIA GUI.lnk"
 
+    icon_cache_dir = _get_icon_cache_dir()
+    ico_path = icon_cache_dir / "darsia.ico"
+
+    removed = False
     if shortcut_path.exists():
         shortcut_path.unlink()
         print(f"✓ Removed Start Menu shortcut: {shortcut_path}")
-    else:
+        removed = True
+
+    if ico_path.exists():
+        ico_path.unlink()
+        print(f"✓ Removed icon cache: {ico_path}")
+        removed = True
+
+    if icon_cache_dir.exists():
+        try:
+            icon_cache_dir.rmdir()
+        except OSError:
+            pass
+
+    if not removed:
         print("ℹ No Start Menu shortcut found; nothing to uninstall")
 
 
