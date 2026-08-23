@@ -21,7 +21,7 @@ The first release can be also found on Zenodo:
 
 ## Installation
 
-DarSIA is developed under Python 3.10+. Clone the repository from GitHub and enter the DarSIA folder.
+DarSIA is developed under Python 3.12+. Clone the repository from GitHub and enter the DarSIA folder.
 
 ### Using uv (recommended)
 
@@ -35,12 +35,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/pmgbergen/DarSIA.git
 cd DarSIA
 uv sync --extra dev
-
-# Or non-editable / end-user install
-uv pip install .
 ```
 
-### Using pip (still supported)
+### Using pip
 
 ```bash
 git clone https://github.com/pmgbergen/DarSIA.git
@@ -57,11 +54,10 @@ pip install -e .[dev]
 sudo apt-get install -y libhypre-dev libmumps-seq-dev build-essential gcc gfortran mpich cmake
 pip install numpy mpi4py
 PETSC_CONFIGURE_OPTIONS="--download-hypre --download-mumps --download-parmetis --download-ml --download-metis --download-scalapack" pip install petsc petsc4py
+
 # Then install DarSIA:
-# With uv (editable environment):
+# E.g. with uv (editable environment):
 uv sync --extra dev
-# With pip:
-pip install .[dev]
 ```
 
 **macOS / conda:**
@@ -80,8 +76,6 @@ The DarSIA GUI provides an interactive interface for image analysis workflows.
 ```bash
 uv run darsia
 ```
-
-**Note:** `uv run python -m darsia.gui` is also supported and equivalent to the command above.
 
 ### Desktop Integration (Optional)
 
