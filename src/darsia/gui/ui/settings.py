@@ -1090,8 +1090,9 @@ class SettingsFactory:
                 # Create group box for this entry
                 entry_name_display = entry_name or "(new entry)"
                 group_box = QGroupBox(entry_name_display)
-                group_box.setCheckable(True)
-                group_box.setChecked(True)
+                if setting_dict.get("checkable", False):
+                    group_box.setCheckable(True)
+                    group_box.setChecked(True)
                 group_layout = QFormLayout(group_box)
                 group_layout.setContentsMargins(8, 10, 8, 8)
 
@@ -1273,8 +1274,8 @@ class SettingsFactory:
                             entry_name,
                             entry_data if isinstance(entry_data, dict) else {},
                         )
-                else:
-                    # At least one empty entry
+                elif setting_dict.get("auto_add_empty", True):
+                    # Auto-create one empty entry if list is empty (unless disabled via metadata)
                     add_entry()
 
                 # Return enriched dict (thread array_key through for save-pass)
