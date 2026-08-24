@@ -240,9 +240,12 @@ class PathData:
         default_factory=list,
         metadata={
             "name": "Image paths",
-            "help": "List of image file paths (supports glob patterns with *).",
+            "help": (
+                "List of image file paths (supports glob patterns with *). "
+                "Format: ['file1.jpg', 'file2.jpg']"
+            ),
             "group": "Paths",
-            "widget": "multi_file",
+            "placeholder": "['file1.jpg', 'file2.jpg', 'DSC*.JPG', '*']",
         },
     )
     """List of image file paths."""
