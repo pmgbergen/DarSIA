@@ -265,8 +265,8 @@ class RoiRegistryConfig:
         metadata={
             "name": "ROIs",
             "help": "Named ROI definitions with optional per-label restrictions.",
-            "group": "ROIs",
-            "widget": "roi_map",
+            "widget": "dataclass_group_map",
+            "array_key": "roi",
         },
     )
     """Dict of named ROI configurations (excludes RoiAndSubroiConfig entries)."""
