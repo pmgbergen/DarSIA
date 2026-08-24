@@ -109,7 +109,7 @@ class FluidFlowerConfig:
             "registry",
             DataRegistry(),
             lambda: self.registry.load(
-                _get_section_from_toml(path, "registry"),
+                path,
                 data_folder=self.data.folders if self.data else None,
             ),
             warn_on_missing=False,
