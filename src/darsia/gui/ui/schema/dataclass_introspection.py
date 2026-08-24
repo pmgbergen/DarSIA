@@ -254,6 +254,7 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "legacy_index": field.metadata.get("legacy_index", None),
                 "format_types": field.metadata.get("format_types", None),
                 "max_rows": field.metadata.get("max_rows", None),
+                "toml_array_key": field.metadata.get("toml_array_key", None),
             }
 
             # For list/tuple types, add the element type label
