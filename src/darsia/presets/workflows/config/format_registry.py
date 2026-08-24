@@ -19,19 +19,122 @@ NAME_IDENTIFIER_PATTERN = re.compile(
 class ImageExportFormat:
     """Export format specification resolved from the format registry."""
 
-    type: str
-    name: str
-    filename_pattern: str = "stem"
-    resolution: tuple[int, int] | None = None
-    dpi: int | None = None
-    cmap: str | None = None
-    keep_ratio: bool = False
-    dtype: str | None = None
-    quality: int | None = None
-    compression: int | None = None
-    delimiter: str = ","
-    header: str | None = None
-    float_format: str = "{:.2e}"
+    type: str = field(
+        metadata={
+            "name": "Format Type",
+            "help": "Export format: jpg, png, npz, npy, csv",
+            "options": sorted(SUPPORTED_EXPORT_FORMATS),
+        }
+    )
+    name: str = field(
+        metadata={
+            "name": "Entry Name",
+            "help": "Unique identifier for this format entry",
+        }
+    )
+    filename_pattern: str = field(
+        default="stem",
+        metadata={
+            "name": "Filename Pattern",
+            "help": "Naming pattern: stem, stem_HH, stem_MM:SS, spatial_map_HH:MM, etc.",
+            "options": [
+                "stem",
+                "stem_HH",
+                "stem_HH:MM",
+                "stem_HH:MM:SS",
+                "stem_MM:SS",
+                "stem_DD:HH",
+                "stem_DD:HH:MM",
+                "spatial_map_HH",
+                "spatial_map_HH:MM",
+                "spatial_map_HH:MM:SS",
+                "spatial_map_MM:SS",
+                "spatial_map_DD:HH",
+                "spatial_map_DD:HH:MM",
+            ],
+        },
+    )
+    resolution: tuple[int, int] | None = field(
+        default=None,
+        metadata={
+            "name": "Resolution",
+            "help": "Output resolution as rows,cols (or leave empty)",
+        },
+    )
+    dpi: int | None = field(
+        default=None,
+        metadata={
+            "name": "DPI",
+            "help": "Dots per inch (jpg, png only)",
+            "widget": "int",
+            "depends_on": {"field": "type", "value": ["jpg", "png"]},
+        },
+    )
+    cmap: str | None = field(
+        default=None,
+        metadata={
+            "name": "Colormap",
+            "help": "Matplotlib colormap name (jpg, png only)",
+            "depends_on": {"field": "type", "value": ["jpg", "png"]},
+        },
+    )
+    keep_ratio: bool = field(
+        default=False,
+        metadata={
+            "name": "Keep Aspect Ratio",
+            "help": "Preserve aspect ratio when resizing",
+        },
+    )
+    dtype: str | None = field(
+        default=None,
+        metadata={
+            "name": "Data Type",
+            "help": "NumPy dtype string (npz, npy, csv only)",
+            "depends_on": {"field": "type", "value": ["npz", "npy", "csv"]},
+        },
+    )
+    quality: int | None = field(
+        default=None,
+        metadata={
+            "name": "Quality",
+            "help": "JPEG quality 1-100 (jpg, png only)",
+            "widget": "int",
+            "depends_on": {"field": "type", "value": ["jpg", "png"]},
+        },
+    )
+    compression: int | None = field(
+        default=None,
+        metadata={
+            "name": "Compression",
+            "help": "Compression level (jpg, png only)",
+            "widget": "int",
+            "depends_on": {"field": "type", "value": ["jpg", "png"]},
+        },
+    )
+    delimiter: str = field(
+        default=",",
+        metadata={
+            "name": "Delimiter",
+            "help": "Column separator (csv only, default: comma)",
+            "depends_on": {"field": "type", "value": "csv"},
+        },
+    )
+    header: str | None = field(
+        default=None,
+        metadata={
+            "name": "Header",
+            "help": "Column header format (csv only)",
+            "depends_on": {"field": "type", "value": "csv"},
+        },
+    )
+    float_format: str = field(
+        default="{:.2e}",
+        metadata={
+            "name": "Float Format",
+            "help": "Python format string for floats (csv only, default: {:.2e})",
+            "depends_on": {"field": "type", "value": "csv"},
+        },
+    )
 
     @property
     def folder_name(self) -> str:
