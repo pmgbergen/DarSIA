@@ -255,6 +255,8 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "format_types": field.metadata.get("format_types", None),
                 "max_rows": field.metadata.get("max_rows", None),
                 "array_key": field.metadata.get("array_key", None),
+                "checkable": field.metadata.get("checkable", None),
+                "auto_add_empty": field.metadata.get("auto_add_empty", None),
             }
 
             # For list/tuple types, add the element type label
