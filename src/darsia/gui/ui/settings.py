@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from darsia.presets.workflows.config.format_registry import ImageExportFormat
 
+from darsia.gui.ui.schema.dataclass_introspection import _build_fields
 from .file_dialog import NO_FILE_CHOSEN, FileDialogHelper
 from .help import build_help_column
 from .schema.dataclass_introspection import ALL_SECTIONS, get_section_fields
@@ -1052,15 +1053,6 @@ class SettingsFactory:
             "entries" (list of dicts, one per entry, with "name", "widget", "fields").
         """
         try:
-            from darsia.gui.ui.schema.dataclass_introspection import _build_fields
-        except Exception as e:
-            self.main_window.print_log(f"Error importing _build_fields: {e}")
-            return setting_dict.get("name", setting_dict["key"]), {
-                "dataclass_group_map": True,
-                "entries": [],
-            }
-
-        try:
             key = setting_dict["key"]
             display_name = setting_dict.get("name", key)
         except Exception as e:
@@ -1071,12 +1063,13 @@ class SettingsFactory:
             }
 
         # Read existing entries from config_dict
-        # For [[format]]-style TOML, read from config_dict["format"] (list of dicts)
-        # For nested table-style, use the dotted key path
+        # For array-of-tables TOML (marked by metadata), read from config_dict[toml_array_key]
+        # For nested table-style (default), use the dotted key path
         try:
-            if key == "format_registry.formats":
-                # Special case: [[format]] array-of-tables in TOML
-                entry_list = self.main_window.config_dict.get("format", [])
+            array_key = setting_dict.get("toml_array_key")
+            if array_key:
+                # Array-of-tables style: [[format]], [[roi]], etc.
+                entry_list = self.main_window.config_dict.get(array_key, [])
                 value = {
                     entry.get("name", ""): entry
                     for entry in entry_list
@@ -1160,42 +1153,21 @@ class SettingsFactory:
                     field_name = field_schema["key"].split(".", 1)[
                         -1
                     ]  # Unqualified name
-                    field_type = field_schema.get("type")
 
-                    # Special handling for resolution (tuple[int,int], no generic inference)
-                    if field_name == "resolution":
-                        res_edit = QLineEdit()
-                        res_edit.setPlaceholderText("rows,cols")
-                        if field_name in entry_data and entry_data[field_name]:
-                            res = entry_data[field_name]
-                            res_edit.setText(f"{res[0]},{res[1]}")
-                        group_layout.addRow(
-                            field_schema.get("name", field_name), res_edit
-                        )
-                        field_widgets[field_name] = res_edit
-                        row_index = group_layout.rowCount() - 1
-                        field_row_map[field_name] = (row_index, res_edit, field_schema)
-                    else:
-                        # Use create_setting_edit for all other fields (returns composite wrapper)
-                        label_text, field_widget = self.create_setting_edit(
-                            field_schema
-                        )
-                        group_layout.addRow(label_text, field_widget)
+                    # Use create_setting_edit for all other fields (returns composite wrapper or group result)
+                    label_text, field_widget = self.create_setting_edit(field_schema)
 
-                        # Override prefilled value from entry_data (not config_dict)
-                        if (
-                            field_name in entry_data
-                            and entry_data[field_name] is not None
-                        ):
-                            unwrapped = unwrap_composite_widget(field_widget)
-                            value_str = str(entry_data[field_name])
-                            if isinstance(unwrapped, QCheckBox):
-                                unwrapped.setChecked(bool(entry_data[field_name]))
-                            elif isinstance(unwrapped, QComboBox):
-                                unwrapped.setCurrentText(value_str)
-                            else:  # QLineEdit
-                                unwrapped.setText(value_str)
-
+                    # Handle nested groups: label_text is None, field_widget is dict with "widget"
+                    if (
+                        label_text is None
+                        and isinstance(field_widget, dict)
+                        and "widget" in field_widget
+                    ):
+                        # Nested group (dataclass field) — add as spanning row, not label+field
+                        nested_widget = field_widget.get("widget")
+                        if nested_widget:
+                            group_layout.addRow(nested_widget)
+                        # Store the entire group result dict (contains sub_inputs, is_group_result)
                         field_widgets[field_name] = field_widget
                         row_index = group_layout.rowCount() - 1
                         field_row_map[field_name] = (
@@ -1203,15 +1175,46 @@ class SettingsFactory:
                             field_widget,
                             field_schema,
                         )
+                        # Skip scalar prefill and depends_on wiring for nested groups
+                        continue
+
+                    # Scalar field: add label+widget row
+                    group_layout.addRow(label_text, field_widget)
+
+                    # Override prefilled value from entry_data (not config_dict)
+                    if field_name in entry_data and entry_data[field_name] is not None:
+                        unwrapped = unwrap_composite_widget(field_widget)
+                        value_str = str(entry_data[field_name])
+                        if isinstance(unwrapped, QCheckBox):
+                            unwrapped.setChecked(bool(entry_data[field_name]))
+                        elif isinstance(unwrapped, QComboBox):
+                            unwrapped.setCurrentText(value_str)
+                        else:  # QLineEdit
+                            unwrapped.setText(value_str)
+
+                    field_widgets[field_name] = field_widget
+                    row_index = group_layout.rowCount() - 1
+                    field_row_map[field_name] = (
+                        row_index,
+                        field_widget,
+                        field_schema,
+                    )
 
                 # Wire up depends_on visibility (same pattern as create_group_input)
-                for unqualified_key, (
+                # Note: only scalar fields support depends_on; skip group results
+                for (
                     row_index,
                     field_widget,
                     field_schema,
-                ) in field_row_map.items():
+                ) in field_row_map.values():
                     depends_on = field_schema.get("depends_on")
                     if depends_on is None:
+                        continue
+
+                    # Skip group result dicts (only scalar fields support depends_on)
+                    if isinstance(field_widget, dict) and field_widget.get(
+                        "is_group_result"
+                    ):
                         continue
 
                     driver_field_key = depends_on.get("field")
@@ -1308,12 +1311,15 @@ class SettingsFactory:
                     # At least one empty entry
                     add_entry()
 
-                # Return enriched dict
-                return display_name, {
+                # Return enriched dict (thread array_key through for save-pass)
+                result = {
                     "widget": header_widget,
                     "dataclass_group_map": True,
                     "entries": entries_data,
                 }
+                if array_key:
+                    result["toml_array_key"] = array_key
+                return display_name, result
             except Exception as e:
                 self.main_window.print_log(f"Error in add_entry logic: {e}")
                 import traceback
@@ -3602,9 +3608,7 @@ class SettingsFactory:
             # Find the driver field's widget
             if driver_field_key not in field_row_map:
                 continue  # Driver field not found in this group, skip
-            driver_row_index, driver_widget, driver_setting = field_row_map[
-                driver_field_key
-            ]
+            _, driver_widget, _ = field_row_map[driver_field_key]
 
             # Extract the QComboBox from the composite field_widget via the stored property
             driver_combo = driver_widget.property("value_widget")
@@ -3929,6 +3933,46 @@ class SettingsFactory:
                         field_type = field_schema.get("type")
                         field_default = field_schema.get("default")
 
+                        # Handle nested group results (dataclass fields)
+                        if isinstance(field_widget, dict) and field_widget.get(
+                            "is_group_result"
+                        ):
+                            # Recursively extract nested group's sub_inputs
+                            nested_dict = {}
+                            for sub_key, sub_widget in field_widget.get(
+                                "sub_inputs", {}
+                            ).items():
+                                # Extract the sub-field value using the same logic as scalars
+                                sub_unwrapped = unwrap_composite_widget(sub_widget)
+                                sub_schema = None
+                                # Try to find the schema for this sub-field
+                                for fs in field_schema.get("fields", []):
+                                    if (
+                                        fs["key"].split(".", 1)[-1]
+                                        == sub_key.split(".", 1)[-1]
+                                    ):
+                                        sub_schema = fs
+                                        break
+                                sub_default = (
+                                    sub_schema.get("default") if sub_schema else None
+                                )
+
+                                if isinstance(sub_unwrapped, QCheckBox):
+                                    val = sub_unwrapped.isChecked()
+                                    if val is True:
+                                        nested_dict[sub_key.split(".", 1)[-1]] = val
+                                elif isinstance(sub_unwrapped, QComboBox):
+                                    val = sub_unwrapped.currentText().strip()
+                                    if val and val != sub_default:
+                                        nested_dict[sub_key.split(".", 1)[-1]] = val
+                                elif isinstance(sub_unwrapped, QLineEdit):
+                                    val = sub_unwrapped.text().strip()
+                                    if val and val != sub_default:
+                                        nested_dict[sub_key.split(".", 1)[-1]] = val
+                            if nested_dict:
+                                entry_dict[field_name] = nested_dict
+                            continue
+
                         # Unwrap composite widget to get the real control
                         unwrapped_widget = unwrap_composite_widget(field_widget)
 
@@ -3982,12 +4026,13 @@ class SettingsFactory:
 
                     result.append(entry_dict)
 
-                # Write result based on the key (special case for format [[...]] tables)
-                if key == "format_registry.formats":
-                    # Write to [[format]] array-of-tables style
-                    self.main_window.config_dict["format"] = result
+                # Write result based on whether this is array-of-tables TOML
+                array_key = value.get("toml_array_key")
+                if array_key:
+                    # Write to array-of-tables style (e.g. [[format]], [[roi]])
+                    self.main_window.config_dict[array_key] = result
                 else:
-                    # Write to nested table style
+                    # Write to nested table style (default)
                     self.set_value(self.main_window.config_dict, key, result)
 
         # Twelfth pass: parse format_key_list rows into list[str] (or single str)
