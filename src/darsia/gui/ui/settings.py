@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from darsia.presets.workflows.config.format_registry import ImageExportFormat
+
 from .file_dialog import NO_FILE_CHOSEN, FileDialogHelper
 from .help import build_help_column
 from .schema.dataclass_introspection import ALL_SECTIONS, get_section_fields
@@ -306,10 +308,10 @@ class SettingsFactory:
                         "path_data_map": True,
                         "rows": field_or_result["rows"],
                     }
-                elif "format_map" in field_or_result:
+                elif "dataclass_group_map" in field_or_result:
                     self.main_window.settings_inputs[setting["key"]] = {
-                        "format_map": True,
-                        "rows": field_or_result["rows"],
+                        "dataclass_group_map": True,
+                        "entries": field_or_result["entries"],
                     }
                 elif "registry_key_list" in field_or_result:
                     self.main_window.settings_inputs[setting["key"]] = {
@@ -327,7 +329,7 @@ class SettingsFactory:
                 elif "roi_map" in field_or_result:
                     self.main_window.settings_inputs[setting["key"]] = {
                         "roi_map": True,
-                        "rows": field_or_result["rows"],
+                        "rowws": field_or_result["rows"],
                     }
                 elif "color_path_map" in field_or_result:
                     self.main_window.settings_inputs[setting["key"]] = {
@@ -479,7 +481,11 @@ class SettingsFactory:
                 setting_dict, form_context=form_context
             )
         elif setting_type == "format_map":
-            return self.create_format_map_input(setting_dict, form_context=form_context)
+            return self.create_dataclass_group_map_input(
+                setting_dict,
+                entry_dataclass=ImageExportFormat,
+                form_context=form_context,
+            )
         elif setting_type == "registry_key_list":
             return self.create_registry_key_list_input(
                 setting_dict, form_context=form_context
@@ -1021,16 +1027,318 @@ class SettingsFactory:
         else:
             return display_name, {"path_data_map": True, "rows": []}
 
+    def create_dataclass_group_map_input(
+        self, setting_dict, entry_dataclass, form_context=None
+    ):
+        r"""Create a dict[str, entry_dataclass] editor with one QGroupBox per entry.
+
+        Each entry is rendered as a checkable QGroupBox containing a QFormLayout with
+        labeled sub-fields (generated via create_setting_edit per field).
+
+        Parameters
+        ----------
+        setting_dict : dict
+            Setting configuration dictionary with "key", "name", "help", "widget".
+        entry_dataclass : type
+            The dataclass type for each dict value (e.g., ImageExportFormat).
+        form_context : dict, optional
+            Context dict with "form" (QFormLayout) for row insertion.
+
+        Returns
+        -------
+        tuple
+            (display_name, enriched_dict) where enriched_dict has "widget" (header widget
+            for insertion into parent form), "dataclass_group_map": True (marker), and
+            "entries" (list of dicts, one per entry, with "name", "widget", "fields").
+        """
+        try:
+            from darsia.gui.ui.schema.dataclass_introspection import _build_fields
+        except Exception as e:
+            self.main_window.print_log(f"Error importing _build_fields: {e}")
+            return setting_dict.get("name", setting_dict["key"]), {
+                "dataclass_group_map": True,
+                "entries": [],
+            }
+
+        try:
+            key = setting_dict["key"]
+            display_name = setting_dict.get("name", key)
+        except Exception as e:
+            self.main_window.print_log(f"Error extracting setting dict keys: {e}")
+            return setting_dict.get("name", "Unknown"), {
+                "dataclass_group_map": True,
+                "entries": [],
+            }
+
+        # Read existing entries from config_dict
+        # For [[format]]-style TOML, read from config_dict["format"] (list of dicts)
+        # For nested table-style, use the dotted key path
+        try:
+            if key == "format_registry.formats":
+                # Special case: [[format]] array-of-tables in TOML
+                entry_list = self.main_window.config_dict.get("format", [])
+                value = {
+                    entry.get("name", ""): entry
+                    for entry in entry_list
+                    if entry.get("name")
+                }
+            else:
+                # Generic nested-table style
+                value = self.get_value(self.main_window.config_dict, key)
+                if value is None:
+                    value = {}
+
+            entries_data = []  # List of {name, widget, fields, field_widgets}
+            entry_schema_list = _build_fields(
+                entry_dataclass, "entry"
+            )  # Build schema for entry
+        except Exception as e:
+            self.main_window.print_log(
+                f"Error building schema for {entry_dataclass.__name__}: {e}"
+            )
+            import traceback
+
+            self.main_window.print_log(traceback.format_exc())
+            return display_name, {"dataclass_group_map": True, "entries": []}
+
+        try:
+            add_button = QPushButton("Add Entry")
+        except Exception as e:
+            self.main_window.print_log(f"Error creating add button: {e}")
+            return display_name, {"dataclass_group_map": True, "entries": []}
+
+        if form_context:
+            try:
+                form = form_context["form"]
+
+                # Build header widget
+                header_widget = QWidget()
+                header_layout = QHBoxLayout(header_widget)
+                header_layout.setContentsMargins(0, 0, 0, 0)
+                header_layout.setSpacing(4)
+                header_layout.addWidget(add_button, stretch=1)
+                header_layout.addWidget(build_help_column(setting_dict))
+                form.addRow("", header_widget)
+            except Exception as e:
+                self.main_window.print_log(f"Error building header widget: {e}")
+                import traceback
+
+                self.main_window.print_log(traceback.format_exc())
+                return display_name, {"dataclass_group_map": True, "entries": []}
+
+            def add_entry(entry_name="", entry_data=None):
+                """Add one entry group box with labeled sub-fields."""
+                if entry_data is None:
+                    entry_data = {}
+
+                # Create group box for this entry
+                entry_name_display = entry_name or "(new entry)"
+                group_box = QGroupBox(entry_name_display)
+                group_box.setCheckable(True)
+                group_box.setChecked(True)
+                group_layout = QFormLayout(group_box)
+                group_layout.setContentsMargins(8, 10, 8, 8)
+
+                # Editable entry-name field (the dict key)
+                name_edit = QLineEdit()
+                name_edit.setPlaceholderText("Entry name (dict key)")
+                if entry_name:
+                    name_edit.setText(str(entry_name))
+                group_layout.addRow("Name:", name_edit)
+
+                # Wire name changes to update group box title
+                def update_group_title(text):
+                    group_box.setTitle(text or "(new entry)")
+
+                name_edit.textChanged.connect(update_group_title)
+
+                # Build one widget per schema field using create_setting_edit
+                field_widgets = {}  # name -> composite widget dict
+                field_row_map = {}  # name -> (row_index, composite_widget, field_dict)
+
+                for field_schema in entry_schema_list:
+                    field_name = field_schema["key"].split(".", 1)[
+                        -1
+                    ]  # Unqualified name
+                    field_type = field_schema.get("type")
+
+                    # Special handling for resolution (tuple[int,int], no generic inference)
+                    if field_name == "resolution":
+                        res_edit = QLineEdit()
+                        res_edit.setPlaceholderText("rows,cols")
+                        if field_name in entry_data and entry_data[field_name]:
+                            res = entry_data[field_name]
+                            res_edit.setText(f"{res[0]},{res[1]}")
+                        group_layout.addRow(
+                            field_schema.get("name", field_name), res_edit
+                        )
+                        field_widgets[field_name] = res_edit
+                        row_index = group_layout.rowCount() - 1
+                        field_row_map[field_name] = (row_index, res_edit, field_schema)
+                    else:
+                        # Use create_setting_edit for all other fields (returns composite wrapper)
+                        label_text, field_widget = self.create_setting_edit(
+                            field_schema
+                        )
+                        group_layout.addRow(label_text, field_widget)
+
+                        # Override prefilled value from entry_data (not config_dict)
+                        if (
+                            field_name in entry_data
+                            and entry_data[field_name] is not None
+                        ):
+                            unwrapped = unwrap_composite_widget(field_widget)
+                            value_str = str(entry_data[field_name])
+                            if isinstance(unwrapped, QCheckBox):
+                                unwrapped.setChecked(bool(entry_data[field_name]))
+                            elif isinstance(unwrapped, QComboBox):
+                                unwrapped.setCurrentText(value_str)
+                            else:  # QLineEdit
+                                unwrapped.setText(value_str)
+
+                        field_widgets[field_name] = field_widget
+                        row_index = group_layout.rowCount() - 1
+                        field_row_map[field_name] = (
+                            row_index,
+                            field_widget,
+                            field_schema,
+                        )
+
+                # Wire up depends_on visibility (same pattern as create_group_input)
+                for unqualified_key, (
+                    row_index,
+                    field_widget,
+                    field_schema,
+                ) in field_row_map.items():
+                    depends_on = field_schema.get("depends_on")
+                    if depends_on is None:
+                        continue
+
+                    driver_field_key = depends_on.get("field")
+                    driver_value = depends_on.get("value")
+                    if driver_field_key is None or driver_value is None:
+                        continue
+
+                    # Find the driver field's widget in this entry
+                    if driver_field_key not in field_row_map:
+                        continue
+                    driver_row_index, driver_widget, driver_schema = field_row_map[
+                        driver_field_key
+                    ]
+
+                    # Unwrap composite widget to get the real control
+                    unwrapped_driver = unwrap_composite_widget(driver_widget)
+                    if isinstance(unwrapped_driver, QComboBox):
+                        driver_combo = unwrapped_driver
+                    else:
+                        continue
+
+                    # Create visibility handler supporting both single and list values
+                    def make_visibility_handler(row_idx, required_val):
+                        def handler(current_text):
+                            is_visible = (
+                                current_text in required_val
+                                if isinstance(required_val, (list, set, tuple))
+                                else current_text == required_val
+                            )
+                            group_layout.setRowVisible(row_idx, is_visible)
+
+                        return handler
+
+                    handler = make_visibility_handler(row_index, driver_value)
+                    driver_combo.currentTextChanged.connect(handler)
+
+                    # Set initial visibility
+                    handler(driver_combo.currentText())
+
+                # Remove button
+                remove_button = QPushButton("Remove")
+
+                def remove():
+                    row_idx, _ = form.getWidgetPosition(group_box)
+                    form.removeRow(row_idx)
+                    if entry in entries_data:
+                        entries_data.remove(entry)
+                    refresh_remove_buttons()
+
+                remove_button.clicked.connect(remove)
+                group_layout.addRow(remove_button)
+
+                # Insert group box into parent form
+                header_idx, _ = form.getWidgetPosition(header_widget)
+                if entries_data:
+                    last_idx, _ = form.getWidgetPosition(entries_data[-1]["widget"])
+                    insert_idx = last_idx + 1
+                else:
+                    insert_idx = header_idx + 1
+
+                form.insertRow(insert_idx, group_box)
+
+                # Track this entry
+                entry = {
+                    "name": entry_name,
+                    "widget": group_box,
+                    "name_edit": name_edit,
+                    "fields": field_widgets,
+                    "field_schemas": {
+                        fs["key"].split(".", 1)[-1]: fs for fs in entry_schema_list
+                    },
+                    "remove_button": remove_button,
+                }
+                entries_data.append(entry)
+                refresh_remove_buttons()
+
+            def refresh_remove_buttons():
+                show_remove = len(entries_data) > 1
+                for entry in entries_data:
+                    entry["remove_button"].setVisible(show_remove)
+
+            try:
+                # Connect add button
+                add_button.clicked.connect(lambda: add_entry())
+
+                # Prefill existing entries
+                if value:
+                    for entry_name, entry_data in value.items():
+                        add_entry(
+                            entry_name,
+                            entry_data if isinstance(entry_data, dict) else {},
+                        )
+                else:
+                    # At least one empty entry
+                    add_entry()
+
+                # Return enriched dict
+                return display_name, {
+                    "widget": header_widget,
+                    "dataclass_group_map": True,
+                    "entries": entries_data,
+                }
+            except Exception as e:
+                self.main_window.print_log(f"Error in add_entry logic: {e}")
+                import traceback
+
+                self.main_window.print_log(traceback.format_exc())
+                return display_name, {
+                    "widget": header_widget,
+                    "dataclass_group_map": True,
+                    "entries": entries_data,
+                }
+
+        else:
+            return display_name, {"dataclass_group_map": True, "entries": []}
+
     def create_format_map_input(self, setting_dict, form_context=None):
-        """Create a dict[str, ImageExportFormat] editor with type-conditional field visibility.
+        """unused — reference for future ImageExportFormat metadata (preset lists, type-conditional field groupings).
 
-        Each row has 13 widgets: name, type (combo, driver for visibility), filename_pattern,
-        resolution, keep_ratio (checkbox), then type-specific fields that toggle visibility:
-        - dpi, cmap, quality, compression for jpg/png
-        - dtype for npz/npy/csv
-        - delimiter, header, float_format for csv
+        Create a dict[str, ImageExportFormat] editor with one group box per entry.
 
-        Returns (display_name, enriched_dict) with "widget" and "rows" (list of 13-tuples).
+        Each format entry is rendered as a group box with labeled fields for:
+        type, name, filename_pattern, resolution, keep_ratio, and type-specific fields
+        (dpi, cmap, quality, compression for jpg/png; dtype for npz/npy/csv; etc.)
+
+        Returns (display_name, enriched_dict) with "widget" for form insertion and
+        "format_group_map": True marker plus "entries" list for save-pass parsing.
         """
         from darsia.presets.workflows.config.format_registry import (
             SUPPORTED_EXPORT_FORMATS,
@@ -1039,66 +1347,64 @@ class SettingsFactory:
         key = setting_dict["key"]
         display_name = setting_dict.get("name", key)
 
-        # Read directly from config_dict["format"] (list of dicts) instead of the
-        # dotted key path, since raw TOML has [[format]] array-of-tables, not
-        # [format_registry.formats] nested tables. Keyed-dict for prefill.
+        # Read existing format entries from config_dict (as [[format]] array-of-tables)
         format_list = self.main_window.config_dict.get("format", [])
         value = {
             entry.get("name", ""): entry for entry in format_list if entry.get("name")
         }
 
-        row_data_list = []
-        row_edits = []
-
-        def refresh_remove_buttons():
-            show_remove = len(row_data_list) > 1
-            for row_data in row_data_list:
-                row_data["remove_button"].setVisible(show_remove)
-
-        add_button = QPushButton("Add format")
+        entries_data = []
 
         if form_context:
             form = form_context["form"]
 
-            # Build header widget
+            # Build header widget with "Add format" button
+            add_button = QPushButton("Add format")
             header_widget = QWidget()
             header_layout = QHBoxLayout(header_widget)
             header_layout.setContentsMargins(0, 0, 0, 0)
-            header_layout.setSpacing(4)
             header_layout.addWidget(add_button, stretch=1)
             header_layout.addWidget(build_help_column(setting_dict))
             form.addRow("", header_widget)
 
-            def add_row(entry_name="", entry_data=None):
-                """Add one format entry row with 13 widgets and type-conditional visibility."""
+            def add_entry(entry_name="", entry_data=None):
+                """Add one format entry as a group box."""
                 if entry_data is None:
                     entry_data = {}
 
-                row_widget = QWidget()
-                row_layout = QHBoxLayout(row_widget)
-                row_layout.setContentsMargins(4, 4, 4, 4)
-                row_layout.setSpacing(4)
-                row_widget.setMinimumHeight(28)
+                # Create group box for this format entry
+                entry_display_name = entry_name or "(new format)"
+                group_box = QGroupBox(entry_display_name)
+                group_layout = QFormLayout(group_box)
+                group_layout.setContentsMargins(8, 10, 8, 8)
 
-                # 1. name (entry key for the registry)
+                # Store field widgets keyed by field name
+                field_widgets = {}
+
+                # 1. Name field (the dict key)
                 name_edit = QLineEdit()
-                name_edit.setPlaceholderText("Entry name")
-                name_edit.setMaximumWidth(80)
+                name_edit.setPlaceholderText("Format name")
                 if entry_name:
                     name_edit.setText(str(entry_name))
-                row_layout.addWidget(name_edit, 0)
 
-                # 2. type (combo, driver field for visibility)
+                def update_title(text):
+                    group_box.setTitle(text or "(new format)")
+
+                name_edit.textChanged.connect(update_title)
+                group_layout.addRow("Name:", name_edit)
+                field_widgets["name"] = name_edit
+
+                # 2. Type (combo, driver for conditional visibility)
                 type_combo = QComboBox()
-                type_combo.setEditable(False)
                 type_combo.addItems(sorted(SUPPORTED_EXPORT_FORMATS))
-                type_combo.setMaximumWidth(80)
                 if "type" in entry_data:
                     type_combo.setCurrentText(str(entry_data["type"]))
-                row_layout.addWidget(type_combo, 0)
+                group_layout.addRow("Type:", type_combo)
+                field_widgets["type"] = type_combo
+                type_row = group_layout.rowCount() - 1
 
-                # 3. filename_pattern (preset dropdown)
-                filename_pattern_preset = [
+                # 3. Filename pattern (preset dropdown)
+                pattern_options = [
                     "stem",
                     "stem_HH",
                     "stem_HH:MM",
@@ -1113,211 +1419,176 @@ class SettingsFactory:
                     "spatial_map_DD:HH",
                     "spatial_map_DD:HH:MM",
                 ]
-                filename_pattern_combo = QComboBox()
-                filename_pattern_combo.setEditable(False)
-                filename_pattern_combo.addItems(filename_pattern_preset)
-                filename_pattern_combo.setMaximumWidth(140)
+                pattern_combo = QComboBox()
+                pattern_combo.addItems(pattern_options)
+                if "filename_pattern" in entry_data:
+                    pattern_combo.setCurrentText(
+                        str(entry_data.get("filename_pattern", "stem"))
+                    )
+                group_layout.addRow("Pattern:", pattern_combo)
+                field_widgets["filename_pattern"] = pattern_combo
 
-                current_pattern = entry_data.get("filename_pattern", "stem")
-                # Add stale value if not in preset list (so it doesn't get silently clobbered)
-                if current_pattern not in filename_pattern_preset:
-                    filename_pattern_combo.addItem(current_pattern)
-                    filename_pattern_combo.setCurrentText(current_pattern)
-                else:
-                    filename_pattern_combo.setCurrentText(current_pattern)
-
-                row_layout.addWidget(filename_pattern_combo, 0)
-
-                # 4. resolution (comma-separated "rows,cols")
+                # 4. Resolution (rows,cols)
                 resolution_edit = QLineEdit()
                 resolution_edit.setPlaceholderText("rows,cols")
-                resolution_edit.setMaximumWidth(100)
                 if "resolution" in entry_data and entry_data["resolution"]:
                     res = entry_data["resolution"]
                     resolution_edit.setText(f"{res[0]},{res[1]}")
-                row_layout.addWidget(resolution_edit, 0)
+                group_layout.addRow("Resolution:", resolution_edit)
+                field_widgets["resolution"] = resolution_edit
 
-                # 5. keep_ratio (checkbox)
-                keep_ratio_check = QCheckBox("Keep ratio")
-                keep_ratio_check.setMaximumWidth(100)
+                # 5. Keep ratio (checkbox)
+                keep_ratio_check = QCheckBox()
                 if "keep_ratio" in entry_data:
                     keep_ratio_check.setChecked(bool(entry_data["keep_ratio"]))
-                row_layout.addWidget(keep_ratio_check, 0)
+                group_layout.addRow("Keep ratio:", keep_ratio_check)
+                field_widgets["keep_ratio"] = keep_ratio_check
 
-                # Type-specific fields: jpg/png only
-                # 6. dpi
+                # Type-specific fields (will be shown/hidden based on type)
+                # JPG/PNG only: dpi, cmap, quality, compression
                 dpi_edit = QLineEdit()
                 dpi_edit.setPlaceholderText("dpi")
-                dpi_edit.setMaximumWidth(60)
                 if "dpi" in entry_data and entry_data["dpi"]:
                     dpi_edit.setText(str(entry_data["dpi"]))
-                row_layout.addWidget(dpi_edit, 0)
+                group_layout.addRow("DPI:", dpi_edit)
+                field_widgets["dpi"] = dpi_edit
+                dpi_row = group_layout.rowCount() - 1
 
-                # 7. cmap
                 cmap_edit = QLineEdit()
-                cmap_edit.setPlaceholderText("cmap")
-                cmap_edit.setMaximumWidth(100)
+                cmap_edit.setPlaceholderText("colormap")
                 if "cmap" in entry_data and entry_data["cmap"]:
                     cmap_edit.setText(str(entry_data["cmap"]))
-                row_layout.addWidget(cmap_edit, 0)
+                group_layout.addRow("Colormap:", cmap_edit)
+                field_widgets["cmap"] = cmap_edit
+                cmap_row = group_layout.rowCount() - 1
 
-                # 8. quality (jpg/png)
                 quality_edit = QLineEdit()
-                quality_edit.setPlaceholderText("quality")
-                quality_edit.setMaximumWidth(70)
+                quality_edit.setPlaceholderText("1-100")
                 if "quality" in entry_data and entry_data["quality"]:
                     quality_edit.setText(str(entry_data["quality"]))
-                row_layout.addWidget(quality_edit, 0)
+                group_layout.addRow("Quality:", quality_edit)
+                field_widgets["quality"] = quality_edit
+                quality_row = group_layout.rowCount() - 1
 
-                # 9. compression (jpg/png)
                 compression_edit = QLineEdit()
-                compression_edit.setPlaceholderText("compression")
-                compression_edit.setMaximumWidth(90)
+                compression_edit.setPlaceholderText("0-9")
                 if "compression" in entry_data and entry_data["compression"]:
                     compression_edit.setText(str(entry_data["compression"]))
-                row_layout.addWidget(compression_edit, 0)
+                group_layout.addRow("Compression:", compression_edit)
+                field_widgets["compression"] = compression_edit
+                compression_row = group_layout.rowCount() - 1
 
-                # Type-specific fields: npz/npy/csv
-                # 10. dtype
+                # NPZ/NPY/CSV only: dtype
                 dtype_edit = QLineEdit()
-                dtype_edit.setPlaceholderText("dtype")
-                dtype_edit.setMaximumWidth(80)
+                dtype_edit.setPlaceholderText("numpy dtype")
                 if "dtype" in entry_data and entry_data["dtype"]:
                     dtype_edit.setText(str(entry_data["dtype"]))
-                row_layout.addWidget(dtype_edit, 0)
+                group_layout.addRow("DType:", dtype_edit)
+                field_widgets["dtype"] = dtype_edit
+                dtype_row = group_layout.rowCount() - 1
 
-                # Type-specific fields: csv only
-                # 11. delimiter
+                # CSV only: delimiter, header, float_format
                 delimiter_edit = QLineEdit()
-                delimiter_edit.setPlaceholderText("delimiter")
-                delimiter_edit.setMaximumWidth(70)
-                if "delimiter" in entry_data:
-                    delimiter_edit.setText(str(entry_data["delimiter"]))
-                else:
-                    delimiter_edit.setText(",")
-                row_layout.addWidget(delimiter_edit, 0)
+                delimiter_edit.setPlaceholderText(",")
+                delimiter_edit.setText(str(entry_data.get("delimiter", ",")))
+                group_layout.addRow("Delimiter:", delimiter_edit)
+                field_widgets["delimiter"] = delimiter_edit
+                delimiter_row = group_layout.rowCount() - 1
 
-                # 12. header
                 header_edit = QLineEdit()
-                header_edit.setPlaceholderText("header")
-                header_edit.setMaximumWidth(70)
+                header_edit.setPlaceholderText("header format")
                 if "header" in entry_data and entry_data["header"]:
                     header_edit.setText(str(entry_data["header"]))
-                row_layout.addWidget(header_edit, 0)
+                group_layout.addRow("Header:", header_edit)
+                field_widgets["header"] = header_edit
+                header_row = group_layout.rowCount() - 1
 
-                # 13. float_format
                 float_format_edit = QLineEdit()
-                float_format_edit.setPlaceholderText("float_format")
-                float_format_edit.setMaximumWidth(90)
-                if "float_format" in entry_data:
-                    float_format_edit.setText(str(entry_data["float_format"]))
+                float_format_edit.setPlaceholderText("{:.2e}")
+                float_format_edit.setText(str(entry_data.get("float_format", "{:.2e}")))
+                group_layout.addRow("Float fmt:", float_format_edit)
+                field_widgets["float_format"] = float_format_edit
+                float_fmt_row = group_layout.rowCount() - 1
+
+                # Wire up type-conditional visibility
+                def set_visibility(type_text):
+                    is_jpg_png = type_text in {"jpg", "png"}
+                    is_npz_npy_csv = type_text in {"npz", "npy", "csv"}
+                    is_csv = type_text == "csv"
+
+                    group_layout.setRowVisible(dpi_row, is_jpg_png)
+                    group_layout.setRowVisible(cmap_row, is_jpg_png)
+                    group_layout.setRowVisible(quality_row, is_jpg_png)
+                    group_layout.setRowVisible(compression_row, is_jpg_png)
+                    group_layout.setRowVisible(dtype_row, is_npz_npy_csv)
+                    group_layout.setRowVisible(delimiter_row, is_csv)
+                    group_layout.setRowVisible(header_row, is_csv)
+                    group_layout.setRowVisible(float_fmt_row, is_csv)
+
+                type_combo.currentTextChanged.connect(set_visibility)
+                if "type" in entry_data:
+                    set_visibility(entry_data["type"])
                 else:
-                    float_format_edit.setText("{:.2e}")
-                row_layout.addWidget(float_format_edit, 0)
+                    set_visibility(type_combo.currentText())
 
                 # Remove button
                 remove_button = QPushButton("Remove")
-                remove_button.setMaximumWidth(80)
 
                 def remove():
-                    row_idx, _ = form.getWidgetPosition(row_widget)
+                    row_idx, _ = form.getWidgetPosition(group_box)
                     form.removeRow(row_idx)
-                    if row_data in row_data_list:
-                        row_data_list.remove(row_data)
-                    if edits in row_edits:
-                        row_edits.remove(edits)
+                    if entry in entries_data:
+                        entries_data.remove(entry)
                     refresh_remove_buttons()
 
                 remove_button.clicked.connect(remove)
-                row_layout.addWidget(remove_button, 0)
+                group_layout.addRow(remove_button)
 
-                # Insert row into form
+                # Insert into form
                 header_idx, _ = form.getWidgetPosition(header_widget)
-                if row_data_list:
-                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
+                if entries_data:
+                    last_idx, _ = form.getWidgetPosition(entries_data[-1]["widget"])
                     insert_idx = last_idx + 1
                 else:
                     insert_idx = header_idx + 1
 
-                form.insertRow(insert_idx, "", row_widget)
+                form.insertRow(insert_idx, group_box)
 
-                # Wire up type-conditional visibility using the depends_on pattern
-                type_specific_widgets = {
-                    "jpg_png": [dpi_edit, cmap_edit, quality_edit, compression_edit],
-                    "npz_npy_csv": [dtype_edit],
-                    "csv": [delimiter_edit, header_edit, float_format_edit],
+                # Store entry data
+                entry = {
+                    "name": entry_name,
+                    "name_edit": name_edit,
+                    "widget": group_box,
+                    "fields": field_widgets,
+                    "remove_button": remove_button,
                 }
-
-                def make_visibility_handler():
-                    def handler(current_type):
-                        # Always show: name, type, filename_pattern, resolution, keep_ratio
-                        # Conditionally show type-specific fields
-                        is_jpg_png = current_type in {"jpg", "png"}
-                        is_npz_npy_csv = current_type in {"npz", "npy", "csv"}
-                        is_csv = current_type == "csv"
-
-                        for widget in type_specific_widgets["jpg_png"]:
-                            widget.setVisible(is_jpg_png)
-                        for widget in type_specific_widgets["npz_npy_csv"]:
-                            widget.setVisible(is_npz_npy_csv)
-                        for widget in type_specific_widgets["csv"]:
-                            widget.setVisible(is_csv)
-
-                    return handler
-
-                # Connect type combo to visibility handler
-                handler = make_visibility_handler()
-                type_combo.currentTextChanged.connect(handler)
-
-                # Set initial visibility based on current type
-                if "type" in entry_data:
-                    handler(entry_data["type"])
-                else:
-                    handler(type_combo.currentText())
-
-                # Store row data and edits
-                row_data = {"widget": row_widget, "remove_button": remove_button}
-                edits = (
-                    name_edit,
-                    type_combo,
-                    filename_pattern_combo,
-                    resolution_edit,
-                    keep_ratio_check,
-                    dpi_edit,
-                    cmap_edit,
-                    quality_edit,
-                    compression_edit,
-                    dtype_edit,
-                    delimiter_edit,
-                    header_edit,
-                    float_format_edit,
-                )
-                row_data_list.append(row_data)
-                row_edits.append(edits)
+                entries_data.append(entry)
                 refresh_remove_buttons()
 
-            # Connect add button
-            add_button.clicked.connect(lambda: add_row())
+            def refresh_remove_buttons():
+                show_remove = len(entries_data) > 1
+                for entry in entries_data:
+                    entry["remove_button"].setVisible(show_remove)
 
-            # Prefill existing entries
+            # Connect add button and prefill
+            add_button.clicked.connect(lambda: add_entry())
+
             if value:
                 for entry_name, entry_data in value.items():
-                    add_row(
+                    add_entry(
                         entry_name, entry_data if isinstance(entry_data, dict) else {}
                     )
             else:
-                # At least one empty row
-                add_row()
+                add_entry()
 
-            # Return enriched dict
             return display_name, {
                 "widget": header_widget,
-                "format_map": True,
-                "rows": row_edits,
+                "format_group_map": True,
+                "entries": entries_data,
             }
 
         else:
-            return display_name, {"format_map": True, "rows": []}
+            return display_name, {"format_group_map": True, "entries": []}
 
     def create_roi_map_input(self, setting_dict, form_context=None):
         """Create a dict[str, RoiConfig] editor with name, corner_1, corner_2, and optional
@@ -3341,9 +3612,15 @@ class SettingsFactory:
                 continue  # Driver is not a dropdown, skip
 
             # Create a closure to capture the row_index and driver_value
+            # Support both single-value (string) and multi-value (list/set/tuple) comparisons
             def make_visibility_handler(row_idx, required_val):
                 def handler(current_text):
-                    group_form.setRowVisible(row_idx, current_text == required_val)
+                    is_visible = (
+                        current_text in required_val
+                        if isinstance(required_val, (list, set, tuple))
+                        else current_text == required_val
+                    )
+                    group_form.setRowVisible(row_idx, is_visible)
 
                 return handler
 
@@ -3634,99 +3911,84 @@ class SettingsFactory:
                     # Empty selection: delete the key (or set to empty list)
                     # For now, set to empty list to match the field's Optional nature
                     self.set_value(self.main_window.config_dict, key, None)
-
-        # Eleventh pass: parse format_map rows into list[dict] for [[format]] TOML shape
+        # Tenth-and-a-half pass (v2): parse dataclass_group_map entries into list[dict]
+        # This is the new generic handler for group-box-per-entry collections.
         for key, value in self.main_window.settings_inputs.items():
-            if isinstance(value, dict) and "format_map" in value:
+            if isinstance(value, dict) and "dataclass_group_map" in value:
                 result = []
-                for (
-                    name_edit,
-                    type_combo,
-                    filename_pattern_combo,
-                    resolution_edit,
-                    keep_ratio_check,
-                    dpi_edit,
-                    cmap_edit,
-                    quality_edit,
-                    compression_edit,
-                    dtype_edit,
-                    delimiter_edit,
-                    header_edit,
-                    float_format_edit,
-                ) in value["rows"]:
-                    name_text = name_edit.text().strip()
-                    if not name_text:
+                for entry_data in value["entries"]:
+                    entry_name = entry_data["name_edit"].text().strip()
+                    if not entry_name:
                         continue
 
-                    # Always-required fields
-                    entry = {
-                        "type": type_combo.currentText().strip(),
-                        "name": name_text,
-                        "filename_pattern": filename_pattern_combo.currentText().strip(),
-                    }
+                    entry_dict = {"name": entry_name}
 
-                    # Optional fields: empty text means None/omit
-                    # resolution: comma-separated rows,cols
-                    res_text = resolution_edit.text().strip()
-                    if res_text:
-                        parts = [p.strip() for p in res_text.split(",")]
-                        if len(parts) == 2:
-                            try:
-                                entry["resolution"] = [int(parts[0]), int(parts[1])]
-                            except ValueError:
-                                pass
+                    # Extract values from each field widget
+                    for field_name, field_widget in entry_data["fields"].items():
+                        field_schema = entry_data["field_schemas"][field_name]
+                        field_type = field_schema.get("type")
+                        field_default = field_schema.get("default")
 
-                    # keep_ratio (bool)
-                    if keep_ratio_check.isChecked():
-                        entry["keep_ratio"] = True
+                        # Unwrap composite widget to get the real control
+                        unwrapped_widget = unwrap_composite_widget(field_widget)
 
-                    # Type-specific optional fields
-                    dpi_text = dpi_edit.text().strip()
-                    if dpi_text:
-                        try:
-                            entry["dpi"] = int(dpi_text)
-                        except ValueError:
-                            pass
+                        # Extract value based on widget type
+                        extracted_value = None
+                        should_include = False
 
-                    cmap_text = cmap_edit.text().strip()
-                    if cmap_text:
-                        entry["cmap"] = cmap_text
+                        if isinstance(unwrapped_widget, QCheckBox):
+                            extracted_value = unwrapped_widget.isChecked()
+                            # Only include if True (checkbox default is usually False)
+                            should_include = extracted_value is True
+                        elif isinstance(unwrapped_widget, QComboBox):
+                            text_value = unwrapped_widget.currentText().strip()
+                            if text_value:
+                                extracted_value = text_value
+                                # Omit if equals default
+                                should_include = extracted_value != field_default
+                        elif isinstance(unwrapped_widget, QLineEdit):
+                            text_value = unwrapped_widget.text().strip()
+                            if text_value:
+                                # Special handling for resolution (comma-separated)
+                                if field_name == "resolution":
+                                    parts = [p.strip() for p in text_value.split(",")]
+                                    if len(parts) == 2:
+                                        try:
+                                            extracted_value = [
+                                                int(parts[0]),
+                                                int(parts[1]),
+                                            ]
+                                            # resolution default is None, so include if parsed
+                                            should_include = extracted_value is not None
+                                        except ValueError:
+                                            pass
+                                # Special handling for numeric fields (dpi, quality, compression)
+                                elif field_type == "int":
+                                    try:
+                                        extracted_value = int(text_value)
+                                        # Omit if equals default
+                                        should_include = (
+                                            extracted_value != field_default
+                                        )
+                                    except ValueError:
+                                        pass
+                                else:
+                                    # String fields: store as string, omit if equals default
+                                    extracted_value = text_value
+                                    should_include = extracted_value != field_default
 
-                    quality_text = quality_edit.text().strip()
-                    if quality_text:
-                        try:
-                            entry["quality"] = int(quality_text)
-                        except ValueError:
-                            pass
+                        if should_include and extracted_value is not None:
+                            entry_dict[field_name] = extracted_value
 
-                    compression_text = compression_edit.text().strip()
-                    if compression_text:
-                        try:
-                            entry["compression"] = int(compression_text)
-                        except ValueError:
-                            pass
+                    result.append(entry_dict)
 
-                    dtype_text = dtype_edit.text().strip()
-                    if dtype_text:
-                        entry["dtype"] = dtype_text
-
-                    # CSV-specific fields
-                    delimiter_text = delimiter_edit.text().strip()
-                    if delimiter_text and delimiter_text != ",":
-                        entry["delimiter"] = delimiter_text
-
-                    header_text = header_edit.text().strip()
-                    if header_text:
-                        entry["header"] = header_text
-
-                    float_format_text = float_format_edit.text().strip()
-                    if float_format_text and float_format_text != "{:.2e}":
-                        entry["float_format"] = float_format_text
-
-                    result.append(entry)
-
-                # Write as list[dict] directly to config_dict["format"]
-                self.main_window.config_dict["format"] = result
+                # Write result based on the key (special case for format [[...]] tables)
+                if key == "format_registry.formats":
+                    # Write to [[format]] array-of-tables style
+                    self.main_window.config_dict["format"] = result
+                else:
+                    # Write to nested table style
+                    self.set_value(self.main_window.config_dict, key, result)
 
         # Twelfth pass: parse format_key_list rows into list[str] (or single str)
         for key, value in self.main_window.settings_inputs.items():
