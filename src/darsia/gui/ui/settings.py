@@ -53,7 +53,7 @@ class SettingsFactory:
         "time_window_map",
         "time_data_map",
         "path_data_map",
-        "format_map",
+        "dataclass_group_map",
         "format_key_list",
         "registry_key_list",
         "roi_map",
@@ -481,7 +481,7 @@ class SettingsFactory:
             return self.create_path_data_map_input(
                 setting_dict, form_context=form_context
             )
-        elif setting_type == "format_map":
+        elif setting_type == "dataclass_group_map":
             return self.create_dataclass_group_map_input(
                 setting_dict,
                 entry_dataclass=ImageExportFormat,
@@ -1063,10 +1063,10 @@ class SettingsFactory:
             }
 
         # Read existing entries from config_dict
-        # For array-of-tables TOML (marked by metadata), read from config_dict[toml_array_key]
+        # For array-of-tables TOML (marked by metadata), read from config_dict[array_key]
         # For nested table-style (default), use the dotted key path
         try:
-            array_key = setting_dict.get("toml_array_key")
+            array_key = setting_dict.get("array_key")
             if array_key:
                 # Array-of-tables style: [[format]], [[roi]], etc.
                 entry_list = self.main_window.config_dict.get(array_key, [])
@@ -1318,7 +1318,7 @@ class SettingsFactory:
                     "entries": entries_data,
                 }
                 if array_key:
-                    result["toml_array_key"] = array_key
+                    result["array_key"] = array_key
                 return display_name, result
             except Exception as e:
                 self.main_window.print_log(f"Error in add_entry logic: {e}")
@@ -3691,7 +3691,7 @@ class SettingsFactory:
             if isinstance(value, dict) and "checkbox" in value:
                 continue
             # Skip path_map, int_group_list, int_list_map, time_interval_map, time_window_map,
-            # time_data_map, path_data_map, registry_key_list, format_map, roi_map,
+            # time_data_map, path_data_map, registry_key_list, dataclass_group_map, roi_map,
             # roi_key_list, color_path_map, color_range_map, color_channel_map dicts
             # (handled below)
             if isinstance(value, dict) and (
@@ -3703,7 +3703,7 @@ class SettingsFactory:
                 or "time_data_map" in value
                 or "path_data_map" in value
                 or "registry_key_list" in value
-                or "format_map" in value
+                or "dataclass_group_map" in value
                 or "format_key_list" in value
                 or "roi_map" in value
                 or "roi_key_list" in value
@@ -4027,7 +4027,7 @@ class SettingsFactory:
                     result.append(entry_dict)
 
                 # Write result based on whether this is array-of-tables TOML
-                array_key = value.get("toml_array_key")
+                array_key = value.get("array_key")
                 if array_key:
                     # Write to array-of-tables style (e.g. [[format]], [[roi]])
                     self.main_window.config_dict[array_key] = result
