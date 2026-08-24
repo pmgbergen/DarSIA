@@ -87,7 +87,6 @@ class DataRegistryConfig:
             "help": "Named time intervals (start/end/num/tol).",
             "widget": "dataclass_group_map",
             "array_key": "data_interval",
-            "auto_add_empty": False,
         },
     )
     """Dict of time interval entries, keyed by name."""
@@ -99,7 +98,6 @@ class DataRegistryConfig:
             "help": "Named time windows (start/end).",
             "widget": "dataclass_group_map",
             "array_key": "data_window",
-            "auto_add_empty": False,
         },
     )
     """Dict of time window entries, keyed by name."""
@@ -111,7 +109,6 @@ class DataRegistryConfig:
             "help": "Named explicit time lists (times, tol).",
             "widget": "dataclass_group_map",
             "array_key": "data_time",
-            "auto_add_empty": False,
         },
     )
     """Dict of explicit time entries, keyed by name."""
@@ -123,7 +120,6 @@ class DataRegistryConfig:
             "help": "Named file path lists.",
             "widget": "dataclass_group_map",
             "array_key": "data_path",
-            "auto_add_empty": False,
         },
     )
     """Dict of path entries, keyed by name."""
@@ -148,41 +144,33 @@ class DataRegistry:
         metadata={
             "name": "Interval Entries",
             "help": "Named time intervals (e.g., 'injection', 'analysis').",
-            "group": "Time intervals",
-            "widget": "time_interval_map",
         },
     )
-    """Named interval entries from [data.interval.*]."""
+    """Named interval entries from [[data_interval]]."""
     window_registry: dict[str, TimeWindow] = field(
         default_factory=dict,
         metadata={
             "name": "Window Entries",
             "help": "Named time windows (e.g., 'injection', 'analysis').",
-            "group": "Time windows",
-            "widget": "time_window_map",
         },
     )
-    """Named window entries from [data.interval.*]."""
+    """Named window entries from [[data_window]]."""
     time_registry: dict[str, ImageTimeData] = field(
         default_factory=dict,
         metadata={
             "name": "Time Entries",
             "help": "Named explicit time lists (e.g., 'calibration').",
-            "group": "Time points",
-            "widget": "time_data_map",
         },
     )
-    """Named time entries from [data.time.*]."""
+    """Named time entries from [[data_time]]."""
     path_registry: dict[str, PathData] = field(
         default_factory=dict,
         metadata={
             "name": "Path Entries",
             "help": "Named file path lists.",
-            "group": "Paths",
-            "widget": "path_data_map",
         },
     )
-    """Named path entries from [data.path.*]."""
+    """Named path entries from [[data_path]]."""
 
     def load(
         self,
