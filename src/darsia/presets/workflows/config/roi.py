@@ -15,23 +15,46 @@ logger = logging.getLogger(__name__)
 class RoiConfig:
     """Configuration for a single ROI."""
 
-    roi: CoordinateArray = field(default_factory=CoordinateArray)
-    """ROI coordinates."""
-    name: str = ""
-    """Unique registry key for this ROI (e.g., 'full', 'calibration', 'storage')."""
-    label: int | None = None
-    """Optional label restriction: None means applies to all labels, int means restricted to
-    this label."""
+    name: str = field(
+        default="",
+        metadata={
+            "name": "Name",
+            "help": "Unique registry key for this ROI.",
+        },
+    )
+    corner_1: list[float] = field(
+        default_factory=list,
+        metadata={
+            "name": "Corner 1",
+            "help": "First corner coordinate as [x, y].",
+            "placeholder": "[x, y]",
+        },
+    )
+    corner_2: list[float] = field(
+        default_factory=list,
+        metadata={
+            "name": "Corner 2",
+            "help": "Second corner coordinate as [x, y].",
+            "placeholder": "[x, y]",
+        },
+    )
+    label: int | None = field(
+        default=None,
+        metadata={
+            "name": "Label",
+            "help": "Optional label restriction. Leave blank to apply to all labels.",
+        },
+    )
+
+    @property
+    def roi(self) -> CoordinateArray:
+        """Computed ROI coordinates from corner_1 and corner_2."""
+        return CoordinateArray([self.corner_1, self.corner_2])
 
     def load(self, sec: dict) -> "RoiConfig":
-        self.roi = CoordinateArray(
-            [
-                _get_key(sec, "corner_1", required=True, type_=list),
-                _get_key(sec, "corner_2", required=True, type_=list),
-            ]
-        )
-
         self.name = _get_key(sec, "name", required=True, type_=str)
+        self.corner_1 = _get_key(sec, "corner_1", required=True, type_=list)
+        self.corner_2 = _get_key(sec, "corner_2", required=True, type_=list)
         self.label = _get_key(sec, "label", required=False, type_=int, default=None)
         return self
 
