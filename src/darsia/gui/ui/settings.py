@@ -1274,8 +1274,9 @@ class SettingsFactory:
                             entry_name,
                             entry_data if isinstance(entry_data, dict) else {},
                         )
-                elif setting_dict.get("auto_add_empty", True):
-                    # Auto-create one empty entry if list is empty (unless disabled via metadata)
+                elif setting_dict.get("auto_add_empty", False):
+                    # Auto-create one empty entry if list is empty (unless disabled via
+                    # metadata)
                     add_entry()
 
                 # Return enriched dict (thread array_key through for save-pass)
