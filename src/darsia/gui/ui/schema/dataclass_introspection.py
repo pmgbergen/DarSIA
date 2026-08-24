@@ -260,6 +260,11 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
             # For list/tuple types, add the element type label
             if widget_type == "list":
                 setting_dict["list_type"] = _infer_list_type(field_type)
+            elif widget_type == "dataclass_group_map":
+                # Infer entry_dataclass from dict[str, X] type annotation
+                args = get_args(field_type)
+                if len(args) == 2 and is_dataclass(args[1]):
+                    setting_dict["entry_dataclass"] = args[1]
 
         # Remove None values to keep the dict clean
         setting_dict = {k: v for k, v in setting_dict.items() if v is not None}
