@@ -68,8 +68,8 @@ class FormatRegistry:
         metadata={
             "name": "Format Entries",
             "help": "Named export format specifications (jpg, csv, npz, etc.).",
-            "widget": "format_map",
-            "toml_array_key": "format",
+            "widget": "dataclass_group_map",
+            "array_key": "format",
         },
     )
 
