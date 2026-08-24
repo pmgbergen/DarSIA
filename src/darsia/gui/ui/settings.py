@@ -1314,13 +1314,17 @@ class SettingsFactory:
         key = setting_dict["key"]
         display_name = setting_dict.get("name", key)
 
-        # Gather available registry keys
-        registry = self.main_window.config_dict.get("registry", {})
+        # Gather available registry keys from top-level arrays
+        def extract_names(array):
+            if isinstance(array, list):
+                return {entry.get("name") for entry in array if isinstance(entry, dict) and entry.get("name")}
+            return set()
+
         available_keys = sorted(
-            set(registry.get("interval_registry", {}))
-            | set(registry.get("window_registry", {}))
-            | set(registry.get("time_registry", {}))
-            | set(registry.get("path_registry", {}))
+            extract_names(self.main_window.config_dict.get("data_interval", []))
+            | extract_names(self.main_window.config_dict.get("data_window", []))
+            | extract_names(self.main_window.config_dict.get("data_time", []))
+            | extract_names(self.main_window.config_dict.get("data_path", []))
         )
 
         # Get current value and normalize to list
