@@ -1,50 +1,54 @@
 """Global data registry for shared time/path data definitions in FluidFlower workflows.
 
-The registry reads from a top-level ``[data]`` section that contains three optional
-sub-sections, one per ``TimeData`` loading mode:
+The registry reads from four optional top-level array-of-tables sections in TOML:
 
-* ``[data.interval.*]``  – time intervals (was ``image_time_interval``)
-* ``[data.time.*]``      – explicit image times (was ``image_times``)
-* ``[data.path.*]``      – direct file paths (was ``image_paths``)
+* ``[[data_interval]]``  – time intervals (start/end/num/tol)
+* ``[[data_window]]``    – time windows (start/end)
+* ``[[data_time]]``      – explicit image times (times, tol)
+* ``[[data_path]]``      – direct file paths (paths)
 
-Each named entry (e.g. ``calibration1``, ``phase_1``) is loaded into a
-:class:`TimeData` object and stored in a flat lookup dictionary. All key names
-must be unique across the three sub-registries; a :class:`ValueError` is raised
+Each array entry MUST have a ``name`` field (the registry key). All key names
+must be unique across the four sub-registries; a :class:`ValueError` is raised
 at load time if any duplicate is detected.
 
 Example TOML structure::
 
-    [data.interval.calibration1]
+    [[data_interval]]
+    name = "calibration"
     start = "01:00:00"
     end   = "23:00:00"
     num   = 5
     tol   = "00:10:00"
 
-    [data.interval.phase_1]
+    [[data_interval]]
+    name = "analysis"
     start = "00:00:00"
     end   = "01:00:00"
     num   = 13
     tol   = "00:01:00"
 
-    [data.time.manual_snap]
+    [[data_time]]
+    name = "manual_snap"
     times = ["00:30:00", "01:00:00"]
     tol   = "00:05:00"
 
-    [data.path.baseline_images]
+    [[data_path]]
+    name = "baseline_images"
     paths = ["baseline/DSC00155.JPG", "DSC00160.JPG"]
 
 Tasks reference entries by key::
 
     [color.path.calibration]
-    data = ["calibration1"]
+    data = ["calibration"]
 
     [analysis.mass]
-    data = "phase_1"
+    data = "analysis"
 """
 
 from __future__ import annotations
 
 import logging
+import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -58,6 +62,71 @@ from .time_data import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class DataRegistryConfig:
+    """GUI-editable view of the [[data_interval]], [[data_window]], [[data_time]],
+    [[data_path]] TOML arrays.
+
+    This dataclass exists purely for GUI schema introspection and does not replace
+    DataRegistry, which remains the canonical runtime registry.
+    DataRegistryConfig fields are read/written via the generic dataclass_group_map
+    widget mechanism, which reads from and writes to config_dict["data_interval"],
+    config_dict["data_window"], config_dict["data_time"], and config_dict["data_path"]
+    respectively.
+
+    Each field's metadata declares its widget type and array_key so the schema introspection
+    system knows to create the corresponding multi-row editor and which TOML array to map to.
+    """
+
+    interval_registry: dict[str, TimeInterval] = field(
+        default_factory=dict,
+        metadata={
+            "name": "Intervals",
+            "help": "Named time intervals (start/end/num/tol).",
+            "widget": "dataclass_group_map",
+            "array_key": "data_interval",
+            "auto_add_empty": False,
+        },
+    )
+    """Dict of time interval entries, keyed by name."""
+
+    window_registry: dict[str, TimeWindow] = field(
+        default_factory=dict,
+        metadata={
+            "name": "Windows",
+            "help": "Named time windows (start/end).",
+            "widget": "dataclass_group_map",
+            "array_key": "data_window",
+            "auto_add_empty": False,
+        },
+    )
+    """Dict of time window entries, keyed by name."""
+
+    time_registry: dict[str, ImageTimeData] = field(
+        default_factory=dict,
+        metadata={
+            "name": "Times",
+            "help": "Named explicit time lists (times, tol).",
+            "widget": "dataclass_group_map",
+            "array_key": "data_time",
+            "auto_add_empty": False,
+        },
+    )
+    """Dict of explicit time entries, keyed by name."""
+
+    path_registry: dict[str, PathData] = field(
+        default_factory=dict,
+        metadata={
+            "name": "Paths",
+            "help": "Named file path lists.",
+            "widget": "dataclass_group_map",
+            "array_key": "data_path",
+            "auto_add_empty": False,
+        },
+    )
+    """Dict of path entries, keyed by name."""
 
 
 @dataclass
@@ -116,67 +185,159 @@ class DataRegistry:
     """Named path entries from [data.path.*]."""
 
     def load(
-        self, sec: dict, data_folder: Path | list[Path] | None = None
+        self,
+        paths: Path | list[Path] | dict,
+        data_folder: Path | list[Path] | None = None,
     ) -> "DataRegistry":
-        """Populate the registry from a ``[data]`` config section dict.
+        """Populate the registry from TOML files or dicts with array-of-tables format.
+
+        Reads four separate top-level arrays: [[data_interval]], [[data_window]],
+        [[data_time]], [[data_path]]. Each entry must have a 'name' field (the registry key).
 
         Args:
-            sec: The dictionary corresponding to the ``[data]`` TOML section.
+            paths: One or more TOML file paths, a single TOML file path, or a dict
+                containing the TOML data directly (for testing/programmatic use).
             data_folder: Base folder used to resolve relative paths for
-                ``[data.path.*]`` entries.
+                [[data_path]] entries.
 
         Returns:
             self
 
         Raises:
-            ValueError: If any key appears in more than one of the three
-                sub-registries (``interval``, ``time``, ``path``).
+            ValueError: If any key appears in more than one of the four
+                sub-registries, or if array format is incorrect.
         """
+        # Handle dict input (for tests and programmatic use)
+        if isinstance(paths, dict):
+            toml_data_list = [paths]
+        else:
+            # Handle Path/list[Path] input
+            if isinstance(paths, Path):
+                paths = [paths]
+            toml_data_list = []
+            for path in paths:
+                with open(path, "rb") as f:
+                    toml_data_list.append(tomllib.load(f))
+
         interval_keys: set[str] = set()
         window_keys: set[str] = set()
         time_keys: set[str] = set()
         path_keys: set[str] = set()
 
-        # --- interval sub-registry ---
-        interval_sec = sec.get("interval_registry", {})
-        if isinstance(interval_sec, dict):
-            for key, entry in interval_sec.items():
-                interval_keys.add(key)
-                interval_data = ImageTimeIntervalData().load({"interval": {key: entry}})
-                # Store the raw interval object
-                # (load() populates either intervals or windows dict, not both)
+        for toml_data in toml_data_list:
+            # --- data_interval array ---
+            interval_entries = toml_data.get("data_interval", [])
+            if not isinstance(interval_entries, list):
+                raise ValueError(
+                    "The [[data_interval]] section must be an array-of-tables format "
+                    "(use [[data_interval]]), not nested tables."
+                )
+            for idx, entry in enumerate(interval_entries):
+                if not isinstance(entry, dict):
+                    raise ValueError(
+                        f"[[data_interval]] entry {idx} must be a table/dict."
+                    )
+                entry_name = entry.get("name")
+                if entry_name is None:
+                    raise ValueError(
+                        f"[[data_interval]] entry {idx} is missing required 'name' field."
+                    )
+                entry_name = str(entry_name).strip()
+                if entry_name in interval_keys:
+                    raise ValueError(
+                        f"DataRegistry: duplicate key '{entry_name}' in [[data_interval]]. "
+                        "Names must be globally unique."
+                    )
+                interval_keys.add(entry_name)
+                interval_data = ImageTimeIntervalData().load(
+                    {"interval": {entry_name: entry}}
+                )
                 if interval_data.intervals:
-                    # Get the single interval value from the dict
-                    self.interval_registry[key] = next(
+                    self.interval_registry[entry_name] = next(
                         iter(interval_data.intervals.values())
                     )
 
-        # --- window sub-registry ---
-        window_sec = sec.get("window_registry", {})
-        if isinstance(window_sec, dict):
-            for key, entry in window_sec.items():
-                window_keys.add(key)
-                window_data = ImageTimeIntervalData().load({"interval": {key: entry}})
-                # Store the raw window object
+            # --- data_window array ---
+            window_entries = toml_data.get("data_window", [])
+            if not isinstance(window_entries, list):
+                raise ValueError(
+                    "The [[data_window]] section must be an array-of-tables format "
+                    "(use [[data_window]]), not nested tables."
+                )
+            for idx, entry in enumerate(window_entries):
+                if not isinstance(entry, dict):
+                    raise ValueError(
+                        f"[[data_window]] entry {idx} must be a table/dict."
+                    )
+                entry_name = entry.get("name")
+                if entry_name is None:
+                    raise ValueError(
+                        f"[[data_window]] entry {idx} is missing required 'name' field."
+                    )
+                entry_name = str(entry_name).strip()
+                if entry_name in window_keys:
+                    raise ValueError(
+                        f"DataRegistry: duplicate key '{entry_name}' in [[data_window]]. "
+                        "Names must be globally unique."
+                    )
+                window_keys.add(entry_name)
+                window_data = ImageTimeIntervalData().load(
+                    {"interval": {entry_name: entry}}
+                )
                 if window_data.windows:
-                    # Get the single window value from the dict
-                    self.window_registry[key] = next(iter(window_data.windows.values()))
+                    self.window_registry[entry_name] = next(
+                        iter(window_data.windows.values())
+                    )
 
-        # --- time sub-registry ---
-        time_sec = sec.get("time_registry", {})
-        if isinstance(time_sec, dict):
-            for key, entry in time_sec.items():
-                time_keys.add(key)
-                time_data = ImageTimeData().load({"time": {key: entry}})
-                self.time_registry[key] = time_data
+            # --- data_time array ---
+            time_entries = toml_data.get("data_time", [])
+            if not isinstance(time_entries, list):
+                raise ValueError(
+                    "The [[data_time]] section must be an array-of-tables format "
+                    "(use [[data_time]]), not nested tables."
+                )
+            for idx, entry in enumerate(time_entries):
+                if not isinstance(entry, dict):
+                    raise ValueError(f"[[data_time]] entry {idx} must be a table/dict.")
+                entry_name = entry.get("name")
+                if entry_name is None:
+                    raise ValueError(
+                        f"[[data_time]] entry {idx} is missing required 'name' field."
+                    )
+                entry_name = str(entry_name).strip()
+                if entry_name in time_keys:
+                    raise ValueError(
+                        f"DataRegistry: duplicate key '{entry_name}' in [[data_time]]. "
+                        "Names must be globally unique."
+                    )
+                time_keys.add(entry_name)
+                time_data = ImageTimeData().load({"time": {entry_name: entry}})
+                self.time_registry[entry_name] = time_data
 
-        # --- path sub-registry ---
-        path_sec = sec.get("path_registry", {})
-        if isinstance(path_sec, dict):
-            for key, entry in path_sec.items():
-                path_keys.add(key)
-                path_data = PathData().load({"path": {key: entry}}, data_folder)
-                self.path_registry[key] = path_data
+            # --- data_path array ---
+            path_entries = toml_data.get("data_path", [])
+            if not isinstance(path_entries, list):
+                raise ValueError(
+                    "The [[data_path]] section must be an array-of-tables format "
+                    "(use [[data_path]]), not nested tables."
+                )
+            for idx, entry in enumerate(path_entries):
+                if not isinstance(entry, dict):
+                    raise ValueError(f"[[data_path]] entry {idx} must be a table/dict.")
+                entry_name = entry.get("name")
+                if entry_name is None:
+                    raise ValueError(
+                        f"[[data_path]] entry {idx} is missing required 'name' field."
+                    )
+                entry_name = str(entry_name).strip()
+                if entry_name in path_keys:
+                    raise ValueError(
+                        f"DataRegistry: duplicate key '{entry_name}' in [[data_path]]. "
+                        "Names must be globally unique."
+                    )
+                path_keys.add(entry_name)
+                path_data = PathData().load({"path": {entry_name: entry}}, data_folder)
+                self.path_registry[entry_name] = path_data
 
         # --- sanity check: duplicate keys across sub-registries ---
         duplicates = (
@@ -196,12 +357,14 @@ class DataRegistry:
 
         total_entries = (
             len(self.interval_registry)
+            + len(self.window_registry)
             + len(self.time_registry)
             + len(self.path_registry)
         )
         logger.debug(
             f"DataRegistry loaded {total_entries} entries: "
             f"intervals={sorted(self.interval_registry.keys())}, "
+            f"windows={sorted(self.window_registry.keys())}, "
             f"times={sorted(self.time_registry.keys())}, "
             f"paths={sorted(self.path_registry.keys())}"
         )
@@ -304,64 +467,71 @@ class DataRegistry:
         """Serialize the registry back into TOML-compatible dict structure.
 
         Returns:
-            A dict with keys 'interval', 'window', 'time', 'path', each containing
-            the serialized entries (as dicts matching the TOML structure).
+            A dict with keys 'data_interval', 'data_window', 'data_time', 'data_path', each
+            containing a list of dicts matching the array-of-tables TOML structure.
             Missing sub-registries are omitted from the output.
         """
         result = {}
 
-        # Serialize interval registry (TimeInterval only)
+        # Serialize interval registry as [[data_interval]]
         if self.interval_registry:
-            interval_dict = {}
-            for name, entry in self.interval_registry.items():
+            interval_list = []
+            for name, entry in sorted(self.interval_registry.items()):
                 if isinstance(entry, TimeInterval):
-                    interval_dict[name] = {
-                        "start": _format_hours(entry.start),
-                        "end": _format_hours(entry.end),
-                        "num": entry.num,
-                        "tol": _format_hours(entry.tol),
-                    }
-            if interval_dict:
-                result["interval"] = interval_dict
+                    interval_list.append(
+                        {
+                            "name": name,
+                            "start": _format_hours(entry.start),
+                            "end": _format_hours(entry.end),
+                            "num": entry.num,
+                            "tol": _format_hours(entry.tol),
+                        }
+                    )
+            if interval_list:
+                result["data_interval"] = interval_list
 
-        # Serialize window registry (TimeWindow only)
+        # Serialize window registry as [[data_window]]
         if self.window_registry:
-            window_dict = {}
-            for name, entry in self.window_registry.items():
+            window_list = []
+            for name, entry in sorted(self.window_registry.items()):
                 if isinstance(entry, TimeWindow):
-                    window_dict[name] = {
-                        "start": _format_hours(entry.start),
-                        "end": _format_hours(entry.end),
-                    }
-            if window_dict:
-                result["window"] = window_dict
+                    window_list.append(
+                        {
+                            "name": name,
+                            "start": _format_hours(entry.start),
+                            "end": _format_hours(entry.end),
+                        }
+                    )
+            if window_list:
+                result["data_window"] = window_list
 
-        # Serialize time registry
+        # Serialize time registry as [[data_time]]
         if self.time_registry:
-            time_dict = {}
-            for name, entry in self.time_registry.items():
-                time_dict[name] = {
+            time_list = []
+            for name, entry in sorted(self.time_registry.items()):
+                time_entry = {
+                    "name": name,
                     "times": [_format_hours(t) for t in entry.times],
                 }
                 if entry.times_with_tolerance:
-                    # Store tolerance as the diff from first occurrence
-                    # (time_data.py stores as (time, tolerance) pairs)
-                    # For now, use the tolerance from the first occurrence if available
-                    if entry.times_with_tolerance:
-                        tol_val = entry.times_with_tolerance[0][1]
-                        time_dict[name]["tol"] = _format_hours(tol_val)
-            if time_dict:
-                result["time"] = time_dict
+                    tol_val = entry.times_with_tolerance[0][1]
+                    time_entry["tol"] = _format_hours(tol_val)
+                time_list.append(time_entry)
+            if time_list:
+                result["data_time"] = time_list
 
-        # Serialize path registry
+        # Serialize path registry as [[data_path]]
         if self.path_registry:
-            path_dict = {}
-            for name, entry in self.path_registry.items():
-                path_dict[name] = {
-                    "paths": [str(p) for p in entry.paths],
-                }
-            if path_dict:
-                result["path"] = path_dict
+            path_list = []
+            for name, entry in sorted(self.path_registry.items()):
+                path_list.append(
+                    {
+                        "name": name,
+                        "paths": [str(p) for p in entry.paths],
+                    }
+                )
+            if path_list:
+                result["data_path"] = path_list
 
         return result
 
