@@ -31,7 +31,7 @@ class TestRoiRegistryRegister:
         roi_loaded.load(
             {"name": "loaded", "corner_1": [0.0, 0.0], "corner_2": [0.5, 0.5]}
         )
-        reg._registry["loaded"] = roi_loaded
+        reg.rois["loaded"] = roi_loaded
 
         roi_new = RoiConfig()
         roi_new.load({"name": "new", "corner_1": [0.5, 0.5], "corner_2": [1.0, 1.0]})
