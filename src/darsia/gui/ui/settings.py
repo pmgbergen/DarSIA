@@ -281,10 +281,13 @@ class SettingsFactory:
                         "rows": field_or_result["rows"],
                     }
                 elif "dataclass_group_map" in field_or_result:
-                    self.main_window.settings_inputs[setting["key"]] = {
+                    entry = {
                         "dataclass_group_map": True,
                         "entries": field_or_result["entries"],
                     }
+                    if "array_key" in field_or_result:
+                        entry["array_key"] = field_or_result["array_key"]
+                    self.main_window.settings_inputs[setting["key"]] = entry
                 elif "registry_key_list" in field_or_result:
                     self.main_window.settings_inputs[setting["key"]] = {
                         "registry_key_list": True,
@@ -748,11 +751,14 @@ class SettingsFactory:
                 import traceback
 
                 self.main_window.print_log(traceback.format_exc())
-                return display_name, {
+                fallback = {
                     "widget": header_widget,
                     "dataclass_group_map": True,
                     "entries": entries_data,
                 }
+                if array_key:
+                    fallback["array_key"] = array_key
+                return display_name, fallback
 
         else:
             return display_name, {"dataclass_group_map": True, "entries": []}
