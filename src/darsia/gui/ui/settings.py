@@ -38,6 +38,82 @@ def unwrap_composite_widget(value):
     return value
 
 
+def _parse_list_text(text, list_type=None):
+    """Parse user-friendly list text (space/comma-separated or bracket syntax)
+    into a Python list.
+
+    Accepts multiple input formats:
+    - Python literal: [1, 2, 3] or (1, 2, 3) or 1, 2, 3
+    - Space-separated: 1 2 3
+    - Comma-separated: 1, 2, 3
+    - Mixed: 1, 2 3 (commas take precedence)
+
+    Args:
+        text: User-entered text (e.g., "0.1, 0.2" or "0.1 0.2" or "[0.1, 0.2]").
+        list_type: Element type for coercion ("int", "float", "string", "file").
+                   If None, no coercion is applied.
+
+    Returns:
+        A Python list of parsed and (optionally) coerced values.
+
+    Raises:
+        ValueError: If parsing fails or coercion is impossible.
+        SyntaxError: If literal_eval encounters invalid syntax.
+    """
+    text = text.strip()
+    if not text:
+        return []
+
+    try:
+        parsed = ast.literal_eval(text)
+        if isinstance(parsed, (list, tuple)):
+            result = list(parsed)
+        else:
+            result = [parsed]
+    except (ValueError, SyntaxError):
+        if "," in text:
+            parts = text.split(",")
+        else:
+            parts = text.split()
+
+        result = []
+        for part in parts:
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                result.append(ast.literal_eval(part))
+            except (ValueError, SyntaxError):
+                result.append(part)
+
+    if list_type:
+        coerced = []
+        for item in result:
+            if list_type in ("int", "float"):
+                coerced.append(float(item) if list_type == "float" else int(item))
+            elif list_type in ("string", "file"):
+                coerced.append(str(item))
+            else:
+                coerced.append(item)
+        result = coerced
+
+    return result
+
+
+def _format_list_text(value):
+    """Format a list as bracket-free, comma-separated text for canonical display.
+
+    Args:
+        value: A list or tuple to format.
+
+    Returns:
+        A string like "0.1, 0.2, 0.3" (no brackets).
+    """
+    if not value:
+        return ""
+    return ", ".join(str(v) for v in value)
+
+
 class SettingsFactory:
     """Factory for creating settings input widgets and managing settings."""
 
@@ -621,12 +697,16 @@ class SettingsFactory:
                     # Override prefilled value from entry_data (not config_dict)
                     if field_name in entry_data and entry_data[field_name] is not None:
                         unwrapped = unwrap_composite_widget(field_widget)
-                        value_str = str(entry_data[field_name])
                         if isinstance(unwrapped, QCheckBox):
                             unwrapped.setChecked(bool(entry_data[field_name]))
                         elif isinstance(unwrapped, QComboBox):
-                            unwrapped.setCurrentText(value_str)
+                            unwrapped.setCurrentText(str(entry_data[field_name]))
                         else:  # QLineEdit
+                            # Use canonical format for list fields
+                            if unwrapped.property("darsia_is_list"):
+                                value_str = _format_list_text(entry_data[field_name])
+                            else:
+                                value_str = str(entry_data[field_name])
                             unwrapped.setText(value_str)
 
                     field_widgets[field_name] = field_widget
@@ -1379,7 +1459,10 @@ class SettingsFactory:
 
         setting_edit = QLineEdit()
         if value is not None:
-            setting_edit.setText(str(value))
+            if setting_dict["type"] == "list":
+                setting_edit.setText(_format_list_text(value))
+            else:
+                setting_edit.setText(str(value))
 
         # Set placeholder text if provided
         placeholder = setting_dict.get("placeholder")
@@ -1394,9 +1477,16 @@ class SettingsFactory:
 
         # Type annotation label
         if setting_dict["type"] == "list":
-            type_label = QLabel(
-                f"({setting_dict['type']}, {setting_dict['list_type']})"
-            )
+            if setting_dict.get("fixed_length") is not None:
+                # Fixed-size tuple: show the arity (e.g., "2 x float" for tuple[float, float])
+                arity = setting_dict["fixed_length"]
+                elem_type = setting_dict["list_type"]
+                type_label = QLabel(f"({arity} x {elem_type})")
+            else:
+                # Variable-length list
+                type_label = QLabel(
+                    f"({setting_dict['type']}, {setting_dict['list_type']})"
+                )
         else:
             type_label = QLabel(f"({setting_dict['type']})")
 
@@ -1408,6 +1498,47 @@ class SettingsFactory:
 
         # Store reference to the real control for unwrapping in sync
         field_widget.setProperty("value_widget", setting_edit)
+
+        # Tag list fields so the save pass can identify and parse them specially
+        if setting_dict["type"] == "list":
+            list_type = setting_dict.get("list_type")
+            fixed_length = setting_dict.get("fixed_length")
+
+            setting_edit.setProperty("darsia_is_list", True)
+            setting_edit.setProperty("darsia_list_type", list_type)
+            # Tag fixed-length fields (derived from tuple arity)
+            if fixed_length is not None:
+                setting_edit.setProperty("darsia_fixed_length", fixed_length)
+
+                def normalize_list(se=setting_edit, lt=list_type, fl=fixed_length):
+                    text = se.text()
+                    if not text.strip():
+                        se.setStyleSheet("")
+                        se.setToolTip("")
+                        return
+                    try:
+                        parsed = _parse_list_text(text, lt)
+                    except (ValueError, SyntaxError) as e:
+                        se.setStyleSheet("border: 1px solid #d32f2f;")
+                        se.setToolTip(f"Invalid list value: {e}")
+                        return
+
+                    # Truncate to fixed length if too long
+                    if len(parsed) > fl:
+                        parsed = parsed[:fl]
+                        se.setText(_format_list_text(parsed))
+
+                    # Mark red if too short
+                    if len(parsed) < fl:
+                        se.setStyleSheet("border: 1px solid #d32f2f;")
+                        se.setToolTip(
+                            f"Expected exactly {fl} entries, got {len(parsed)}."
+                        )
+                    else:
+                        se.setStyleSheet("")
+                        se.setToolTip("")
+
+                setting_edit.editingFinished.connect(normalize_list)
 
         return display_name, field_widget
 
@@ -2167,11 +2298,17 @@ class SettingsFactory:
                     # placeholder
                     if value.text() == NO_FILE_CHOSEN or value.text().strip() == "":
                         continue
-                    self.set_value(
-                        self.main_window.config_dict,
-                        key,
-                        ast.literal_eval(value.text()),
-                    )
+                    # Check if this is a list field (tagged during widget creation)
+                    if value.property("darsia_is_list"):
+                        list_type = value.property("darsia_list_type")
+                        parsed_value = _parse_list_text(value.text(), list_type)
+                        self.set_value(self.main_window.config_dict, key, parsed_value)
+                    else:
+                        self.set_value(
+                            self.main_window.config_dict,
+                            key,
+                            ast.literal_eval(value.text()),
+                        )
                 elif isinstance(value, QComboBox):
                     self.set_value(
                         self.main_window.config_dict, key, value.currentText()
@@ -2370,15 +2507,15 @@ class SettingsFactory:
                                     except ValueError:
                                         pass
                                 elif field_type == "list":
-                                    # Parse list fields via literal_eval
-                                    # (e.g., corner_1 = [x, y])
+                                    # Parse list fields with per-element-type coercion
                                     try:
-                                        parsed = ast.literal_eval(text_value)
-                                        if isinstance(parsed, list):
-                                            extracted_value = parsed
-                                            should_include = (
-                                                extracted_value != field_default
-                                            )
+                                        list_type = field_schema.get("list_type")
+                                        extracted_value = _parse_list_text(
+                                            text_value, list_type
+                                        )
+                                        should_include = (
+                                            extracted_value != field_default
+                                        )
                                     except (ValueError, SyntaxError):
                                         pass
                                 elif field_type == "time":
