@@ -58,8 +58,7 @@ def test_resolve_color_channel_by_registry_key(tmp_path: Path) -> None:
     registry = _registry_from_toml(
         tmp_path,
         """
-        [[color]]
-        type = "channel"
+        [[color_channel]]
         name = "red_channel"
         color_space = "RGB"
         channel = "r"
@@ -90,8 +89,7 @@ def test_resolve_color_range_hsv_binary_mask(tmp_path: Path) -> None:
     registry = _registry_from_toml(
         tmp_path,
         """
-        [[color]]
-        type = "range"
+        [[color_range]]
         name = "custom_range"
         color_space = "HSV"
         range = [[0.2, 0.4], [0.5, "None"], [0.8, "None"]]
@@ -117,8 +115,7 @@ def test_simple_segmentation_supports_color_mode_without_mass_inputs(
     registry = _registry_from_toml(
         tmp_path,
         """
-        [[color]]
-        type = "channel"
+        [[color_channel]]
         name = "red_channel"
         color_space = "RGB"
         channel = "r"

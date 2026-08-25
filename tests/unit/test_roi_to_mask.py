@@ -21,10 +21,7 @@ def _make_scalar_image(rows: int = 10, cols: int = 20) -> darsia.ScalarImage:
 
 
 def _make_roi(corner_1: list, corner_2: list, name: str = "roi") -> RoiConfig:
-    roi = RoiConfig()
-    roi.roi = make_coordinate([corner_1, corner_2])
-    roi.name = name
-    return roi
+    return RoiConfig(corner_1=corner_1, corner_2=corner_2, name=name)
 
 
 class TestRoiConfigToMaskBasic:

@@ -15,10 +15,7 @@ def _make_scalar_image(rows: int = 10, cols: int = 20) -> darsia.ScalarImage:
 
 
 def _make_roi(corner_1: list[float], corner_2: list[float], name: str) -> RoiConfig:
-    roi = RoiConfig()
-    roi.roi = make_coordinate([corner_1, corner_2])
-    roi.name = name
-    return roi
+    return RoiConfig(corner_1=corner_1, corner_2=corner_2, name=name)
 
 
 def test_adapter_empty_config_is_noop() -> None:
