@@ -61,6 +61,24 @@ class MenuBuilder:
             "Ctrl+E",
         )
 
+        run_menu = menu_bar.addMenu("&Run")
+        self.play_action = self._add_action(
+            run_menu,
+            "&Run Selected Workflow",
+            self.main_window.run_selected_workflow,
+        )
+        # Cover both the main-keyboard Enter/Return key and the numpad Enter key.
+        self.play_action.setShortcuts(
+            [QKeySequence("Ctrl+Return"), QKeySequence("Ctrl+Enter")]
+        )
+        self.stop_action = self._add_action(
+            run_menu,
+            "&Stop Workflow",
+            self.main_window.abort_selected_workflow,
+            "Ctrl+Escape",
+        )
+        self.stop_action.setEnabled(False)
+
         view_menu = menu_bar.addMenu("&View")
         theme_menu = view_menu.addMenu("Switch &Theme")
         theme_group = QActionGroup(self.main_window)

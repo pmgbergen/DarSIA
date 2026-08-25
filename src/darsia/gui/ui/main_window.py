@@ -203,6 +203,26 @@ class MainWindow(QMainWindow):
         self.sidebar.deselect_all()
         self.settings_factory.display_full_settings()
 
+    def run_selected_workflow(self):
+        """Run the currently selected sidebar workflow (Play button / Ctrl+Return)."""
+        if self.selected_action is None:
+            self.print_log("Select an item in the sidebar first.")
+            return
+
+        tab_manager = self.action_dispatch.get(self.selected_action)
+        if tab_manager:
+            tab_manager.on_run_clicked()
+
+    def abort_selected_workflow(self):
+        """Abort the currently running workflow (Stop button / Ctrl+Escape)."""
+        if self.selected_action is None:
+            self.print_log("No workflow running.")
+            return
+
+        tab_manager = self.action_dispatch.get(self.selected_action)
+        if tab_manager:
+            tab_manager.on_abort_clicked()
+
     def toggle_logging(self, visible: bool):
         """Show or hide the logging panel (View > Show Logging / Ctrl+L)."""
         self.log_scroll_area.setVisible(visible)

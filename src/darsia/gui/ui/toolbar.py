@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QIcon
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QStyle
 
 from .icons import themed_icon
@@ -58,18 +58,16 @@ class ToolbarBuilder:
         toolbar.addAction(self.menu_builder.save_action)
         toolbar.addAction(self.menu_builder.open_full_config_action)
 
-        # Add separator and Play/Stop actions for workflow control
+        # Add separator and Play/Stop actions for workflow control (created by
+        # MenuBuilder so they also appear, with shortcuts, in the Run menu).
         toolbar.addSeparator()
 
-        self.play_action = QAction("Play")
-        self.play_action.triggered.connect(self._on_play)
-        self._configure(self.play_action, "play", "Run Selected Workflow")
+        self.play_action = self.menu_builder.play_action
+        self._configure(self.play_action, "play", "Run Selected Workflow (Ctrl+Return)")
         toolbar.addAction(self.play_action)
 
-        self.stop_action = QAction("Stop")
-        self.stop_action.triggered.connect(self._on_stop)
-        self.stop_action.setEnabled(False)
-        self._configure(self.stop_action, "stop", "Stop Workflow")
+        self.stop_action = self.menu_builder.stop_action
+        self._configure(self.stop_action, "stop", "Stop Workflow (Ctrl+Escape)")
         toolbar.addAction(self.stop_action)
 
         theme_signal.theme_changed.connect(self.refresh_icons)
@@ -84,30 +82,6 @@ class ToolbarBuilder:
         """Rebuild all qtawesome-backed icons from current palette."""
         for key, action in self._themed_actions.items():
             action.setIcon(self._load_icon(key))
-
-    def _on_play(self):
-        """Handle Play button: dispatch to selected workflow."""
-        if self.main_window.selected_action is None:
-            self.main_window.print_log("Select an item in the sidebar first.")
-            return
-
-        tab_manager = self.main_window.action_dispatch.get(
-            self.main_window.selected_action
-        )
-        if tab_manager:
-            tab_manager.on_run_clicked()
-
-    def _on_stop(self):
-        """Handle Stop button: abort selected workflow."""
-        if self.main_window.selected_action is None:
-            self.main_window.print_log("No workflow running.")
-            return
-
-        tab_manager = self.main_window.action_dispatch.get(
-            self.main_window.selected_action
-        )
-        if tab_manager:
-            tab_manager.on_abort_clicked()
 
     def _load_icon(self, key):
         custom_path = _ICON_DIR / f"{key}.png"
