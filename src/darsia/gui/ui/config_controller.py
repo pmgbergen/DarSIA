@@ -60,6 +60,7 @@ class ConfigController:
         self.main_window.config_path_label.setText(file)
         add_recent_config(file)
         self.main_window.settings_factory.save_settings()
+        self.main_window.print_log(f"Config saved as: {file}")
 
     def open_recent_config(self, path):
         """Open a config file from the recent-files list."""
@@ -87,4 +88,4 @@ class ConfigController:
             return
         self.main_window.config_file = file
         add_recent_config(file)
-        self.main_window.print_log("Config loaded")
+        self.main_window.print_log(f"Config loaded: {file}")
