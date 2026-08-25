@@ -163,8 +163,8 @@ class ProtocolledExperiment:
         # Find selected paths within the time interval.
         selected_paths: list[Path] = []
         for window in windows:
-            start_in_seconds = window.start * 3600
-            end_in_seconds = window.end * 3600
+            start_in_seconds = window.start_hours * 3600
+            end_in_seconds = window.end_hours * 3600
             selected_paths.extend(
                 p
                 for (sec, p) in zip(available_seconds, available_paths)

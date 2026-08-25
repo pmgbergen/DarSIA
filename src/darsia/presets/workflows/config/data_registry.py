@@ -60,6 +60,7 @@ from .time_data import (
     TimeInterval,
     TimeWindow,
 )
+from .utils import _format_hours
 
 logger = logging.getLogger(__name__)
 
@@ -414,15 +415,18 @@ class DataRegistry:
             interval_list = []
             for name, entry in sorted(self.interval_registry.items()):
                 if isinstance(entry, TimeInterval):
-                    interval_list.append(
-                        {
-                            "name": name,
-                            "start": _format_hours(entry.start),
-                            "end": _format_hours(entry.end),
-                            "num": entry.num,
-                            "tol": _format_hours(entry.tol),
-                        }
-                    )
+                    interval_dict = {
+                        "name": name,
+                        "start": entry.start,
+                        "end": entry.end,
+                    }
+                    if entry.num is not None:
+                        interval_dict["num"] = entry.num
+                    if entry.step:
+                        interval_dict["step"] = entry.step
+                    if entry.tol:
+                        interval_dict["tol"] = entry.tol
+                    interval_list.append(interval_dict)
             if interval_list:
                 result["data_interval"] = interval_list
 
@@ -431,13 +435,14 @@ class DataRegistry:
             window_list = []
             for name, entry in sorted(self.window_registry.items()):
                 if isinstance(entry, TimeWindow):
-                    window_list.append(
-                        {
-                            "name": name,
-                            "start": _format_hours(entry.start),
-                            "end": _format_hours(entry.end),
-                        }
-                    )
+                    window_dict = {
+                        "name": name,
+                        "start": entry.start,
+                        "end": entry.end,
+                    }
+                    if entry.step:
+                        window_dict["step"] = entry.step
+                    window_list.append(window_dict)
             if window_list:
                 result["data_window"] = window_list
 
@@ -470,19 +475,3 @@ class DataRegistry:
                 result["data_path"] = path_list
 
         return result
-
-
-def _format_hours(hours: float) -> str:
-    """Convert floating-point hours to HH:MM:SS string format.
-
-    Args:
-        hours: Hours as a float (can be fractional).
-
-    Returns:
-        Formatted time string "HH:MM:SS".
-    """
-    total_seconds = int(hours * 3600)
-    h = total_seconds // 3600
-    m = (total_seconds % 3600) // 60
-    s = total_seconds % 60
-    return f"{h:02d}:{m:02d}:{s:02d}"

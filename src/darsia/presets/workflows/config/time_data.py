@@ -7,45 +7,48 @@ from pathlib import Path
 
 import numpy as np
 
-from .utils import _convert_to_hours, _get_key, _get_section
+from .utils import _convert_to_hours, _get_key, _get_section, _normalize_time_string
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class TimeInterval:
-    start: float = field(
-        default=0.0,
+    start: str = field(
+        default="00:00:00",
         metadata={
             "name": "Start time",
             # "help": "Start time of interval (HH:MM:SS format or hours).",
             "placeholder": "Start time HH:MM:SS",
             "group": "Interval",
+            "widget": "time",
         },
     )
-    """Start time of the interval, relative to experiment start, in hours."""
-    end: float = field(
-        default=0.0,
+    """Start time of the interval, relative to experiment start, in HH:MM:SS format."""
+    end: str = field(
+        default="00:00:00",
         metadata={
             "name": "End time",
             # "help": "End time of interval (HH:MM:SS format or hours).",
             "placeholder": "End time HH:MM:SS",
             "group": "Interval",
+            "widget": "time",
         },
     )
-    """End time of the interval, relative to experiment start, in hours."""
-    step: float = field(
-        default=0.0,
+    """End time of the interval, relative to experiment start, in HH:MM:SS format."""
+    step: str | None = field(
+        default=None,
         metadata={
             "name": "Step size",
             # "help": "Step size between images (hours).",
             "placeholder": "Step size HH:MM:SS",
             "group": "Interval",
+            "widget": "time",
         },
     )
-    """Step size between images, in hours."""
-    num: int = field(
-        default=0,
+    """Step size between images, in HH:MM:SS format."""
+    num: int | None = field(
+        default=None,
         metadata={
             "name": "Number of images",
             # "help": "Number of images in the interval.",
@@ -54,78 +57,135 @@ class TimeInterval:
         },
     )
     """Number of images in the interval."""
-    tol: float | None = field(
+    tol: str | None = field(
         default=None,
         metadata={
             "name": "Tolerance",
             # "help": "Tolerance for time matching (hours).",
             "placeholder": "tolerance HH:MM:SS",
             "group": "Interval",
+            "widget": "time",
         },
     )
-    """Tolerance for time matching, in hours."""
+    """Tolerance for time matching, in HH:MM:SS format."""
 
     def __init__(
         self,
         start: float | str,
         end: float | str,
         step: float | str | None = None,
-        num: int = 0,
-        tol: float | None = None,
+        num: int | None = None,
+        tol: float | str | None = None,
     ):
-        self.start = _convert_to_hours(start)
-        self.end = _convert_to_hours(end)
-        self.step = _convert_to_hours(step or 0.0)
+        self.start = _normalize_time_string(start)
+        self.end = _normalize_time_string(end)
+        self.step = _normalize_time_string(step) if step is not None else None
         self.num = num
-        self.tol = _convert_to_hours(tol or 0.0)
+        self.tol = _normalize_time_string(tol) if tol is not None else None
 
-    def __post_init__(self):
-        self.step = (self.end - self.start) / self.num if self.num > 0 else 0
-        self.num = (
-            int((self.end - self.start) / self.step) + 1
-            if not np.isclose(self.step, 0)
-            else 0
+    @property
+    def start_hours(self) -> float:
+        """Start time in hours."""
+        return _convert_to_hours(self.start)
+
+    @property
+    def end_hours(self) -> float:
+        """End time in hours."""
+        return _convert_to_hours(self.end)
+
+    @property
+    def step_hours(self) -> float | None:
+        """Step size in hours, if defined."""
+        return _convert_to_hours(self.step) if self.step is not None else None
+
+    @property
+    def tol_hours(self) -> float:
+        """Tolerance in hours."""
+        return _convert_to_hours(self.tol) if self.tol is not None else 0.0
+
+    @property
+    def resolved_num(self) -> int:
+        """Effective number of images, resolved from num or derived from step.
+
+        Returns num if explicitly set; otherwise derives from step and start/end times.
+        Raises ValueError if neither num nor step is set.
+        """
+        if self.num is not None:
+            return self.num
+        if self.step_hours is not None and self.step_hours > 0:
+            return int((self.end_hours - self.start_hours) / self.step_hours) + 1
+        raise ValueError(
+            f"Cannot resolve number of images: num is None and step is "
+            f"{self.step!r} (step_hours={self.step_hours})"
         )
 
     def generate_times(self) -> list[float]:
-        return np.unique(np.linspace(self.start, self.end, self.num)).tolist()
+        return np.unique(
+            np.linspace(self.start_hours, self.end_hours, self.resolved_num)
+        ).tolist()
 
     def generate_times_with_uncertainty(self) -> list[tuple[float, float]]:
         times = self.generate_times()
-        return [(t, self.tol) for t in times]
+        return [(t, self.tol_hours) for t in times]
 
 
 @dataclass
 class TimeWindow:
-    start: float = field(
-        default=0.0,
+    start: str = field(
+        default="00:00:00",
         metadata={
             "name": "Start time",
             "help": "Start time of window (HH:MM:SS format or hours).",
             "group": "Window",
+            "widget": "time",
         },
     )
-    """Start time of the window, relative to experiment start, in hours."""
-    end: float = field(
-        default=0.0,
+    """Start time of the window, relative to experiment start, in HH:MM:SS format."""
+    end: str = field(
+        default="00:00:00",
         metadata={
             "name": "End time",
             "help": "End time of window (HH:MM:SS format or hours).",
             "group": "Window",
+            "widget": "time",
         },
     )
-    """End time of the window, relative to experiment start, in hours."""
+    """End time of the window, relative to experiment start, in HH:MM:SS format."""
+    step: str | None = field(
+        default=None,
+        metadata={
+            "name": "Step size",
+            "help": "Step size (preserved but not used for window time generation).",
+            "group": "Window",
+            "widget": "time",
+        },
+    )
+    """Step size, preserved for round-tripping but not used for window time generation."""
 
     def __init__(
         self,
         start: float | str,
         end: float | str,
         step: float | str | None = None,
-        num: int = 0,
-        tol: float | None = None,
     ):
-        self.start = _convert_to_hours(start)
-        self.end = _convert_to_hours(end)
+        self.start = _normalize_time_string(start)
+        self.end = _normalize_time_string(end)
+        self.step = _normalize_time_string(step) if step is not None else None
+
+    @property
+    def start_hours(self) -> float:
+        """Start time in hours."""
+        return _convert_to_hours(self.start)
+
+    @property
+    def end_hours(self) -> float:
+        """End time in hours."""
+        return _convert_to_hours(self.end)
+
+    @property
+    def step_hours(self) -> float | None:
+        """Step size in hours, if defined."""
+        return _convert_to_hours(self.step) if self.step is not None else None
 
 
 @dataclass
@@ -210,12 +270,14 @@ class ImageTimeIntervalData:
                 num = _get_key(interval_data, "num", required=False, type_=int)
                 tol = _get_key(interval_data, "tol", required=False)
 
-                if num is None:
+                # Route to TimeWindow only if both num and step are absent
+                if num is None and step is None:
                     self.windows[interval_key] = TimeWindow(
                         start=start,
                         end=end,
                     )
                 else:
+                    # Create TimeInterval; resolved_num will derive from step if needed
                     self.intervals[interval_key] = TimeInterval(
                         start=start, end=end, step=step, num=num, tol=tol
                     )
