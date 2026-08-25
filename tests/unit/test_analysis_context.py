@@ -43,7 +43,7 @@ def test_select_image_paths_resolves_registry_reference_to_paths(
     image_path = tmp_path / "img.jpg"
     image_path.touch()
     registry = DataRegistry().load(
-        {"path_registry": {"imgs": {"paths": ["img.jpg"]}}}, data_folder=tmp_path
+        {"data_path": [{"name": "imgs", "paths": ["img.jpg"]}]}, data_folder=tmp_path
     )
     experiment = experiment_factory(image_path)
     sub_config = SimpleNamespace(data_selection="imgs")
@@ -65,7 +65,7 @@ def test_select_image_paths_resolves_registry_reference_to_times(
 ):
     output_path = tmp_path / "selected.jpg"
     output_path.touch()
-    registry = DataRegistry().load({"time_registry": {"snap": {"times": ["01:00:00"]}}})
+    registry = DataRegistry().load({"data_time": [{"name": "snap", "times": ["01:00:00"]}]})
     experiment = experiment_factory(output_path)
     sub_config = SimpleNamespace(data_selection="snap")
     config_stub.registry = registry

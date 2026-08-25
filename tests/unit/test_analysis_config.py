@@ -167,14 +167,14 @@ def test_analysis_thresholding_accepts_extended_modes(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
-[[color]]
+[[color_path]]
 type = "channel"
 name = "red_channel"
 mode = "absolute"
 color_space = "RGB"
 channel = "r"
 
-[[color]]
+[[color_path]]
 type = "range"
 name = "green_band"
 mode = "relative"
@@ -227,7 +227,7 @@ def test_analysis_thresholding_rejects_invalid_color_mode_token(tmp_path: Path) 
     config_path = _write(
         tmp_path / "config.toml",
         """
-[[color]]
+[[color_path]]
 type = "channel"
 name = "red_channel"
 mode = "absolute"
@@ -335,12 +335,13 @@ data = "analysis_set"
     )
     data_registry = DataRegistry().load(
         {
-            "time_registry": {
-                "analysis_set": {
+            "data_time": [
+                {
+                    "name": "analysis_set",
                     "times": ["01:00:00", "02:00:00"],
                     "tol": "00:05:00",
                 }
-            }
+            ]
         }
     )
 
@@ -392,7 +393,7 @@ def test_analysis_mass_export_defaults_to_none(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
-[[color]]
+[[color_path]]
 type = "channel"
 name = "my_colorpath"
 mode = "absolute"
@@ -422,7 +423,7 @@ def test_analysis_mass_export_accepts_supported_modes(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
-[[color]]
+[[color_path]]
 type = "channel"
 name = "my_colorpath"
 mode = "absolute"
@@ -457,7 +458,7 @@ def test_analysis_mass_export_rejects_unsupported_modes(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
-[[color]]
+[[color_path]]
 type = "channel"
 name = "my_colorpath"
 mode = "absolute"
