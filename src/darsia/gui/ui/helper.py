@@ -51,15 +51,4 @@ class HelperTab:
                     ),
                 ],
             ),
-            (
-                "Options",
-                [
-                    (
-                        "Show plots",
-                        "show",
-                        "fa5s.circle",
-                        get_help_text("helper", "show", "Show plots"),
-                    ),
-                ],
-            ),
         ]

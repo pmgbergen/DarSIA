@@ -32,6 +32,14 @@ class CalibrationTab:
             self.main_window.print_log("Please select an option in the sidebar.")
             return
 
+        # Sync GUI widgets to config_dict before reading live values
+        self.main_window.settings_factory._sync_settings_inputs_to_config_dict()
+        show_plots = bool(
+            self.main_window.settings_factory.get_value(
+                self.main_window.config_dict, "options.calibration.show_plots"
+            )
+        )
+
         # Build options dictionary matching the CLI interface
         options = {
             "color": selected_id == "color",
@@ -39,7 +47,7 @@ class CalibrationTab:
             "default_mass": selected_id == "default_mass",
             "delete": selected_id == "delete",
             "reset": selected_id == "reset",
-            "show": selected_id == "show",
+            "show": show_plots,
         }
 
         self.main_window.print_log(
@@ -100,6 +108,12 @@ class CalibrationTab:
                         "fa5s.circle",
                         get_help_text("calibration", "default_mass", "Default mass"),
                     ),
+                    (
+                        "Reset mass calibration",
+                        "reset",
+                        "fa5s.circle",
+                        get_help_text("calibration", "reset", "Reset mass calibration"),
+                    ),
                 ],
             ),
             (
@@ -112,23 +126,6 @@ class CalibrationTab:
                         get_help_text(
                             "calibration", "delete", "Delete all calibrations"
                         ),
-                    ),
-                ],
-            ),
-            (
-                "Options",
-                [
-                    (
-                        "Reset mass calibration",
-                        "reset",
-                        "fa5s.circle",
-                        get_help_text("calibration", "reset", "Reset mass calibration"),
-                    ),
-                    (
-                        "Show plots",
-                        "show",
-                        "fa5s.circle",
-                        get_help_text("calibration", "show", "Show plots"),
                     ),
                 ],
             ),

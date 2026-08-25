@@ -130,6 +130,13 @@ class SettingsFactory:
 
                 settings_by_section[section] = section_fields
 
+        # Append the activity-specific options group if the action is an activity
+        ACTIVITY_OPTIONS_GROUPS = {"setup", "calibration", "analysis", "helper"}
+        if action in ACTIVITY_OPTIONS_GROUPS:
+            options_fields = get_section_fields("options", only_group=action)
+            if options_fields is not None:
+                settings_by_section["options"] = options_fields
+
         return settings_by_section
 
     def get_all_settings(self):

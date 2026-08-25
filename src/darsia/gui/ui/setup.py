@@ -34,6 +34,14 @@ class SetupTab:
             self.main_window.print_log("Please select an option in the sidebar.")
             return
 
+        # Sync GUI widgets to config_dict before reading live values
+        self.main_window.settings_factory._sync_settings_inputs_to_config_dict()
+        show_plots = bool(
+            self.main_window.settings_factory.get_value(
+                self.main_window.config_dict, "options.setup.show_plots"
+            )
+        )
+
         # Build options dictionary matching the CLI interface
         options = {
             "all": selected_id == "all",
@@ -42,7 +50,7 @@ class SetupTab:
             "facies": selected_id == "facies",
             "protocols": selected_id == "protocols",
             "rig": selected_id == "rig",
-            "show": selected_id == "show_plots",
+            "show": show_plots,
             "force": False,
         }
 
@@ -169,17 +177,6 @@ class SetupTab:
                 "Run All",
                 [
                     ("All", "all", "fa5s.circle", get_help_text("setup", "all", "All")),
-                ],
-            ),
-            (
-                "Options",
-                [
-                    (
-                        "Show plots",
-                        "show_plots",
-                        "fa5s.circle",
-                        get_help_text("setup", "show_plots", "Show plots"),
-                    ),
                 ],
             ),
         ]
