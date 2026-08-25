@@ -258,9 +258,7 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
 ) -> None:
     injected_mass = 8.0
     image_path = tmp_path / "img001.png"
-    roi = RoiConfig()
-    roi.roi = make_coordinate([[0.0, 0.0], [0.5, 1.0]])
-    roi.name = "left_half"
+    roi = RoiConfig(corner_1=[0.0, 0.0], corner_2=[0.5, 1.0], name="left_half")
     adapter = ExpertKnowledgeAdapter(
         saturation_g_rois={"left_half": roi},
         concentration_aq_rois={"left_half": roi},

@@ -39,11 +39,13 @@ def test_preload_coarse_images_rejects_empty_input() -> None:
 def test_build_roi_selection_masks_supports_none_single_and_all_union() -> None:
     image = _make_image((100, 100))
     roi_1 = RoiConfig(
-        roi=darsia.CoordinateArray([[0.1, 0.1], [0.5, 0.5]]),
+        corner_1=[0.1, 0.1],
+        corner_2=[0.5, 0.5],
         name="roi_1",
     )
     roi_2 = RoiConfig(
-        roi=darsia.CoordinateArray([[0.5, 0.5], [0.9, 0.9]]),
+        corner_1=[0.5, 0.5],
+        corner_2=[0.9, 0.9],
         name="roi_2",
     )
     masks = _build_roi_selection_masks(image, {"roi_1": roi_1, "roi_2": roi_2})
