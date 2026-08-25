@@ -726,9 +726,8 @@ class SettingsFactory:
                 refresh_remove_buttons()
 
             def refresh_remove_buttons():
-                show_remove = len(entries_data) > 1
                 for entry in entries_data:
-                    entry["remove_button"].setVisible(show_remove)
+                    entry["remove_button"].setVisible(True)
 
             try:
                 # Connect add button
@@ -816,9 +815,8 @@ class SettingsFactory:
         row_combos = []  # List of QComboBox widgets for save_settings
 
         def refresh_remove_buttons():
-            show_remove = len(row_data_list) > 1
             for row_data in row_data_list:
-                row_data["remove_button"].setVisible(show_remove)
+                row_data["remove_button"].setVisible(True)
 
         add_button = QPushButton("Add key")
 
@@ -965,9 +963,8 @@ class SettingsFactory:
         row_combos = []
 
         def refresh_remove_buttons():
-            show_remove = len(row_data_list) > 1
             for row_data in row_data_list:
-                row_data["remove_button"].setVisible(show_remove)
+                row_data["remove_button"].setVisible(True)
 
         add_button = QPushButton("Add format")
 
@@ -1106,9 +1103,8 @@ class SettingsFactory:
         row_combos = []
 
         def refresh_remove_buttons():
-            show_remove = len(row_data_list) > 1
             for row_data in row_data_list:
-                row_data["remove_button"].setVisible(show_remove)
+                row_data["remove_button"].setVisible(True)
 
         add_button = QPushButton("Add ROI")
 
@@ -1246,9 +1242,8 @@ class SettingsFactory:
         row_combos = []
 
         def refresh_remove_buttons():
-            show_remove = len(row_data_list) > 1
             for row_data in row_data_list:
-                row_data["remove_button"].setVisible(show_remove)
+                row_data["remove_button"].setVisible(True)
 
         add_button = QPushButton("Add Color")
 
@@ -1602,9 +1597,8 @@ class SettingsFactory:
         row_data_list = []  # Track row data (widget, remove_button)
 
         def refresh_remove_buttons():
-            show_remove = len(row_data_list) > 1
             for row in row_data_list:
-                row["remove_button"].setVisible(show_remove)
+                row["remove_button"].setVisible(True)
 
         add_button = QPushButton("Add group")
 
@@ -1797,9 +1791,8 @@ class SettingsFactory:
         row_data_list = []  # Track row data (widget, remove_button)
 
         def refresh_remove_buttons():
-            show_remove = len(row_data_list) > 1
             for row in row_data_list:
-                row["remove_button"].setVisible(show_remove)
+                row["remove_button"].setVisible(True)
 
         add_button = QPushButton("Add row")
 
