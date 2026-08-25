@@ -371,3 +371,13 @@ class Sidebar(QWidget):
         if self._selected_action and self._selected_checkbox_id:
             return (self._selected_action, self._selected_checkbox_id)
         return None
+
+    def deselect_all(self):
+        """Visually deselect all rows and clear selection state."""
+        if self._selected_row is not None:
+            self._selected_row.set_selected(False)
+        for section in self._sections.values():
+            section.deselect_all()
+        self._selected_row = None
+        self._selected_action = None
+        self._selected_checkbox_id = None
