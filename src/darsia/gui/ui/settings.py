@@ -585,6 +585,9 @@ class SettingsFactory:
                         -1
                     ]  # Unqualified name
 
+                    if field_name == "name":
+                        continue
+
                     # Use create_setting_edit for all other fields (returns composite
                     # wrapper or group result)
                     label_text, field_widget = self.create_setting_edit(field_schema)
