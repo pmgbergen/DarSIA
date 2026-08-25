@@ -41,25 +41,24 @@ def _make_data_registry(tmp_path: Path) -> DataRegistry:
     dummy = tmp_path / "dummy.jpg"
     dummy.touch()
     sec = {
-        "path_registry": {
-            "baseline_imgs": {"paths": ["dummy.jpg"]},
-            "cal_imgs": {"paths": ["dummy.jpg"]},
-        }
+        "data_path": [
+            {"name": "baseline_imgs", "paths": ["dummy.jpg"]},
+            {"name": "cal_imgs", "paths": ["dummy.jpg"]},
+        ]
     }
     return DataRegistry().load(sec, data_folder=tmp_path)
 
 
 def _minimal_color_path_embedding_toml(extra: str = "", rois_line: str = "") -> str:
-    """Return a minimal [[color]] array-of-tables TOML using registry references.
+    """Return a minimal [[color_path]] array-of-tables TOML using registry references.
 
     Args:
-        extra: Additional TOML lines to insert inside [[color]].
+        extra: Additional TOML lines to insert inside [[color_path]].
         rois_line: A ``rois = ...`` line to inject (empty → key absent).
     """
     return textwrap.dedent(
         f"""\
-[[color]]
-type = "path"
+[[color_path]]
 name = "default"
 baseline = "baseline_imgs"
 data     = "cal_imgs"

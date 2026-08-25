@@ -1,4 +1,4 @@
-"""Unit tests for ColorEmbeddingRegistry (array-of-tables [[color]] format)."""
+"""Unit tests for ColorEmbeddingRegistry (array-of-tables [[color_path/range/channel]] format)."""
 
 import textwrap
 from pathlib import Path
@@ -40,19 +40,19 @@ def _make_data_registry(tmp_path: Path) -> DataRegistry:
     dummy = tmp_path / "dummy.jpg"
     dummy.touch()
     sec = {
-        "path_registry": {
-            "baseline_imgs": {"paths": ["dummy.jpg"]},
-            "cal_imgs": {"paths": ["dummy.jpg"]},
-        }
+        "data_path": [
+            {"name": "baseline_imgs", "paths": ["dummy.jpg"]},
+            {"name": "cal_imgs", "paths": ["dummy.jpg"]},
+        ]
     }
     return DataRegistry().load(sec, data_folder=tmp_path)
 
 
 class TestColorEmbeddingRegistryStructuralValidation:
-    """Test structural validation of the [[color]] array-of-tables format."""
+    """Test structural validation of the array-of-tables format."""
 
-    def test_missing_color_section_succeeds_with_empty_registry(self, tmp_path):
-        """If no [color] section exists, registry loads with zero entries."""
+    def test_missing_color_sections_succeeds_with_empty_registry(self, tmp_path):
+        """If no [color_path/range/channel] sections exist, registry loads with zero entries."""
         toml_path = _write_toml(tmp_path, "")
         registry = ColorEmbeddingRegistry().load(
             path=toml_path,
@@ -61,17 +61,17 @@ class TestColorEmbeddingRegistryStructuralValidation:
         )
         assert len(registry.keys()) == 0
 
-    def test_color_as_nested_dict_raises_error(self, tmp_path):
-        """[color] as nested tables (not array-of-tables) raises ValueError."""
+    def test_color_path_as_nested_dict_raises_error(self, tmp_path):
+        """[color_path] as nested tables (not array-of-tables) raises ValueError."""
         toml_path = _write_toml(
             tmp_path,
             """
-            [color.path.test_entry]
+            [color_path.test_entry]
             """,
         )
         with pytest.raises(
             ValueError,
-            match="must be an array-of-tables format.*use \\[\\[color\\]\\]",
+            match="must be an array-of-tables format.*use \\[\\[color_path\\]\\]",
         ):
             ColorEmbeddingRegistry().load(
                 path=toml_path,
@@ -79,52 +79,16 @@ class TestColorEmbeddingRegistryStructuralValidation:
                 results=None,
             )
 
-    def test_missing_type_field_raises_error(self, tmp_path):
-        """[[color]] entry without 'type' raises ValueError."""
+    def test_missing_name_field_in_path_raises_error(self, tmp_path):
+        """[[color_path]] entry without 'name' raises ValueError."""
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            name = "no_type"
-            """,
-        )
-        with pytest.raises(ValueError, match="missing required 'type' field"):
-            ColorEmbeddingRegistry().load(
-                path=toml_path,
-                data=None,
-                results=None,
-            )
-
-    def test_missing_name_field_raises_error(self, tmp_path):
-        """[[color]] entry without 'name' raises ValueError."""
-        toml_path = _write_toml(
-            tmp_path,
-            """
-            [[color]]
-            type = "path"
+            [[color_path]]
+            mode = "relative"
             """,
         )
         with pytest.raises(ValueError, match="missing required 'name'"):
-            ColorEmbeddingRegistry().load(
-                path=toml_path,
-                data=None,
-                results=None,
-            )
-
-    def test_unsupported_type_raises_error(self, tmp_path):
-        """[[color]] entry with unsupported 'type' raises ValueError."""
-        toml_path = _write_toml(
-            tmp_path,
-            """
-            [[color]]
-            type = "unsupported_type"
-            name = "test"
-            """,
-        )
-        with pytest.raises(
-            ValueError,
-            match="Unsupported color type.*Supported:.*channel.*path.*range",
-        ):
             ColorEmbeddingRegistry().load(
                 path=toml_path,
                 data=None,
@@ -136,16 +100,14 @@ class TestColorEmbeddingRegistryStructuralValidation:
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "duplicate"
             mode = "relative"
             basis = "labels"
             data = ["cal_imgs"]
             baseline = "baseline_imgs"
 
-            [[color]]
-            type = "range"
+            [[color_range]]
             name = "duplicate"
             color_space = "RGB"
             range = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]
@@ -169,8 +131,7 @@ class TestColorEmbeddingRegistryEagerValidation:
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "bad_mode"
             calibration_mode = "invalid_mode"
             data = ["cal_imgs"]
@@ -191,8 +152,7 @@ class TestColorEmbeddingRegistryEagerValidation:
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "bad_roi"
             rois = ["unknown_roi"]
             data = ["cal_imgs"]
@@ -215,8 +175,7 @@ class TestColorEmbeddingRegistryEagerValidation:
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "range"
+            [[color_range]]
             name = "no_colorspace"
             range = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]
             """,
@@ -230,15 +189,14 @@ class TestColorEmbeddingRegistryEagerValidation:
 
 
 class TestColorEmbeddingRegistryPathType:
-    """Test successful loading and resolution of type='path' entries."""
+    """Test successful loading and resolution of path entries."""
 
     def test_minimal_path_entry_loads(self, tmp_path):
-        """A minimal [[color]] with type='path' loads successfully."""
+        """A minimal [[color_path]] loads successfully."""
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "color_path"
             data = ["cal_imgs"]
             baseline = "baseline_imgs"
@@ -263,8 +221,7 @@ class TestColorEmbeddingRegistryPathType:
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "with_rois"
             rois = ["test_roi"]
             data = ["cal_imgs"]
@@ -285,15 +242,14 @@ class TestColorEmbeddingRegistryPathType:
 
 
 class TestColorEmbeddingRegistryRangeType:
-    """Test successful loading and resolution of type='range' entries."""
+    """Test successful loading and resolution of range entries."""
 
     def test_range_entry_loads(self, tmp_path):
-        """A [[color]] with type='range' loads successfully."""
+        """A [[color_range]] loads successfully."""
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "range"
+            [[color_range]]
             name = "green_range"
             color_space = "RGB"
             range = [[0.0, 1.0], [0.2, 0.8], [0.0, 1.0]]
@@ -313,15 +269,14 @@ class TestColorEmbeddingRegistryRangeType:
 
 
 class TestColorEmbeddingRegistryChannelType:
-    """Test successful loading and resolution of type='channel' entries."""
+    """Test successful loading and resolution of channel entries."""
 
     def test_channel_entry_loads(self, tmp_path):
-        """A [[color]] with type='channel' loads successfully."""
+        """A [[color_channel]] loads successfully."""
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "channel"
+            [[color_channel]]
             name = "red_channel"
             color_space = "RGB"
             channel = "r"
@@ -343,8 +298,7 @@ class TestColorEmbeddingRegistryChannelType:
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "channel"
+            [[color_channel]]
             name = "masked_channel"
             color_space = "RGB"
             channel = "r"
@@ -370,20 +324,17 @@ class TestColorEmbeddingRegistryMethods:
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "path_emb"
             data = ["cal_imgs"]
             baseline = "baseline_imgs"
 
-            [[color]]
-            type = "range"
+            [[color_range]]
             name = "range_emb"
             color_space = "RGB"
             range = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]
 
-            [[color]]
-            type = "channel"
+            [[color_channel]]
             name = "channel_emb"
             color_space = "RGB"
             channel = "r"
@@ -405,8 +356,7 @@ class TestColorEmbeddingRegistryMethods:
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "exists"
             data = ["cal_imgs"]
             baseline = "baseline_imgs"
@@ -427,14 +377,12 @@ class TestColorEmbeddingRegistryMethods:
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "emb1"
             data = ["cal_imgs"]
             baseline = "baseline_imgs"
 
-            [[color]]
-            type = "range"
+            [[color_range]]
             name = "emb2"
             color_space = "RGB"
             range = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]
@@ -463,8 +411,7 @@ class TestColorEmbeddingRegistryResolve:
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "test"
             data = ["cal_imgs"]
             baseline = "baseline_imgs"
@@ -485,8 +432,7 @@ class TestColorEmbeddingRegistryResolve:
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "exists"
             data = ["cal_imgs"]
             baseline = "baseline_imgs"
@@ -507,8 +453,7 @@ class TestColorEmbeddingRegistryResolve:
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "test"
             data = ["cal_imgs"]
             baseline = "baseline_imgs"
@@ -531,8 +476,7 @@ class TestColorEmbeddingRegistryResolve:
         toml_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "exists"
             data = ["cal_imgs"]
             baseline = "baseline_imgs"
@@ -561,12 +505,11 @@ class TestColorEmbeddingRegistryMultipleFiles:
     """Test loading from multiple TOML files."""
 
     def test_load_multiple_files_merges_entries(self, tmp_path):
-        """Loading from multiple files merges all [[color]] entries."""
+        """Loading from multiple files merges all color entries."""
         file1_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "from_file1"
             data = ["cal_imgs"]
             baseline = "baseline_imgs"
@@ -576,8 +519,7 @@ class TestColorEmbeddingRegistryMultipleFiles:
         file2_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "range"
+            [[color_range]]
             name = "from_file2"
             color_space = "RGB"
             range = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]
@@ -600,8 +542,7 @@ class TestColorEmbeddingRegistryMultipleFiles:
         file1_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "path"
+            [[color_path]]
             name = "duplicate"
             data = ["cal_imgs"]
             baseline = "baseline_imgs"
@@ -611,8 +552,7 @@ class TestColorEmbeddingRegistryMultipleFiles:
         file2_path = _write_toml(
             tmp_path,
             """
-            [[color]]
-            type = "range"
+            [[color_range]]
             name = "duplicate"
             color_space = "RGB"
             range = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]

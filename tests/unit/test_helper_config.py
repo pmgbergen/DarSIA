@@ -23,7 +23,7 @@ data = "sel"
 """.strip(),
     )
     data_registry = DataRegistry().load(
-        {"time_registry": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
+        {"data_time": [{"name": "sel", "times": ["01:00:00"], "tol": "00:05:00"}]}
     )
 
     config = HelperConfig().load(
@@ -92,7 +92,7 @@ data = "sel"
 """.strip(),
     )
     data_registry = DataRegistry().load(
-        {"time_registry": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
+        {"data_time": [{"name": "sel", "times": ["01:00:00"], "tol": "00:05:00"}]}
     )
 
     config = HelperConfig().load(
@@ -116,7 +116,7 @@ data_selection = "sel"
 """.strip(),
     )
     data_registry = DataRegistry().load(
-        {"time_registry": {"sel": {"times": ["01:00:00"], "tol": "00:05:00"}}}
+        {"data_time": [{"name": "sel", "times": ["01:00:00"], "tol": "00:05:00"}]}
     )
 
     config = HelperConfig().load(

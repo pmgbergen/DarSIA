@@ -13,32 +13,36 @@ from darsia.presets.workflows.config.time_data import TimeData
 def _make_registry_sec():
     """Return a sample [data] section dict with all three sub-registries."""
     return {
-        "interval_registry": {
-            "calibration1": {
+        "data_interval": [
+            {
+                "name": "calibration1",
                 "start": "01:00:00",
                 "end": "23:00:00",
                 "num": 5,
                 "tol": "00:10:00",
             },
-            "calibration2": {
+            {
+                "name": "calibration2",
                 "start": "24:00:00",
                 "end": "140:00:00",
                 "num": 5,
                 "tol": "00:10:00",
             },
-            "phase_1": {
+            {
+                "name": "phase_1",
                 "start": "00:00:00",
                 "end": "01:00:00",
                 "num": 13,
                 "tol": "00:01:00",
             },
-        },
-        "time_registry": {
-            "manual_snap": {
+        ],
+        "data_time": [
+            {
+                "name": "manual_snap",
                 "times": ["00:30:00", "01:00:00"],
                 "tol": "00:05:00",
             },
-        },
+        ],
     }
 
 
@@ -75,7 +79,7 @@ class TestDataRegistryLoad:
         # Create dummy files so validation doesn't warn
         dummy = tmp_path / "img.jpg"
         dummy.touch()
-        sec = {"path_registry": {"imgs": {"paths": ["img.jpg"]}}}
+        sec = {"data_path": [{"name": "imgs", "paths": ["img.jpg"]}]}
         reg = DataRegistry().load(sec, data_folder=tmp_path)
         td = reg.resolve("imgs")
         assert len(td.image_paths) == 1
@@ -85,8 +89,8 @@ class TestDataRegistryLoad:
 class TestDataRegistryDuplicateCheck:
     def test_duplicate_interval_and_time(self):
         sec = {
-            "interval_registry": {"dup": {"start": "01:00:00", "end": "02:00:00", "num": 2}},
-            "time_registry": {"dup": {"times": ["01:30:00"], "tol": "00:05:00"}},
+            "data_interval": [{"name": "dup", "start": "01:00:00", "end": "02:00:00", "num": 2}],
+            "data_time": [{"name": "dup", "times": ["01:30:00"], "tol": "00:05:00"}],
         }
         with pytest.raises(ValueError, match="duplicate"):
             DataRegistry().load(sec)
@@ -94,8 +98,8 @@ class TestDataRegistryDuplicateCheck:
     def test_duplicate_interval_and_path(self, tmp_path):
         (tmp_path / "x.jpg").touch()
         sec = {
-            "interval_registry": {"dup": {"start": "01:00:00", "end": "02:00:00", "num": 2}},
-            "path_registry": {"dup": {"paths": ["x.jpg"]}},
+            "data_interval": [{"name": "dup", "start": "01:00:00", "end": "02:00:00", "num": 2}],
+            "data_path": [{"name": "dup", "paths": ["x.jpg"]}],
         }
         with pytest.raises(ValueError, match="duplicate"):
             DataRegistry().load(sec, data_folder=tmp_path)
@@ -103,16 +107,16 @@ class TestDataRegistryDuplicateCheck:
     def test_duplicate_time_and_path(self, tmp_path):
         (tmp_path / "x.jpg").touch()
         sec = {
-            "time_registry": {"dup": {"times": ["01:00:00"], "tol": "00:05:00"}},
-            "path_registry": {"dup": {"paths": ["x.jpg"]}},
+            "data_time": [{"name": "dup", "times": ["01:00:00"], "tol": "00:05:00"}],
+            "data_path": [{"name": "dup", "paths": ["x.jpg"]}],
         }
         with pytest.raises(ValueError, match="duplicate"):
             DataRegistry().load(sec, data_folder=tmp_path)
 
     def test_no_duplicate_distinct_keys(self):
         sec = {
-            "interval_registry": {"cal": {"start": "01:00:00", "end": "02:00:00", "num": 2}},
-            "time_registry": {"snap": {"times": ["01:30:00"], "tol": "00:05:00"}},
+            "data_interval": [{"name": "cal", "start": "01:00:00", "end": "02:00:00", "num": 2}],
+            "data_time": [{"name": "snap", "times": ["01:30:00"], "tol": "00:05:00"}],
         }
         reg = DataRegistry().load(sec)  # must not raise
         assert set(reg.keys()) == {"cal", "snap"}
