@@ -189,6 +189,23 @@ def _infer_list_type(field_type: Any) -> str:
     return _infer_widget_type(inner, {})
 
 
+def _infer_fixed_length(field_type: Any) -> int | None:
+    """Infer the fixed arity of a tuple[...] annotation, else None.
+
+    Args:
+        field_type: The type annotation (e.g., tuple[int, int], tuple[float, float, float]).
+
+    Returns:
+        The number of elements if fixed-arity tuple, else None.
+    """
+    if get_origin(field_type) is not tuple:
+        return None
+    args = get_args(field_type)
+    if not args or any(a is Ellipsis for a in args):
+        return None  # bare tuple, or variable-length tuple[X, ...]
+    return len(args)
+
+
 def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]:
     """Build field schema for a dataclass type, recursing into Optional[dataclass] fields.
 
@@ -262,9 +279,11 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "auto_add_empty": field.metadata.get("auto_add_empty", None),
             }
 
-            # For list/tuple types, add the element type label
+            # For list/tuple types, add the element type label and infer fixed_length
             if widget_type == "list":
-                setting_dict["list_type"] = _infer_list_type(field_type)
+                setting_dict["list_type"] = _infer_list_type(inner_type)
+                # Infer fixed_length from tuple[X, ...] arity (the type is the source of truth)
+                setting_dict["fixed_length"] = _infer_fixed_length(inner_type)
             elif widget_type == "dataclass_group_map":
                 # Infer entry_dataclass from dict[str, X] type annotation
                 args = get_args(field_type)
