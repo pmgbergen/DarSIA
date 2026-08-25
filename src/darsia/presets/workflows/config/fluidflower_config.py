@@ -23,7 +23,6 @@ from .rig import RigConfig
 from .roi_registry import RoiRegistry
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
-from .utils import _get_section_from_toml
 from .video import VideoConfig
 from .workflow_utils import WorkflowUtilsConfig
 
