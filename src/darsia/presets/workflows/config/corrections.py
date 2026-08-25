@@ -209,45 +209,45 @@ class CropCorrectionConfig:
         in_meters: Whether width/height are in meters (default: True).
     """
 
-    top_left: list[int] | None = field(
+    top_left: tuple[int, int] | None = field(
         default=None,
         metadata={
             "name": "Top-left corner",
             "help": (
-                "Top-left corner as [row, col] in pixels. "
+                "Top-left corner as row, col in pixels. "
                 "Row is vertical (0 at top), col is horizontal (0 at left)."
             ),
-            "placeholder": "e.g., [47, 415]",
+            "placeholder": "e.g., 47, 415",
             "legacy_source": "pts_src",
             "legacy_index": 0,
         },
     )
-    bottom_left: list[int] | None = field(
+    bottom_left: tuple[int, int] | None = field(
         default=None,
         metadata={
             "name": "Bottom-left corner",
-            "help": "Bottom-left corner as [row, col] in pixels.",
-            "placeholder": "e.g., [7886, 448]",
+            "help": "Bottom-left corner as row, col in pixels.",
+            "placeholder": "e.g., 7886, 448",
             "legacy_source": "pts_src",
             "legacy_index": 1,
         },
     )
-    bottom_right: list[int] | None = field(
+    bottom_right: tuple[int, int] | None = field(
         default=None,
         metadata={
             "name": "Bottom-right corner",
-            "help": "Bottom-right corner as [row, col] in pixels.",
-            "placeholder": "e.g., [7829, 5228]",
+            "help": "Bottom-right corner as row, col in pixels.",
+            "placeholder": "e.g., 7829, 5228",
             "legacy_source": "pts_src",
             "legacy_index": 2,
         },
     )
-    top_right: list[int] | None = field(
+    top_right: tuple[int, int] | None = field(
         default=None,
         metadata={
             "name": "Top-right corner",
-            "help": "Top-right corner as [row, col] in pixels.",
-            "placeholder": "e.g., [110, 5263]",
+            "help": "Top-right corner as row, col in pixels.",
+            "placeholder": "e.g., 110, 5263",
             "legacy_source": "pts_src",
             "legacy_index": 3,
         },
@@ -304,12 +304,14 @@ class CropCorrectionConfig:
             sec.get("top_right"),
         ]
 
+        make_tuple = lambda c: tuple(c) if c is not None else None
+
         if all(c is not None for c in corners):
             # All 4 corners provided — assemble into pts_src
-            self.top_left = corners[0]
-            self.bottom_left = corners[1]
-            self.bottom_right = corners[2]
-            self.top_right = corners[3]
+            self.top_left = make_tuple(corners[0])
+            self.bottom_left = make_tuple(corners[1])
+            self.bottom_right = make_tuple(corners[2])
+            self.top_right = make_tuple(corners[3])
             self.pts_src = corners
         else:
             # Fall back to flat pts_src (backward compatibility)
@@ -317,10 +319,10 @@ class CropCorrectionConfig:
             # If pts_src was provided, try to extract corners for round-trip
             if self.pts_src is not None:
                 if len(self.pts_src) == 4:
-                    self.top_left = self.pts_src[0]
-                    self.bottom_left = self.pts_src[1]
-                    self.bottom_right = self.pts_src[2]
-                    self.top_right = self.pts_src[3]
+                    self.top_left = make_tuple(self.pts_src[0])
+                    self.bottom_left = make_tuple(self.pts_src[1])
+                    self.bottom_right = make_tuple(self.pts_src[2])
+                    self.top_right = make_tuple(self.pts_src[3])
 
         self.width = float(sec.get("width", self.width))
         self.height = float(sec.get("height", self.height))

@@ -154,7 +154,7 @@ class RestorationConfig:
         metadata={
             "name": "Ignore regions",
             "help": "List of region/label names to exclude from restoration.",
-            "placeholder": "e.g., ['label1', 'label2']",
+            "placeholder": "e.g., label1, label2",
         },
     )
 

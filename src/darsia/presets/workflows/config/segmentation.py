@@ -24,7 +24,7 @@ class SegmentationValueLabelsConfig:
 
     show_values: bool = False
     """Whether to plot threshold values along contours."""
-    value_color: list[int] = field(default_factory=list)
+    value_color: tuple[int, int, int] = field(default=(0, 0, 0))
     """RGB color for contour value labels."""
     value_size: float = 0.5
     """Font scale for contour value labels."""
@@ -46,7 +46,7 @@ class SegmentationValueLabelsConfig:
             sec, "show_values", default=False, required=False, type_=bool
         )
         self.value_color = _get_key(
-            sec, "value_color", default=default_color, required=False, type_=list
+            sec, "value_color", default=default_color, required=False, type_=tuple
         )
         self.value_size = _get_key(
             sec, "value_size", default=0.5, required=False, type_=float
@@ -79,7 +79,7 @@ class SegmentationConfig:
     """Type for segmentation."""
     thresholds: list[float] = field(default_factory=list)
     """List of thresholds."""
-    color: list[int, int, int] = field(default_factory=list)
+    color: tuple[int, int, int] = field(default=(0, 0, 0))
     """RGB color for contours."""
     alpha: list[float] = field(default_factory=list)
     """Alpha values for contours."""
@@ -101,7 +101,7 @@ class SegmentationConfig:
             self.mode, color_embedding_registry, "analysis.segmentation.mode"
         )
         self.thresholds = _get_key(sec, "thresholds", required=True, type_=list)
-        self.color = _get_key(sec, "color", required=True, type_=list)
+        self.color = _get_key(sec, "color", required=True, type_=tuple)
         self.alpha = _get_key(sec, "alpha", required=False, type_=list)
         if not self.alpha:
             self.alpha = [1.0] * len(self.thresholds)

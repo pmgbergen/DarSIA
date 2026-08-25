@@ -22,20 +22,20 @@ class RoiConfig:
             "help": "Unique registry key for this ROI.",
         },
     )
-    corner_1: list[float] = field(
-        default_factory=list,
+    corner_1: tuple[float, float] = field(
+        default=(0.0, 0.0),
         metadata={
             "name": "Corner 1",
-            "help": "First corner coordinate as [x, y].",
-            "placeholder": "[x, y]",
+            "help": "First corner coordinate as x, y.",
+            "placeholder": "x, y",
         },
     )
-    corner_2: list[float] = field(
-        default_factory=list,
+    corner_2: tuple[float, float] = field(
+        default=(0.0, 0.0),
         metadata={
             "name": "Corner 2",
-            "help": "Second corner coordinate as [x, y].",
-            "placeholder": "[x, y]",
+            "help": "Second corner coordinate as x, y.",
+            "placeholder": "x, y",
         },
     )
     label: int | None = field(
@@ -53,8 +53,8 @@ class RoiConfig:
 
     def load(self, sec: dict) -> "RoiConfig":
         self.name = _get_key(sec, "name", required=True, type_=str)
-        self.corner_1 = _get_key(sec, "corner_1", required=True, type_=list)
-        self.corner_2 = _get_key(sec, "corner_2", required=True, type_=list)
+        self.corner_1 = _get_key(sec, "corner_1", required=True, type_=tuple)
+        self.corner_2 = _get_key(sec, "corner_2", required=True, type_=tuple)
         self.label = _get_key(sec, "label", required=False, type_=int, default=None)
         return self
 

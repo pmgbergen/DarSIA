@@ -304,10 +304,10 @@ class PathData:
             "name": "Image paths",
             "help": (
                 "List of image file paths (supports glob patterns with *). "
-                "Format: ['file1.jpg', 'file2.jpg']"
+                "Format: file1.jpg, file2.jpg"
             ),
             "group": "Paths",
-            "placeholder": "['file1.jpg', 'file2.jpg', 'DSC*.JPG', '*']",
+            "placeholder": "file1.jpg, file2.jpg, DSC*.JPG, *",
         },
     )
     """List of image file paths."""
