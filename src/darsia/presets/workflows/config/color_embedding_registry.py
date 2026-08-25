@@ -99,9 +99,13 @@ def parse_color_path_embedding(
         calibration_mode=calibration_mode,
     )
     embedding.baseline_data = (
-        data_registry.resolve(cfg["baseline"]) if data_registry else None
+        data_registry.resolve(cfg["baseline"])
+        if data_registry and "baseline" in cfg
+        else None
     )
-    embedding.data = data_registry.resolve(cfg["data"]) if data_registry else None
+    embedding.data = (
+        data_registry.resolve(cfg["data"]) if data_registry and "data" in cfg else None
+    )
     return embedding
 
 
