@@ -383,6 +383,8 @@ class SettingsFactory:
         if options and setting_type in free_value_types:
             return self.create_dropdown_input(setting_dict)
         # Otherwise, dispatch based on type
+        elif setting_type == "time":
+            return self.create_time_input(setting_dict)
         elif setting_type in free_value_types:
             return self.create_simple_input(setting_dict)
         elif setting_type == "bool":
@@ -1411,6 +1413,64 @@ class SettingsFactory:
 
         return display_name, field_widget
 
+    def create_time_input(self, setting_dict):
+        """Create a time input field with HH:MM:SS normalization.
+
+        Returns (label_text, field_widget) where field_widget is a composite HBox:
+        [setting_edit (stretch=1), type_label, help_button_or_spacer (fixed 40px)]
+
+        The input is normalized on blur (editingFinished) to canonical HH:MM:SS format.
+        Invalid input shows a red border and tooltip error, but leaves the text intact
+        for the user to fix.
+        """
+        from darsia.presets.workflows.config.utils import _normalize_time_string
+
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+        value = self.get_value(self.main_window.config_dict, key)
+        if value is None:
+            value = setting_dict.get("default")
+
+        setting_edit = QLineEdit()
+        if value is not None:
+            setting_edit.setText(str(value))
+
+        placeholder = setting_dict.get("placeholder")
+        if placeholder:
+            setting_edit.setPlaceholderText(placeholder)
+
+        # Wire normalization on blur
+        def normalize_time():
+            text = setting_edit.text().strip()
+            if not text:
+                return  # Allow blank for optional fields
+            try:
+                normalized = _normalize_time_string(text)
+                setting_edit.setText(normalized)
+                # Clear error styling on success
+                setting_edit.setStyleSheet("")
+                setting_edit.setToolTip("")
+            except (ValueError, AssertionError) as e:
+                # Show error state but don't crash or lose the text
+                setting_edit.setStyleSheet("border: 1px solid #d32f2f;")
+                setting_edit.setToolTip(f"Invalid time format: {e}")
+
+        setting_edit.editingFinished.connect(normalize_time)
+
+        # Build composite field widget with type label and help button
+        field_widget = QWidget()
+        field_layout = QHBoxLayout(field_widget)
+        field_layout.setContentsMargins(0, 0, 0, 0)
+        field_layout.setSpacing(4)
+
+        type_label = QLabel(f"({setting_dict['type']})")
+        field_layout.addWidget(setting_edit, stretch=1)
+        field_layout.addWidget(type_label)
+        field_layout.addWidget(build_help_column(setting_dict))
+
+        field_widget.setProperty("value_widget", setting_edit)
+        return display_name, field_widget
+
     def create_bool_input(self, setting_dict):
         """Create a checkbox input for boolean values.
 
@@ -2324,6 +2384,21 @@ class SettingsFactory:
                                                 extracted_value != field_default
                                             )
                                     except (ValueError, SyntaxError):
+                                        pass
+                                elif field_type == "time":
+                                    # Time fields: normalize and store as canonical string
+                                    try:
+                                        from darsia.presets.workflows.config.utils import (
+                                            _normalize_time_string,
+                                        )
+
+                                        extracted_value = _normalize_time_string(
+                                            text_value
+                                        )
+                                        should_include = (
+                                            extracted_value != field_default
+                                        )
+                                    except (ValueError, AssertionError):
                                         pass
                                 else:
                                     # String fields: store as string, omit if equals default
