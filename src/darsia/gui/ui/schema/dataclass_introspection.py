@@ -20,6 +20,7 @@ from darsia.presets.workflows.config.format_registry import FormatRegistry
 from darsia.presets.workflows.config.helper import HelperConfig
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.config.labeling import LabelingConfig
+from darsia.presets.workflows.config.options import OptionsConfig
 from darsia.presets.workflows.config.protocols import ProtocolsConfig
 from darsia.presets.workflows.config.restoration import RestorationConfig
 from darsia.presets.workflows.config.rig import RigConfig
@@ -41,6 +42,7 @@ SECTION_TO_DATACLASS = {
     "helper": HelperConfig,
     "image_porosity": ImagePorosityConfig,
     "labeling": LabelingConfig,
+    "options": OptionsConfig,
     "protocols": ProtocolsConfig,
     "registry": DataRegistry,
     "restoration": RestorationConfig,
@@ -69,6 +71,7 @@ ALL_SECTIONS = [
     "calibration",
     "analysis",
     "helper",
+    "options",
     "download",
     "workflow_utils",
     "video",
@@ -275,11 +278,16 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
     return settings
 
 
-def get_section_fields(section: str) -> list[dict[str, Any]] | None:
+def get_section_fields(
+    section: str, only_group: str | None = None
+) -> list[dict[str, Any]] | None:
     """Get GUI widget schema for all fields in a config section.
 
     Args:
         section: Section name (e.g., "rig", "depth", "calibration")
+        only_group: Optional filter to show only one nested-dataclass group by name
+            (e.g., "setup" to show only the setup group in the options section).
+            If provided, returns only the group field matching this name.
 
     Returns:
         List of setting dicts with key, type, help, link, options, fields (for groups),
@@ -302,6 +310,10 @@ def get_section_fields(section: str) -> list[dict[str, Any]] | None:
 
     # Build the normal field list (already excludes hidden fields like section_active=True)
     field_list = _build_fields(dataclass_type, section)
+
+    # If only_group is specified, filter to just that nested dataclass group
+    if only_group is not None:
+        field_list = [f for f in field_list if f["key"] == f"{section}.{only_group}"]
 
     # If a section_active field exists, wrap the entire field list in a checkable group
     if active_field is not None:

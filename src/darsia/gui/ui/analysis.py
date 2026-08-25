@@ -32,6 +32,14 @@ class AnalysisTab:
             self.main_window.print_log("Please select an option in the sidebar.")
             return
 
+        # Sync GUI widgets to config_dict before reading live values
+        self.main_window.settings_factory._sync_settings_inputs_to_config_dict()
+        show_plots = bool(
+            self.main_window.settings_factory.get_value(
+                self.main_window.config_dict, "options.analysis.show_plots"
+            )
+        )
+
         # Build options dictionary matching the CLI interface
         options = {
             "cropping": selected_id == "cropping",
@@ -41,7 +49,7 @@ class AnalysisTab:
             "volume": selected_id == "volume",
             "thresholding": selected_id == "thresholding",
             "all": selected_id == "all",
-            "show": selected_id == "show",
+            "show": show_plots,
         }
 
         self.main_window.print_log(
@@ -127,19 +135,13 @@ class AnalysisTab:
                 ],
             ),
             (
-                "Options",
+                "Actions",
                 [
                     (
                         "All images",
                         "all",
                         "fa5s.circle",
                         get_help_text("analysis", "all", "All images"),
-                    ),
-                    (
-                        "Show plots",
-                        "show",
-                        "fa5s.circle",
-                        get_help_text("analysis", "show", "Show plots"),
                     ),
                 ],
             ),
