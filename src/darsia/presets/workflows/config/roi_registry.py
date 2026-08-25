@@ -103,8 +103,16 @@ class RoiRegistry:
     - Otherwise → :class:`RoiConfig` (with optional ``label`` field).
     """
 
-    def __init__(self) -> None:
-        self._registry: dict[str, RoiConfig | RoiAndSubroiConfig] = {}
+    rois: dict[str, RoiConfig] = field(
+        default_factory=dict,
+        metadata={
+            "name": "ROIs",
+            "help": "Named ROI definitions with optional per-label restrictions.",
+            "widget": "dataclass_group_map",
+            "array_key": "roi",
+        },
+    )
+    """Dict of named ROI configurations."""
 
     def load(self, path: Path | list[Path]) -> "RoiRegistry":
         """Load all ROI entries from the top-level ``[[roi]]`` array-of-tables in TOML.
@@ -124,7 +132,7 @@ class RoiRegistry:
             ValueError: If any ROI entry has a duplicate name (checked during load).
         """
         paths = [path] if isinstance(path, Path) else path
-        self._registry = {}
+        self.rois = {}
         seen_names: set[str] = set()
 
         for p in paths:
@@ -159,9 +167,9 @@ class RoiRegistry:
                 seen_names.add(name)
 
                 if "subroi" in entry:
-                    self._registry[name] = RoiAndSubroiConfig().load(entry)
+                    self.rois[name] = RoiAndSubroiConfig().load(entry)
                 else:
-                    self._registry[name] = RoiConfig().load(entry)
+                    self.rois[name] = RoiConfig().load(entry)
 
         return self
 
@@ -179,16 +187,16 @@ class RoiRegistry:
         Raises:
             KeyError: If *key* is already present in the registry.
         """
-        if key in self._registry:
+        if key in self.rois:
             raise KeyError(
                 f"ROI key '{key}' is already registered. "
                 f"Use a different key or remove the existing entry first."
             )
-        self._registry[key] = roi
+        self.rois[key] = roi
 
     def keys(self) -> list[str]:
         """Return all registered key names."""
-        return list(self._registry.keys())
+        return list(self.rois.keys())
 
     def resolve(
         self, keys: str | list[str]
@@ -208,12 +216,12 @@ class RoiRegistry:
             keys = [keys]
         result = {}
         for key in keys:
-            if key not in self._registry:
+            if key not in self.rois:
                 raise KeyError(
                     f"ROI key '{key}' not found in registry. "
-                    f"Available keys: {list(self._registry.keys())}"
+                    f"Available keys: {list(self.rois.keys())}"
                 )
-            result[key] = self._registry[key]
+            result[key] = self.rois[key]
         return result
 
     def resolve_rois(self, keys: str | list[str]) -> dict[str, RoiConfig]:
@@ -249,48 +257,3 @@ class RoiRegistry:
             for k, v in resolved.items()
             if isinstance(v, RoiConfig) and v.label is not None
         }
-
-
-@dataclass
-class RoiRegistryConfig:
-    """GUI-editable view of the [[roi]] TOML array-of-tables (excludes subroi entries).
-
-    This is purely for GUI schema introspection and does not replace RoiRegistry,
-    which remains the canonical runtime registry. RoiRegistryConfig.load() delegates
-    to RoiRegistry.load() internally to parse the [[roi]] array-of-tables format.
-    """
-
-    rois: dict[str, RoiConfig] = field(
-        default_factory=dict,
-        metadata={
-            "name": "ROIs",
-            "help": "Named ROI definitions with optional per-label restrictions.",
-            "widget": "dataclass_group_map",
-            "array_key": "roi",
-        },
-    )
-    """Dict of named ROI configurations (excludes RoiAndSubroiConfig entries)."""
-
-    def load(self, path: Path | list[Path]) -> "RoiRegistryConfig":
-        """Load ROI entries from [[roi]] array-of-tables via RoiRegistry.
-
-        Filters out RoiAndSubroiConfig entries (nested subroi) and returns only
-        plain RoiConfig entries for GUI editing.
-
-        Args:
-            path: Path or list of Paths to TOML config file(s).
-
-        Returns:
-            self
-
-        Raises:
-            ValueError: If the [roi] section is not an array-of-tables.
-            ValueError: If any ROI name is duplicated.
-        """
-        registry = RoiRegistry().load(path)
-        self.rois = {
-            k: v
-            for k, v in registry._registry.items()
-            if isinstance(v, RoiConfig) and not isinstance(v, RoiAndSubroiConfig)
-        }
-        return self
