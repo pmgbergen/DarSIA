@@ -77,6 +77,14 @@ class MenuBuilder:
             action.setChecked(theme_name == current_theme)
             theme_group.addAction(action)
 
+        # Add checkable action for toggling the logging panel
+        self.show_logging_action = QAction("Show &Logging", self.main_window)
+        self.show_logging_action.setCheckable(True)
+        self.show_logging_action.setChecked(True)  # log panel starts visible
+        self.show_logging_action.setShortcut(QKeySequence("Ctrl+L"))
+        self.show_logging_action.toggled.connect(self.main_window.toggle_logging)
+        view_menu.addAction(self.show_logging_action)
+
         help_menu = menu_bar.addMenu("&Help")
         self._add_action(help_menu, "&About", self.main_window.show_about_dialog)
 
