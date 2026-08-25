@@ -65,72 +65,12 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class DataRegistryConfig:
-    """GUI-editable view of the [[data_interval]], [[data_window]], [[data_time]],
-    [[data_path]] TOML arrays.
-
-    This dataclass exists purely for GUI schema introspection and does not replace
-    DataRegistry, which remains the canonical runtime registry.
-    DataRegistryConfig fields are read/written via the generic dataclass_group_map
-    widget mechanism, which reads from and writes to config_dict["data_interval"],
-    config_dict["data_window"], config_dict["data_time"], and config_dict["data_path"]
-    respectively.
-
-    Each field's metadata declares its widget type and array_key so the schema introspection
-    system knows to create the corresponding multi-row editor and which TOML array to map to.
-    """
-
-    interval_registry: dict[str, TimeInterval] = field(
-        default_factory=dict,
-        metadata={
-            "name": "Intervals",
-            "help": "Named time intervals (start/end/num/tol).",
-            "widget": "dataclass_group_map",
-            "array_key": "data_interval",
-        },
-    )
-    """Dict of time interval entries, keyed by name."""
-
-    window_registry: dict[str, TimeWindow] = field(
-        default_factory=dict,
-        metadata={
-            "name": "Windows",
-            "help": "Named time windows (start/end).",
-            "widget": "dataclass_group_map",
-            "array_key": "data_window",
-        },
-    )
-    """Dict of time window entries, keyed by name."""
-
-    time_registry: dict[str, ImageTimeData] = field(
-        default_factory=dict,
-        metadata={
-            "name": "Times",
-            "help": "Named explicit time lists (times, tol).",
-            "widget": "dataclass_group_map",
-            "array_key": "data_time",
-        },
-    )
-    """Dict of explicit time entries, keyed by name."""
-
-    path_registry: dict[str, PathData] = field(
-        default_factory=dict,
-        metadata={
-            "name": "Paths",
-            "help": "Named file path lists.",
-            "widget": "dataclass_group_map",
-            "array_key": "data_path",
-        },
-    )
-    """Dict of path entries, keyed by name."""
-
-
-@dataclass
 class DataRegistry:
     """Registry of named time/path entries loaded from a ``[data]`` section.
 
-    Stores three separate sub-registries (interval, time, path), each containing
-    homogeneous entry types, enabling GUI editing of named selections.
+    Stores four separate sub-registries (interval, window, time, path), each containing
+    homogeneous entry types. Fields carry metadata for both runtime use and GUI editing
+    of named selections.
 
     Attributes:
         interval_registry: Mapping from name to TimeInterval.
@@ -142,32 +82,40 @@ class DataRegistry:
     interval_registry: dict[str, TimeInterval] = field(
         default_factory=dict,
         metadata={
-            "name": "Interval Entries",
-            "help": "Named time intervals (e.g., 'injection', 'analysis').",
+            "name": "Intervals",
+            "help": "Named time intervals (start/end/num/tol).",
+            "widget": "dataclass_group_map",
+            "array_key": "data_interval",
         },
     )
     """Named interval entries from [[data_interval]]."""
     window_registry: dict[str, TimeWindow] = field(
         default_factory=dict,
         metadata={
-            "name": "Window Entries",
-            "help": "Named time windows (e.g., 'injection', 'analysis').",
+            "name": "Windows",
+            "help": "Named time windows (start/end).",
+            "widget": "dataclass_group_map",
+            "array_key": "data_window",
         },
     )
     """Named window entries from [[data_window]]."""
     time_registry: dict[str, ImageTimeData] = field(
         default_factory=dict,
         metadata={
-            "name": "Time Entries",
-            "help": "Named explicit time lists (e.g., 'calibration').",
+            "name": "Times",
+            "help": "Named explicit time lists (times, tol).",
+            "widget": "dataclass_group_map",
+            "array_key": "data_time",
         },
     )
     """Named time entries from [[data_time]]."""
     path_registry: dict[str, PathData] = field(
         default_factory=dict,
         metadata={
-            "name": "Path Entries",
+            "name": "Paths",
             "help": "Named file path lists.",
+            "widget": "dataclass_group_map",
+            "array_key": "data_path",
         },
     )
     """Named path entries from [[data_path]]."""
