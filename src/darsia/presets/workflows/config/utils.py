@@ -89,7 +89,8 @@ def _convert_to_hours(time_value: float | str) -> float:
     """Convert time value to hours.
 
     Args:
-        time_value: Time as float (hours) or string in "DD:HH:MM:SS" format
+        time_value: Time as float (hours) or string in "DD:HH:MM:SS", "HH:MM:SS",
+            "HH:MM", "HH", or numeric format
 
     Returns:
         Time in hours as float
@@ -99,8 +100,11 @@ def _convert_to_hours(time_value: float | str) -> float:
         return float(time_value)
 
     if isinstance(time_value, str):
+        # If no colon, treat as numeric hours (e.g., "5", "0.0")
+        if ":" not in time_value:
+            return float(time_value)
+
         # Handle "DD:HH:MM:SS", "HH:MM:SS", "HH:MM", or "HH" format
-        assert ":" in time_value
         parts = time_value.split(":")
         if len(parts) == 4:
             # DD:HH:MM:SS format
@@ -126,7 +130,8 @@ def _convert_to_hours(time_value: float | str) -> float:
             total_hours = hours
         else:
             raise ValueError(
-                f"Invalid time format: {time_value}. Use DD:HH:MM:SS, HH:MM:SS, HH:MM, or HH"
+                f"Invalid time format: {time_value}. Use DD:HH:MM:SS, HH:MM:SS, "
+                "HH:MM, HH, or numeric format"
             )
         total_hours = (
             timedelta(
@@ -136,9 +141,7 @@ def _convert_to_hours(time_value: float | str) -> float:
         )
         return total_hours
 
-    raise ValueError(
-        f"Invalid time value: {time_value}. Must be float or DD:HH:MM:SS format"
-    )
+    raise ValueError(f"Invalid time value: {time_value}. Must be float or time format")
 
 
 def _convert_none(v):
@@ -151,3 +154,39 @@ def _validate_choice(value: str, *, allowed: set[str], context: str, key: str) -
             f"Invalid {context}.{key} '{value}'. Allowed values are: {sorted(allowed)}."
         )
     return value
+
+
+def _format_hours(hours: float) -> str:
+    """Convert floating-point hours to HH:MM:SS string format.
+
+    Args:
+        hours: Hours as a float (can be fractional).
+
+    Returns:
+        Formatted string in HH:MM:SS format (no day component).
+    """
+    if hours is None:
+        return None
+    total_seconds = int(hours * 3600)
+    h = total_seconds // 3600
+    m = (total_seconds % 3600) // 60
+    s = total_seconds % 60
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
+
+def _normalize_time_string(value: float | str) -> str:
+    """Normalize time value to canonical HH:MM:SS format.
+
+    Accepts float hours or any string format supported by _convert_to_hours,
+    converts to float hours, then formats to canonical HH:MM:SS.
+
+    Args:
+        value: Time as float (hours) or string in any recognized format.
+
+    Returns:
+        Canonical HH:MM:SS format string.
+
+    Raises:
+        ValueError: If the input cannot be parsed as a time value.
+    """
+    return _format_hours(_convert_to_hours(value))
