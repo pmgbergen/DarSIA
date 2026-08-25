@@ -12,7 +12,7 @@ from darsia.presets.workflows.config.color_embedding_registry import (
 )
 from darsia.presets.workflows.config.corrections import CorrectionsConfig
 from darsia.presets.workflows.config.data import DataConfig
-from darsia.presets.workflows.config.data_registry import DataRegistryConfig
+from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.depth import DepthConfig
 from darsia.presets.workflows.config.download import DownloadConfig
 from darsia.presets.workflows.config.facies import FaciesConfig
@@ -42,7 +42,7 @@ SECTION_TO_DATACLASS = {
     "image_porosity": ImagePorosityConfig,
     "labeling": LabelingConfig,
     "protocols": ProtocolsConfig,
-    "registry": DataRegistryConfig,
+    "registry": DataRegistry,
     "restoration": RestorationConfig,
     "rig": RigConfig,
     "roi": RoiRegistryConfig,
