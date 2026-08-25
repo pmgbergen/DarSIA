@@ -77,7 +77,7 @@ class MainWindow(QMainWindow):
         self.toolbar_builder = ToolbarBuilder(self, self.menu_builder)
         self.toolbar_builder.build()
 
-        # Hidden label to track current config path (still used by setup/calibration/analysis tabs)
+        # Hidden label to track current config path
         self.config_path_label = QLabel("No config loaded.")
         self.config_path_label.setWordWrap(True)
 
