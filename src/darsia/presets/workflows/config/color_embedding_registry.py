@@ -482,6 +482,7 @@ class ColorPathEmbeddingConfig:
         metadata={
             "name": "Calibration Folder",
             "help": "Optional override for the calibration output folder.",
+            "hidden": True,
         },
     )
 
@@ -542,6 +543,7 @@ class ColorRangeEmbeddingConfig:
         metadata={
             "name": "Calibration Folder",
             "help": "Optional override for the calibration output folder.",
+            "hidden": True,
         },
     )
 
@@ -595,6 +597,7 @@ class ColorChannelEmbeddingConfig:
         metadata={
             "name": "Calibration Folder",
             "help": "Optional override for the calibration output folder.",
+            "hidden": True,
         },
     )
 
