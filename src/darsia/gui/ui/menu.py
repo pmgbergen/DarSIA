@@ -57,7 +57,7 @@ class MenuBuilder:
         self.open_full_config_action = self._add_action(
             settings_menu,
             "Open &Full Config",
-            self.main_window.settings_factory.display_full_settings,
+            self.main_window._on_open_full_config,
             "Ctrl+E",
         )
 

@@ -198,6 +198,11 @@ class MainWindow(QMainWindow):
         self.selected_checkbox_id = checkbox_id
         self.settings_factory.display_settings(action, [checkbox_id])
 
+    def _on_open_full_config(self):
+        """Handle opening full config: deselect sidebar and show all settings."""
+        self.sidebar.deselect_all()
+        self.settings_factory.display_full_settings()
+
     def toggle_logging(self, visible: bool):
         """Show or hide the logging panel (View > Show Logging / Ctrl+L)."""
         self.log_scroll_area.setVisible(visible)
