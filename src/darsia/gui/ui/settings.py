@@ -2550,6 +2550,13 @@ class SettingsFactory:
         # Create a tabbed interface with one tab per section
         tabs = QTabWidget()
 
+        section_titles = {
+            "registry": "Data registry",
+            "format_registry": "Format registry",
+            "roi": "Roi registry",
+            "color": "Color registry",
+        }
+
         # Iterate through sections in order (dict preserves insertion order in Python 3.7+)
         for section, settings_list in settings_by_section.items():
             # Create a scroll area and container for this section's fields
@@ -2568,8 +2575,9 @@ class SettingsFactory:
             # Push content to top by adding a stretch row at the end
             tab_form.addItem(QVBoxLayout())
 
-            # Add this section as a tab (capitalize section name for display)
-            tabs.addTab(tab_container, section.capitalize())
+            # Add this section as a tab using the section_titles map
+            tab_title = section_titles.get(section, section.capitalize())
+            tabs.addTab(tab_container, tab_title)
 
         self.main_window.settings_layout.addWidget(tabs)
         self.main_window.settings_layout.addStretch()
