@@ -242,10 +242,10 @@ class TestCurvatureCorrectionConfigLoad:
         )
         cfg = CorrectionsConfig().load(cfg_path)
         assert cfg.curvature.crop is not None
-        assert cfg.curvature.crop.top_left == [47, 415]
-        assert cfg.curvature.crop.bottom_left == [7886, 448]
-        assert cfg.curvature.crop.bottom_right == [7829, 5228]
-        assert cfg.curvature.crop.top_right == [110, 5263]
+        assert cfg.curvature.crop.top_left == (47, 415)
+        assert cfg.curvature.crop.bottom_left == (7886, 448)
+        assert cfg.curvature.crop.bottom_right == (7829, 5228)
+        assert cfg.curvature.crop.top_right == (110, 5263)
         # pts_src should be assembled from corners in order
         assert cfg.curvature.crop.pts_src == [
             [47, 415],

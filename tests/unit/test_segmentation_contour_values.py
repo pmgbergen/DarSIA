@@ -31,7 +31,7 @@ def test_segmentation_config_value_labels_defaults():
     }
     cfg = SegmentationConfig().load(sec)
     assert cfg.values.show_values is False
-    assert cfg.values.value_color == [255, 0, 0]
+    assert cfg.values.value_color == (255, 0, 0)
     assert cfg.values.value_size == 0.5
     assert cfg.values.value_alpha == 1.0
     assert cfg.values.value_max_per_contour == 3
@@ -59,7 +59,7 @@ def test_segmentation_config_value_labels_nested_override():
     }
     cfg = SegmentationConfig().load(sec)
     assert cfg.values.show_values is True
-    assert cfg.values.value_color == [1, 2, 3]
+    assert cfg.values.value_color == (1, 2, 3)
     assert cfg.values.value_size == 0.9
     assert cfg.values.value_alpha == 0.6
     assert cfg.values.value_density == 1.0
