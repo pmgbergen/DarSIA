@@ -77,29 +77,20 @@ class MainWindow(QMainWindow):
         self.toolbar_builder = ToolbarBuilder(self, self.menu_builder)
         self.toolbar_builder.build()
 
-        # Setting up the three upper layouts
-        upper_container = QWidget()
-        upper_layout = QVBoxLayout(upper_container)
-        upper_container.setFixedHeight(100)
-
-        upper_mid_container = QWidget()
-        upper_mid_layout = QVBoxLayout(upper_mid_container)
-
-        upper_right_container = QWidget()
-        upper_right_layout = QVBoxLayout(upper_right_container)
-
-        # Setting up the left upper layout
-        upper_layout.addWidget(QLabel("Loaded config:"))
+        # Hidden label to track current config path (still used by setup/calibration/analysis tabs)
         self.config_path_label = QLabel("No config loaded.")
         self.config_path_label.setWordWrap(True)
-        upper_layout.addWidget(self.config_path_label)
 
         # Storage for file/folder chooser widgets used by settings.py's
         # FileDialogHelper (e.g. depth.measurements, facies.props).
         self.chosen_files = {}
 
-        # Add stretch to push the config label to the top
-        upper_layout.addStretch()
+        # Setting up the layout containers
+        upper_mid_container = QWidget()
+        upper_mid_layout = QVBoxLayout(upper_mid_container)
+
+        upper_right_container = QWidget()
+        upper_right_layout = QVBoxLayout(upper_right_container)
 
         # Setting up the middle upper layout with sidebar
         # Initialize tab managers
@@ -161,30 +152,29 @@ class MainWindow(QMainWindow):
         self.log_text.setReadOnly(True)
         log_layout.addWidget(self.log_text)
 
-        log_scroll_area = QScrollArea()
-        log_scroll_area.setWidget(log_container)
-        log_scroll_area.setWidgetResizable(True)
+        self.log_scroll_area = QScrollArea()
+        self.log_scroll_area.setWidget(log_container)
+        self.log_scroll_area.setWidgetResizable(True)
 
-        # Splitter for the upper half of the GUI
-        upper_splitter = QSplitter(Qt.Horizontal)
-        upper_splitter.addWidget(upper_mid_container)
-        upper_splitter.addWidget(upper_right_container)
-        upper_splitter.setStretchFactor(0, 1)  # left panel: 1/7 of space
-        upper_splitter.setStretchFactor(1, 7)  # right panel: 6/7 of space
-
-        # Vertical splitter between the log-window and the rest of the GUI
+        # Vertical splitter between the log-window and settings/tabs
         content_splitter = QSplitter(Qt.Vertical)
-        content_splitter.addWidget(upper_splitter)
-        content_splitter.addWidget(log_scroll_area)
+        content_splitter.addWidget(upper_right_container)
+        content_splitter.addWidget(self.log_scroll_area)
         content_splitter.setStretchFactor(0, 3)
         content_splitter.setStretchFactor(1, 1)
+
+        # Horizontal splitter: sidebar (left) and settings+log column (right)
+        root_splitter = QSplitter(Qt.Horizontal)
+        root_splitter.addWidget(upper_mid_container)
+        root_splitter.addWidget(content_splitter)
+        root_splitter.setStretchFactor(0, 1)  # sidebar: 1/7 of space
+        root_splitter.setStretchFactor(1, 7)  # settings+log: 6/7 of space
 
         # Create central widget with all components
         main_container = QWidget()
         main_layout = QVBoxLayout(main_container)
         self.setCentralWidget(main_container)
-        main_layout.addWidget(upper_container)
-        main_layout.addWidget(content_splitter)
+        main_layout.addWidget(root_splitter)
 
         self.showMaximized()
 
@@ -207,6 +197,10 @@ class MainWindow(QMainWindow):
         self.selected_action = action
         self.selected_checkbox_id = checkbox_id
         self.settings_factory.display_settings(action, [checkbox_id])
+
+    def toggle_logging(self, visible: bool):
+        """Show or hide the logging panel (View > Show Logging / Ctrl+L)."""
+        self.log_scroll_area.setVisible(visible)
 
     def set_theme(self, mode: str):
         """Set the application theme (System/Light/Dark).
