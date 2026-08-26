@@ -197,7 +197,20 @@ class SettingsFactory:
                     continue
                 seen_sections.add(section)
 
+                # Check if this is a dotted section (e.g., "calibration.color")
+                # Try to resolve as a top-level section first, then as a base.group pair
                 section_fields = get_section_fields(section)
+
+                if section_fields is None and "." in section:
+                    # Split and try resolving as base_section with only_group filter
+                    base_section, group = section.split(".", 1)
+                    section_fields = get_section_fields(base_section, only_group=group)
+                    # Store under base_section so it renders as one "Calibration" tab,
+                    # not multiple per group (since in normal GUI use, only one of
+                    # "calibration.color" or "calibration.mass" is active at a time)
+                    if section_fields is not None:
+                        section = base_section
+
                 if section_fields is None:
                     self.main_window.print_log(
                         f"No dataclass found for section '{section}'"
