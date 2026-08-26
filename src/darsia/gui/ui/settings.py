@@ -654,7 +654,8 @@ class SettingsFactory:
 
                 # Build one widget per schema field using create_setting_edit
                 field_widgets = {}  # name -> composite widget dict
-                field_row_map = {}  # name -> (row_index, composite_widget, field_dict)
+                field_row_map = {}  # name -> (row_index, composite_widget, field_dict, target_form)
+                group_forms = {}  # group_name -> QFormLayout, scoped to this entry
 
                 for field_schema in entry_schema_list:
                     field_name = field_schema["key"].split(".", 1)[
@@ -676,6 +677,8 @@ class SettingsFactory:
                         and "widget" in field_widget
                     ):
                         # Nested group (dataclass field) — add as spanning row, not label+field
+                        # Note: dataclass-typed fields cannot carry "group" metadata (guarded in
+                        # dataclass_introspection.py:242-247), so target_form is always group_layout
                         nested_widget = field_widget.get("widget")
                         if nested_widget:
                             group_layout.addRow(nested_widget)
@@ -687,12 +690,23 @@ class SettingsFactory:
                             row_index,
                             field_widget,
                             field_schema,
+                            group_layout,
                         )
                         # Skip scalar prefill and depends_on wiring for nested groups
                         continue
 
-                    # Scalar field: add label+widget row
-                    group_layout.addRow(label_text, field_widget)
+                    # Scalar field: resolve target form (group-aware)
+                    group_name = field_schema.get("group_name")
+                    target_form = (
+                        self._get_or_create_group_form(
+                            group_forms, group_layout, group_name, group_name
+                        )
+                        if group_name
+                        else group_layout
+                    )
+
+                    # Add label+widget row to the resolved target form
+                    target_form.addRow(label_text, field_widget)
 
                     # Override prefilled value from entry_data (not config_dict)
                     if field_name in entry_data and entry_data[field_name] is not None:
@@ -710,11 +724,12 @@ class SettingsFactory:
                             unwrapped.setText(value_str)
 
                     field_widgets[field_name] = field_widget
-                    row_index = group_layout.rowCount() - 1
+                    row_index = target_form.rowCount() - 1
                     field_row_map[field_name] = (
                         row_index,
                         field_widget,
                         field_schema,
+                        target_form,
                     )
 
                 # Wire up depends_on visibility (same pattern as create_group_input)
@@ -723,6 +738,7 @@ class SettingsFactory:
                     row_index,
                     field_widget,
                     field_schema,
+                    field_target_form,
                 ) in field_row_map.values():
                     depends_on = field_schema.get("depends_on")
                     if depends_on is None:
@@ -742,9 +758,9 @@ class SettingsFactory:
                     # Find the driver field's widget in this entry
                     if driver_field_key not in field_row_map:
                         continue
-                    driver_row_index, driver_widget, driver_schema = field_row_map[
-                        driver_field_key
-                    ]
+                    driver_row_index, driver_widget, driver_schema, _driver_form = (
+                        field_row_map[driver_field_key]
+                    )
 
                     # Unwrap composite widget to get the real control
                     unwrapped_driver = unwrap_composite_widget(driver_widget)
@@ -754,18 +770,18 @@ class SettingsFactory:
                         continue
 
                     # Create visibility handler supporting both single and list values
-                    def make_visibility_handler(row_idx, required_val):
+                    def make_visibility_handler(row_idx, required_val, form):
                         def handler(current_text):
                             is_visible = (
                                 current_text in required_val
                                 if isinstance(required_val, (list, set, tuple))
                                 else current_text == required_val
                             )
-                            group_layout.setRowVisible(row_idx, is_visible)
+                            form.setRowVisible(row_idx, is_visible)
 
                         return handler
 
-                    handler = make_visibility_handler(row_index, driver_value)
+                    handler = make_visibility_handler(row_index, driver_value, field_target_form)
                     driver_combo.currentTextChanged.connect(handler)
 
                     # Set initial visibility
