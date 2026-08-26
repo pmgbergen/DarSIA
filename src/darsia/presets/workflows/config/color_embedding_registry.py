@@ -438,8 +438,8 @@ class ColorPathEmbeddingConfig:
             "group": "Calibration",
         },
     )
-    data: str = field(
-        default="",
+    data: list[str] = field(
+        default_factory=list,
         metadata={
             "name": "Data",
             "help": (
