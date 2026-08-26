@@ -160,15 +160,6 @@ class CalibrationMassConfig:
 class CalibrationConfig:
     """Root calibration config container."""
 
-    data_selection: str | list[str] | None = field(
-        default=None,
-        metadata={
-            "name": "Data selection",
-            "help": "Registry key name(s) whose data is unioned for calibration.",
-            "widget": "registry_key_list",
-        },
-    )
-    """Name(s) of data registry entries to use for calibration."""
     color: CalibrationColorConfig | None = field(
         default=None,
         metadata={
@@ -213,13 +204,5 @@ class CalibrationConfig:
             )
         except KeyError:
             self.mass = None
-
-        # Load data selection (registry reference)
-        self.data_selection = _get_key(
-            sec, "data_selection", required=False, default=None
-        )
-        # Fallback to deprecated 'data' key for backward compat
-        if self.data_selection is None:
-            self.data_selection = _get_key(sec, "data", required=False, default=None)
 
         return self
