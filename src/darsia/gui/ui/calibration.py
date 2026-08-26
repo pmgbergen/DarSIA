@@ -108,17 +108,17 @@ class CalibrationTab:
                         "fa5s.circle",
                         get_help_text("calibration", "default_mass", "Default mass"),
                     ),
+                ],
+            ),
+            (
+                "Danger zone",
+                [
                     (
                         "Reset mass calibration",
                         "reset",
                         "fa5s.circle",
                         get_help_text("calibration", "reset", "Reset mass calibration"),
                     ),
-                ],
-            ),
-            (
-                "Danger zone",
-                [
                     (
                         "Delete all calibrations",
                         "delete",
