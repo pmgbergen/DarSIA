@@ -427,8 +427,8 @@ class ColorPathEmbeddingConfig:
             "group": "Calibration",
         },
     )
-    baseline: str = field(
-        default="",
+    baseline: str | None = field(
+        default=None,
         metadata={
             "name": "Baseline",
             "help": (
@@ -438,8 +438,8 @@ class ColorPathEmbeddingConfig:
             "group": "Calibration",
         },
     )
-    data: list[str] = field(
-        default_factory=list,
+    data: list[str] | None = field(
+        default=None,
         metadata={
             "name": "Data",
             "help": (
@@ -495,7 +495,7 @@ class ColorPathEmbeddingConfig:
             "name": "Ignore Baseline Spectrum",
             "help": "How to treat the baseline color spectrum.",
             "options": ["none", "baseline", "expanded"],
-            "group": "Properties",
+            "group": "Calibration",
         },
     )
     histogram_weighting: str = field(
