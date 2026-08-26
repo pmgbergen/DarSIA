@@ -390,6 +390,7 @@ class ColorPathEmbeddingConfig:
             "name": "Mode",
             "help": "Color mode: relative (baseline-subtracted) or absolute.",
             "options": ["relative", "absolute"],
+            "group": "Properties",
         },
     )
     basis: str = field(
@@ -398,6 +399,23 @@ class ColorPathEmbeddingConfig:
             "name": "Basis",
             "help": "Calibration basis: labels, facies, or global.",
             "options": ["labels", "facies", "global"],
+            "group": "Properties",
+        },
+    )
+    num_segments: int = field(
+        default=1,
+        metadata={
+            "name": "Num Segments",
+            "help": "Number of color path segments.",
+            "group": "Properties",
+        },
+    )
+    resolution: int = field(
+        default=51,
+        metadata={
+            "name": "Resolution",
+            "help": "Color path resolution.",
+            "group": "Properties",
         },
     )
     calibration_mode: str = field(
@@ -406,6 +424,7 @@ class ColorPathEmbeddingConfig:
             "name": "Calibration Mode",
             "help": "Calibration mode: auto or manual.",
             "options": ["auto", "manual"],
+            "group": "Calibration",
         },
     )
     baseline: str = field(
@@ -416,6 +435,7 @@ class ColorPathEmbeddingConfig:
                 "DataRegistry key for the baseline image/time series. "
                 "See the [registry] section for available keys."
             ),
+            "group": "Calibration",
         },
     )
     data: str = field(
@@ -426,39 +446,47 @@ class ColorPathEmbeddingConfig:
                 "DataRegistry key for the calibration data. "
                 "See the [registry] section for available keys."
             ),
+            "group": "Calibration",
         },
     )
     rois: list[str] = field(
         default_factory=list,
-        metadata={"name": "ROIs", "help": "ROI registry keys (comma-separated in UI)."},
-    )
-    num_segments: int = field(
-        default=1,
-        metadata={"name": "Num Segments", "help": "Number of color path segments."},
-    )
-    resolution: int = field(
-        default=51, metadata={"name": "Resolution", "help": "Color path resolution."}
+        metadata={
+            "name": "ROIs",
+            "help": "ROI registry keys (comma-separated in UI).",
+            "group": "Calibration",
+        },
     )
     threshold_baseline: float = field(
         default=0.0,
-        metadata={"name": "Threshold Baseline", "help": "Baseline color threshold."},
+        metadata={
+            "name": "Threshold Baseline",
+            "help": "Baseline color threshold.",
+            "group": "Calibration",
+        },
     )
     threshold_calibration: float = field(
         default=0.0,
         metadata={
             "name": "Threshold Calibration",
             "help": "Calibration color threshold.",
+            "group": "Calibration",
         },
     )
     reference_label: int = field(
         default=0,
-        metadata={"name": "Reference Label", "help": "Reference label index."},
+        metadata={
+            "name": "Reference Label",
+            "help": "Reference label index used to define color mapping, e.g., for plotting.",
+            "group": "Color map",
+        },
     )
     ignore_labels: list[int] = field(
         default_factory=list,
         metadata={
             "name": "Ignore Labels",
             "help": "Label ids to ignore (comma-separated in UI).",
+            "group": "Properties",
         },
     )
     ignore_baseline_spectrum: str = field(
@@ -467,6 +495,7 @@ class ColorPathEmbeddingConfig:
             "name": "Ignore Baseline Spectrum",
             "help": "How to treat the baseline color spectrum.",
             "options": ["none", "baseline", "expanded"],
+            "group": "Properties",
         },
     )
     histogram_weighting: str = field(
@@ -475,6 +504,7 @@ class ColorPathEmbeddingConfig:
             "name": "Histogram Weighting",
             "help": "Histogram weighting scheme.",
             "options": ["threshold", "wls", "wls_sqrt", "wls_log"],
+            "group": "Calibration",
         },
     )
     calibration_folder: str | None = field(
@@ -482,6 +512,7 @@ class ColorPathEmbeddingConfig:
         metadata={
             "name": "Calibration Folder",
             "help": "Optional override for the calibration output folder.",
+            "group": "Calibration",
             "hidden": True,
         },
     )
