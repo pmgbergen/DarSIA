@@ -667,7 +667,8 @@ class SettingsFactory:
 
                 # Build one widget per schema field using create_setting_edit
                 field_widgets = {}  # name -> composite widget dict
-                field_row_map = {}  # name -> (row_index, composite_widget, field_dict, target_form)
+                field_row_map = {}
+                # name -> (row_index, composite_widget, field_dict, target_form)
                 group_forms = {}  # group_name -> QFormLayout, scoped to this entry
 
                 for field_schema in entry_schema_list:
@@ -689,9 +690,11 @@ class SettingsFactory:
                         and isinstance(field_widget, dict)
                         and "widget" in field_widget
                     ):
-                        # Nested group (dataclass field) — add as spanning row, not label+field
-                        # Note: dataclass-typed fields cannot carry "group" metadata (guarded in
-                        # dataclass_introspection.py:242-247), so target_form is always group_layout
+                        # Nested group (dataclass field) — add as spanning row, not
+                        # label+field
+                        # Note: dataclass-typed fields cannot carry "group" metadata
+                        # (guarded in dataclass_introspection.py:242-247), so target_form
+                        # is always group_layout
                         nested_widget = field_widget.get("widget")
                         if nested_widget:
                             group_layout.addRow(nested_widget)
@@ -794,7 +797,9 @@ class SettingsFactory:
 
                         return handler
 
-                    handler = make_visibility_handler(row_index, driver_value, field_target_form)
+                    handler = make_visibility_handler(
+                        row_index, driver_value, field_target_form
+                    )
                     driver_combo.currentTextChanged.connect(handler)
 
                     # Set initial visibility
