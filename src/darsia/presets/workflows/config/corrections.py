@@ -201,9 +201,6 @@ class CropCorrectionConfig:
         bottom_left: Bottom-left corner as [row, col] in pixels (matrix indexing).
         bottom_right: Bottom-right corner as [row, col] in pixels (matrix indexing).
         top_right: Top-right corner as [row, col] in pixels (matrix indexing).
-        pts_src: Internal: list of 4 [row, col] points in order (top_left, bottom_left,
-            bottom_right, top_right), assembled from the 4 corner fields. If None,
-            the full image extent is used as the source region.
         width: Crop width (default: 1.0).
         height: Crop height (default: 1.0).
         in_meters: Whether width/height are in meters (default: True).
@@ -218,8 +215,6 @@ class CropCorrectionConfig:
                 "Row is vertical (0 at top), col is horizontal (0 at left)."
             ),
             "placeholder": "e.g., 47, 415",
-            "legacy_source": "pts_src",
-            "legacy_index": 0,
         },
     )
     bottom_left: tuple[int, int] | None = field(
@@ -228,8 +223,6 @@ class CropCorrectionConfig:
             "name": "Bottom-left corner",
             "help": "Bottom-left corner as row, col in pixels.",
             "placeholder": "e.g., 7886, 448",
-            "legacy_source": "pts_src",
-            "legacy_index": 1,
         },
     )
     bottom_right: tuple[int, int] | None = field(
@@ -238,8 +231,6 @@ class CropCorrectionConfig:
             "name": "Bottom-right corner",
             "help": "Bottom-right corner as row, col in pixels.",
             "placeholder": "e.g., 7829, 5228",
-            "legacy_source": "pts_src",
-            "legacy_index": 2,
         },
     )
     top_right: tuple[int, int] | None = field(
@@ -248,22 +239,6 @@ class CropCorrectionConfig:
             "name": "Top-right corner",
             "help": "Top-right corner as row, col in pixels.",
             "placeholder": "e.g., 110, 5263",
-            "legacy_source": "pts_src",
-            "legacy_index": 3,
-        },
-    )
-    pts_src: list | None = field(
-        default=None,
-        metadata={
-            "name": "Source points",
-            "help": (
-                "Internal: 4 [row, col] corner points "
-                "(top_left, bottom_left, bottom_right, top_right). "
-                "Derived from the 4 corner fields. If None, the full "
-                "image extent is used as the source region "
-                "(no cropping applied to source)."
-            ),
-            "hidden": True,
         },
     )
     width: float = field(
@@ -282,13 +257,16 @@ class CropCorrectionConfig:
         },
     )
 
+    @property
+    def pts_src(self) -> list[tuple[int, int]] | None:
+        """Get the source points as a list of tuples."""
+        corners = [self.top_left, self.bottom_left, self.bottom_right, self.top_right]
+        if any([c is None for c in corners]):
+            return None
+        return corners
+
     def load(self, sec: dict) -> "CropCorrectionConfig":
         """Load crop correction configuration from a dictionary.
-
-        Supports two methods of specifying source crop points:
-        1. Individual corner fields: top_left, bottom_left, bottom_right, top_right
-           (each [row, col] in pixels, assembled into pts_src in that order)
-        2. Legacy flat pts_src list (backward compatibility with existing TOML files)
 
         Args:
             sec: Dictionary containing crop correction settings.
@@ -303,26 +281,11 @@ class CropCorrectionConfig:
             sec.get("bottom_right"),
             sec.get("top_right"),
         ]
-
         make_tuple = lambda c: tuple(c) if c is not None else None
-
-        if all(c is not None for c in corners):
-            # All 4 corners provided — assemble into pts_src
-            self.top_left = make_tuple(corners[0])
-            self.bottom_left = make_tuple(corners[1])
-            self.bottom_right = make_tuple(corners[2])
-            self.top_right = make_tuple(corners[3])
-            self.pts_src = corners
-        else:
-            # Fall back to flat pts_src (backward compatibility)
-            self.pts_src = sec.get("pts_src", self.pts_src)
-            # If pts_src was provided, try to extract corners for round-trip
-            if self.pts_src is not None:
-                if len(self.pts_src) == 4:
-                    self.top_left = make_tuple(self.pts_src[0])
-                    self.bottom_left = make_tuple(self.pts_src[1])
-                    self.bottom_right = make_tuple(self.pts_src[2])
-                    self.top_right = make_tuple(self.pts_src[3])
+        self.top_left = make_tuple(corners[0])
+        self.bottom_left = make_tuple(corners[1])
+        self.bottom_right = make_tuple(corners[2])
+        self.top_right = make_tuple(corners[3])
 
         self.width = float(sec.get("width", self.width))
         self.height = float(sec.get("height", self.height))
