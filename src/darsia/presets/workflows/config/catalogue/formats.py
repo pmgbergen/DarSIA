@@ -44,7 +44,10 @@ class FormatCatalogue:
         Raises:
             ValueError: If any format entry has a duplicate name (within or across files).
         """
-        paths = [path] if isinstance(path, Path) else path
+        if isinstance(path, list):
+            paths = [Path(p) for p in path]
+        else:
+            paths = [Path(path)]
         self.presets = {}
         seen_names: set[str] = set()
 

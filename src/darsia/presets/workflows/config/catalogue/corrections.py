@@ -48,7 +48,10 @@ class CurvatureCatalogue:
                 (strict format enforcement) or if any preset entry has a duplicate
                 name.
         """
-        paths = [path] if isinstance(path, Path) else path
+        if isinstance(path, list):
+            paths = [Path(p) for p in path]
+        else:
+            paths = [Path(path)]
         self.presets = {}
         seen_names: set[str] = set()
 
