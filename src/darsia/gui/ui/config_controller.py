@@ -93,3 +93,52 @@ class ConfigController:
         self.main_window.print_log(f"Config loaded: {file}")
         self.main_window.sidebar.deselect_all()
         self.main_window.settings_factory.display_full_settings()
+
+    def apply_partial_preset(self, key_path: str, preset_dict: dict) -> None:
+        """Apply a partial preset (e.g. curvature correction config) to the current config.
+
+        Fully replaces the target sub-dict in config_dict, then updates the
+        'active' list within that sub-dict to match exactly the stages present
+        in the preset. Preserves the currently-displayed tab/view and tab index.
+
+        Args:
+            key_path: Dot-separated config path (e.g. "corrections.curvature").
+            preset_dict: Normalized dict from a preset (e.g. CurvatureCorrectionConfig.to_dict()).
+        """
+        # Flush any pending edits from other tabs/sections *before* mutating config_dict,
+        # so in-progress edits elsewhere are preserved (not lost to sync-on-rebuild).
+        self.main_window.settings_factory._sync_settings_inputs_to_config_dict()
+
+        keys = key_path.split(".")
+        config = self.main_window.config_dict
+
+        # Navigate to parent and key name
+        for k in keys[:-1]:
+            if k not in config:
+                config[k] = {}
+            config = config[k]
+
+        target_key = keys[-1]
+
+        # Full replace: set the entire section to the preset
+        config[target_key] = preset_dict.copy()
+
+        # Update the 'active' list within the target to match exactly the stages present
+        # (required so stage checkboxes reflect the loaded preset, not stale lists).
+        # For curvature: add 'active' key with list of stages present.
+        if target_key == "curvature":
+            stages = [k for k in preset_dict.keys() if k in ["init", "crop", "bulge", "stretch"]]
+            if stages:
+                config[target_key]["active"] = stages
+            elif "active" in config[target_key]:
+                # No stages in preset, so clear the active list
+                del config[target_key]["active"]
+
+        # Clear settings_inputs so the upcoming rebuild (refresh_current_view) doesn't
+        # sync stale widgets back into config_dict, overwriting the preset we just applied.
+        # Nothing is lost: these widgets are about to be destroyed anyway, and
+        # _render_settings_tabs will reset this dict immediately after.
+        self.main_window.settings_factory.main_window.settings_inputs = {}
+
+        # Refresh the current view (full or filtered) while preserving tab index.
+        self.main_window.settings_factory.refresh_current_view()
