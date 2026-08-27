@@ -42,7 +42,6 @@ def calibration_color_paths_from_context(
     config = ctx.config
     experiment = ctx.experiment
     fluidflower = ctx.fluidflower
-    calibration_image_paths = ctx.image_paths
 
     # Mypy type checking
     config.check(*list_required_sections(calibration_color_paths_from_context))
@@ -69,8 +68,24 @@ def calibration_color_paths_from_context(
 
     # ! ---- LOAD IMAGES ----
 
-    # Cache baseline images for performance
-    baseline_sub_config = SimpleNamespace(data=embedding.baseline_data)
+    # Validate that calibration data is configured
+    color_cfg = config.calibration.color
+    if color_cfg.data_selection is None:
+        raise ValueError(
+            "calibration.color.data_selection is not configured. "
+            "Cannot proceed with calibration."
+        )
+
+    # Resolve calibration image paths from the calibration config's data_selection field
+    calibration_image_paths = select_image_paths(
+        config,
+        experiment,
+        all=False,
+        sub_config=color_cfg,
+    )
+
+    # Resolve baseline image paths from the calibration config's baseline field
+    baseline_sub_config = SimpleNamespace(data_selection=color_cfg.baseline)
     baseline_image_paths = select_image_paths(
         config,
         experiment,
@@ -94,10 +109,10 @@ def calibration_color_paths_from_context(
 
     # ! ---- BUILD CALIBRATION MASK ----
 
-    # Porosity mask restricted to the union of ROIs listed on the embedding.
+    # Porosity mask restricted to the union of ROIs listed in the calibration config.
     calibration_mask = fluidflower.boolean_porosity.copy()
-    if embedding.rois and config.roi_registry is not None:
-        roi_entries = config.roi_registry.resolve_rois(embedding.rois)
+    if color_cfg.rois and config.roi_registry is not None:
+        roi_entries = config.roi_registry.resolve_rois(color_cfg.rois)
         rois = [roi_cfg.roi for roi_cfg in roi_entries.values()]
         union_mask = roi_to_mask(rois, calibration_mask, mode="voxels")
         calibration_mask.img &= union_mask.img
