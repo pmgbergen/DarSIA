@@ -5,7 +5,6 @@ from __future__ import annotations
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import darsia
 from darsia.signals.color import (
@@ -18,11 +17,7 @@ from darsia.signals.color import (
 )
 
 from .restoration import RestorationConfig
-from .roi_registry import RoiRegistry
 from .utils import _convert_none, _validate_choice
-
-if TYPE_CHECKING:
-    from .data_registry import DataRegistry
 
 
 def _parse_mode(value: str, *, context: str) -> darsia.ColorMode:
@@ -40,8 +35,6 @@ def parse_color_path_embedding(
     embedding_id: str,
     color_root: Path | None,
     data: Path | None,
-    data_registry: DataRegistry | None,
-    roi_registry: RoiRegistry | None,
 ) -> ColorPathEmbedding:
     mode = _parse_mode(
         cfg.get("mode", "relative"), context=f"color.path.{embedding_id}"
@@ -97,8 +90,6 @@ def parse_color_range_embedding(
     embedding_id: str,
     color_root: Path | None,
     data: Path | None,
-    data_registry: DataRegistry | None,
-    roi_registry: RoiRegistry | None,
 ) -> ColorRangeEmbedding:
     mode = _parse_mode(
         cfg.get("mode", "absolute"), context=f"color.range.{embedding_id}"
@@ -155,8 +146,6 @@ def parse_color_channel_embedding(
     embedding_id: str,
     color_root: Path | None,
     data: Path | None,
-    data_registry: DataRegistry | None,
-    roi_registry: RoiRegistry | None,
 ) -> ColorChannelEmbedding:
     mode = _parse_mode(
         cfg.get("mode", "absolute"), context=f"color.channel.{embedding_id}"
@@ -183,8 +172,6 @@ def parse_color_channel_embedding(
             embedding_id=f"{embedding_id}_mask",
             color_root=calibration_root,
             data=data,
-            data_registry=data_registry,
-            roi_registry=roi_registry,
         )
     if "restoration" in cfg:
         if not isinstance(cfg["restoration"], dict):
@@ -222,8 +209,6 @@ class ColorEmbeddingRegistry:
         *,
         data: Path | None,
         results: Path | None,
-        data_registry: DataRegistry | None = None,
-        roi_registry: "RoiRegistry | None" = None,
     ) -> "ColorEmbeddingRegistry":
         """Load color embeddings from [[color_path]], [[color_range]], [[color_channel]]
         arrays in TOML.
@@ -235,8 +220,6 @@ class ColorEmbeddingRegistry:
             path: Path or list of Paths to TOML config file(s).
             data: Data folder path.
             results: Results folder path.
-            data_registry: Optional DataRegistry for resolving data references.
-            roi_registry: Optional RoiRegistry for validating ROI references.
 
         Returns:
             self
@@ -304,8 +287,6 @@ class ColorEmbeddingRegistry:
                         embedding_id=entry_name,
                         color_root=color_root,
                         data=data,
-                        data_registry=data_registry,
-                        roi_registry=roi_registry,
                     )
 
         return self

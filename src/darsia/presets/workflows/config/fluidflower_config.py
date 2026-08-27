@@ -200,8 +200,6 @@ class FluidFlowerConfig:
                 path=path,
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
-                data_registry=self.registry,
-                roi_registry=self.roi_registry,
             ),
             warn_on_missing=True,
             exception_types=(ValueError, KeyError, NotImplementedError),
