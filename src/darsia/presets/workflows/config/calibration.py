@@ -28,12 +28,37 @@ class CalibrationColorConfig:
             "max_rows": 1,
         },
     )
+    data_selection: str | list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Data selection",
+            "help": "Registry key name(s) for calibration images.",
+            "widget": "registry_key_list",
+        },
+    )
+    baseline: str | list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Baseline",
+            "help": "Registry key name(s) for baseline images.",
+            "widget": "registry_key_list",
+        },
+    )
+    rois: list[str] = field(
+        default_factory=list,
+        metadata={
+            "name": "ROIs",
+            "help": "ROI names for color-path calibration.",
+            "widget": "roi_key_list",
+        },
+    )
 
     def load(
         self,
         sec: dict,
         *,
         color_embedding_registry: "ColorEmbeddingRegistry | None" = None,
+        roi_registry: "RoiRegistry | None" = None,
     ) -> "CalibrationColorConfig":
         color_key = _get_key(sec, "color", required=True, type_=str).strip()
         if not color_key:
@@ -50,6 +75,18 @@ class CalibrationColorConfig:
                 "Unknown calibration.color.color embedding "
                 f"'{color_key}'. Define it under [color.*.*]."
             ) from exc
+
+        self.data_selection = _get_key(
+            sec, "data_selection", required=False, default=None
+        )
+        self.baseline = _get_key(sec, "baseline", required=False, default=None)
+        self.rois = _load_roi_key_list(
+            sec,
+            "rois",
+            context="calibration.color.rois",
+            roi_registry=roi_registry,
+            restricted=False,
+        )
         return self
 
 
@@ -151,8 +188,6 @@ class CalibrationMassConfig:
         self.data_selection = _get_key(
             sec, "data_selection", required=False, default=None
         )
-        if self.data_selection is None:
-            self.data_selection = _get_key(sec, "data", required=False, default=None)
         return self
 
 
@@ -191,6 +226,7 @@ class CalibrationConfig:
             self.color = CalibrationColorConfig().load(
                 _get_section(sec, "color"),
                 color_embedding_registry=color_embedding_registry,
+                roi_registry=roi_registry,
             )
         except KeyError:
             self.color = None
