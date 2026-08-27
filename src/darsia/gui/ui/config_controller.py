@@ -103,7 +103,8 @@ class ConfigController:
 
         Args:
             key_path: Dot-separated config path (e.g. "corrections.curvature").
-            preset_dict: Normalized dict from a preset (e.g. CurvatureCorrectionConfig.to_dict()).
+            preset_dict: Normalized dict from a preset
+            (e.g. CurvatureCorrectionConfig.to_dict()).
         """
         # Flush any pending edits from other tabs/sections *before* mutating config_dict,
         # so in-progress edits elsewhere are preserved (not lost to sync-on-rebuild).
@@ -127,7 +128,11 @@ class ConfigController:
         # (required so stage checkboxes reflect the loaded preset, not stale lists).
         # For curvature: add 'active' key with list of stages present.
         if target_key == "curvature":
-            stages = [k for k in preset_dict.keys() if k in ["init", "crop", "bulge", "stretch"]]
+            stages = [
+                k
+                for k in preset_dict.keys()
+                if k in ["init", "crop", "bulge", "stretch"]
+            ]
             if stages:
                 config[target_key]["active"] = stages
             elif "active" in config[target_key]:
