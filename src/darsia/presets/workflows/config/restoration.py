@@ -13,7 +13,7 @@ class VolumeAveragingConfig:
     rev_size: float = field(
         default=0.005,
         metadata={
-            "name": "Revision size",
+            "name": "REV size",
             "help": "Size of the representative elementary volume (REV) in meters.",
         },
     )
@@ -148,8 +148,21 @@ class RestorationConfig:
             "options": ["volume_average", "tvd"],
         },
     )
-    options: VolumeAveragingConfig | TVDConfig | None = field(
-        default=None, metadata={"name": "Options", "hidden": True}
+    volume_averaging_options: VolumeAveragingConfig | None = field(
+        default=None,
+        metadata={
+            "name": "Options",
+            "toml_key": "options",
+            "depends_on": {"field": "method", "value": "volume_average"},
+        },
+    )
+    tvd_options: TVDConfig | None = field(
+        default=None,
+        metadata={
+            "name": "Options",
+            "toml_key": "options",
+            "depends_on": {"field": "method", "value": "tvd"},
+        },
     )
     ignore: list[str] = field(
         default_factory=list,
@@ -159,6 +172,15 @@ class RestorationConfig:
             "placeholder": "e.g., label1, label2",
         },
     )
+
+    @property
+    def options(self) -> VolumeAveragingConfig | TVDConfig | None:
+        """Backward-compatibility property: returns the active options (VA or TVD)."""
+        if self.method == "volume_average":
+            return self.volume_averaging_options
+        elif self.method == "tvd":
+            return self.tvd_options
+        return None
 
     def load(self, path: Path | dict) -> "RestorationConfig":
         if isinstance(path, dict):
@@ -183,8 +205,8 @@ class RestorationConfig:
         if self.method is None:
             pass
         elif self.method == "volume_average":
-            self.options = VolumeAveragingConfig().load(options_sec)
+            self.volume_averaging_options = VolumeAveragingConfig().load(options_sec)
         elif self.method == "tvd":
-            self.options = TVDConfig().load(options_sec)
+            self.tvd_options = TVDConfig().load(options_sec)
 
         return self
