@@ -25,7 +25,11 @@ from darsia.presets.workflows.config.format_registry import (
 
 from .file_dialog import NO_FILE_CHOSEN, FileDialogHelper
 from .help import build_help_column
-from .schema.dataclass_introspection import ALL_SECTIONS, get_section_fields
+from .schema.dataclass_introspection import (
+    ALL_SECTIONS,
+    SECTION_LOADABLE,
+    get_section_fields,
+)
 from .schema.section_registry import get_required_sections
 
 
@@ -2141,6 +2145,14 @@ class SettingsFactory:
                 "toml_subkey": None,
                 "is_single_section": False,
             },
+            "rig": {
+                "config_class": "darsia.presets.workflows.config.rig:RigConfig",  # noqa: E501
+                "catalogue_class": "darsia.presets.workflows.config.catalogue.rig:RigCatalogue",  # noqa: E501
+                "catalogue_file": "rig.toml",
+                "toml_key": "rig",
+                "toml_subkey": None,
+                "is_single_section": True,
+            },
         }
 
         if loadable_type not in loadable_config:
@@ -2994,6 +3006,28 @@ class SettingsFactory:
             tab_container = QWidget()
             tab_form = QFormLayout(tab_container)
             tab_form.setContentsMargins(8, 8, 8, 8)  # Padding on all sides
+
+            # If this is a loadable flat section, add a Load button as the first row
+            if section in SECTION_LOADABLE:
+                loadable_type = SECTION_LOADABLE[section]
+
+                def on_apply_section(_name, preset_dict):
+                    self.main_window.config_controller.apply_partial_preset(
+                        section, preset_dict
+                    )
+
+                setting_dict = {"loadable": loadable_type}
+                load_button = self._create_load_button(
+                    setting_dict, on_apply_section
+                )
+                if load_button:
+                    load_button_wrapper = QHBoxLayout()
+                    load_button_wrapper.addWidget(load_button)
+                    load_button_wrapper.addStretch()
+                    load_button_wrapper.setContentsMargins(0, 0, 0, 0)
+                    load_button_wrapper_widget = QWidget()
+                    load_button_wrapper_widget.setLayout(load_button_wrapper)
+                    tab_form.addRow(load_button_wrapper_widget)
 
             # Create form_context for multi_file/path_map dynamic row insertion
             form_context = {"form": tab_form}

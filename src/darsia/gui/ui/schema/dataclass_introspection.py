@@ -77,6 +77,8 @@ ALL_SECTIONS = [
     "video",
 ]
 
+SECTION_LOADABLE = {"rig": "rig"}
+
 
 def _unwrap_optional(field_type: Any) -> Any:
     """Unwrap Optional[X] (Union[X, None]) to X, leaving list/tuple alone.
