@@ -505,7 +505,7 @@ class CurvatureCorrectionConfig:
                     "vertical_center_offset": stage_config.vertical_center_offset,
                 }
             elif isinstance(stage_config, CropCorrectionConfig):
-                stage_dict = {
+                result["crop"] = {
                     "top_left": stage_config.top_left,
                     "bottom_left": stage_config.bottom_left,
                     "bottom_right": stage_config.bottom_right,
@@ -514,7 +514,6 @@ class CurvatureCorrectionConfig:
                     "height": stage_config.height,
                     "in_meters": stage_config.in_meters,
                 }
-                result["crop"] = stage_dict
             elif isinstance(stage_config, BulgeCorrectionConfig):
                 result["bulge"] = {
                     "horizontal_bulge": stage_config.horizontal_bulge,

@@ -227,7 +227,7 @@ class TestCurvatureCorrectionConfigLoad:
         assert set(d.keys()) == {"crop", "bulge"}
 
     def test_crop_with_corner_fields(self, tmp_path):
-        """Crop config with individual corner fields should assemble into pts_src."""
+        """Crop config with individual corner fields should load and serialize correctly."""
         cfg_path = _write_toml(
             tmp_path,
             (
@@ -254,12 +254,12 @@ class TestCurvatureCorrectionConfigLoad:
             [110, 5263],
         ]
 
-        # to_dict() should include pts_src
+        # to_dict() should include individual corner fields for round-trip serialization
         d = cfg.curvature.to_dict()
         assert "crop" in d
-        assert d["crop"]["pts_src"] == [
-            [47, 415],
-            [7886, 448],
-            [7829, 5228],
-            [110, 5263],
-        ]
+        assert d["crop"]["top_left"] == (47, 415)
+        assert d["crop"]["bottom_left"] == (7886, 448)
+        assert d["crop"]["bottom_right"] == (7829, 5228)
+        assert d["crop"]["top_right"] == (110, 5263)
+        assert d["crop"]["width"] == 2.8
+        assert d["crop"]["height"] == 1.5
