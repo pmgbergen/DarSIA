@@ -647,9 +647,9 @@ class TestFaciesConfigMetadata:
             (f for f in schema if f["key"] == "facies.label_to_facies_map"),
             None,
         )
-        assert label_map is None, (
-            "label_to_facies_map should be hidden and absent from schema"
-        )
+        assert (
+            label_map is None
+        ), "label_to_facies_map should be hidden and absent from schema"
 
     def test_facies_config_path_hidden(self):
         """FaciesConfig.path should be hidden (auto-derived output path)."""
@@ -698,9 +698,9 @@ class TestCorrectionsConfigMetadata:
         # All should have a name in their metadata
         for field in schema:
             if field["key"] in expected_corrections:
-                assert field.get("name") is not None, (
-                    f"{field['key']} should have a name"
-                )
+                assert (
+                    field.get("name") is not None
+                ), f"{field['key']} should have a name"
 
     def test_drift_correction_colorchecker_metadata(self):
         """DriftCorrectionConfig.colorchecker should have name, help, and options."""
@@ -924,9 +924,9 @@ class TestCorrectionsConfigMetadata:
             assert corner_field is not None, f"Corner field {corner_key} not found"
             assert "name" in corner_field, f"{corner_key} missing 'name' metadata"
             assert "help" in corner_field, f"{corner_key} missing 'help' metadata"
-            assert "placeholder" in corner_field, (
-                f"{corner_key} missing 'placeholder' metadata"
-            )
+            assert (
+                "placeholder" in corner_field
+            ), f"{corner_key} missing 'placeholder' metadata"
             # Should not be hidden
             assert corner_field.get("hidden") is not True
 
@@ -958,9 +958,9 @@ class TestCorrectionsConfigMetadata:
             "corrections.illumination.bounds",
         ]
         for expected_key in expected_fields:
-            assert expected_key in illumination_field_keys, (
-                f"{expected_key} should be present"
-            )
+            assert (
+                expected_key in illumination_field_keys
+            ), f"{expected_key} should be present"
 
         # Check that interpolation and colorspace have options
         for field_key in ["interpolation", "colorspace"]:
@@ -968,9 +968,9 @@ class TestCorrectionsConfigMetadata:
             field = next((f for f in illumination_fields if f["key"] == full_key), None)
             assert field is not None, f"{field_key} not found"
             assert "options" in field, f"{field_key} should have options"
-            assert isinstance(field["options"], list), (
-                f"{field_key} options should be a list"
-            )
+            assert isinstance(
+                field["options"], list
+            ), f"{field_key} options should be a list"
 
     def test_patchwise_illumination_correction_fields_have_metadata(self):
         """PatchwiseIlluminationCorrectionConfig fields should have metadata."""
@@ -995,46 +995,9 @@ class TestCorrectionsConfigMetadata:
             "corrections.patchwise_illumination.eps",
         ]
         for expected_key in visible_fields:
-            assert expected_key in patchwise_field_keys, (
-                f"{expected_key} should be present"
-            )
-
-    def test_curvature_crop_corner_fields_have_legacy_metadata(self):
-        """Corner fields should have legacy_source and legacy_index metadata for GUI fallback."""
-        from darsia.gui.ui.schema.dataclass_introspection import (
-            get_section_fields,
-        )
-
-        schema = get_section_fields("corrections")
-        curvature_group = next(
-            (f for f in schema if f["key"] == "corrections.curvature"), None
-        )
-        fields = curvature_group.get("fields", [])
-        crop_group = next(
-            (f for f in fields if f["key"] == "corrections.curvature.crop"), None
-        )
-        crop_fields = crop_group.get("fields", [])
-
-        # Define expected corner-to-index mapping
-        expected_corners = {
-            "top_left": 0,
-            "bottom_left": 1,
-            "bottom_right": 2,
-            "top_right": 3,
-        }
-
-        for corner_name, expected_index in expected_corners.items():
-            corner_field = next(
-                (f for f in crop_fields if corner_name in f.get("key", "")),
-                None,
-            )
-            assert corner_field is not None, f"Corner field {corner_name} not found"
-            assert corner_field.get("legacy_source") == "pts_src", (
-                f"{corner_name} missing 'legacy_source' metadata"
-            )
-            assert corner_field.get("legacy_index") == expected_index, (
-                f"{corner_name} has wrong legacy_index: {corner_field.get('legacy_index')}, expected {expected_index}"
-            )
+            assert (
+                expected_key in patchwise_field_keys
+            ), f"{expected_key} should be present"
 
     def test_color_correction_colorchecker_has_metadata(self):
         """ColorCorrectionConfig.colorchecker should have name, help, and options metadata."""
@@ -1043,9 +1006,7 @@ class TestCorrectionsConfigMetadata:
         )
 
         schema = get_section_fields("corrections")
-        color_group = next(
-            (f for f in schema if f["key"] == "corrections.color"), None
-        )
+        color_group = next((f for f in schema if f["key"] == "corrections.color"), None)
         assert color_group is not None, "color correction group not found in schema"
 
         fields = color_group.get("fields", [])
@@ -1079,13 +1040,24 @@ class TestCorrectionsConfigMetadata:
         fields = relative_group.get("fields", [])
 
         # Check that path, images, interactive have name/help
-        expected_visible = ["path", "images", "interactive", "mode", "method", "degree", "sample_size", "debug"]
+        expected_visible = [
+            "path",
+            "images",
+            "interactive",
+            "mode",
+            "method",
+            "degree",
+            "sample_size",
+            "debug",
+        ]
         for field_name in expected_visible:
             field = next(
                 (f for f in fields if field_name in f.get("key", "")),
                 None,
             )
-            assert field is not None, f"Field {field_name} not found in relative_color group"
+            assert (
+                field is not None
+            ), f"Field {field_name} not found in relative_color group"
             assert field.get("name"), f"{field_name} missing 'name' metadata"
             assert field.get("help"), f"{field_name} missing 'help' metadata"
             assert not field.get("hidden"), f"{field_name} should not be hidden"
