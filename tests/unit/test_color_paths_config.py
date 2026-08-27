@@ -49,12 +49,11 @@ def _make_data_registry(tmp_path: Path) -> DataRegistry:
     return DataRegistry().load(sec, data_folder=tmp_path)
 
 
-def _minimal_color_path_embedding_toml(extra: str = "", rois_line: str = "") -> str:
+def _minimal_color_path_embedding_toml(extra: str = "") -> str:
     """Return a minimal [[color_path]] array-of-tables TOML using registry references.
 
     Args:
         extra: Additional TOML lines to insert inside [[color_path]].
-        rois_line: A ``rois = ...`` line to inject (empty → key absent).
     """
     return textwrap.dedent(
         f"""\
@@ -62,35 +61,9 @@ def _minimal_color_path_embedding_toml(extra: str = "", rois_line: str = "") -> 
 name = "default"
 baseline = "baseline_imgs"
 data     = "cal_imgs"
-{rois_line}
 {extra}
 """
     )
-
-
-# ---------------------------------------------------------------------------
-# Registry-reference rois
-# ---------------------------------------------------------------------------
-
-
-class TestColorEmbeddingRegistryRoisFromRegistry:
-    def test_rois_list_is_stored(self, tmp_path):
-        """A ``rois = [...]`` key is stored verbatim in embedding.rois."""
-        toml_path = _write_toml(
-            tmp_path,
-            _minimal_color_path_embedding_toml(rois_line='rois = ["my_roi"]'),
-        )
-        data_reg = _make_data_registry(tmp_path)
-        roi_registry = _make_registry_with_roi("my_roi")
-        registry = ColorEmbeddingRegistry().load(
-            path=toml_path,
-            data=tmp_path,
-            results=tmp_path,
-            data_registry=data_reg,
-            roi_registry=roi_registry,
-        )
-        embedding = registry.resolve("default")
-        assert embedding.rois == ["my_roi"]
 
 
 # ---------------------------------------------------------------------------
@@ -117,11 +90,9 @@ class TestColorEmbeddingRegistrySelectors:
             tmp_path,
             _minimal_color_path_embedding_toml(extra=f'{key} = "{value}"'),
         )
-        data_reg = _make_data_registry(tmp_path)
         with pytest.raises(ValueError, match=key):
             ColorEmbeddingRegistry().load(
                 path=toml_path,
                 data=tmp_path,
                 results=tmp_path,
-                data_registry=data_reg,
             )
