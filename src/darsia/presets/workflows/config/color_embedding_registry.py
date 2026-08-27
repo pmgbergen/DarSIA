@@ -18,7 +18,7 @@ from darsia.signals.color import (
 )
 
 from .restoration import RestorationConfig
-from .roi_registry import RoiRegistry, _load_roi_key_list
+from .roi_registry import RoiRegistry
 from .utils import _convert_none, _validate_choice
 
 if TYPE_CHECKING:
@@ -74,14 +74,6 @@ def parse_color_path_embedding(
         key="calibration_mode",
     )
 
-    rois = _load_roi_key_list(
-        cfg,
-        "rois",
-        context=f"color.path.{embedding_id}.rois",
-        roi_registry=roi_registry,
-        restricted=False,
-    )
-
     embedding = ColorPathEmbedding(
         embedding_id=embedding_id,
         mode=mode,
@@ -93,18 +85,9 @@ def parse_color_path_embedding(
         threshold_baseline=float(cfg.get("threshold_baseline", 0.0)),
         threshold_calibration=float(cfg.get("threshold_calibration", 0.0)),
         reference_label=int(cfg.get("reference_label", 0)),
-        rois=rois,
         ignore_baseline_spectrum=ignore_baseline_spectrum,
         histogram_weighting=histogram_weighting,
         calibration_mode=calibration_mode,
-    )
-    embedding.baseline_data = (
-        data_registry.resolve(cfg["baseline"])
-        if data_registry and "baseline" in cfg
-        else None
-    )
-    embedding.data = (
-        data_registry.resolve(cfg["data"]) if data_registry and "data" in cfg else None
     )
     return embedding
 
@@ -424,36 +407,6 @@ class ColorPathEmbeddingConfig:
             "name": "Calibration Mode",
             "help": "Calibration mode: auto or manual.",
             "options": ["auto", "manual"],
-            "group": "Calibration",
-        },
-    )
-    baseline: str | None = field(
-        default=None,
-        metadata={
-            "name": "Baseline",
-            "help": (
-                "DataRegistry key for the baseline image/time series. "
-                "See the [registry] section for available keys."
-            ),
-            "group": "Calibration",
-        },
-    )
-    data: list[str] | None = field(
-        default=None,
-        metadata={
-            "name": "Data",
-            "help": (
-                "DataRegistry key for the calibration data. "
-                "See the [registry] section for available keys."
-            ),
-            "group": "Calibration",
-        },
-    )
-    rois: list[str] = field(
-        default_factory=list,
-        metadata={
-            "name": "ROIs",
-            "help": "ROI registry keys (comma-separated in UI).",
             "group": "Calibration",
         },
     )
