@@ -113,13 +113,11 @@ class TestColorEmbeddingRegistryStructuralValidation:
             range = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]
             """,
         )
-        data_reg = _make_data_registry(tmp_path)
         with pytest.raises(ValueError, match="duplicated.*globally unique"):
             ColorEmbeddingRegistry().load(
                 path=toml_path,
                 data=tmp_path,
                 results=tmp_path,
-                data_registry=data_reg,
             )
 
 
@@ -138,37 +136,13 @@ class TestColorEmbeddingRegistryEagerValidation:
             baseline = "baseline_imgs"
             """,
         )
-        data_reg = _make_data_registry(tmp_path)
         with pytest.raises(ValueError, match="calibration_mode.*invalid_mode"):
             ColorEmbeddingRegistry().load(
                 path=toml_path,
                 data=tmp_path,
                 results=tmp_path,
-                data_registry=data_reg,
             )
 
-    def test_unknown_roi_key_raises_at_load_time(self, tmp_path):
-        """Unknown ROI key in 'rois' list raises at .load(), not .resolve()."""
-        toml_path = _write_toml(
-            tmp_path,
-            """
-            [[color_path]]
-            name = "bad_roi"
-            rois = ["unknown_roi"]
-            data = ["cal_imgs"]
-            baseline = "baseline_imgs"
-            """,
-        )
-        data_reg = _make_data_registry(tmp_path)
-        roi_reg = _make_registry_with_roi("valid_roi")
-        with pytest.raises(KeyError, match="unknown_roi.*not found"):
-            ColorEmbeddingRegistry().load(
-                path=toml_path,
-                data=tmp_path,
-                results=tmp_path,
-                data_registry=data_reg,
-                roi_registry=roi_reg,
-            )
 
     def test_missing_required_color_space_raises_at_load_time(self, tmp_path):
         """Missing 'color_space' in a range entry raises at .load()."""
@@ -202,12 +176,10 @@ class TestColorEmbeddingRegistryPathType:
             baseline = "baseline_imgs"
             """,
         )
-        data_reg = _make_data_registry(tmp_path)
         registry = ColorEmbeddingRegistry().load(
             path=toml_path,
             data=tmp_path,
             results=tmp_path,
-            data_registry=data_reg,
         )
         assert "color_path" in registry
         embedding = registry.resolve("color_path")
@@ -215,30 +187,6 @@ class TestColorEmbeddingRegistryPathType:
         assert embedding.embedding_id == "color_path"
         assert embedding.mode.value == "relative"  # default
         assert embedding.basis.value == "labels"  # default
-
-    def test_path_entry_with_rois(self, tmp_path):
-        """Path entry with rois list loads and stores them correctly."""
-        toml_path = _write_toml(
-            tmp_path,
-            """
-            [[color_path]]
-            name = "with_rois"
-            rois = ["test_roi"]
-            data = ["cal_imgs"]
-            baseline = "baseline_imgs"
-            """,
-        )
-        data_reg = _make_data_registry(tmp_path)
-        roi_reg = _make_registry_with_roi("test_roi")
-        registry = ColorEmbeddingRegistry().load(
-            path=toml_path,
-            data=tmp_path,
-            results=tmp_path,
-            data_registry=data_reg,
-            roi_registry=roi_reg,
-        )
-        embedding = registry.resolve("with_rois")
-        assert embedding.rois == ["test_roi"]
 
 
 class TestColorEmbeddingRegistryRangeType:
@@ -340,12 +288,10 @@ class TestColorEmbeddingRegistryMethods:
             channel = "r"
             """,
         )
-        data_reg = _make_data_registry(tmp_path)
         registry = ColorEmbeddingRegistry().load(
             path=toml_path,
             data=tmp_path,
             results=tmp_path,
-            data_registry=data_reg,
         )
         keys = registry.keys()
         assert len(keys) == 3
@@ -362,12 +308,10 @@ class TestColorEmbeddingRegistryMethods:
             baseline = "baseline_imgs"
             """,
         )
-        data_reg = _make_data_registry(tmp_path)
         registry = ColorEmbeddingRegistry().load(
             path=toml_path,
             data=tmp_path,
             results=tmp_path,
-            data_registry=data_reg,
         )
         assert "exists" in registry
         assert "does_not_exist" not in registry
@@ -388,12 +332,10 @@ class TestColorEmbeddingRegistryMethods:
             range = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]
             """,
         )
-        data_reg = _make_data_registry(tmp_path)
         registry = ColorEmbeddingRegistry().load(
             path=toml_path,
             data=tmp_path,
             results=tmp_path,
-            data_registry=data_reg,
         )
         all_embeddings = registry.resolve_all()
         assert len(all_embeddings) == 2
@@ -417,12 +359,10 @@ class TestColorEmbeddingRegistryResolve:
             baseline = "baseline_imgs"
             """,
         )
-        data_reg = _make_data_registry(tmp_path)
         registry = ColorEmbeddingRegistry().load(
             path=toml_path,
             data=tmp_path,
             results=tmp_path,
-            data_registry=data_reg,
         )
         embedding = registry.resolve("test")
         assert isinstance(embedding, ColorPathEmbedding)
@@ -438,12 +378,10 @@ class TestColorEmbeddingRegistryResolve:
             baseline = "baseline_imgs"
             """,
         )
-        data_reg = _make_data_registry(tmp_path)
         registry = ColorEmbeddingRegistry().load(
             path=toml_path,
             data=tmp_path,
             results=tmp_path,
-            data_registry=data_reg,
         )
         with pytest.raises(KeyError, match="not found.*exists"):
             registry.resolve("unknown")
@@ -459,12 +397,10 @@ class TestColorEmbeddingRegistryResolve:
             baseline = "baseline_imgs"
             """,
         )
-        data_reg = _make_data_registry(tmp_path)
         registry = ColorEmbeddingRegistry().load(
             path=toml_path,
             data=tmp_path,
             results=tmp_path,
-            data_registry=data_reg,
         )
         embedding = registry.resolve("test")
         # Resolve it again via object reference
@@ -482,12 +418,10 @@ class TestColorEmbeddingRegistryResolve:
             baseline = "baseline_imgs"
             """,
         )
-        data_reg = _make_data_registry(tmp_path)
         registry = ColorEmbeddingRegistry().load(
             path=toml_path,
             data=tmp_path,
             results=tmp_path,
-            data_registry=data_reg,
         )
         # Create an unregistered embedding
         unregistered = ColorPathEmbedding(
@@ -495,7 +429,6 @@ class TestColorEmbeddingRegistryResolve:
             mode="relative",
             basis="labels",
             calibration_root=None,
-            rois=[],
         )
         with pytest.raises(KeyError, match="not found in registry"):
             registry.resolve(unregistered)
@@ -526,12 +459,10 @@ class TestColorEmbeddingRegistryMultipleFiles:
             """,
             "file2.toml",
         )
-        data_reg = _make_data_registry(tmp_path)
         registry = ColorEmbeddingRegistry().load(
             path=[file1_path, file2_path],
             data=tmp_path,
             results=tmp_path,
-            data_registry=data_reg,
         )
         assert len(registry.keys()) == 2
         assert "from_file1" in registry
@@ -559,11 +490,9 @@ class TestColorEmbeddingRegistryMultipleFiles:
             """,
             "file2.toml",
         )
-        data_reg = _make_data_registry(tmp_path)
         with pytest.raises(ValueError, match="duplicated.*globally unique"):
             ColorEmbeddingRegistry().load(
                 path=[file1_path, file2_path],
                 data=tmp_path,
                 results=tmp_path,
-                data_registry=data_reg,
             )
