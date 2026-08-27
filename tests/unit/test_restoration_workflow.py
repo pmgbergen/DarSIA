@@ -35,7 +35,7 @@ def test_build_restoration_applies_boolean_porosity_ignore_mask_to_volume_averag
 
     restoration_config = RestorationConfig(
         method="volume_average",
-        options=VolumeAveragingConfig(rev_size=0.005),
+        volume_averaging_options=VolumeAveragingConfig(rev_size=0.005),
         ignore=["boolean_porosity"],
     )
     baseline = darsia.ScalarImage(np.zeros((2, 2), dtype=float), space_dim=2)
@@ -75,7 +75,7 @@ def test_build_restoration_applies_boolean_porosity_ignore_mask_to_tvd_weight(
 
     restoration_config = RestorationConfig(
         method="tvd",
-        options=TVDConfig(method="chambolle", weight=2.0),
+        tvd_options=TVDConfig(method="chambolle", weight=2.0),
         ignore=["boolean_porosity"],
     )
     baseline = darsia.ScalarImage(np.zeros((2, 2), dtype=float), space_dim=2)
@@ -101,7 +101,7 @@ def test_build_restoration_applies_boolean_porosity_ignore_mask_to_tvd_weight(
 def test_build_restoration_unknown_ignore_mask_raises():
     restoration_config = RestorationConfig(
         method="tvd",
-        options=TVDConfig(weight=0.1),
+        tvd_options=TVDConfig(weight=0.1),
         ignore=["unknown-mask"],
     )
     fluidflower = SimpleNamespace(
@@ -117,7 +117,7 @@ def test_build_restoration_volume_averaging_with_default_rev_size():
     """Regression test: VolumeAveragingConfig default rev_size works with real REV."""
     restoration_config = RestorationConfig(
         method="volume_average",
-        options=VolumeAveragingConfig(),  # Use default rev_size (0.005)
+        volume_averaging_options=VolumeAveragingConfig(),  # Use default rev_size (0.005)
     )
     baseline = darsia.ScalarImage(np.zeros((10, 10), dtype=float), space_dim=2)
     image_porosity = darsia.ScalarImage(np.ones((10, 10), dtype=float), space_dim=2)
