@@ -324,9 +324,7 @@ def prepare_analysis_context(
     # ! ---- SELECT IMAGE PATHS ----
 
     if sub_config is None:
-        if section == "calibration" and config.calibration is not None:
-            sub_config = config.calibration
-        elif section == "analysis" and config.analysis is not None:
+        if section == "analysis" and config.analysis is not None:
             sub_config = config.analysis
         elif section == "helper" and config.helper is not None:
             sub_config = config.helper
