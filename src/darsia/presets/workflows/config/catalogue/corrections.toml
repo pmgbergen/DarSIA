@@ -1,0 +1,17 @@
+# Curvature correction presets for common rigs.
+# Each [[curvature_preset]] entry has the same field names/structure as an actual
+# [corrections.curvature] section, so presets can be copied directly from known-good
+# run configs. Stages can be omitted (they will be disabled when loaded).
+
+[[curvature_preset]]
+name = "FF Bilbo (B049)"
+description = "Bilbo rig, B049 experiment"
+
+[curvature_preset.crop]
+top_left = [0, 355]
+bottom_left = [4435, 335]
+bottom_right = [4425, 7702]
+top_right = [0, 7660]
+width = 0.92
+height = 0.55
+in_meters = true
