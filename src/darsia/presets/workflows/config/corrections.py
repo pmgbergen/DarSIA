@@ -506,12 +506,14 @@ class CurvatureCorrectionConfig:
                 }
             elif isinstance(stage_config, CropCorrectionConfig):
                 stage_dict = {
+                    "top_left": stage_config.top_left,
+                    "bottom_left": stage_config.bottom_left,
+                    "bottom_right": stage_config.bottom_right,
+                    "top_right": stage_config.top_right,
                     "width": stage_config.width,
                     "height": stage_config.height,
                     "in_meters": stage_config.in_meters,
                 }
-                if stage_config.pts_src is not None:
-                    stage_dict["pts_src"] = stage_config.pts_src
                 result["crop"] = stage_dict
             elif isinstance(stage_config, BulgeCorrectionConfig):
                 result["bulge"] = {
