@@ -35,7 +35,7 @@ def test_build_restoration_applies_boolean_porosity_ignore_mask_to_volume_averag
 
     restoration_config = RestorationConfig(
         method="volume_average",
-        options=VolumeAveragingConfig(rev_size=3),
+        options=VolumeAveragingConfig(rev_size=0.005),
         ignore=["boolean_porosity"],
     )
     baseline = darsia.ScalarImage(np.zeros((2, 2), dtype=float), space_dim=2)
@@ -111,3 +111,22 @@ def test_build_restoration_unknown_ignore_mask_raises():
 
     with pytest.raises(ValueError, match="Unknown restoration ignore mask"):
         build_restoration(restoration_config, fluidflower)
+
+
+def test_build_restoration_volume_averaging_with_default_rev_size():
+    """Regression test: VolumeAveragingConfig default rev_size works with real REV."""
+    restoration_config = RestorationConfig(
+        method="volume_average",
+        options=VolumeAveragingConfig(),  # Use default rev_size (0.005)
+    )
+    baseline = darsia.ScalarImage(np.zeros((10, 10), dtype=float), space_dim=2)
+    image_porosity = darsia.ScalarImage(np.ones((10, 10), dtype=float), space_dim=2)
+    fluidflower = SimpleNamespace(
+        baseline=baseline,
+        image_porosity=image_porosity,
+    )
+
+    # Should not raise TypeError about int not being subscriptable
+    restoration = build_restoration(restoration_config, fluidflower)
+    assert restoration is not None
+    assert isinstance(restoration, darsia.VolumeAveraging)
