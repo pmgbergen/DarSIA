@@ -162,6 +162,47 @@ def _parse_resolution(value) -> tuple[int, int] | None:
     return rows, cols
 
 
+def _format_entry_to_dict(spec: ImageExportFormat) -> dict:
+    """Convert an ImageExportFormat spec to a TOML-compatible dict entry.
+
+    Used by to_toml_dict() for serialization and by load button to supply
+    prefill data to the GUI registry widget.
+    """
+    entry = {
+        "type": spec.type,
+        "name": spec.name,
+        "filename_pattern": spec.filename_pattern,
+    }
+    if spec.resolution is not None:
+        entry["resolution"] = list(spec.resolution)
+    if spec.keep_ratio:
+        entry["keep_ratio"] = True
+
+    if spec.type in {"jpg", "png"}:
+        if spec.dpi is not None:
+            entry["dpi"] = spec.dpi
+        if spec.cmap is not None:
+            entry["cmap"] = spec.cmap
+        if spec.quality is not None:
+            entry["quality"] = spec.quality
+        if spec.compression is not None:
+            entry["compression"] = spec.compression
+
+    if spec.type in {"npz", "npy", "csv"}:
+        if spec.dtype is not None:
+            entry["dtype"] = spec.dtype
+
+    if spec.type == "csv":
+        if spec.delimiter != ",":
+            entry["delimiter"] = spec.delimiter
+        if spec.header is not None:
+            entry["header"] = spec.header
+        if spec.float_format != "{:.2e}":
+            entry["float_format"] = spec.float_format
+
+    return entry
+
+
 @dataclass
 class FormatRegistry:
     """Registry for named export format presets."""
@@ -173,6 +214,7 @@ class FormatRegistry:
             "help": "Named export format specifications (jpg, csv, npz, etc.).",
             "widget": "dataclass_group_map",
             "array_key": "format",
+            "loadable": "format",
         },
     )
 
@@ -310,38 +352,6 @@ class FormatRegistry:
         """Serialize registry to TOML-compatible dict for save round-trips."""
         format_list = []
         for spec in sorted(self.formats.values(), key=lambda s: s.name):
-            entry = {
-                "type": spec.type,
-                "name": spec.name,
-                "filename_pattern": spec.filename_pattern,
-            }
-            if spec.resolution is not None:
-                entry["resolution"] = list(spec.resolution)
-            if spec.keep_ratio:
-                entry["keep_ratio"] = True
-
-            if spec.type in {"jpg", "png"}:
-                if spec.dpi is not None:
-                    entry["dpi"] = spec.dpi
-                if spec.cmap is not None:
-                    entry["cmap"] = spec.cmap
-                if spec.quality is not None:
-                    entry["quality"] = spec.quality
-                if spec.compression is not None:
-                    entry["compression"] = spec.compression
-
-            if spec.type in {"npz", "npy", "csv"}:
-                if spec.dtype is not None:
-                    entry["dtype"] = spec.dtype
-
-            if spec.type == "csv":
-                if spec.delimiter != ",":
-                    entry["delimiter"] = spec.delimiter
-                if spec.header is not None:
-                    entry["header"] = spec.header
-                if spec.float_format != "{:.2e}":
-                    entry["float_format"] = spec.float_format
-
-            format_list.append(entry)
+            format_list.append(_format_entry_to_dict(spec))
 
         return {"format": format_list}
