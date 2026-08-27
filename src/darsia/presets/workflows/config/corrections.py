@@ -258,12 +258,12 @@ class CropCorrectionConfig:
     )
 
     @property
-    def pts_src(self) -> list[tuple[int, int]] | None:
-        """Get the source points as a list of tuples."""
+    def pts_src(self) -> list[list[int]] | None:
+        """Get the source points as a list of lists."""
         corners = [self.top_left, self.bottom_left, self.bottom_right, self.top_right]
         if any([c is None for c in corners]):
             return None
-        return corners
+        return [list(c) for c in corners]
 
     def load(self, sec: dict) -> "CropCorrectionConfig":
         """Load crop correction configuration from a dictionary.
