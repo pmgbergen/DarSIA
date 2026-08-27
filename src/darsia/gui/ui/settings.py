@@ -381,6 +381,7 @@ class SettingsFactory:
                 (contains "form" for multi_file/path_map)
         """
         group_forms = {}  # key (str | tuple) -> QFormLayout, first-occurrence cache
+        field_row_map = {}  # key -> (row_index, field_or_result, setting, target_form)
 
         for setting in settings_list:
             setting_type = setting["type"]
@@ -432,11 +433,20 @@ class SettingsFactory:
                 group_widget = field_or_result.get("widget")
                 if group_widget:
                     target_form.addRow(group_widget)  # Spanning row
+                row_index = target_form.rowCount() - 1
                 self.main_window.settings_inputs[setting["key"]] = field_or_result
                 for sub_key, sub_widget in field_or_result.get(
                     "sub_inputs", {}
                 ).items():
                     self.main_window.settings_inputs[sub_key] = sub_widget
+                # Track this group for depends_on wiring
+                unqualified_key = setting["key"].rsplit(".", 1)[-1]
+                field_row_map[unqualified_key] = (
+                    row_index,
+                    field_or_result,
+                    setting,
+                    target_form,
+                )
             # Handle grouped scalar fields and auto-grouped multi-row fields
             elif (
                 auto_grouped
@@ -470,6 +480,61 @@ class SettingsFactory:
             else:
                 target_form.addRow(label_text, field_or_result)
                 self.main_window.settings_inputs[setting["key"]] = field_or_result
+
+        # Wire up depends_on visibility for top-level group fields (e.g., restoration
+        # method -> volume_averaging_options / tvd_options)
+        for unqualified_key, (
+            row_index,
+            field_or_result,
+            setting,
+            target_form,
+        ) in field_row_map.items():
+            depends_on = setting.get("depends_on")
+            if depends_on is None:
+                continue
+
+            driver_field_key = depends_on.get("field")
+            driver_value = depends_on.get("value")
+            if driver_field_key is None or driver_value is None:
+                continue
+
+            # Find the driver field's widget — must be a scalar field in the same form
+            # (typically at the top level; handle via full key lookup in settings_inputs)
+            section = setting["key"].rsplit(".", 1)[0]
+            driver_full_key = f"{section}.{driver_field_key}"
+
+            # Look up the driver widget in settings_inputs
+            if driver_full_key not in self.main_window.settings_inputs:
+                continue
+
+            driver_widget = self.main_window.settings_inputs[driver_full_key]
+            # Unwrap composite widget to get the real QComboBox
+            driver_combo = unwrap_composite_widget(driver_widget)
+            if not isinstance(driver_combo, QComboBox):
+                continue
+
+            # Get the group widget to control visibility directly
+            group_widget = field_or_result.get("widget")
+            if group_widget is None:
+                continue
+
+            # Create visibility handler supporting both single and list values
+            def make_visibility_handler(widget, required_val):
+                def handler(current_text):
+                    is_visible = (
+                        current_text in required_val
+                        if isinstance(required_val, (list, set, tuple))
+                        else current_text == required_val
+                    )
+                    widget.setVisible(is_visible)
+
+                return handler
+
+            handler = make_visibility_handler(group_widget, driver_value)
+            driver_combo.currentTextChanged.connect(handler)
+
+            # Set initial visibility
+            handler(driver_combo.currentText())
 
     def wrap_setting_with_help(self, setting_container, setting_dict):
         """Wrap a setting container with a dedicated help button column."""
@@ -2553,6 +2618,41 @@ class SettingsFactory:
                 else:
                     # Group is unchecked; skip saving any of its sub-inputs
                     skip_keys.update(value["sub_inputs"].keys())
+
+            # Handle depends_on for group results: if a group is hidden (driver doesn't
+            # match), skip its sub-inputs to avoid clobbering the active group's data
+            elif (
+                isinstance(value, dict)
+                and value.get("is_group_result")
+                and "depends_on" in value
+            ):
+                depends_on = value.get("depends_on")
+                if depends_on is not None:
+                    driver_field_key = depends_on.get("field")
+                    driver_value = depends_on.get("value")
+                    if driver_field_key is not None and driver_value is not None:
+                        # Look up the driver field's current value in settings_inputs
+                        # (key is something like "restoration.volume_averaging_options",
+                        # driver key is "restoration.method")
+                        section = key.rsplit(".", 1)[0]
+                        driver_full_key = f"{section}.{driver_field_key}"
+                        if driver_full_key in self.main_window.settings_inputs:
+                            driver_widget = self.main_window.settings_inputs[
+                                driver_full_key
+                            ]
+                            # Unwrap composite widget to get the real control
+                            driver_control = unwrap_composite_widget(driver_widget)
+                            if isinstance(driver_control, QComboBox):
+                                current_val = driver_control.currentText()
+                                # Check if the current value matches the dependency
+                                is_active = (
+                                    current_val in driver_value
+                                    if isinstance(driver_value, (list, set, tuple))
+                                    else current_val == driver_value
+                                )
+                                # If not active, skip this group's sub-inputs
+                                if not is_active:
+                                    skip_keys.update(value.get("sub_inputs", {}).keys())
 
         # Second pass: save all regular values (non-group dicts),
         # skipping unchecked group sub-inputs.
