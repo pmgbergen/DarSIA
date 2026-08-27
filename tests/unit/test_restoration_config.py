@@ -22,18 +22,18 @@ def test_restoration_config_volume_average_defaults(tmp_path):
     cfg = RestorationConfig().load(cfg_path)
     assert cfg.method == "volume_average"
     assert isinstance(cfg.options, VolumeAveragingConfig)
-    assert cfg.options.rev_size == 3  # default
+    assert cfg.options.rev_size == pytest.approx(0.005)  # default
 
 
 def test_restoration_config_volume_average_custom_rev_size(tmp_path):
     cfg_path = _write_toml(
         tmp_path,
-        '[restoration]\nmethod = "volume_average"\n\n[restoration.options]\nrev_size = 5\n',
+        '[restoration]\nmethod = "volume_average"\n\n[restoration.options]\nrev_size = 0.01\n',
     )
     cfg = RestorationConfig().load(cfg_path)
     assert cfg.method == "volume_average"
     assert isinstance(cfg.options, VolumeAveragingConfig)
-    assert cfg.options.rev_size == 5
+    assert cfg.options.rev_size == pytest.approx(0.01)
 
 
 def test_restoration_config_tvd_defaults(tmp_path):
