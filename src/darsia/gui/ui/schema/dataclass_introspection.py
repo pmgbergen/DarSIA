@@ -234,30 +234,38 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
         if field.metadata.get("hidden", False):
             continue
 
-        key = f"{key_prefix}.{field.name}"
         inner_type = _unwrap_optional(field_type)
 
         # Check if this is an Optional[dataclass] field — render as a group
         if is_dataclass(inner_type):
+            # For group fields, decouple identity key from storage key:
+            # - Identity key (field_row_map, settings_inputs) uses field.name for uniqueness
+            # - Storage key (children's prefix) uses toml_key override (if any) for TOML
+            own_key = f"{key_prefix}.{field.name}"
+            storage_key = f"{key_prefix}.{field.metadata.get('toml_key', field.name)}"
+
             # Guard: dataclass-typed fields cannot also carry "group" metadata
             # (would nest boxes)
             if field.metadata.get("group"):
                 raise ValueError(
-                    f"Field '{key}' is a dataclass (type:'group') but also carries "
+                    f"Field '{own_key}' is a dataclass (type:'group') but also carries "
                     f"metadata['group']. Nested QGroupBoxes are not supported. "
                     f"Remove the 'group' metadata."
                 )
             setting_dict = {
-                "key": key,
+                "key": own_key,
                 "type": "group",
                 "name": field.metadata.get("name", None),
                 "help": field.metadata.get("help", None),
                 "link": field.metadata.get("link", None),
                 "active_list_key": field.metadata.get("active_list_key", None),
                 "loadable": field.metadata.get("loadable", None),
-                "fields": _build_fields(inner_type, key),
+                "depends_on": field.metadata.get("depends_on", None),
+                "fields": _build_fields(inner_type, storage_key),
             }
         else:
+            # Scalar field: use toml_key override (if any) for storage key
+            key = f"{key_prefix}.{field.metadata.get('toml_key', field.name)}"
             widget_type = _infer_widget_type(field_type, field.metadata)
             setting_dict = {
                 "key": key,
