@@ -10,16 +10,18 @@ from .utils import _get_key, _get_section_from_toml
 
 @dataclass
 class VolumeAveragingConfig:
-    rev_size: int = field(
-        default=3,
+    rev_size: float = field(
+        default=0.005,
         metadata={
             "name": "Revision size",
-            "help": "Size of the averaging kernel (number of neighboring voxels to average).",
+            "help": "Size of the representative elementary volume (REV) in meters.",
         },
     )
 
     def load(self, sec: dict) -> "VolumeAveragingConfig":
-        self.rev_size = _get_key(sec, "rev_size", self.rev_size, required=False)
+        self.rev_size = _get_key(
+            sec, "rev_size", self.rev_size, required=False, type_=float
+        )
         return self
 
 
