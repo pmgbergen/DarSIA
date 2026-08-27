@@ -19,6 +19,9 @@ from PySide6.QtWidgets import (
 )
 
 from darsia.gui.ui.schema.dataclass_introspection import _build_fields
+from darsia.presets.workflows.config.format_registry import (
+    _format_entry_to_dict,
+)
 
 from .file_dialog import NO_FILE_CHOSEN, FileDialogHelper
 from .help import build_help_column
@@ -887,10 +890,14 @@ class SettingsFactory:
                 # Add load button if this dataclass_group_map is loadable (e.g., formats)
                 loadable_type = setting_dict.get("loadable")
                 if loadable_type:
+
                     def on_apply_list(name, entry_dict):
                         # For list-of-dataclass fields, check for duplicate then append
                         if any(e["name"] == name for e in entries_data):
-                            self.main_window.print_log(f"{loadable_type.capitalize()} '{name}' already exists, skipped.")
+                            self.main_window.print_log(
+                                f"{loadable_type.capitalize()} '{name}' already exists, "
+                                "skipped."
+                            )
                             return
                         add_entry(name, entry_dict)
 
@@ -2119,16 +2126,16 @@ class SettingsFactory:
 
         loadable_config = {
             "curvature": {
-                "config_class": "darsia.presets.workflows.config.corrections:CurvatureCorrectionConfig",
-                "catalogue_class": "darsia.presets.workflows.config.catalogue.corrections:CurvatureCatalogue",
+                "config_class": "darsia.presets.workflows.config.corrections:CurvatureCorrectionConfig",  # noqa: E501
+                "catalogue_class": "darsia.presets.workflows.config.catalogue.corrections:CurvatureCatalogue",  # noqa: E501
                 "catalogue_file": "corrections.toml",
                 "toml_key": "corrections",
                 "toml_subkey": "curvature",
                 "is_single_section": True,
             },
             "format": {
-                "config_class": "darsia.presets.workflows.config.format_registry:ImageExportFormat",
-                "catalogue_class": "darsia.presets.workflows.config.catalogue.formats:FormatCatalogue",
+                "config_class": "darsia.presets.workflows.config.format_registry:ImageExportFormat",  # noqa: E501
+                "catalogue_class": "darsia.presets.workflows.config.catalogue.formats:FormatCatalogue",  # noqa: E501
                 "catalogue_file": "formats.toml",
                 "toml_key": "format",
                 "toml_subkey": None,
@@ -2173,17 +2180,20 @@ class SettingsFactory:
                     section = config_meta["toml_key"]
                     subkey = config_meta["toml_subkey"]
                     if section not in data:
-                        self.main_window.print_log(f"Section '{section}' not found in {file}")
+                        self.main_window.print_log(
+                            f"Section '{section}' not found in {file}"
+                        )
                         return
                     sec = data[section]
                     if subkey not in sec:
-                        self.main_window.print_log(f"Sub-section '{section}.{subkey}' not found in {file}")
+                        self.main_window.print_log(
+                            f"Sub-section '{section}.{subkey}' not found in {file}"
+                        )
                         return
                     sub_sec = sec[subkey]
 
                     # Validate and normalize via the config class
                     module_path, class_name = config_meta["config_class"].rsplit(":", 1)
-                    module_parts = module_path.split(".")
                     mod = __import__(module_path, fromlist=[class_name])
                     config_class = getattr(mod, class_name)
                     config = config_class().load(sub_sec)
@@ -2195,31 +2205,39 @@ class SettingsFactory:
                     # Formats/etc: extract [[key]] array-of-tables and call on_apply per entry
                     toml_key = config_meta["toml_key"]
                     if toml_key not in data:
-                        self.main_window.print_log(f"No [[{toml_key}]] entries found in {file}")
+                        self.main_window.print_log(
+                            f"No [[{toml_key}]] entries found in {file}"
+                        )
                         return
                     entry_list = data[toml_key]
                     if not isinstance(entry_list, list):
-                        self.main_window.print_log(f"[[{toml_key}]] must be array-of-tables, not nested dict")
+                        self.main_window.print_log(
+                            f"[[{toml_key}]] must be array-of-tables, not nested dict"
+                        )
                         return
 
                     # Use the registry's parsing to validate each entry
                     module_path, class_name = config_meta["config_class"].rsplit(":", 1)
                     mod = __import__(module_path, fromlist=[class_name])
-                    entry_class = getattr(mod, class_name)
 
                     for entry_dict in entry_list:
                         try:
                             name = entry_dict.get("name", "")
                             if not name:
-                                self.main_window.print_log(f"Skipped unnamed entry in {file}")
+                                self.main_window.print_log(
+                                    f"Skipped unnamed entry in {file}"
+                                )
                                 continue
                             # For ImageExportFormat, validate via the registry's load logic
-                            # (simplified: just pass the dict to on_apply and let GUI handle errors)
+                            # (simplified: just pass the dict to on_apply and let GUI handle
+                            # errors)
                             on_apply(name, entry_dict)
                         except Exception as e:
                             self.main_window.print_log(f"Error loading entry: {e}")
 
-                    self.main_window.print_log(f"Loaded {len(entry_list)} presets from {file}")
+                    self.main_window.print_log(
+                        f"Loaded {len(entry_list)} presets from {file}"
+                    )
 
             except Exception as e:
                 self.main_window.print_log(f"Error loading preset from TOML: {e}")
@@ -2271,17 +2289,14 @@ class SettingsFactory:
                                 if config_meta["is_single_section"]:
                                     preset_dict = config.to_dict()
                                 else:
-                                    # For ImageExportFormat, convert to dict for GUI prefill
-                                    from darsia.presets.workflows.config.format_registry import (
-                                        _format_entry_to_dict,
-                                    )
-
                                     preset_dict = _format_entry_to_dict(config)
 
                                 on_apply(name, preset_dict)
                                 self.main_window.print_log(f"Loaded preset '{name}'")
                             except Exception as e:
-                                self.main_window.print_log(f"Error loading preset '{name}': {e}")
+                                self.main_window.print_log(
+                                    f"Error loading preset '{name}': {e}"
+                                )
 
                         return load_preset
 
@@ -2356,15 +2371,16 @@ class SettingsFactory:
         group_form.setContentsMargins(8, 10, 8, 8)  # Padding: left, top, right, bottom
         sub_inputs = {}
         field_row_map = {}  # Map unqualified_key -> (row_index, field_widget)
-        group_forms = (
-            {}
-        )  # For nested multi-row fields, reuse _get_or_create_group_form helper
+        group_forms = {}  # For nested multi-row fields, reuse _get_or_create_group_form helper
 
         # Add Load button if this group is loadable (e.g., curvature correction)
         key_path = setting_dict["key"]  # e.g. "corrections.curvature"
+
         def on_apply_group(name, preset_dict):
             # For group fields (curvature), full replace via apply_partial_preset
-            self.main_window.config_controller.apply_partial_preset(key_path, preset_dict)
+            self.main_window.config_controller.apply_partial_preset(
+                key_path, preset_dict
+            )
 
         load_button = self._create_load_button(setting_dict, on_apply_group)
         if load_button:
