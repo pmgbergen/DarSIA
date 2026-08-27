@@ -92,6 +92,7 @@ class ConfigController:
         add_recent_config(file)
         self.main_window.print_log(f"Config loaded: {file}")
         self.main_window.sidebar.deselect_all()
+        self.main_window.settings_inputs.clear()
         self.main_window.settings_factory.display_full_settings()
 
     def apply_partial_preset(self, key_path: str, preset_dict: dict) -> None:
@@ -143,7 +144,7 @@ class ConfigController:
         # sync stale widgets back into config_dict, overwriting the preset we just applied.
         # Nothing is lost: these widgets are about to be destroyed anyway, and
         # _render_settings_tabs will reset this dict immediately after.
-        self.main_window.settings_factory.main_window.settings_inputs = {}
+        self.main_window.settings_inputs.clear()
 
         # Refresh the current view (full or filtered) while preserving tab index.
         self.main_window.settings_factory.refresh_current_view()

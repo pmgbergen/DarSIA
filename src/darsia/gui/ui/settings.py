@@ -19,9 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from darsia.gui.ui.schema.dataclass_introspection import _build_fields
-from darsia.presets.workflows.config.format_registry import (
-    _format_entry_to_dict,
-)
+from darsia.presets.workflows.config.format_registry import _format_entry_to_dict
 
 from .file_dialog import NO_FILE_CHOSEN, FileDialogHelper
 from .help import build_help_column
@@ -3099,6 +3097,9 @@ class SettingsFactory:
         # Flush any pending edits into config_dict before the widgets holding
         # them are destroyed below, so switching tabs never silently drops
         # unsaved changes (e.g. newly added registry rows).
+        # BUT: if settings_inputs is empty (cleared by load_config or
+        # apply_partial_preset because config_dict was just replaced), skip the sync
+        # to avoid overwriting freshly-loaded config values with stale widget values.
         if self.main_window.settings_inputs:
             self._sync_settings_inputs_to_config_dict()
 
@@ -3136,7 +3137,7 @@ class SettingsFactory:
             if section in SECTION_LOADABLE:
                 loadable_type = SECTION_LOADABLE[section]
 
-                def on_apply_section(_name, preset_dict):
+                def on_apply_section(_name, preset_dict, section=section):
                     self.main_window.config_controller.apply_partial_preset(
                         section, preset_dict
                     )
