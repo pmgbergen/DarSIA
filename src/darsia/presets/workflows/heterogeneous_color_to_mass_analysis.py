@@ -785,7 +785,9 @@ class HeterogeneousColorToMassAnalysis:
 
             # Generate distinct colors for each ROI
             num_rois = len(rois)
-            _cmap = plt.cm.get_cmap("tab10" if num_rois <= 10 else "tab20")
+            import matplotlib
+
+            _cmap = matplotlib.colormaps["tab10" if num_rois <= 10 else "tab20"]
             roi_colors = [_cmap(i / max(1, num_rois - 1)) for i in range(num_rois)]
 
             # Plot each ROI as separate series

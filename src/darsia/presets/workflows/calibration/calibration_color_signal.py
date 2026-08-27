@@ -78,7 +78,9 @@ def calibration_color_signal(cls, path: Path, show: bool = False):
     cluster_set = set(clusters)
 
     # Define label colors for plotting
-    label_colors = plt.cm.get_cmap("tab10", len(cluster_set))
+    import matplotlib
+
+    label_colors = matplotlib.colormaps["tab10"].resampled(len(cluster_set))
 
     # Define cluster image and show
     cluster_image = darsia.zeros_like(fluidflower.labels, dtype=int)

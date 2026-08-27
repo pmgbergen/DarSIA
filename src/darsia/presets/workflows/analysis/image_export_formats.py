@@ -143,9 +143,9 @@ class ImageExportFormats:
         if cmap_name is None:
             return None
         if cmap_name.startswith("matplotlib."):
-            import matplotlib.cm as cm
+            import matplotlib
 
-            return cm.get_cmap(cmap_name.split(".", 1)[1])
+            return matplotlib.colormaps[cmap_name.split(".", 1)[1]]
         if cmap_name.startswith("color_path."):
             return self._load_color_path_cmap(cmap_name)
         return None
