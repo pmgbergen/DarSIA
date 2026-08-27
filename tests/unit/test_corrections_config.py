@@ -124,7 +124,7 @@ class TestCurvatureCorrectionConfigLoad:
         """crop-only config (real-world usage) should load and to_dict() correctly."""
         cfg_path = _write_toml(
             tmp_path,
-            '[corrections.curvature.crop]\nwidth = 2.8\nheight = 1.5\n"in meters" = true\n',
+            '[corrections.curvature.crop]\nwidth = 2.8\nheight = 1.5\nin_meters = true\n',
         )
         cfg = CorrectionsConfig().load(cfg_path)
         assert cfg.curvature is not None
@@ -138,7 +138,7 @@ class TestCurvatureCorrectionConfigLoad:
         assert "crop" in d
         assert d["crop"]["width"] == 2.8
         assert d["crop"]["height"] == 1.5
-        assert d["crop"]["in meters"] is True
+        assert d["crop"]["in_meters"] is True
         assert "init" not in d
         assert "bulge" not in d
         assert "stretch" not in d
@@ -191,17 +191,17 @@ class TestCurvatureCorrectionConfigLoad:
         d = cfg.curvature.to_dict()
         assert set(d.keys()) == {"crop"}
 
-    def test_crop_in_meters_translation(self, tmp_path):
-        """CropCorrectionConfig.in_meters should translate to/from TOML 'in meters' key."""
+    def test_crop_in_meters_roundtrip(self, tmp_path):
+        """CropCorrectionConfig.in_meters should round-trip via TOML in_meters key."""
         cfg_path = _write_toml(
             tmp_path,
-            '[corrections.curvature.crop]\nwidth = 2.8\nheight = 1.5\n"in meters" = false\n',
+            '[corrections.curvature.crop]\nwidth = 2.8\nheight = 1.5\nin_meters = false\n',
         )
         cfg = CorrectionsConfig().load(cfg_path)
         assert cfg.curvature.crop.in_meters is False
 
         d = cfg.curvature.to_dict()
-        assert d["crop"]["in meters"] is False  # Note: key has space in dict
+        assert d["crop"]["in_meters"] is False
 
     def test_partial_stages_active(self, tmp_path):
         """Config with multiple stages but only some active."""
