@@ -4,7 +4,10 @@ from pathlib import Path
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.analysis.analysis_context import AnalysisContext
+from darsia.presets.workflows.analysis.analysis_context import (
+    AnalysisContext,
+    select_image_paths,
+)
 from darsia.presets.workflows.basis import label_ids_from_image
 from darsia.presets.workflows.calibration.metadata import (
     read_calibration_metadata,
@@ -96,7 +99,6 @@ def calibration_color_to_mass_analysis_from_context(
     fluidflower = ctx.fluidflower
     restoration = ctx.restoration
     expert_knowledge_adapter = ctx.expert_knowledge_adapter
-    calibration_image_paths = ctx.image_paths
 
     # Mypy type checking
     config.check(
@@ -149,6 +151,14 @@ def calibration_color_to_mass_analysis_from_context(
     )
 
     # ! ---- LOAD IMAGES ----
+
+    # Resolve calibration image paths from mass config's data_selection field
+    calibration_image_paths = select_image_paths(
+        config,
+        experiment,
+        all=False,
+        sub_config=mass_cfg,
+    )
 
     # Cache calibration images for performance
     calibration_images: list[darsia.Image] = load_images_with_cache(
