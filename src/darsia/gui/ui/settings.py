@@ -131,6 +131,86 @@ class SettingsFactory:
         "color_key_list",
     }
 
+    @staticmethod
+    def _wrap_multi_row_result(field_or_result):
+        """Wrap a multi-row result dict with type tag for save-time identification.
+
+        Multi-row create_setting_edit calls return dicts with a "widget" (header) and
+        "rows" (list of QComboBox/QLineEdit/etc). This helper preserves the type tag
+        so _sync_settings_inputs_to_config_dict can identify which kind of multi-row
+        field it is and serialize it correctly. Fixes bug where nested multi-row fields
+        (inside Optional[dataclass] groups) were stored as untagged bare lists and
+        silently dropped on save.
+
+        Parameters
+        ----------
+        field_or_result : dict
+            Result from create_setting_edit for a MULTI_ROW_TYPES field,
+            containing "widget" and "rows" plus a type tag.
+
+        Returns
+        -------
+        dict
+            Tagged result dict ready for settings_inputs, or bare "rows" list
+            if no type tag is recognized.
+        """
+        if "path_map" in field_or_result:
+            return {
+                "path_map": True,
+                "rows": field_or_result["rows"],
+            }
+        elif "int_group_list" in field_or_result:
+            return {
+                "int_group_list": True,
+                "rows": field_or_result["rows"],
+            }
+        elif "int_list_map" in field_or_result:
+            return {
+                "int_list_map": True,
+                "flatten_in_section": field_or_result.get("flatten_in_section", False),
+                "section": field_or_result.get("section"),
+                "rows": field_or_result["rows"],
+            }
+        elif "dataclass_group_map" in field_or_result:
+            entry = {
+                "dataclass_group_map": True,
+                "entries": field_or_result["entries"],
+            }
+            if "array_key" in field_or_result:
+                entry["array_key"] = field_or_result["array_key"]
+            return entry
+        elif "registry_key_list" in field_or_result:
+            return {
+                "registry_key_list": True,
+                "rows": field_or_result["rows"],
+            }
+        elif "format_key_list" in field_or_result:
+            result_dict = {
+                "format_key_list": True,
+                "rows": field_or_result["rows"],
+            }
+            if "max_rows" in field_or_result:
+                result_dict["max_rows"] = field_or_result["max_rows"]
+            return result_dict
+        elif "roi_key_list" in field_or_result:
+            result_dict = {
+                "roi_key_list": True,
+                "rows": field_or_result["rows"],
+            }
+            if "max_rows" in field_or_result:
+                result_dict["max_rows"] = field_or_result["max_rows"]
+            return result_dict
+        elif "color_key_list" in field_or_result:
+            result_dict = {
+                "color_key_list": True,
+                "rows": field_or_result["rows"],
+            }
+            if "max_rows" in field_or_result:
+                result_dict["max_rows"] = field_or_result["max_rows"]
+            return result_dict
+        else:
+            return field_or_result["rows"]
+
     def __init__(self, main_window):
         self.main_window = main_window
         self.file_dialog = FileDialogHelper(main_window)
@@ -357,58 +437,9 @@ class SettingsFactory:
                 # spanning row; settings_inputs gets the row-tracking payload save_settings
                 # expects.
                 target_form.addRow("", field_or_result["widget"])
-                if "path_map" in field_or_result:
-                    self.main_window.settings_inputs[setting["key"]] = {
-                        "path_map": True,
-                        "rows": field_or_result["rows"],
-                    }
-                elif "int_group_list" in field_or_result:
-                    self.main_window.settings_inputs[setting["key"]] = {
-                        "int_group_list": True,
-                        "rows": field_or_result["rows"],
-                    }
-                elif "int_list_map" in field_or_result:
-                    self.main_window.settings_inputs[setting["key"]] = {
-                        "int_list_map": True,
-                        "flatten_in_section": field_or_result.get(
-                            "flatten_in_section", False
-                        ),
-                        "section": field_or_result.get("section"),
-                        "rows": field_or_result["rows"],
-                    }
-                elif "dataclass_group_map" in field_or_result:
-                    entry = {
-                        "dataclass_group_map": True,
-                        "entries": field_or_result["entries"],
-                    }
-                    if "array_key" in field_or_result:
-                        entry["array_key"] = field_or_result["array_key"]
-                    self.main_window.settings_inputs[setting["key"]] = entry
-                elif "registry_key_list" in field_or_result:
-                    self.main_window.settings_inputs[setting["key"]] = {
-                        "registry_key_list": True,
-                        "rows": field_or_result["rows"],
-                    }
-                elif "format_key_list" in field_or_result:
-                    result_dict = {
-                        "format_key_list": True,
-                        "rows": field_or_result["rows"],
-                    }
-                    if "max_rows" in field_or_result:
-                        result_dict["max_rows"] = field_or_result["max_rows"]
-                    self.main_window.settings_inputs[setting["key"]] = result_dict
-                elif "roi_key_list" in field_or_result:
-                    result_dict = {
-                        "roi_key_list": True,
-                        "rows": field_or_result["rows"],
-                    }
-                    if "max_rows" in field_or_result:
-                        result_dict["max_rows"] = field_or_result["max_rows"]
-                    self.main_window.settings_inputs[setting["key"]] = result_dict
-                else:
-                    self.main_window.settings_inputs[setting["key"]] = field_or_result[
-                        "rows"
-                    ]
+                self.main_window.settings_inputs[setting["key"]] = (
+                    self._wrap_multi_row_result(field_or_result)
+                )
             elif auto_grouped and isinstance(field_or_result, dict):
                 # Multi-row field that created its own result dict
                 # (backward compat, non-form_context)
@@ -2149,27 +2180,10 @@ class SettingsFactory:
                 if isinstance(field_or_result, dict) and "widget" in field_or_result:
                     multi_row_form.addRow("", field_or_result["widget"])
                     # Register the row-tracking payload so save_settings can find it
-                    if "path_map" in field_or_result:
-                        sub_inputs[sub_setting["key"]] = {
-                            "path_map": True,
-                            "rows": field_or_result["rows"],
-                        }
-                    elif "int_group_list" in field_or_result:
-                        sub_inputs[sub_setting["key"]] = {
-                            "int_group_list": True,
-                            "rows": field_or_result["rows"],
-                        }
-                    elif "int_list_map" in field_or_result:
-                        sub_inputs[sub_setting["key"]] = {
-                            "int_list_map": True,
-                            "flatten_in_section": field_or_result.get(
-                                "flatten_in_section", False
-                            ),
-                            "section": field_or_result.get("section"),
-                            "rows": field_or_result["rows"],
-                        }
-                    else:
-                        sub_inputs[sub_setting["key"]] = field_or_result["rows"]
+                    # Use shared helper to ensure consistent tagging with top-level loop
+                    sub_inputs[sub_setting["key"]] = self._wrap_multi_row_result(
+                        field_or_result
+                    )
                 continue
 
             # Handle nested groups (e.g., curvature correction stages)
