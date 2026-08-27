@@ -8,19 +8,21 @@ from .utils import _get_key, _get_section_from_toml
 class RigConfig:
     """Specifications for the rig."""
 
-    width: float = field(
-        default=0,
+    width: float | None = field(
+        default=None,
         metadata={
             "name": "Width",
             "help": "Width of the rig in meters.",
+            "placeholder": "Width in meters (e.g., 1.0)",
         },
     )
     """Width of the rig in meters."""
-    height: float = field(
-        default=0,
+    height: float | None = field(
+        default=None,
         metadata={
             "name": "Height",
             "help": "Height of the rig in meters.",
+            "placeholder": "Height in meters (e.g., 0.5)",
         },
     )
     """Height of the rig in meters."""
