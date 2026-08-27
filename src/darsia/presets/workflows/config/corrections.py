@@ -1075,7 +1075,11 @@ class CorrectionsConfig:
     )
     curvature: CurvatureCorrectionConfig | None = field(
         default=None,
-        metadata={"name": "Curvature correction", "active_list_key": "active"},
+        metadata={
+            "name": "Curvature correction",
+            "active_list_key": "active",
+            "loadable": "curvature",
+        },
     )
     color: ColorCorrectionConfig | None = field(
         default=None, metadata={"name": "Color correction", "active_list_key": "active"}
