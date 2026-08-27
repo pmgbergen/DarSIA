@@ -2371,7 +2371,9 @@ class SettingsFactory:
         group_form.setContentsMargins(8, 10, 8, 8)  # Padding: left, top, right, bottom
         sub_inputs = {}
         field_row_map = {}  # Map unqualified_key -> (row_index, field_widget)
-        group_forms = {}  # For nested multi-row fields, reuse _get_or_create_group_form helper
+        group_forms = (
+            {}
+        )  # For nested multi-row fields, reuse _get_or_create_group_form helper
 
         # Add Load button if this group is loadable (e.g., curvature correction)
         key_path = setting_dict["key"]  # e.g. "corrections.curvature"
