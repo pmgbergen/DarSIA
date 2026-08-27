@@ -59,7 +59,7 @@ def load_curvature_correction_config_from_toml(path: Path) -> dict:
                 "pts_src": darsia.make_voxel(sec_crop.get("pts_src", [])),
                 "width": sec_crop.get("width", 1.0),
                 "height": sec_crop.get("height", 1.0),
-                "in meters": sec_crop.get("in meters", True),
+                "in_meters": sec_crop.get("in_meters", True),
             }
     except KeyError:
         warn(f"No 'curvature.crop' section found in {path}.")
@@ -128,7 +128,7 @@ def load_curvature_correction_config_from_dict(sec: dict) -> dict:
                 "pts_src": darsia.make_voxel(sec_crop.get("pts_src", [])),
                 "width": sec_crop.get("width", 1.0),
                 "height": sec_crop.get("height", 1.0),
-                "in meters": sec_crop.get("in meters", True),
+                "in_meters": sec_crop.get("in_meters", True),
             }
     except KeyError:
         warn(f"No 'curvature.crop' section found in config.")
@@ -417,7 +417,7 @@ class CurvatureCorrection(darsia.BaseCorrection):
             "pts_src": corner_points,
             "width": self.width,
             "height": self.height,
-            "in meters": self.in_meters,
+            "in_meters": self.in_meters,
         }
 
         self.current_image = darsia.extract_quadrilateral_ROI(

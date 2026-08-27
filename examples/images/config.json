@@ -12,7 +12,7 @@
             "pts_src": [[11, 8], [16, 1755], [3165, 1748], [3165, 5]],
             "width": 2.8,
             "height": 1.5,
-            "in meters": true
+            "in_meters": true
         },
         "bulge": {
             "horizontal_bulge": -0.0,
