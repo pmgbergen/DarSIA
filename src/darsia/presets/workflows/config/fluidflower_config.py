@@ -57,6 +57,17 @@ def _load_image_porosity(config, path: Path) -> None:
         warn("Section image_porosity not found, use [image_porosity].")
 
 
+def _load_restoration(config, path: Path) -> None:
+    try:
+        config.restoration = RestorationConfig()
+        config.restoration.load(path=path)
+        if not config.restoration.active:
+            config.restoration = None
+    except KeyError:
+        config.restoration = None
+        warn("Section restoration not found, use [restoration].")
+
+
 class FluidFlowerConfig:
     """Meta data for FluidFlower CO2 analysis."""
 
@@ -133,13 +144,7 @@ class FluidFlowerConfig:
             warn_on_missing=True,
         )
 
-        _load_section(
-            self,
-            "restoration",
-            RestorationConfig(),
-            lambda: self.restoration.load(path=path),
-            warn_on_missing=True,
-        )
+        _load_restoration(self, path)
 
         _load_section(
             self,
