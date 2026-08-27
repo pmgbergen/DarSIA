@@ -38,10 +38,7 @@ class ColorPathEmbedding(ColorEmbedding):
     resolution: int = 51
     threshold_baseline: float = 0.0
     threshold_calibration: float = 0.0
-    baseline_data: object | None = None
-    data: object | None = None
     reference_label: int = 0
-    rois: list[str] = field(default_factory=list)
     ignore_baseline_spectrum: str = "expanded"
     histogram_weighting: str = "threshold"
     calibration_mode: str = "auto"
