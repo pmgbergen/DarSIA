@@ -72,8 +72,12 @@ def test_save_settings_path_map_round_trip_into_protocol_setup(tmp_path: Path) -
     # Create test image and dummy protocol files
     _create_test_image(images_folder / "img_0001.JPG", now)
     imaging_csv.write_text("path,image_id,datetime\nimg_0001.JPG,1,2023-11-15 12:00:00")
-    injection_csv.write_text("id,location_x,location_y,start,end,rate_kg/s\n1,0.5,0.5,00:00:00,01:00:00,0.0")
-    pressure_csv.write_text("datetime,pressure_bar,temperature_celsius,pressure_gradient_bar,temperature_gradient_celsius\n2023-11-15 12:00:00,1.013,20.0,0.0,0.0")
+    injection_csv.write_text(
+        "id,location_x,location_y,start,end,rate_kg/s\n1,0.5,0.5,00:00:00,01:00:00,0.0"
+    )
+    pressure_csv.write_text(
+        "datetime,pressure_bar,temperature_celsius,pressure_gradient_bar,temperature_gradient_celsius\n2023-11-15 12:00:00,1.013,20.0,0.0,0.0"
+    )
 
     # Build mock config_dict and settings_inputs, simulating what display_settings() creates
     config_dict = {"data": {}, "protocols": {}}
@@ -123,6 +127,7 @@ def test_save_settings_path_map_round_trip_into_protocol_setup(tmp_path: Path) -
                 # Try to parse as literal, fall back to raw string
                 try:
                     import ast
+
                     parsed = ast.literal_eval(value.text())
                     settings_factory.set_value(config_dict, key, parsed)
                 except (ValueError, SyntaxError):
@@ -155,36 +160,40 @@ def test_save_settings_path_map_round_trip_into_protocol_setup(tmp_path: Path) -
     assert config_path.exists(), "Config TOML was not written"
 
     # Reload and verify data integrity: folder path must match exactly across both dicts
-    data_config = DataConfig().load(config_path, require_data=False, require_results=False)
+    data_config = DataConfig().load(
+        config_path, require_data=False, require_results=False
+    )
     protocols_config = ProtocolsConfig().load(config_path)
 
-    assert data_config.folders == [images_folder], (
-        f"Expected folders=[{images_folder}], got {data_config.folders}"
-    )
-    assert isinstance(protocols_config.imaging, dict), (
-        f"Expected protocols.imaging to be a dict, got {type(protocols_config.imaging)}"
-    )
-    assert images_folder in protocols_config.imaging, (
-        f"Expected key {images_folder} in imaging dict, got keys: {list(protocols_config.imaging.keys())}"
-    )
-    assert protocols_config.imaging[images_folder] == imaging_csv, (
-        f"Expected imaging[{images_folder}] = {imaging_csv}, got {protocols_config.imaging[images_folder]}"
-    )
+    assert data_config.folders == [
+        images_folder
+    ], f"Expected folders=[{images_folder}], got {data_config.folders}"
+    assert isinstance(
+        protocols_config.imaging, dict
+    ), f"Expected protocols.imaging to be a dict, got {type(protocols_config.imaging)}"
+    assert (
+        images_folder in protocols_config.imaging
+    ), f"Expected key {images_folder} in imaging dict, got keys: {list(protocols_config.imaging.keys())}"
+    assert (
+        protocols_config.imaging[images_folder] == imaging_csv
+    ), f"Expected imaging[{images_folder}] = {imaging_csv}, got {protocols_config.imaging[images_folder]}"
 
     # Run setup_imaging_protocol to prove the GUI-authored config is fully usable
     # Use force=True since we created dummy CSVs upfront for the config to reference
     setup_imaging_protocol(config_path, force=True)
 
     # Verify the imaging protocol CSV was generated
-    assert imaging_csv.exists(), (
-        f"setup_imaging_protocol failed to generate {imaging_csv}"
-    )
+    assert (
+        imaging_csv.exists()
+    ), f"setup_imaging_protocol failed to generate {imaging_csv}"
 
     # Verify the CSV has the expected structure
     df = pd.read_csv(imaging_csv)
-    assert set(df.columns) == {"path", "image_id", "datetime"}, (
-        f"Expected columns {{path, image_id, datetime}}, got {set(df.columns)}"
-    )
-    assert df["image_id"].tolist() == [1], (
-        f"Expected image_id=[1], got {df['image_id'].tolist()}"
-    )
+    assert set(df.columns) == {
+        "path",
+        "image_id",
+        "datetime",
+    }, f"Expected columns {{path, image_id, datetime}}, got {set(df.columns)}"
+    assert df["image_id"].tolist() == [
+        1
+    ], f"Expected image_id=[1], got {df['image_id'].tolist()}"

@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
 from darsia.gui.ui.schema.dataclass_introspection import _build_fields
 from darsia.gui.ui.settings import SettingsFactory
 
-
 # ────────────────────────────────────────────────────────────────────────────────
 # Synthetic dataclass fixtures for metadata testing
 # ────────────────────────────────────────────────────────────────────────────────
