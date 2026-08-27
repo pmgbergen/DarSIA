@@ -278,6 +278,13 @@ def calibration_color_to_mass_analysis_from_context(
         atmospheric_temperature_gradient=gradient.temperature,
     )
 
+    # Use contour_smoother from analysis config if available, otherwise use default
+    contour_smoother = (
+        config.analysis.mass.contour_smoother
+        if config.analysis and config.analysis.mass
+        else None
+    )
+
     # Fetch signal functions from reference calibration.
     if not reset and ref_path is not None:
         # Start from reference calibration if available
@@ -302,7 +309,7 @@ def calibration_color_to_mass_analysis_from_context(
             restoration=restoration,
             basis=selected_basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
-            contour_smoother=config.analysis.mass.contour_smoother,
+            contour_smoother=contour_smoother,
         )
         color_analysis.color_path_interpretation = color_path_interpretation
 
@@ -317,7 +324,7 @@ def calibration_color_to_mass_analysis_from_context(
             restoration=restoration,
             basis=selected_basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
-            contour_smoother=config.analysis.mass.contour_smoother,
+            contour_smoother=contour_smoother,
         )
     else:
         # Start from scratch
@@ -361,7 +368,7 @@ def calibration_color_to_mass_analysis_from_context(
             ignore_labels=embedding.ignore_labels + ignore_labels,
             basis=selected_basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
-            contour_smoother=config.analysis.mass.contour_smoother,
+            contour_smoother=contour_smoother,
         )
 
     # ! ---- INTERACTIVE CALIBRATION ---- ! #
