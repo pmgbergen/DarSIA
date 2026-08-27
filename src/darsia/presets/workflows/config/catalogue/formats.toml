@@ -1,0 +1,23 @@
+# Bundled catalogue of export format presets
+
+[[format]]
+type = "jpg"
+name = "jpg"
+filename_pattern = "stem"
+resolution = [1080, 1800]
+keep_ratio = true
+cmap = "viridis"
+quality = 100
+
+[[format]]
+type = "csv"
+name = "csv"
+filename_pattern = "stem"
+resolution = [220, 368]
+keep_ratio = false
+float_format = "{:.3e}"
+
+[[format]]
+type = "npz"
+name = "npz"
+filename_pattern = "stem"
