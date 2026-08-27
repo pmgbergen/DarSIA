@@ -2557,7 +2557,8 @@ class SettingsFactory:
 
             # Create a closure to capture the target widget and driver_value
             # Support both single-value (string) and multi-value (list/set/tuple) comparisons
-            # Handle both scalar widgets (use setRowVisible) and group result dicts (setVisible)
+            # Handle both scalar widgets (use setRowVisible) and group result dicts
+            # (setVisible)
             if isinstance(field_widget, dict) and field_widget.get("is_group_result"):
                 # Nested group result: call widget.setVisible() directly
                 target_widget = field_widget.get("widget")
