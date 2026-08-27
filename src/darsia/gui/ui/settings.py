@@ -2119,8 +2119,11 @@ class SettingsFactory:
                 return
             try:
                 from pathlib import Path
+
+                from darsia.presets.workflows.config.corrections import (
+                    CurvatureCorrectionConfig,
+                )
                 from darsia.presets.workflows.config.utils import _get_section_from_toml
-                from darsia.presets.workflows.config.corrections import CurvatureCorrectionConfig
 
                 # Extract the section and then the subsection
                 try:
@@ -2143,7 +2146,9 @@ class SettingsFactory:
                 preset_dict = config.to_dict()
 
                 # Apply the preset
-                self.main_window.config_controller.apply_partial_preset(key_path, preset_dict)
+                self.main_window.config_controller.apply_partial_preset(
+                    key_path, preset_dict
+                )
                 self.main_window.print_log(f"Loaded preset from {file}")
             except Exception as e:
                 self.main_window.print_log(f"Error loading preset from TOML: {e}")
@@ -2154,15 +2159,31 @@ class SettingsFactory:
         # "From catalogue" submenu
         try:
             from pathlib import Path
-            from darsia.presets.workflows.config.catalogue.corrections import CurvatureCatalogue
+
+            from darsia.presets.workflows.config.catalogue.corrections import (
+                CurvatureCatalogue,
+            )
 
             # Load the bundled catalogue
-            catalogue_path = Path(__file__).parent.parent / "config" / "catalogue" / "corrections.toml"
+            catalogue_path = (
+                Path(__file__).parent.parent
+                / "config"
+                / "catalogue"
+                / "corrections.toml"
+            )
             if not catalogue_path.exists():
                 # Fallback: try relative to darsia installation
                 import darsia
+
                 darsia_root = Path(darsia.__file__).parent
-                catalogue_path = darsia_root / "presets" / "workflows" / "config" / "catalogue" / "corrections.toml"
+                catalogue_path = (
+                    darsia_root
+                    / "presets"
+                    / "workflows"
+                    / "config"
+                    / "catalogue"
+                    / "corrections.toml"
+                )
 
             catalogue = CurvatureCatalogue().load(catalogue_path)
             preset_names = catalogue.names()
@@ -2170,6 +2191,7 @@ class SettingsFactory:
             if preset_names:
                 submenu = menu.addMenu("From catalogue")
                 for preset_name in preset_names:
+
                     def make_preset_loader(name):
                         def load_preset():
                             try:
@@ -2180,13 +2202,18 @@ class SettingsFactory:
                                 )
                                 self.main_window.print_log(f"Loaded preset '{name}'")
                             except Exception as e:
-                                self.main_window.print_log(f"Error loading preset '{name}': {e}")
+                                self.main_window.print_log(
+                                    f"Error loading preset '{name}': {e}"
+                                )
+
                         return load_preset
 
                     action = submenu.addAction(preset_name)
                     action.triggered.connect(make_preset_loader(preset_name))
         except Exception as e:
-            self.main_window.print_log(f"Warning: could not load curvature catalogue: {e}")
+            self.main_window.print_log(
+                f"Warning: could not load curvature catalogue: {e}"
+            )
 
         return button
 
