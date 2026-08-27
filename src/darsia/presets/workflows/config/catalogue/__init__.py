@@ -2,5 +2,6 @@
 
 from .corrections import CurvatureCatalogue
 from .formats import FormatCatalogue
+from .rig import RigCatalogue
 
-__all__ = ["CurvatureCatalogue", "FormatCatalogue"]
+__all__ = ["CurvatureCatalogue", "FormatCatalogue", "RigCatalogue"]

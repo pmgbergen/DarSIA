@@ -51,5 +51,13 @@ class RigConfig:
         assert self.path is not None, "results is required if path is not set"
         return self
 
+    def to_dict(self) -> dict:
+        """Serialize rig config to TOML-compatible dict for load/save round-trips."""
+        return {
+            "width": self.width,
+            "height": self.height,
+            "dim": self.dim,
+        }
+
     def error(self):
         raise ValueError("Use [specs] in the config file to load specs.")
