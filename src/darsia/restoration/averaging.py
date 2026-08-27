@@ -23,7 +23,7 @@ class REV:
             img (Image): image, used for determining the number of voxels
 
         """
-        if isinstance(size, float):
+        if isinstance(size, (int, float)):
             size = [size] * img.coordinatesystem.dim
         self.size: int = max(
             [
