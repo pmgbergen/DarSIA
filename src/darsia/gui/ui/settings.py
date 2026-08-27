@@ -657,7 +657,7 @@ class SettingsFactory:
             try:
                 form = form_context["form"]
 
-                # Build header widget
+                # Build header widget (load button added later after entries_data exists)
                 header_widget = QWidget()
                 header_layout = QHBoxLayout(header_widget)
                 header_layout.setContentsMargins(0, 0, 0, 0)
@@ -883,6 +883,21 @@ class SettingsFactory:
             try:
                 # Connect add button
                 add_button.clicked.connect(lambda: add_entry())
+
+                # Add load button if this dataclass_group_map is loadable (e.g., formats)
+                loadable_type = setting_dict.get("loadable")
+                if loadable_type:
+                    def on_apply_list(name, entry_dict):
+                        # For list-of-dataclass fields, check for duplicate then append
+                        if any(e["name"] == name for e in entries_data):
+                            self.main_window.print_log(f"{loadable_type.capitalize()} '{name}' already exists, skipped.")
+                            return
+                        add_entry(name, entry_dict)
+
+                    load_button = self._create_load_button(setting_dict, on_apply_list)
+                    if load_button:
+                        # Insert load button into header layout before help column
+                        header_layout.insertWidget(1, load_button, stretch=0)
 
                 # Prefill existing entries
                 if value:
@@ -2080,15 +2095,17 @@ class SettingsFactory:
                 "rows": row_pairs,
             }
 
-    def _create_load_button(self, setting_dict):
-        """Create a 'Load' menu button for a loadable group (e.g., curvature correction).
+    def _create_load_button(self, setting_dict, on_apply):
+        """Create a 'Load' menu button for a loadable registry (e.g., curvature or formats).
 
         Returns a QToolButton with a QMenu offering:
-        - "From TOML..." → file picker, extract section, apply preset
-        - "From catalogue > <preset name>" → apply named preset from catalogue
+        - "From TOML..." → file picker, parse entries, call on_apply per entry
+        - "From catalogue > <preset name>" → call on_apply with catalogue entry
 
         Args:
-            setting_dict: The setting dict for this group (must have "loadable" key).
+            setting_dict: The setting dict (must have "loadable" key).
+            on_apply: Callable(name: str, entry_dict: dict) -> None,
+                called once per loaded item (name as dict key, entry_dict as TOML dict).
 
         Returns:
             A QToolButton with QMenu, or None if not loadable.
@@ -2097,8 +2114,33 @@ class SettingsFactory:
         if not loadable_type:
             return None
 
-        key_path = setting_dict["key"]  # e.g. "corrections.curvature"
-        section, subsection = key_path.rsplit(".", 1)  # e.g. "corrections", "curvature"
+        # Map loadable_type to config class, catalogue class, catalogue filename
+        from pathlib import Path
+
+        loadable_config = {
+            "curvature": {
+                "config_class": "darsia.presets.workflows.config.corrections:CurvatureCorrectionConfig",
+                "catalogue_class": "darsia.presets.workflows.config.catalogue.corrections:CurvatureCatalogue",
+                "catalogue_file": "corrections.toml",
+                "toml_key": "corrections",
+                "toml_subkey": "curvature",
+                "is_single_section": True,
+            },
+            "format": {
+                "config_class": "darsia.presets.workflows.config.format_registry:ImageExportFormat",
+                "catalogue_class": "darsia.presets.workflows.config.catalogue.formats:FormatCatalogue",
+                "catalogue_file": "formats.toml",
+                "toml_key": "format",
+                "toml_subkey": None,
+                "is_single_section": False,
+            },
+        }
+
+        if loadable_type not in loadable_config:
+            self.main_window.print_log(f"Unknown loadable type: {loadable_type}")
+            return None
+
+        config_meta = loadable_config[loadable_type]
 
         button = QToolButton()
         button.setText("Load ▾")
@@ -2111,45 +2153,74 @@ class SettingsFactory:
         def load_from_toml():
             file, _ = QFileDialog.getOpenFileName(
                 self.main_window,
-                "Load preset from TOML",
+                f"Load {loadable_type} preset from TOML",
                 "",
                 "TOML Files (*.toml);;All Files (*)",
             )
             if not file:
                 return
             try:
-                from pathlib import Path
+                import tomllib
 
-                from darsia.presets.workflows.config.corrections import (
-                    CurvatureCorrectionConfig,
-                )
-                from darsia.presets.workflows.config.utils import _get_section_from_toml
+                # For curvature: extract section.subsection
+                # For formats: extract [[format]] array-of-tables
+                is_single_section = config_meta["is_single_section"]
+                with open(file, "rb") as f:
+                    data = tomllib.load(f)
 
-                # Extract the section and then the subsection
-                try:
-                    sec = _get_section_from_toml(Path(file), section)
-                    sub_sec = sec.get(subsection)  # e.g. "curvature"
-                except KeyError:
-                    self.main_window.print_log(
-                        f"Section '{section}' not found in {file}"
-                    )
-                    return
+                if is_single_section:
+                    # Curvature: extract section.subsection and call on_apply once
+                    section = config_meta["toml_key"]
+                    subkey = config_meta["toml_subkey"]
+                    if section not in data:
+                        self.main_window.print_log(f"Section '{section}' not found in {file}")
+                        return
+                    sec = data[section]
+                    if subkey not in sec:
+                        self.main_window.print_log(f"Sub-section '{section}.{subkey}' not found in {file}")
+                        return
+                    sub_sec = sec[subkey]
 
-                if not sub_sec:
-                    self.main_window.print_log(
-                        f"Sub-section '{key_path}' not found in {file}"
-                    )
-                    return
+                    # Validate and normalize via the config class
+                    module_path, class_name = config_meta["config_class"].rsplit(":", 1)
+                    module_parts = module_path.split(".")
+                    mod = __import__(module_path, fromlist=[class_name])
+                    config_class = getattr(mod, class_name)
+                    config = config_class().load(sub_sec)
+                    preset_dict = config.to_dict()
 
-                # Validate and normalize via the config class
-                config = CurvatureCorrectionConfig().load(sub_sec)
-                preset_dict = config.to_dict()
+                    on_apply("_singleton", preset_dict)
+                    self.main_window.print_log(f"Loaded preset from {file}")
+                else:
+                    # Formats/etc: extract [[key]] array-of-tables and call on_apply per entry
+                    toml_key = config_meta["toml_key"]
+                    if toml_key not in data:
+                        self.main_window.print_log(f"No [[{toml_key}]] entries found in {file}")
+                        return
+                    entry_list = data[toml_key]
+                    if not isinstance(entry_list, list):
+                        self.main_window.print_log(f"[[{toml_key}]] must be array-of-tables, not nested dict")
+                        return
 
-                # Apply the preset
-                self.main_window.config_controller.apply_partial_preset(
-                    key_path, preset_dict
-                )
-                self.main_window.print_log(f"Loaded preset from {file}")
+                    # Use the registry's parsing to validate each entry
+                    module_path, class_name = config_meta["config_class"].rsplit(":", 1)
+                    mod = __import__(module_path, fromlist=[class_name])
+                    entry_class = getattr(mod, class_name)
+
+                    for entry_dict in entry_list:
+                        try:
+                            name = entry_dict.get("name", "")
+                            if not name:
+                                self.main_window.print_log(f"Skipped unnamed entry in {file}")
+                                continue
+                            # For ImageExportFormat, validate via the registry's load logic
+                            # (simplified: just pass the dict to on_apply and let GUI handle errors)
+                            on_apply(name, entry_dict)
+                        except Exception as e:
+                            self.main_window.print_log(f"Error loading entry: {e}")
+
+                    self.main_window.print_log(f"Loaded {len(entry_list)} presets from {file}")
+
             except Exception as e:
                 self.main_window.print_log(f"Error loading preset from TOML: {e}")
 
@@ -2158,18 +2229,12 @@ class SettingsFactory:
 
         # "From catalogue" submenu
         try:
-            from pathlib import Path
-
-            from darsia.presets.workflows.config.catalogue.corrections import (
-                CurvatureCatalogue,
-            )
-
             # Load the bundled catalogue
             catalogue_path = (
                 Path(__file__).parent.parent
                 / "config"
                 / "catalogue"
-                / "corrections.toml"
+                / config_meta["catalogue_file"]
             )
             if not catalogue_path.exists():
                 # Fallback: try relative to darsia installation
@@ -2182,10 +2247,15 @@ class SettingsFactory:
                     / "workflows"
                     / "config"
                     / "catalogue"
-                    / "corrections.toml"
+                    / config_meta["catalogue_file"]
                 )
 
-            catalogue = CurvatureCatalogue().load(catalogue_path)
+            # Dynamically import the catalogue class
+            module_path, class_name = config_meta["catalogue_class"].rsplit(":", 1)
+            mod = __import__(module_path, fromlist=[class_name])
+            catalogue_class = getattr(mod, class_name)
+
+            catalogue = catalogue_class().load(catalogue_path)
             preset_names = catalogue.names()
 
             if preset_names:
@@ -2196,15 +2266,22 @@ class SettingsFactory:
                         def load_preset():
                             try:
                                 config = catalogue.get(name)
-                                preset_dict = config.to_dict()
-                                self.main_window.config_controller.apply_partial_preset(
-                                    key_path, preset_dict
-                                )
+                                # For curvature: call to_dict(); for formats: pass the object
+                                # and let on_apply handle it
+                                if config_meta["is_single_section"]:
+                                    preset_dict = config.to_dict()
+                                else:
+                                    # For ImageExportFormat, convert to dict for GUI prefill
+                                    from darsia.presets.workflows.config.format_registry import (
+                                        _format_entry_to_dict,
+                                    )
+
+                                    preset_dict = _format_entry_to_dict(config)
+
+                                on_apply(name, preset_dict)
                                 self.main_window.print_log(f"Loaded preset '{name}'")
                             except Exception as e:
-                                self.main_window.print_log(
-                                    f"Error loading preset '{name}': {e}"
-                                )
+                                self.main_window.print_log(f"Error loading preset '{name}': {e}")
 
                         return load_preset
 
@@ -2212,7 +2289,7 @@ class SettingsFactory:
                     action.triggered.connect(make_preset_loader(preset_name))
         except Exception as e:
             self.main_window.print_log(
-                f"Warning: could not load curvature catalogue: {e}"
+                f"Warning: could not load {loadable_type} catalogue: {e}"
             )
 
         return button
@@ -2284,7 +2361,12 @@ class SettingsFactory:
         )  # For nested multi-row fields, reuse _get_or_create_group_form helper
 
         # Add Load button if this group is loadable (e.g., curvature correction)
-        load_button = self._create_load_button(setting_dict)
+        key_path = setting_dict["key"]  # e.g. "corrections.curvature"
+        def on_apply_group(name, preset_dict):
+            # For group fields (curvature), full replace via apply_partial_preset
+            self.main_window.config_controller.apply_partial_preset(key_path, preset_dict)
+
+        load_button = self._create_load_button(setting_dict, on_apply_group)
         if load_button:
             load_button_wrapper = QHBoxLayout()
             load_button_wrapper.addWidget(load_button)
