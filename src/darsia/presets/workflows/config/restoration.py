@@ -137,6 +137,20 @@ class TVDConfig:
 
 @dataclass
 class RestorationConfig:
+    active: bool = field(
+        default=True,
+        metadata={
+            "name": "Activate restoration",
+            "help": (
+                "When unchecked, restoration is skipped (equivalent to omitting "
+                "[restoration] from the config). Other values below are preserved even "
+                "when unchecked."
+            ),
+            "section_active": True,
+            "hidden": True,
+        },
+    )
+    """Whether to enable restoration processing."""
     method: Literal["volume_average", "tvd"] | None = field(
         default="volume_average",
         metadata={
@@ -188,11 +202,20 @@ class RestorationConfig:
         else:
             sec = _get_section_from_toml(path, "restoration")
 
+        # Check if restoration is active.
+        self.active = bool(sec.get("active", self.active))
+
         # Select and validate the restoration method.
-        self.method = _get_key(sec, "method", required=True, type_=str).lower()
+        method_str = _get_key(
+            sec, "method", default=self.method, required=False, type_=str
+        )
+        if method_str is not None:
+            self.method = method_str.lower()
+        else:
+            self.method = None
         if self.method == "none":
             self.method = None
-        if self.method not in ["volume_average", "tvd", None]:
+        elif self.method is not None and self.method not in ["volume_average", "tvd"]:
             raise NotImplementedError(f"Invalid restoration method: {self.method}")
 
         # Allow to mask out certain regions from restoration.
