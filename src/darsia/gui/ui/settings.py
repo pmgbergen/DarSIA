@@ -3017,9 +3017,7 @@ class SettingsFactory:
                     )
 
                 setting_dict = {"loadable": loadable_type}
-                load_button = self._create_load_button(
-                    setting_dict, on_apply_section
-                )
+                load_button = self._create_load_button(setting_dict, on_apply_section)
                 if load_button:
                     load_button_wrapper = QHBoxLayout()
                     load_button_wrapper.addWidget(load_button)
