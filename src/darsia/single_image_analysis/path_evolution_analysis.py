@@ -95,6 +95,7 @@ class PathEvolutionAnalysis:
         color = kwargs.get("color", "viridis")
         if color in plt.colormaps():
             import matplotlib
+
             cmap = matplotlib.colormaps[color]
         else:
             # Use a constant color if the provided color is not a valid colormap
