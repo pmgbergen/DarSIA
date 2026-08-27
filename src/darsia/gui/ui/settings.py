@@ -2509,22 +2509,24 @@ class SettingsFactory:
                 nested_widget = field_widget.get("widget")
                 if nested_widget:
                     group_form.addRow(nested_widget)
+                row_index = group_form.rowCount() - 1
                 sub_inputs[sub_setting["key"]] = field_widget
                 # Flatten nested sub_inputs so they appear in parent's sub_inputs
                 for nested_key, nested_widget_or_result in field_widget.get(
                     "sub_inputs", {}
                 ).items():
                     sub_inputs[nested_key] = nested_widget_or_result
-                # Skip depends_on wiring for nested groups (only scalar fields supported)
-                continue
-
-            # Handle scalar fields normally
-            group_form.addRow(label_text, field_widget)
-            sub_inputs[sub_setting["key"]] = field_widget
-            # Store row index for depends_on wiring
-            unqualified_key = sub_setting["key"].rsplit(".", 1)[-1]
-            row_index = group_form.rowCount() - 1
-            field_row_map[unqualified_key] = (row_index, field_widget, sub_setting)
+                # Track nested groups for depends_on wiring (same as scalars)
+                unqualified_key = sub_setting["key"].rsplit(".", 1)[-1]
+                field_row_map[unqualified_key] = (row_index, field_widget, sub_setting)
+            else:
+                # Handle scalar fields normally
+                group_form.addRow(label_text, field_widget)
+                sub_inputs[sub_setting["key"]] = field_widget
+                # Store row index for depends_on wiring
+                unqualified_key = sub_setting["key"].rsplit(".", 1)[-1]
+                row_index = group_form.rowCount() - 1
+                field_row_map[unqualified_key] = (row_index, field_widget, sub_setting)
         result["sub_inputs"] = sub_inputs
 
         # Wire up depends_on visibility: for each field with a depends_on constraint,
@@ -2553,21 +2555,43 @@ class SettingsFactory:
             if driver_combo is None:
                 continue  # Driver is not a dropdown, skip
 
-            # Create a closure to capture the row_index and driver_value
+            # Create a closure to capture the target widget and driver_value
             # Support both single-value (string) and multi-value (list/set/tuple) comparisons
-            def make_visibility_handler(row_idx, required_val):
-                def handler(current_text):
-                    is_visible = (
-                        current_text in required_val
-                        if isinstance(required_val, (list, set, tuple))
-                        else current_text == required_val
-                    )
-                    group_form.setRowVisible(row_idx, is_visible)
+            # Handle both scalar widgets (use setRowVisible) and group result dicts (setVisible)
+            if isinstance(field_widget, dict) and field_widget.get("is_group_result"):
+                # Nested group result: call widget.setVisible() directly
+                target_widget = field_widget.get("widget")
+                if target_widget is None:
+                    continue
 
-                return handler
+                def make_group_visibility_handler(widget, required_val):
+                    def handler(current_text):
+                        is_visible = (
+                            current_text in required_val
+                            if isinstance(required_val, (list, set, tuple))
+                            else current_text == required_val
+                        )
+                        widget.setVisible(is_visible)
+
+                    return handler
+
+                handler = make_group_visibility_handler(target_widget, driver_value)
+            else:
+                # Scalar widget: use setRowVisible
+                def make_scalar_visibility_handler(row_idx, required_val):
+                    def handler(current_text):
+                        is_visible = (
+                            current_text in required_val
+                            if isinstance(required_val, (list, set, tuple))
+                            else current_text == required_val
+                        )
+                        group_form.setRowVisible(row_idx, is_visible)
+
+                    return handler
+
+                handler = make_scalar_visibility_handler(row_index, driver_value)
 
             # Connect the driver's value-changed signal to show/hide this row
-            handler = make_visibility_handler(row_index, driver_value)
             driver_combo.currentTextChanged.connect(handler)
 
             # Set initial visibility based on driver's current value
