@@ -2785,6 +2785,40 @@ class SettingsFactory:
         for active_list_key, names in group_active_names.items():
             self.set_value(self.main_window.config_dict, active_list_key, sorted(names))
 
+    def refresh_current_view(self):
+        """Refresh the currently-displayed settings tab/view, preserving tab index.
+
+        Replays the last-shown view (full settings or filtered action view) and
+        restores the tab index so the user stays on the same tab. Called after
+        config_dict mutations to reflect those changes on screen (e.g., by Load
+        button or Save).
+        """
+        if not self.main_window._last_settings_view:
+            return
+
+        from PySide6.QtWidgets import QTabWidget
+
+        # Capture the currently active tab index before rebuild
+        current_tab_index = None
+        if self.main_window.settings_layout.count() > 0:
+            widget = self.main_window.settings_layout.itemAt(0).widget()
+            if isinstance(widget, QTabWidget):
+                current_tab_index = widget.currentIndex()
+
+        # Replay the last view to refresh
+        if self.main_window._last_settings_view[0] == "full":
+            self.display_full_settings()
+        elif self.main_window._last_settings_view[0] == "action":
+            _, action, checked_ids = self.main_window._last_settings_view
+            self.display_settings(action, checked_ids)
+
+        # Restore the tab index if possible
+        if current_tab_index is not None:
+            widget = self.main_window.settings_layout.itemAt(0).widget()
+            if isinstance(widget, QTabWidget):
+                if 0 <= current_tab_index < widget.count():
+                    widget.setCurrentIndex(current_tab_index)
+
     def save_settings(self):
         """Save the current settings to the loaded config file."""
         import toml
@@ -2800,29 +2834,7 @@ class SettingsFactory:
 
             # Refresh the currently-displayed settings panel if one is open, so
             # newly added registry entries immediately appear in dropdowns etc.
-            if self.main_window._last_settings_view:
-                # Capture the currently active tab index
-                from PySide6.QtWidgets import QTabWidget
-
-                current_tab_index = None
-                if self.main_window.settings_layout.count() > 0:
-                    widget = self.main_window.settings_layout.itemAt(0).widget()
-                    if isinstance(widget, QTabWidget):
-                        current_tab_index = widget.currentIndex()
-
-                # Replay the last view to refresh
-                if self.main_window._last_settings_view[0] == "full":
-                    self.display_full_settings()
-                elif self.main_window._last_settings_view[0] == "action":
-                    _, action, checked_ids = self.main_window._last_settings_view
-                    self.display_settings(action, checked_ids)
-
-                # Restore the tab index if possible
-                if current_tab_index is not None:
-                    widget = self.main_window.settings_layout.itemAt(0).widget()
-                    if isinstance(widget, QTabWidget):
-                        if 0 <= current_tab_index < widget.count():
-                            widget.setCurrentIndex(current_tab_index)
+            self.refresh_current_view()
         else:
             self.main_window.print_log(
                 "Settings not saved, please choose a config file"
