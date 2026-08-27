@@ -326,8 +326,7 @@ class CropCorrectionConfig:
 
         self.width = float(sec.get("width", self.width))
         self.height = float(sec.get("height", self.height))
-        # Note: TOML key is "in meters" (with space), Python attr is in_meters
-        self.in_meters = sec.get("in meters", self.in_meters)
+        self.in_meters = sec.get("in_meters", self.in_meters)
         if not isinstance(self.in_meters, bool):
             self.in_meters = bool(self.in_meters)
         return self
@@ -546,7 +545,7 @@ class CurvatureCorrectionConfig:
                 stage_dict = {
                     "width": stage_config.width,
                     "height": stage_config.height,
-                    "in meters": stage_config.in_meters,  # Note: "in meters" with space
+                    "in_meters": stage_config.in_meters,
                 }
                 if stage_config.pts_src is not None:
                     stage_dict["pts_src"] = stage_config.pts_src
