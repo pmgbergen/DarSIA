@@ -7,6 +7,8 @@ the real control + type label + help button) were not being unwrapped before val
 extraction in _sync_settings_inputs_to_config_dict.
 """
 
+from unittest.mock import MagicMock
+
 import pytest
 from PySide6.QtWidgets import (
     QApplication,
@@ -17,7 +19,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QWidget,
 )
-from unittest.mock import MagicMock
 
 from darsia.gui.ui.settings import SettingsFactory, unwrap_composite_widget
 

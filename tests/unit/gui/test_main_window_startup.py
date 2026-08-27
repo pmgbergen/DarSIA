@@ -40,9 +40,15 @@ def test_main_window_has_tabs(main_window):
     section_names = list(sidebar._sections.keys())
 
     # Check that we have sections for Setup, Calibration, and Analysis
-    assert "setup" in section_names, f"Setup category not found. Found categories: {section_names}"
-    assert "calibration" in section_names, f"Calibration category not found. Found categories: {section_names}"
-    assert "analysis" in section_names, f"Analysis category not found. Found categories: {section_names}"
+    assert (
+        "setup" in section_names
+    ), f"Setup category not found. Found categories: {section_names}"
+    assert (
+        "calibration" in section_names
+    ), f"Calibration category not found. Found categories: {section_names}"
+    assert (
+        "analysis" in section_names
+    ), f"Analysis category not found. Found categories: {section_names}"
 
 
 def test_main_window_has_menu_bar(main_window):

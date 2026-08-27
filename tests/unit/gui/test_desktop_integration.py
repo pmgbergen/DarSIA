@@ -5,9 +5,10 @@ in CI environments. Platform-specific logic is tested separately for Linux and W
 """
 
 import sys
-import pytest
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 
 class TestIconResolution:
@@ -43,7 +44,9 @@ class TestExecutableResolution:
 
         exe = _get_darsia_executable()
         sys_bin = Path(sys.executable).parent
-        assert exe.parent == sys_bin, "darsia exe should be in the same bin directory as sys.executable"
+        assert (
+            exe.parent == sys_bin
+        ), "darsia exe should be in the same bin directory as sys.executable"
 
     def test_darsia_executable_name_by_platform(self):
         """Test that the executable name matches the platform."""
@@ -89,7 +92,9 @@ class TestLinuxDesktopIntegration:
         _install_linux()
 
         icon_path = xdg_data / "icons" / "hicolor" / "256x256" / "apps" / "darsia.png"
-        assert icon_path.exists(), "Icon file should be created and persist after _install_linux returns"
+        assert (
+            icon_path.exists()
+        ), "Icon file should be created and persist after _install_linux returns"
 
     @pytest.mark.skipif(sys.platform == "win32", reason="Linux-only test")
     def test_uninstall_linux_removes_desktop_file(self, tmp_path, monkeypatch, capsys):
@@ -104,10 +109,14 @@ class TestLinuxDesktopIntegration:
         assert desktop_path.exists()
 
         _uninstall_linux()
-        assert not desktop_path.exists(), ".desktop file should be removed after uninstall"
+        assert (
+            not desktop_path.exists()
+        ), ".desktop file should be removed after uninstall"
 
     @pytest.mark.skipif(sys.platform == "win32", reason="Linux-only test")
-    def test_uninstall_linux_no_error_if_nothing_installed(self, tmp_path, monkeypatch, capsys):
+    def test_uninstall_linux_no_error_if_nothing_installed(
+        self, tmp_path, monkeypatch, capsys
+    ):
         """Test that _uninstall_linux gracefully handles missing .desktop file."""
         from darsia.gui.desktop_integration import _uninstall_linux
 
@@ -131,7 +140,9 @@ class TestLinuxDesktopIntegration:
         _install_linux()
 
         desktop_path = home / ".local" / "share" / "applications" / "darsia.desktop"
-        assert desktop_path.exists(), ".desktop file should use ~/.local/share as default"
+        assert (
+            desktop_path.exists()
+        ), ".desktop file should use ~/.local/share as default"
 
 
 class TestWindowsDesktopIntegration:
@@ -162,7 +173,9 @@ class TestWindowsDesktopIntegration:
         _install_windows()
 
         ico_path = localappdata / "DarSIA" / "darsia.ico"
-        assert ico_path.exists(), "Icon file should be persisted and exist after _install_windows returns"
+        assert (
+            ico_path.exists()
+        ), "Icon file should be persisted and exist after _install_windows returns"
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
     def test_uninstall_windows_removes_persistent_ico(self, tmp_path, monkeypatch):
@@ -182,7 +195,9 @@ class TestWindowsDesktopIntegration:
         assert not ico_path.exists(), "Icon should be removed after uninstall"
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
-    def test_uninstall_windows_no_error_if_nothing_installed(self, tmp_path, monkeypatch):
+    def test_uninstall_windows_no_error_if_nothing_installed(
+        self, tmp_path, monkeypatch
+    ):
         """Test that _uninstall_windows gracefully handles missing shortcut and icon."""
         from darsia.gui.desktop_integration import _uninstall_windows
 
@@ -212,11 +227,15 @@ class TestMainDispatch:
             install_called["windows"] = True
 
         with patch("darsia.gui.desktop_integration._install_linux", mock_install_linux):
-            with patch("darsia.gui.desktop_integration._install_windows", mock_install_windows):
+            with patch(
+                "darsia.gui.desktop_integration._install_windows", mock_install_windows
+            ):
                 with patch("sys.platform", "linux"):
                     with patch("sys.argv", ["darsia-install-desktop"]):
                         main()
-                        assert install_called.get("linux"), "Linux install handler should be called"
+                        assert install_called.get(
+                            "linux"
+                        ), "Linux install handler should be called"
 
     def test_main_uninstall_calls_platform_handler(self):
         """Test that main() --uninstall calls the correct platform-specific uninstall handler."""
@@ -230,12 +249,19 @@ class TestMainDispatch:
         def mock_uninstall_windows():
             uninstall_called["windows"] = True
 
-        with patch("darsia.gui.desktop_integration._uninstall_linux", mock_uninstall_linux):
-            with patch("darsia.gui.desktop_integration._uninstall_windows", mock_uninstall_windows):
+        with patch(
+            "darsia.gui.desktop_integration._uninstall_linux", mock_uninstall_linux
+        ):
+            with patch(
+                "darsia.gui.desktop_integration._uninstall_windows",
+                mock_uninstall_windows,
+            ):
                 with patch("sys.platform", "linux"):
                     with patch("sys.argv", ["darsia-install-desktop", "--uninstall"]):
                         main()
-                        assert uninstall_called.get("linux"), "Linux uninstall handler should be called"
+                        assert uninstall_called.get(
+                            "linux"
+                        ), "Linux uninstall handler should be called"
 
     def test_main_unsupported_platform_exits(self):
         """Test that main() exits with an error on unsupported platforms."""
@@ -251,8 +277,14 @@ class TestMainDispatch:
         """Test that main() exits if the darsia executable is not found."""
         from darsia.gui.desktop_integration import main
 
-        with patch("darsia.gui.desktop_integration._get_darsia_executable", return_value=Path("/nonexistent/darsia")):
-            with patch("darsia.gui.desktop_integration._install_linux", side_effect=FileNotFoundError("darsia not found")):
+        with patch(
+            "darsia.gui.desktop_integration._get_darsia_executable",
+            return_value=Path("/nonexistent/darsia"),
+        ):
+            with patch(
+                "darsia.gui.desktop_integration._install_linux",
+                side_effect=FileNotFoundError("darsia not found"),
+            ):
                 with patch("sys.platform", "linux"):
                     with patch("sys.argv", ["darsia-install-desktop"]):
                         with pytest.raises(SystemExit) as exc_info:
