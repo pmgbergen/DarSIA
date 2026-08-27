@@ -276,6 +276,7 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "array_key": field.metadata.get("array_key", None),
                 "checkable": field.metadata.get("checkable", None),
                 "auto_add_empty": field.metadata.get("auto_add_empty", None),
+                "loadable": field.metadata.get("loadable", None),
             }
 
             # For list/tuple types, add the element type label and infer fixed_length
