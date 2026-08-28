@@ -23,6 +23,7 @@ import logging
 import sys
 
 from darsia.presets.workflows.rig import Rig
+from darsia.presets.workflows.setup.setup_crop import setup_crop_correction
 from darsia.presets.workflows.setup.setup_depth import setup_depth_map
 from darsia.presets.workflows.setup.setup_facies import setup_facies
 from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
@@ -57,6 +58,11 @@ def build_parser_for_setup():
         help="Generate imaging/injection/pressure-temperature protocol CSV files.",
     )
     parser.add_argument("--rig", action="store_true", help="Activate setup of rig.")
+    parser.add_argument(
+        "--crop",
+        action="store_true",
+        help="Activate interactive setup of crop correction.",
+    )
     parser.add_argument(
         "--force",
         action="store_true",
@@ -94,6 +100,9 @@ def preset_setup(rig=Rig):
     if args.all or args.rig:
         print("Running rig setup...", flush=True)
         setup_rig(rig, args.config, args.show)
+    if args.crop:
+        print("Running crop correction setup...", flush=True)
+        setup_crop_correction(args.config, show=args.show)
     if args.protocol:
         print("Running protocol setup...", flush=True)
         setup_imaging_protocol(args.config, force=args.force, show=args.show)

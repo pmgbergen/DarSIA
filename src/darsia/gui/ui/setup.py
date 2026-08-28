@@ -34,7 +34,7 @@ class SetupTab:
             self.main_window.print_log("Please select an option in the sidebar.")
             return
 
-        # Sync GUI widgets to config_dict before reading live values
+        # Sync GUI widgets to config_dict to read current show_plots setting
         self.main_window.settings_factory._sync_settings_inputs_to_config_dict()
         show_plots = bool(
             self.main_window.settings_factory.get_value(
@@ -50,6 +50,7 @@ class SetupTab:
             "facies": selected_id == "facies",
             "protocols": selected_id == "protocols",
             "rig": selected_id == "rig",
+            "crop": selected_id == "crop",
             "show": show_plots,
             "force": False,
         }
@@ -126,6 +127,8 @@ class SetupTab:
             argv.append("--protocol")
         if options["rig"]:
             argv.append("--rig")
+        if options["crop"]:
+            argv.append("--crop")
         if options["force"]:
             argv.append("--force")
         if options["show"]:
@@ -134,6 +137,7 @@ class SetupTab:
         # Launch workflow in a separate process
         play_action = self.main_window.toolbar_builder.play_action
         stop_action = self.main_window.toolbar_builder.stop_action
+
         self.process = self.main_window.process_runner.start_workflow_process(
             argv, play_action, stop_action, cwd=Path.cwd()
         )
@@ -171,6 +175,12 @@ class SetupTab:
                         get_help_text("setup", "protocols", "Protocols"),
                     ),
                     ("Rig", "rig", "fa5s.circle", get_help_text("setup", "rig", "Rig")),
+                    (
+                        "Crop correction",
+                        "crop",
+                        "fa5s.circle",
+                        get_help_text("setup", "crop", "Crop correction"),
+                    ),
                 ],
             ),
             (
