@@ -6,6 +6,10 @@ HELP_TEXT_SETUP = {
     "facies": "Define and configure geological layers (facies) for analysis.",
     "protocols": "Configure imaging protocols, timing, and data collection schedules.",
     "rig": "Initialize experimental rig geometry and hardware parameters.",
+    "crop": (
+        "Interactively select the four corners of the FluidFlower region "
+        "for crop correction using matplotlib point-picker."
+    ),
     "all": "Execute all setup steps in sequence.",
     "show_plots": "Display visualization plots during setup execution.",
 }
