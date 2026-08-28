@@ -58,7 +58,10 @@ corner_2 = [2.745, 1.5]
 horizontal_bulge = 1e-9
 vertical_bulge = 0.0
 [curvature.crop]
-pts_src = [[381, 158], [4920, 137], [4938, 7732], [425, 7734]]
+top_left = [381, 158]
+bottom_left = [4920, 137]
+bottom_right = [4938, 7732]
+top_right = [425, 7734]
 width = 2.745
 height = 1.5
 [curvature.bulge]
