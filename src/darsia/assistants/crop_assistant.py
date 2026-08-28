@@ -1,6 +1,6 @@
-"""Modulde for crop assistant.
+"""Module for crop assistant.
 
-Main prupose of the assistant is to produce input arguments for the
+Main purpose of the assistant is to produce input arguments for the
 'crop' option of CurvatureCorrection.
 
 """
@@ -33,6 +33,9 @@ class CropAssistant(darsia.PointSelectionAssistant):
         self.pts: Optional[darsia.VoxelArray] = None
         """Selected corners to define box after cropping (voxels in matrix indexing)."""
 
+        self.corners: dict[str, tuple[int, int]] = {}
+        """Named corners as {top_left, bottom_left, bottom_right, top_right}."""
+
         # Prepare further output
         self.finalized_prompt_input = False
         """Flag controlling whether the user has entered the width and height."""
@@ -46,6 +49,43 @@ class CropAssistant(darsia.PointSelectionAssistant):
     def _reset(self) -> None:
         """Reset list of points."""
         super()._reset()
+
+    def _classify_corners(self, pts: darsia.VoxelArray) -> dict[str, tuple[int, int]]:
+        """Classify 4 points into named corners by their position relative to centroid.
+
+        Assigns each point to a corner (top_left, bottom_left, bottom_right,
+        top_right) based on its row/col relative to the centroid of all 4 points.
+        This makes the assistant robust to click order.
+
+        Args:
+            pts: VoxelArray of 4 points in arbitrary order, each [row, col].
+
+        Returns:
+            dict with keys "top_left", "bottom_left", "bottom_right", "top_right",
+            each mapping to a (row, col) tuple.
+        """
+        assert len(pts) == 4, "Expected 4 points"
+        pts_array = np.array(pts)
+        centroid = pts_array.mean(axis=0)
+
+        corners = {}
+        for pt in pts:
+            row, col = pt
+            is_top = row < centroid[0]
+            is_left = col < centroid[1]
+
+            if is_top and is_left:
+                key = "top_left"
+            elif is_top and not is_left:
+                key = "top_right"
+            elif not is_top and is_left:
+                key = "bottom_left"
+            else:
+                key = "bottom_right"
+
+            corners[key] = tuple(pt)
+
+        return corners
 
     # ! ---- Interactive mode ---- ! #
 
@@ -62,6 +102,9 @@ class CropAssistant(darsia.PointSelectionAssistant):
         # Run point selection and check number of points is 4
         super().__call__()
         assert len(self.pts) == 4, "Wrong number of points selected"
+
+        # Classify clicked points into named corners (robust to click order)
+        self.corners = self._classify_corners(self.pts)
 
         # Ask user to enter width and height into prompt
         if not self.finalized_prompt_input:
@@ -85,9 +128,12 @@ class CropAssistant(darsia.PointSelectionAssistant):
         """
         return {
             "crop": {
+                "top_left": self.corners["top_left"],
+                "bottom_left": self.corners["bottom_left"],
+                "bottom_right": self.corners["bottom_right"],
+                "top_right": self.corners["top_right"],
                 "width": self.width,
                 "height": self.height,
-                "pts_src": self.pts,
             },
         }
 
@@ -120,8 +166,8 @@ class CropAssistant(darsia.PointSelectionAssistant):
             color = np.array(color)
         color = color.astype(float)
 
-        # Find marks in the image
-        self.pts = self._find_marks(color)
+        # Find marks in the image (returns named corners dict)
+        self.corners = self._find_marks(color)
 
         # Define width and height of the box
         if self.width is None:
@@ -136,15 +182,17 @@ class CropAssistant(darsia.PointSelectionAssistant):
 
         return config
 
-    def _find_marks(self, color: Union[list[float], np.ndarray]) -> darsia.VoxelArray:
-        """Find marks in the image.
+    def _find_marks(
+        self, color: Union[list[float], np.ndarray]
+    ) -> dict[str, tuple[int, int]]:
+        """Find marks in the image and classify into named corners.
 
         Args:
             color (Union[list[float], np.ndarray]): color of the marks
 
         Returns:
-            darsia.VoxelArray: selected corners to define box after cropping (voxels in matrix
-                indexing)
+            dict with keys "top_left", "bottom_left", "bottom_right", "top_right",
+            each mapping to a (row, col) tuple of the detected corner.
 
         """
         # Find all pixels with the specified color
@@ -163,5 +211,9 @@ class CropAssistant(darsia.PointSelectionAssistant):
             marked_voxels, darsia.Voxel([self.img.shape[0], self.img.shape[1]])
         )
 
-        voxels = darsia.VoxelArray([top_left, bottom_left, bottom_right, top_right])
-        return voxels
+        return {
+            "top_left": tuple(top_left),
+            "top_right": tuple(top_right),
+            "bottom_left": tuple(bottom_left),
+            "bottom_right": tuple(bottom_right),
+        }
