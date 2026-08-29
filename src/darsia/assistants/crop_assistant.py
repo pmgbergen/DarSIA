@@ -83,7 +83,7 @@ class CropAssistant(darsia.PointSelectionAssistant):
             else:
                 key = "bottom_right"
 
-            corners[key] = tuple(pt)
+            corners[key] = tuple(int(x) for x in pt)
 
         return corners
 
@@ -212,8 +212,8 @@ class CropAssistant(darsia.PointSelectionAssistant):
         )
 
         return {
-            "top_left": tuple(top_left),
-            "top_right": tuple(top_right),
-            "bottom_left": tuple(bottom_left),
-            "bottom_right": tuple(bottom_right),
+            "top_left": tuple(int(x) for x in top_left),
+            "top_right": tuple(int(x) for x in top_right),
+            "bottom_left": tuple(int(x) for x in bottom_left),
+            "bottom_right": tuple(int(x) for x in bottom_right),
         }
