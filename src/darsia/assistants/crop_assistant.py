@@ -33,7 +33,7 @@ class CropAssistant(darsia.PointSelectionAssistant):
         self.pts: Optional[darsia.VoxelArray] = None
         """Selected corners to define box after cropping (voxels in matrix indexing)."""
 
-        self.corners: dict[str, tuple[int, int]] = {}
+        self.corners: dict[str, darsia.Voxel] = {}
         """Named corners as {top_left, bottom_left, bottom_right, top_right}."""
 
         # Prepare further output
@@ -50,7 +50,7 @@ class CropAssistant(darsia.PointSelectionAssistant):
         """Reset list of points."""
         super()._reset()
 
-    def _classify_corners(self, pts: darsia.VoxelArray) -> dict[str, tuple[int, int]]:
+    def _classify_corners(self, pts: darsia.VoxelArray) -> dict[str, darsia.Voxel]:
         """Classify 4 points into named corners by their position relative to centroid.
 
         Assigns each point to a corner (top_left, bottom_left, bottom_right,
@@ -83,7 +83,7 @@ class CropAssistant(darsia.PointSelectionAssistant):
             else:
                 key = "bottom_right"
 
-            corners[key] = tuple(int(x) for x in pt)
+            corners[key] = pt
 
         return corners
 
@@ -122,16 +122,18 @@ class CropAssistant(darsia.PointSelectionAssistant):
     def _define_config(self) -> dict:
         """Define a dictionary for input of the 'crop' option of CurvatureCorrection.
 
+        Converts internal Voxel-based corners to tuple[int, int] for config layer.
+
         Returns:
             dict: configuration for the 'crop' option of CurvatureCorrection
 
         """
         return {
             "crop": {
-                "top_left": self.corners["top_left"],
-                "bottom_left": self.corners["bottom_left"],
-                "bottom_right": self.corners["bottom_right"],
-                "top_right": self.corners["top_right"],
+                "top_left": tuple(int(x) for x in self.corners["top_left"]),
+                "bottom_left": tuple(int(x) for x in self.corners["bottom_left"]),
+                "bottom_right": tuple(int(x) for x in self.corners["bottom_right"]),
+                "top_right": tuple(int(x) for x in self.corners["top_right"]),
                 "width": self.width,
                 "height": self.height,
             },
@@ -184,7 +186,7 @@ class CropAssistant(darsia.PointSelectionAssistant):
 
     def _find_marks(
         self, color: Union[list[float], np.ndarray]
-    ) -> dict[str, tuple[int, int]]:
+    ) -> dict[str, darsia.Voxel]:
         """Find marks in the image and classify into named corners.
 
         Args:
@@ -212,8 +214,8 @@ class CropAssistant(darsia.PointSelectionAssistant):
         )
 
         return {
-            "top_left": tuple(int(x) for x in top_left),
-            "top_right": tuple(int(x) for x in top_right),
-            "bottom_left": tuple(int(x) for x in bottom_left),
-            "bottom_right": tuple(int(x) for x in bottom_right),
+            "top_left": top_left,
+            "top_right": top_right,
+            "bottom_left": bottom_left,
+            "bottom_right": bottom_right,
         }
