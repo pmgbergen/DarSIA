@@ -350,33 +350,6 @@ class CurvatureCorrection(darsia.BaseCorrection):
             self.current_image, **self.config["init"]
         )
 
-    def crop(self, corner_points: darsia.VoxelArray) -> None:
-        """
-        Crop the image along the corners of the image.
-
-        The four corner points of the image should be provided, and this method
-        will update the config file and modify the current image.
-
-        Arguments:
-            corner_points (VoxelArray): list of the corner points. Preferably the list
-                        should be ordered starting from the upper left corner
-                        and going counter clockwise.
-        """
-
-        if not isinstance(corner_points, darsia.VoxelArray):
-            corner_points = darsia.make_voxels(corner_points)
-
-        self.config["crop"] = {
-            "pts_src": corner_points,
-            "width": self.width,
-            "height": self.height,
-            "in_meters": self.in_meters,
-        }
-
-        self.current_image = darsia.extract_quadrilateral_ROI(
-            self.current_image, **self.config["crop"]
-        )
-
     def bulge_correction(
         self, left: int = 0, right: int = 0, top: int = 0, bottom: int = 0
     ) -> None:
