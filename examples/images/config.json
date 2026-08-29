@@ -9,7 +9,10 @@
             "vertical_center_offset": 0
         },
         "crop": {
-            "pts_src": [[11, 8], [16, 1755], [3165, 1748], [3165, 5]],
+            "top_left": [11, 8],
+            "bottom_left": [16, 1755],
+            "bottom_right": [3165, 1748],
+            "top_right": [3165, 5],
             "width": 2.8,
             "height": 1.5,
             "in_meters": true
