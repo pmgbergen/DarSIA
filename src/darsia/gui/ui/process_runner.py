@@ -16,6 +16,12 @@ class ProcessRunner:
         button state and logs completion/abort/error when the process finishes.
         Returns the QProcess (caller must keep a reference alive, e.g. on the tab,
         and call abort_workflow_process(process) to abort it).
+
+        Args:
+            argv: Command and arguments as list of strings.
+            run_button: Button to disable during process and enable after.
+            abort_button: Button to show during process and hide after.
+            cwd: Working directory for the process (optional).
         """
         process = QProcess(self.main_window)
         process.setProgram(argv[0])
@@ -40,12 +46,18 @@ class ProcessRunner:
                 self.main_window.print_log(f"Process exited with code {exit_code}.")
             else:
                 self.main_window.print_log("Completed successfully!")
+                self.main_window.config_controller.load_config()
 
         process.readyReadStandardOutput.connect(handle_output)
         process.finished.connect(handle_finished)
         run_button.setEnabled(False)
         abort_button.setVisible(True)
         abort_button.setEnabled(True)
+
+        # Save current GUI state to disk before launching subprocess
+        # so it reads fresh config with any unsaved widget edits
+        self.main_window.settings_factory.save_settings()
+
         process.start()
         return process
 
