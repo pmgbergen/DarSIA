@@ -86,7 +86,7 @@ def setup_crop_correction(path: Path | list[Path], show: bool = False) -> None:
         cropped = crop_assistant.image.crop(crop_assistant.config)
         cropped.show()
 
-    config_path = Path(path) if isinstance(path, (str, Path)) else Path(path[0])
+    config_path = Path(path[0]) if isinstance(path, list) else Path(path)
     with open(config_path, "r") as f:
         config_dict = toml.load(f)
 
@@ -95,15 +95,15 @@ def setup_crop_correction(path: Path | list[Path], show: bool = False) -> None:
     if "curvature" not in config_dict["corrections"]:
         config_dict["corrections"]["curvature"] = {}
 
+    def make_voxel_or_none(c):
+        """Auxiliary conversion."""
+        return darsia.Voxel(c) if c is not None else None
+
     config_dict["corrections"]["curvature"]["crop"] = {
-        "top_left": list(crop_config.top_left) if crop_config.top_left else None,
-        "bottom_left": (
-            list(crop_config.bottom_left) if crop_config.bottom_left else None
-        ),
-        "bottom_right": (
-            list(crop_config.bottom_right) if crop_config.bottom_right else None
-        ),
-        "top_right": list(crop_config.top_right) if crop_config.top_right else None,
+        "top_left": make_voxel_or_none(crop_config.top_left),
+        "bottom_left": make_voxel_or_none(crop_config.bottom_left),
+        "bottom_right": make_voxel_or_none(crop_config.bottom_right),
+        "top_right": make_voxel_or_none(crop_config.top_right),
         "width": float(crop_config.width),
         "height": float(crop_config.height),
         "in_meters": bool(crop_config.in_meters),
