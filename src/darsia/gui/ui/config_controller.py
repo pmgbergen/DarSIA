@@ -85,15 +85,15 @@ class ConfigController:
         try:
             with open(file, "r") as f:
                 self.main_window.config_dict = toml.load(f)
+            self.main_window.config_file = file
+            add_recent_config(file)
+            self.main_window.print_log(f"Config loaded: {file}")
+            self.main_window.sidebar.deselect_all()
+            self.main_window.settings_inputs.clear()
+            self.main_window.settings_factory.display_full_settings()
         except Exception as e:
             self.main_window.print_log(f"Error loading config file: {e}")
             return
-        self.main_window.config_file = file
-        add_recent_config(file)
-        self.main_window.print_log(f"Config loaded: {file}")
-        self.main_window.sidebar.deselect_all()
-        self.main_window.settings_inputs.clear()
-        self.main_window.settings_factory.display_full_settings()
 
     def apply_partial_preset(self, key_path: str, preset_dict: dict) -> None:
         """Apply a partial preset (e.g. curvature correction config) to the current config.
