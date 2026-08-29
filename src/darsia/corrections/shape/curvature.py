@@ -28,77 +28,25 @@ def load_curvature_correction_config_from_toml(path: Path) -> dict:
 
     """
     data = tomllib.loads(path.read_text())
-    config = {}
 
     # Fetch the main curvature section. Only continue if it exists.
     try:
         sec = data["curvature"]
     except KeyError:
         warn(f"No 'curvature' section found in {path}.")
-        return config
+        return {}
 
-    # Fetch sub-sections:
-    # - init
-    # - crop
-    # - bulge
-    # - stretch
-    try:
-        sec_init = sec["init"]
-        if sec_init is not None:
-            config["init"] = {
-                "horizontal_bulge": sec_init.get("horizontal_bulge", 0.0),
-                "vertical_bulge": sec_init.get("vertical_bulge", 0.0),
-            }
-    except KeyError:
-        warn(f"No 'curvature.init' section found in {path}.")
-
-    try:
-        sec_crop = sec["crop"]
-        if sec_crop is not None:
-            config["crop"] = {
-                "pts_src": darsia.make_voxel(sec_crop.get("pts_src", [])),
-                "width": sec_crop.get("width", 1.0),
-                "height": sec_crop.get("height", 1.0),
-                "in_meters": sec_crop.get("in_meters", True),
-            }
-    except KeyError:
-        warn(f"No 'curvature.crop' section found in {path}.")
-
-    try:
-        sec_bulge = sec["bulge"]
-        if sec_bulge is not None:
-            config["bulge"] = {
-                "horizontal_bulge": sec_bulge.get("horizontal_bulge", 0.0),
-                "horizontal_center_offset": sec_bulge.get(
-                    "horizontal_center_offset", 0
-                ),
-                "vertical_bulge": sec_bulge.get("vertical_bulge", 0.0),
-                "vertical_center_offset": sec_bulge.get("vertical_center_offset", 0),
-            }
-    except KeyError:
-        warn(f"No 'curvature.bulge' section found in {path}.")
-
-    try:
-        sec_stretch = sec["stretch"]
-        if sec_stretch is not None:
-            config["stretch"] = {
-                "horizontal_stretch": sec_stretch.get("horizontal_stretch", 0.0),
-                "horizontal_center_offset": sec_stretch.get(
-                    "horizontal_center_offset", 0
-                ),
-                "vertical_stretch": sec_stretch.get("vertical_stretch", 0.0),
-                "vertical_center_offset": sec_stretch.get("vertical_center_offset", 0),
-            }
-    except KeyError:
-        warn(f"No 'curvature.stretch' section found in {path}.")
-    return config
+    return load_curvature_correction_config_from_dict(sec, source=str(path))
 
 
-def load_curvature_correction_config_from_dict(sec: dict) -> dict:
+def load_curvature_correction_config_from_dict(
+    sec: dict, source: str = "config"
+) -> dict:
     """Load curvature correction config from a dictionary.
 
     Arguments:
-        path (Path): path to the toml file.
+        sec (dict): dictionary containing curvature correction settings.
+        source (str): descriptive name for warnings (e.g., file path or "config").
 
     Returns:
         config (dict): config dictionary for curvature correction.
@@ -119,19 +67,24 @@ def load_curvature_correction_config_from_dict(sec: dict) -> dict:
                 "vertical_bulge": sec_init.get("vertical_bulge", 0.0),
             }
     except KeyError:
-        warn(f"No 'curvature.init' section found in config.")
+        warn(f"No 'curvature.init' section found in {source}.")
 
     try:
         sec_crop = sec["crop"]
         if sec_crop is not None:
+            top_left = sec_crop.get("top_left")
+            bottom_left = sec_crop.get("bottom_left")
+            bottom_right = sec_crop.get("bottom_right")
+            top_right = sec_crop.get("top_right")
+            corners = [top_left, bottom_left, bottom_right, top_right]
             config["crop"] = {
-                "pts_src": darsia.make_voxel(sec_crop.get("pts_src", [])),
-                "width": sec_crop.get("width", 1.0),
-                "height": sec_crop.get("height", 1.0),
+                "pts_src": darsia.make_voxel(corners) if all(corners) else None,
+                "width": float(sec_crop.get("width", 1.0)),
+                "height": float(sec_crop.get("height", 1.0)),
                 "in_meters": sec_crop.get("in_meters", True),
             }
     except KeyError:
-        warn(f"No 'curvature.crop' section found in config.")
+        warn(f"No 'curvature.crop' section found in {source}.")
 
     try:
         sec_bulge = sec["bulge"]
@@ -145,7 +98,7 @@ def load_curvature_correction_config_from_dict(sec: dict) -> dict:
                 "vertical_center_offset": sec_bulge.get("vertical_center_offset", 0),
             }
     except KeyError:
-        warn(f"No 'curvature.bulge' section found in config.")
+        warn(f"No 'curvature.bulge' section found in {source}.")
 
     try:
         sec_stretch = sec["stretch"]
@@ -159,7 +112,7 @@ def load_curvature_correction_config_from_dict(sec: dict) -> dict:
                 "vertical_center_offset": sec_stretch.get("vertical_center_offset", 0),
             }
     except KeyError:
-        warn(f"No 'curvature.stretch' section found in config.")
+        warn(f"No 'curvature.stretch' section found in {source}.")
     return config
 
 
