@@ -56,6 +56,7 @@ class ProtocolsConfig:
             "help": "Path to the injection-protocol file, or [file, sheet].",
             "widget": "file",
             "group": "Experiment",
+            "table_viewer": "csv",
         },
     )
     """Path to the injection protocol file or (file, sheet)."""
@@ -66,6 +67,7 @@ class ProtocolsConfig:
             "help": "Path to the pressure-temperature protocol file, or [file, sheet].",
             "widget": "file",
             "group": "Experiment",
+            "table_viewer": "csv",
         },
     )
     """Path to the pressure-temperature protocol file or (file, sheet)."""
