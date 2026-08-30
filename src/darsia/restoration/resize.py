@@ -176,6 +176,12 @@ class Resize:
             np.ndarray: resized array.
 
         """
+        # Free no-op when target shape already matches: skip cv2 entirely.
+        # Safe for conservative/extensive rescaling too, since the conserve-sum
+        # factor would be prod(shape)/prod(shape) == 1.0 in that case.
+        if self.shape is not None and img_array.shape[:2] == tuple(self.shape):
+            return img_array
+
         # Treat all indices > 2 as channels
         original_shape = img_array.shape
         multi_channel_img_array = np.reshape(img_array, (*original_shape[:2], -1))
