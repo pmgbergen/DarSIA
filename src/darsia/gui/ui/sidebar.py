@@ -39,7 +39,7 @@ class SidebarRow(QWidget):
 
         # Layout: icon + label
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setContentsMargins(8, 2, 8, 2)
         layout.setSpacing(8)
 
         # Icon — promoted to self so refresh_style can update it
@@ -56,7 +56,7 @@ class SidebarRow(QWidget):
 
         # Styling
         self.setCursor(Qt.PointingHandCursor)
-        self.setMinimumHeight(32)
+        self.setMinimumHeight(24)
         self.refresh_style()
         theme_signal.theme_changed.connect(self.refresh_style)
 
@@ -175,7 +175,7 @@ class GroupHeaderLabel(QLabel):
         muted = muted_text_color(pal).name()
         self.setStyleSheet(
             f"QLabel {{ color: {muted}; font-weight: bold; font-size: 11px; "
-            f"margin-top: 8px; margin-bottom: 4px; }}"
+            f"margin-top: 4px; margin-bottom: 2px; }}"
         )
         self.style().unpolish(self)
         self.style().polish(self)
@@ -186,6 +186,7 @@ class CategorySection(QWidget):
     """One accordion section for a category (e.g. Setup, Calibration, etc.)."""
 
     selection_changed = Signal(str, str)  # (action, checkbox_id)
+    expanded_changed = Signal(str, bool)  # (action, is_expanded)
 
     def __init__(
         self, action: str, category_label: str, category_icon: str, groups: list
@@ -233,23 +234,29 @@ class CategorySection(QWidget):
                 self.items_layout.addWidget(row)
                 self._rows[checkbox_id] = row
 
-        self.items_layout.addStretch()
         self.items_container.setVisible(False)
         layout.addWidget(self.items_container)
 
         self.refresh_style()
         theme_signal.theme_changed.connect(self.refresh_style)
 
-    def _toggle_expand(self):
-        """Toggle accordion expand/collapse."""
-        self._is_expanded = not self._is_expanded
-        self.items_container.setVisible(self._is_expanded)
+    def set_expanded(self, expanded: bool):
+        """Set expanded state and emit signal if changed."""
+        if expanded == self._is_expanded:
+            return
+        self._is_expanded = expanded
+        self.items_container.setVisible(expanded)
         # Update active state to reflect expanded state
-        self.header_button.setProperty("active", self._is_expanded)
+        self.header_button.setProperty("active", expanded)
         self.header_button.style().unpolish(self.header_button)
         self.header_button.style().polish(self.header_button)
         self.header_button.update()
         self.refresh_style()
+        self.expanded_changed.emit(self.action, expanded)
+
+    def _toggle_expand(self):
+        """Toggle accordion expand/collapse."""
+        self.set_expanded(not self._is_expanded)
 
     def refresh_style(self):
         """Rebuild header styling and icon from current palette."""
@@ -337,6 +344,7 @@ class Sidebar(QWidget):
         for action, (category_label, category_icon, groups) in categories_data.items():
             section = CategorySection(action, category_label, category_icon, groups)
             section.selection_changed.connect(self._on_selection_changed)
+            section.expanded_changed.connect(self._on_expanded_changed)
             container_layout.addWidget(section)
             self._sections[action] = section
 
@@ -360,6 +368,14 @@ class Sidebar(QWidget):
 
             # Emit signal for external wiring
             self.selection_changed.emit(action, checkbox_id)
+
+    def _on_expanded_changed(self, action: str, is_expanded: bool):
+        """Accordion behavior: expanding one section collapses all others."""
+        if not is_expanded:
+            return
+        for other_action, section in self._sections.items():
+            if other_action != action:
+                section.set_expanded(False)
 
     def select(self, action: str, checkbox_id: str):
         """Public API: programmatically select a row."""
