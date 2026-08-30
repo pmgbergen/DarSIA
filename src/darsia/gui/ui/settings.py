@@ -28,7 +28,7 @@ from .schema.dataclass_introspection import (
     SECTION_LOADABLE,
     get_section_fields,
 )
-from .schema.section_registry import get_required_sections
+from .schema.section_registry import filter_visible_sections, get_required_sections
 
 
 def unwrap_composite_widget(value):
@@ -278,6 +278,12 @@ class SettingsFactory:
                     f"No settings mapping found for {action}.{checked_id}"
                 )
                 continue
+
+            # Apply tab customization filter (force-show unsatisfied sections)
+            config_dict = self.main_window.config_dict
+            sections = filter_visible_sections(
+                action, checked_id, sections, config_dict
+            )
 
             # For each required section, get its fields (avoiding duplicates)
             for section in sections:
