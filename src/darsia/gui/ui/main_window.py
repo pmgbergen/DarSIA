@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSettings, Qt, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QLabel,
@@ -33,6 +33,9 @@ class MainWindow(QMainWindow):
     """The main class containing the window and the relevant methods for the visualization."""
 
     log_message = Signal(str)
+
+    _SIDEBAR_WIDTH_SETTINGS_KEY = "ui/sidebar_width"
+    _DEFAULT_SIDEBAR_WIDTH = 120
 
     def __init__(self):
         super().__init__()
@@ -170,6 +173,20 @@ class MainWindow(QMainWindow):
         root_splitter.setStretchFactor(0, 1)  # sidebar: 1/7 of space
         root_splitter.setStretchFactor(1, 7)  # settings+log: 6/7 of space
 
+        # Load persisted sidebar width or use default
+        sidebar_width = QSettings().value(
+            self._SIDEBAR_WIDTH_SETTINGS_KEY, self._DEFAULT_SIDEBAR_WIDTH
+        )
+        self.sidebar.setMinimumWidth(100)
+        self.sidebar.setMaximumWidth(600)
+
+        # Set initial splitter sizes deterministically
+        root_splitter.setSizes([sidebar_width, 1000])
+
+        # Persist sidebar width on user resize
+        root_splitter.splitterMoved.connect(self._on_splitter_moved)
+        self.root_splitter = root_splitter
+
         # Create central widget with all components
         main_container = QWidget()
         main_layout = QVBoxLayout(main_container)
@@ -180,6 +197,12 @@ class MainWindow(QMainWindow):
 
         # Display welcome message
         self.welcome_message()
+
+    def _on_splitter_moved(self):
+        """Save the sidebar width when splitter is moved."""
+        sizes = self.root_splitter.sizes()
+        if sizes:
+            QSettings().setValue(self._SIDEBAR_WIDTH_SETTINGS_KEY, sizes[0])
 
     def welcome_message(self):
         """Display a welcome message in the log window."""
