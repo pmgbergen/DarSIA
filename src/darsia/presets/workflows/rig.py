@@ -43,7 +43,7 @@ class Rig:
             correction,
             (
                 darsia.TypeCorrection,
-                darsia.Resize,
+                darsia.ResizeCorrection,
                 darsia.DriftCorrection,
                 darsia.CurvatureCorrection,
             ),
@@ -189,33 +189,79 @@ class Rig:
             # Update corrections workflow
             self.shape_corrections.append(self.type_converter)
 
+        # Track the combined resize factor for downstream corrections (e.g.
+        # curvature).
+        self.resize_factor = 1.0
+
         if True:  # corrections_config.resize:
-            # Define resize correction that resizes to the shape of the baseline image.
-            # This is needed to ensure that later curvature corrections or concentration
-            # analysis work correctly.
-            self.resize_correction = darsia.Resize(
+            # Define resize correction that resizes to the shape of the baseline
+            # image. This is needed to ensure that later curvature corrections or
+            # concentration analysis work correctly.
+            self.resize_correction = darsia.ResizeCorrection(
                 shape=baseline_for_setup.shape[: baseline_for_setup.space_dim]
             )
             """Resize correction to baseline shape."""
-
-            # TODO: Allow for config options for resizing, e.g. scaling or target shape.
-            # This is in part covered by the curvature correction.
-            if corrections_config.resize:
-                raise NotImplementedError("Custom resize options not implemented yet.")
-                self.rescale_correction = darsia.Resize(
-                    fx=corrections_config.resize.scale,
-                    fy=corrections_config.resize.scale,
-                    shape=corrections_config.resize.target_shape,
-                )
-
-            self.resize_correction_inter_nearest = darsia.Resize(
-                shape=baseline_for_setup.shape[: baseline_for_setup.space_dim],
-                interpolation="inter_nearest",
-            )
-            """Resize for int data."""
+            baseline_for_setup = self.resize_correction(baseline_for_setup)
 
             # Update corrections workflow
             self.shape_corrections.append(self.resize_correction)
+
+            # Apply user-configured resize if present.
+            if corrections_config.resize:
+                mode = corrections_config.resize.mode
+                if mode == "scale":
+                    scale = corrections_config.resize.scale
+                    target_shape = tuple(
+                        int(round(s * scale))
+                        for s in baseline_for_setup.shape[
+                            : baseline_for_setup.space_dim
+                        ]
+                    )
+                    self.resize_factor = scale
+                elif mode == "target_shape":
+                    target_shape = corrections_config.resize.target_shape
+                    # Derive scale factors for each axis; they must match within
+                    # tolerance since curvature correction only accepts a single
+                    # resize_factor.
+                    current_shape = baseline_for_setup.shape[
+                        : baseline_for_setup.space_dim
+                    ]
+                    scales = [
+                        target_shape[i] / current_shape[i]
+                        for i in range(len(current_shape))
+                    ]
+                    if not all(
+                        abs(scales[0] - scales[i]) < 1e-6 for i in range(1, len(scales))
+                    ):
+                        raise ValueError(
+                            f"Target shape {target_shape} would require "
+                            f"non-uniform scaling {scales}. "
+                            f"Curvature correction only supports uniform scaling. "
+                            f"Use mode='scale' instead."
+                        )
+                    self.resize_factor = scales[0]
+                else:
+                    raise ValueError(
+                        f"Invalid resize mode {mode!r}. "
+                        f"Must be 'scale' or 'target_shape'."
+                    )
+
+                self.rescale_correction = darsia.ResizeCorrection(
+                    shape=target_shape,
+                    fx=self.resize_factor,
+                    fy=self.resize_factor,
+                )
+                """User-configured resize correction."""
+                baseline_for_setup = self.rescale_correction(baseline_for_setup)
+
+                # Update corrections workflow
+                self.shape_corrections.append(self.rescale_correction)
+
+            self.resize_correction_inter_nearest = darsia.ResizeCorrection(
+                shape=baseline_for_setup.shape[: baseline_for_setup.space_dim],
+                interpolation="inter_nearest",
+            )
+            """Resize for int data (labels/facies)."""
 
         if corrections_config.drift:
             # Define translation correction object based on color checker
