@@ -33,15 +33,8 @@ class ColorPathEmbedding(ColorEmbedding):
     mode: darsia.ColorMode
     basis: ColorEmbeddingBasis
     calibration_root: Path
-    num_segments: int = 1
-    ignore_labels: list[int] = field(default_factory=list)
-    resolution: int = 51
-    threshold_baseline: float = 0.0
-    threshold_calibration: float = 0.0
     reference_label: int = 0
-    ignore_baseline_spectrum: str = "expanded"
-    histogram_weighting: str = "threshold"
-    calibration_mode: str = "auto"
+    data: str | None = None
 
     @property
     def color_paths_folder(self) -> Path:
@@ -83,7 +76,6 @@ class ColorPathEmbedding(ColorEmbedding):
                 darsia.HeterogeneousModel(
                     interpolation,
                     labels,
-                    ignore_labels=self.ignore_labels,
                 )
             ]
         )
