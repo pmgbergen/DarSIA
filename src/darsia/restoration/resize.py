@@ -142,6 +142,40 @@ class Resize:
         if self.dtype is not None:
             img_array = img_array.astype(self.dtype)
 
+        # Delegate to resize_array for the core resize logic
+        resized_img_array = self.resize_array(
+            img_array, is_extensive=input_is_extensive_image
+        )
+
+        # Return resized image
+        if input_is_image:
+            meta = img.metadata()
+            if overwrite:
+                img = type(img)(resized_img_array, **meta)
+                return img
+            else:
+                return type(img)(resized_img_array, **meta)
+        else:
+            if overwrite:
+                img = resized_img_array
+                return img
+            else:
+                # Return resized array
+                return resized_img_array
+
+    def resize_array(
+        self, img_array: np.ndarray, is_extensive: bool = False
+    ) -> np.ndarray:
+        """Core resize logic for arrays, shared with BaseCorrection subclasses.
+
+        Args:
+            img_array (np.ndarray): input image array (any shape).
+            is_extensive (bool): whether to apply conservative (extensive) rescaling.
+
+        Returns:
+            np.ndarray: resized array.
+
+        """
         # Treat all indices > 2 as channels
         original_shape = img_array.shape
         multi_channel_img_array = np.reshape(img_array, (*original_shape[:2], -1))
@@ -152,7 +186,7 @@ class Resize:
         # Apply resizing to each channel separately
         interpolation = (
             cv2.INTER_AREA
-            if input_is_extensive_image and self.interpolation is None
+            if is_extensive and self.interpolation is None
             else self.interpolation
         )
         resized_channels = []
@@ -177,35 +211,22 @@ class Resize:
                     )
                 )
 
-        # Merge channels again and create resized image array of original shape (data-wise)
+        # Merge channels again and create resized image array of original shape
+        # (data-wise)
         resized_multi_channel_img_array = cv2.merge(resized_channels)
         resized_shape = *resized_multi_channel_img_array.shape[:2], *original_shape[2:]
         resized_img_array = np.reshape(resized_multi_channel_img_array, resized_shape)
 
         # Conserve the (weighted) sum
         conservative_rescaling = self.is_conservative or (
-            input_is_extensive_image and not self._conservative_explicit
+            is_extensive and not self._conservative_explicit
         )
         if conservative_rescaling:
             resized_img_array *= np.prod(img_array.shape[:2]) / np.prod(
                 resized_img_array.shape[:2]
             )
 
-        # Return resized image
-        if input_is_image:
-            meta = img.metadata()
-            if overwrite:
-                img = type(img)(resized_img_array, **meta)
-                return img
-            else:
-                return type(img)(resized_img_array, **meta)
-        else:
-            if overwrite:
-                img = resized_img_array
-                return img
-            else:
-                # Return resized array
-                return resized_img_array
+        return resized_img_array
 
     def save(self, path: str) -> None:
         """Save parameters to npz file.
