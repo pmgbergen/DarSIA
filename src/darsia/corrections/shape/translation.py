@@ -1,6 +1,4 @@
-"""Module defining estimator for translation between ROIs and corresponding correction.
-
-"""
+"""Module defining estimator for translation between ROIs and corresponding correction."""
 
 from pathlib import Path
 from typing import Optional, Union
