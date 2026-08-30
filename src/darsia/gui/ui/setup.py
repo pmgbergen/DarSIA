@@ -148,8 +148,32 @@ class SetupTab:
 
         return [
             (
-                "Workflow steps",
+                "Preparation",
                 [
+                    (
+                        "Protocols",
+                        "protocols",
+                        "fa5s.circle",
+                        get_help_text("setup", "protocols", "Protocols"),
+                    ),
+                    (
+                        "Crop correction",
+                        "crop",
+                        "fa5s.circle",
+                        get_help_text("setup", "crop", "Crop correction"),
+                    ),
+                ],
+            ),
+            (
+                "Full setup",
+                [
+                    ("All", "all", "fa5s.circle", get_help_text("setup", "all", "All")),
+                ],
+            ),
+            (
+                "Setup steps",
+                [
+                    ("Rig", "rig", "fa5s.circle", get_help_text("setup", "rig", "Rig")),
                     (
                         "Depth",
                         "depth",
@@ -168,25 +192,6 @@ class SetupTab:
                         "fa5s.circle",
                         get_help_text("setup", "facies", "Facies"),
                     ),
-                    (
-                        "Protocols",
-                        "protocols",
-                        "fa5s.circle",
-                        get_help_text("setup", "protocols", "Protocols"),
-                    ),
-                    ("Rig", "rig", "fa5s.circle", get_help_text("setup", "rig", "Rig")),
-                    (
-                        "Crop correction",
-                        "crop",
-                        "fa5s.circle",
-                        get_help_text("setup", "crop", "Crop correction"),
-                    ),
-                ],
-            ),
-            (
-                "Run All",
-                [
-                    ("All", "all", "fa5s.circle", get_help_text("setup", "all", "All")),
                 ],
             ),
         ]
