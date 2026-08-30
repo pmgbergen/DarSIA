@@ -222,6 +222,7 @@ def filter_visible_sections(
 
     Returns:
         Filtered tuple of section names to display (always includes unmet ones).
+        Order follows TAB_VISIBILITY's declared sequence (if set).
     """
     wanted = TAB_VISIBILITY.get((action, checkbox_id))
 
@@ -229,18 +230,25 @@ def filter_visible_sections(
     if wanted is None:
         return required_sections
 
-    # Filter to wanted sections, but force-show unsatisfied ones
-    visible = []
-    seen = set()
-
-    for section in required_sections:
-        # Extract base name for matching (e.g., "calibration.color" -> "calibration")
+    def _include(section: str) -> bool:
         base = section.split(".")[0]
+        return base in wanted or not _is_section_satisfied(config_dict, section)
 
-        # If wanted OR unsatisfied, include it
-        if base in wanted or not _is_section_satisfied(config_dict, section):
-            if section not in seen:
+    visible: list[str] = []
+    seen: set[str] = set()
+
+    # Pass 1: order by `wanted`'s declared sequence, matching sections by base
+    for base in wanted:
+        for section in required_sections:
+            section_base = section.split(".")[0]
+            if section_base == base and section not in seen and _include(section):
                 visible.append(section)
                 seen.add(section)
+
+    # Pass 2: append any remaining sections not yet added (preserve original order)
+    for section in required_sections:
+        if section not in seen and _include(section):
+            visible.append(section)
+            seen.add(section)
 
     return tuple(visible)
