@@ -194,37 +194,35 @@ class Rig:
         self.resize_factor = 1.0
 
         if corrections_config.resize:
-            # Define resize correction that resizes to the shape of the baseline
-            # image. This is needed to ensure that later curvature corrections or
-            # concentration analysis work correctly.
-            self.resize_correction = darsia.ResizeCorrection(
-                shape=baseline_for_setup.shape[: baseline_for_setup.space_dim]
-            )
-            """Resize correction to baseline shape."""
-            baseline_for_setup = self.resize_correction(baseline_for_setup)
-
-            # Update corrections workflow
-            self.shape_corrections.append(self.resize_correction)
-
             # Apply user-configured resize if present.
-            if corrections_config.resize:
-                current_shape = baseline_for_setup.shape[: baseline_for_setup.space_dim]
-                target_shape, self.resize_factor = corrections_config.resize.resolve(
-                    current_shape
-                )
-
-                self.rescale_correction = darsia.ResizeCorrection(shape=target_shape)
-                """User-configured resize correction."""
-                baseline_for_setup = self.rescale_correction(baseline_for_setup)
-
-                # Update corrections workflow
-                self.shape_corrections.append(self.rescale_correction)
-
-            self.resize_correction_inter_nearest = darsia.ResizeCorrection(
-                shape=baseline_for_setup.shape[: baseline_for_setup.space_dim],
-                interpolation="inter_nearest",
+            current_shape = baseline_for_setup.shape[: baseline_for_setup.space_dim]
+            target_shape, self.resize_factor = corrections_config.resize.resolve(
+                current_shape
             )
-            """Resize for int data (labels/facies)."""
+
+            self.rescale_correction = darsia.ResizeCorrection(shape=target_shape)
+            """User-configured resize correction."""
+
+            # Update baseline and corrections workflow
+            baseline_for_setup = self.rescale_correction(baseline_for_setup)
+            self.shape_corrections.append(self.rescale_correction)
+
+        # Resize for consistency (drift, curvature). Free no-op when shapes
+        # already match, via early return in Resize.resize_array.
+        self.resize_correction = darsia.ResizeCorrection(
+            shape=baseline_for_setup.shape[: baseline_for_setup.space_dim]
+        )
+        """Resize correction to baseline shape (before drift/curvature)."""
+
+        # Update baseline and corrections workflow
+        baseline_for_setup = self.resize_correction(baseline_for_setup)
+        self.shape_corrections.append(self.resize_correction)
+
+        self.resize_correction_inter_nearest = darsia.ResizeCorrection(
+            shape=baseline_for_setup.shape[: baseline_for_setup.space_dim],
+            interpolation="inter_nearest",
+        )
+        """Resize for int data (labels/facies) before drift/curvature."""
 
         if corrections_config.drift:
             # Define translation correction object based on color checker
@@ -243,7 +241,8 @@ class Rig:
                 )
                 self.drift_correction = darsia.DriftCorrection(baseline_for_setup)
 
-            # Update corrections workflow
+            # Update baseline and corrections workflow
+            ...  # baseline image does not need drift correction.
             self.shape_corrections.append(self.drift_correction)
 
         if corrections_config.curvature:
@@ -255,10 +254,27 @@ class Rig:
                 resize_factor=self.resize_factor,
             )
             """Curvature correction based on laser grid analysis."""
-            baseline_for_setup = self.curvature_correction(baseline_for_setup)
 
-            # Update corrections workflow
+            # Update baseline and corrections workflow
+            baseline_for_setup = self.curvature_correction(baseline_for_setup)
             self.shape_corrections.append(self.curvature_correction)
+
+        # Harmonize back to canonical baseline shape. Free no-op when shapes
+        # already match, via early return in Resize.resize_array.
+        self.resize_correction_final = darsia.ResizeCorrection(
+            shape=baseline_for_setup.shape[: baseline_for_setup.space_dim]
+        )
+        """Final resize correction harmonizing output to baseline shape."""
+
+        # Update baseline and corrections workflow
+        baseline_for_setup = self.resize_correction_final(baseline_for_setup)
+        self.shape_corrections.append(self.resize_correction_final)
+
+        self.resize_correction_inter_nearest_final = darsia.ResizeCorrection(
+            shape=baseline_for_setup.shape[: baseline_for_setup.space_dim],
+            interpolation="inter_nearest",
+        )
+        """Final nearest-interpolation harmonizer for label/facies data."""
 
         logger.info("Shape corrections setup complete.")
 
@@ -436,6 +452,7 @@ class Rig:
                 labels = self.resize_correction_inter_nearest(labels)
             if hasattr(self, "curvature_correction"):
                 labels = self.curvature_correction(labels)
+            labels = self.resize_correction_inter_nearest_final(labels)
             self.labels = labels
 
         else:
@@ -509,6 +526,7 @@ class Rig:
                 facies = self.resize_correction_inter_nearest(facies)
             if hasattr(self, "curvature_correction"):
                 facies = self.curvature_correction(facies)
+            facies = self.resize_correction_inter_nearest_final(facies)
             self.facies = facies
 
         else:
