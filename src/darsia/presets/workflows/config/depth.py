@@ -18,6 +18,7 @@ class DepthConfig:
         metadata={
             "name": "Measurements",
             "help": "Path to the csv file containing the depth measurements.",
+            "table_viewer": "csv",
         },
     )
     """Path to the csv file containing the depth measurements."""
