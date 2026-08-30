@@ -193,8 +193,18 @@ class CurvatureCorrection(darsia.BaseCorrection):
 
         # The internally stored config file is tailored to when resize_factor is equal to 1.
         # For other values, it has to be adapted.
-        self.resize_factor = kwargs.get("resize_factor", 1.0)
-        if not math.isclose(self.resize_factor, 1.0):
+        resize_factor_input = kwargs.get("resize_factor", 1.0)
+        if (
+            isinstance(resize_factor_input, (tuple, list))
+            and len(resize_factor_input) == 2
+        ):
+            self._resize_factor_x, self._resize_factor_y = resize_factor_input
+        else:
+            self._resize_factor_x = self._resize_factor_y = float(resize_factor_input)
+        if not (
+            math.isclose(self._resize_factor_x, 1.0)
+            and math.isclose(self._resize_factor_y, 1.0)
+        ):
             self._adapt_config()
 
         # Initialize cache for precomputed transformed coordinates
@@ -753,32 +763,37 @@ class CurvatureCorrection(darsia.BaseCorrection):
     def _adapt_config(self) -> None:
         """
         Adapt config file for resized images, assuming config is correct
-        for resize_factor = 1.
+        for resize_factor = 1. Supports per-axis scale factors (fx, fy).
         """
         for mainkey in ["init", "bulge"]:
             if mainkey in self.config:
                 for key in [
                     "horizontal_bulge",
-                    "vertical_bulge",
                     "horizontal_center_offset",
+                ]:
+                    if key in self.config[mainkey]:
+                        self.config[mainkey][key] *= self._resize_factor_x
+                for key in [
+                    "vertical_bulge",
                     "vertical_center_offset",
                 ]:
                     if key in self.config[mainkey]:
-                        self.config[mainkey][key] *= self.resize_factor
+                        self.config[mainkey][key] *= self._resize_factor_y
 
         if "crop" in self.config:
-            self.config["crop"]["pts_src"] = (
-                self.resize_factor * np.array(self.config["crop"]["pts_src"])
-            ).tolist()
+            pts_src = np.array(self.config["crop"]["pts_src"])
+            scaled_pts_src = pts_src.astype(float)
+            scaled_pts_src[:, 0] *= self._resize_factor_y
+            scaled_pts_src[:, 1] *= self._resize_factor_x
+            self.config["crop"]["pts_src"] = darsia.make_voxel(scaled_pts_src)
 
         if "stretch" in self.config:
-            for key in [
-                "horizontal_stretch",
-                "vertical_stretch",
-                "horizontal_center_offset",
-                "vertical_center_offset",
-            ]:
-                self.config["stretch"][key] *= self.resize_factor
+            for key in ["horizontal_stretch", "horizontal_center_offset"]:
+                if key in self.config["stretch"]:
+                    self.config["stretch"][key] *= self._resize_factor_x
+            for key in ["vertical_stretch", "vertical_center_offset"]:
+                if key in self.config["stretch"]:
+                    self.config["stretch"][key] *= self._resize_factor_y
 
     def _transform_coordinates(
         self, X: np.ndarray, Y: np.ndarray, **kwargs
