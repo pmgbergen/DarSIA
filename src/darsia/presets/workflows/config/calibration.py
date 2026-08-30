@@ -17,10 +17,76 @@ if TYPE_CHECKING:
 
 
 @dataclass
+class ColorPathCalibrationConfig:
+    """Config for color-path calibration fitting parameters."""
+
+    num_segments: int = field(
+        default=1,
+        metadata={
+            "name": "Num segments",
+            "help": "Number of segments in the color path.",
+        },
+    )
+    resolution: int = field(
+        default=51,
+        metadata={
+            "name": "Resolution",
+            "help": "Resolution of the color spectrum.",
+        },
+    )
+    calibration_mode: str = field(
+        default="auto",
+        metadata={
+            "name": "Calibration mode",
+            "help": "Calibration mode: 'manual' or 'auto'.",
+            "options": ["manual", "auto"],
+        },
+    )
+    threshold_baseline: float = field(
+        default=0.0,
+        metadata={
+            "name": "Threshold baseline",
+            "help": "Threshold for baseline spectrum.",
+        },
+    )
+    threshold_calibration: float = field(
+        default=0.0,
+        metadata={
+            "name": "Threshold calibration",
+            "help": "Threshold for calibration spectrum.",
+        },
+    )
+    ignore_baseline_spectrum: str = field(
+        default="expanded",
+        metadata={
+            "name": "Ignore baseline spectrum",
+            "help": "How to handle baseline spectrum: 'none', 'baseline', or "
+            "'expanded'.",
+            "options": ["none", "baseline", "expanded"],
+        },
+    )
+    histogram_weighting: str = field(
+        default="threshold",
+        metadata={
+            "name": "Histogram weighting",
+            "help": "Weighting method: 'threshold', 'wls', 'wls_sqrt', or 'wls_log'.",
+            "options": ["threshold", "wls", "wls_sqrt", "wls_log"],
+        },
+    )
+    ignore_labels: list[int] = field(
+        default_factory=list,
+        metadata={
+            "name": "Ignore labels",
+            "help": "Label IDs to skip during calibration (will receive zero paths).",
+        },
+    )
+
+
+@dataclass
 class CalibrationColorConfig:
     """Config for selecting a color embedding for color calibration."""
 
-    color: "ColorEmbedding | None" = field(
+    embedding: ColorEmbedding | None = field(
         default=None,
         metadata={
             "name": "Color embedding",
@@ -52,6 +118,13 @@ class CalibrationColorConfig:
             "widget": "roi_key_list",
         },
     )
+    color_path: ColorPathCalibrationConfig | None = field(
+        default_factory=ColorPathCalibrationConfig,
+        metadata={
+            "name": "Color Path Calibration",
+            "depends_on": {"field": "embedding", "type": "color_path"},
+        },
+    )
 
     def load(
         self,
@@ -60,20 +133,20 @@ class CalibrationColorConfig:
         color_embedding_registry: "ColorEmbeddingRegistry | None" = None,
         roi_registry: "RoiRegistry | None" = None,
     ) -> "CalibrationColorConfig":
-        color_key = _get_key(sec, "color", required=True, type_=str).strip()
-        if not color_key:
-            raise ValueError("calibration.color.color must be non-empty.")
+        embedding_key = _get_key(sec, "embedding", required=True, type_=str).strip()
+        if not embedding_key:
+            raise ValueError("calibration.color.embedding must be non-empty.")
         if color_embedding_registry is None:
             raise ValueError(
-                "calibration.color.color references [color.*.*], but no "
+                "calibration.color.embedding references [color.*.*], but no "
                 "ColorEmbeddingRegistry is available."
             )
         try:
-            self.color = color_embedding_registry.resolve(color_key)
+            self.embedding = color_embedding_registry.resolve(embedding_key)
         except KeyError as exc:
             raise ValueError(
-                "Unknown calibration.color.color embedding "
-                f"'{color_key}'. Define it under [color.*.*]."
+                "Unknown calibration.color.embedding "
+                f"'{embedding_key}'. Define it under [color.*.*]."
             ) from exc
 
         self.data_selection = _get_key(
@@ -87,6 +160,64 @@ class CalibrationColorConfig:
             roi_registry=roi_registry,
             restricted=False,
         )
+
+        # Load color_path calibration config if present
+        try:
+            color_path_sec = _get_section(sec, "color_path")
+            self.color_path = ColorPathCalibrationConfig()
+            self.color_path.num_segments = _get_key(
+                color_path_sec, "num_segments", required=False, default=1, type_=int
+            )
+            self.color_path.resolution = _get_key(
+                color_path_sec, "resolution", required=False, default=51, type_=int
+            )
+            self.color_path.calibration_mode = _get_key(
+                color_path_sec,
+                "calibration_mode",
+                required=False,
+                default="auto",
+                type_=str,
+            )
+            self.color_path.threshold_baseline = _get_key(
+                color_path_sec,
+                "threshold_baseline",
+                required=False,
+                default=0.0,
+                type_=float,
+            )
+            self.color_path.threshold_calibration = _get_key(
+                color_path_sec,
+                "threshold_calibration",
+                required=False,
+                default=0.0,
+                type_=float,
+            )
+            self.color_path.ignore_baseline_spectrum = _get_key(
+                color_path_sec,
+                "ignore_baseline_spectrum",
+                required=False,
+                default="expanded",
+                type_=str,
+            )
+            self.color_path.histogram_weighting = _get_key(
+                color_path_sec,
+                "histogram_weighting",
+                required=False,
+                default="threshold",
+                type_=str,
+            )
+            self.color_path.ignore_labels = list(
+                _get_key(
+                    color_path_sec,
+                    "ignore_labels",
+                    required=False,
+                    default=[],
+                    type_=list,
+                )
+            )
+        except KeyError:
+            self.color_path = ColorPathCalibrationConfig()
+
         return self
 
 

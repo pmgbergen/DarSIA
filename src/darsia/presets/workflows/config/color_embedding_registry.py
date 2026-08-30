@@ -17,7 +17,7 @@ from darsia.signals.color import (
 )
 
 from .restoration import RestorationConfig
-from .utils import _convert_none, _validate_choice
+from .utils import _convert_none
 
 
 def _parse_mode(value: str, *, context: str) -> darsia.ColorMode:
@@ -45,42 +45,14 @@ def parse_color_path_embedding(
         if "calibration_folder" in cfg
         else (color_root / embedding_id if color_root is not None else Path())
     )
-    ignore_baseline_spectrum = _validate_choice(
-        str(cfg.get("ignore_baseline_spectrum", "expanded")).strip(),
-        allowed={"none", "baseline", "expanded"},
-        context=f"color.path.{embedding_id}",
-        key="ignore_baseline_spectrum",
-    )
-    histogram_weighting = _validate_choice(
-        str(cfg.get("histogram_weighting", "threshold")).strip(),
-        allowed={"threshold", "wls", "wls_sqrt", "wls_log"},
-        context=f"color.path.{embedding_id}",
-        key="histogram_weighting",
-    )
-    raw_calibration_mode = cfg.get("mode_calibration")
-    if raw_calibration_mode is None:
-        raw_calibration_mode = cfg.get("calibration_mode", "auto")
-    calibration_mode = _validate_choice(
-        str(raw_calibration_mode).strip(),
-        allowed={"auto", "manual"},
-        context=f"color.path.{embedding_id}",
-        key="calibration_mode",
-    )
 
     embedding = ColorPathEmbedding(
         embedding_id=embedding_id,
         mode=mode,
         basis=basis,
         calibration_root=calibration_root,
-        num_segments=int(cfg.get("num_segments", 1)),
-        ignore_labels=list(cfg.get("ignore_labels", [])),
-        resolution=int(cfg.get("resolution", 51)),
-        threshold_baseline=float(cfg.get("threshold_baseline", 0.0)),
-        threshold_calibration=float(cfg.get("threshold_calibration", 0.0)),
         reference_label=int(cfg.get("reference_label", 0)),
-        ignore_baseline_spectrum=ignore_baseline_spectrum,
-        histogram_weighting=histogram_weighting,
-        calibration_mode=calibration_mode,
+        data=cfg.get("data"),
     )
     return embedding
 
@@ -366,87 +338,30 @@ class ColorPathEmbeddingConfig:
             "group": "Properties",
         },
     )
-    num_segments: int = field(
-        default=1,
-        metadata={
-            "name": "Num Segments",
-            "help": "Number of color path segments.",
-            "group": "Properties",
-        },
-    )
-    resolution: int = field(
-        default=51,
-        metadata={
-            "name": "Resolution",
-            "help": "Color path resolution.",
-            "group": "Properties",
-        },
-    )
-    calibration_mode: str = field(
-        default="auto",
-        metadata={
-            "name": "Calibration Mode",
-            "help": "Calibration mode: auto or manual.",
-            "options": ["auto", "manual"],
-            "group": "Calibration",
-        },
-    )
-    threshold_baseline: float = field(
-        default=0.0,
-        metadata={
-            "name": "Threshold Baseline",
-            "help": "Baseline color threshold.",
-            "group": "Calibration",
-        },
-    )
-    threshold_calibration: float = field(
-        default=0.0,
-        metadata={
-            "name": "Threshold Calibration",
-            "help": "Calibration color threshold.",
-            "group": "Calibration",
-        },
-    )
     reference_label: int = field(
         default=0,
         metadata={
             "name": "Reference Label",
             "help": "Reference label index used to define color mapping, e.g., for plotting.",
-            "group": "Color map",
-        },
-    )
-    ignore_labels: list[int] = field(
-        default_factory=list,
-        metadata={
-            "name": "Ignore Labels",
-            "help": "Label ids to ignore (comma-separated in UI).",
             "group": "Properties",
         },
     )
-    ignore_baseline_spectrum: str = field(
-        default="expanded",
+    data: str | None = field(
+        default=None,
         metadata={
-            "name": "Ignore Baseline Spectrum",
-            "help": "How to treat the baseline color spectrum.",
-            "options": ["none", "baseline", "expanded"],
-            "group": "Calibration",
-        },
-    )
-    histogram_weighting: str = field(
-        default="threshold",
-        metadata={
-            "name": "Histogram Weighting",
-            "help": "Histogram weighting scheme.",
-            "options": ["threshold", "wls", "wls_sqrt", "wls_log"],
-            "group": "Calibration",
+            "name": "Data",
+            "help": "Path to color-path data (CSV) or inline TOML table reference. "
+            "If unset, falls back to legacy per-label JSON files.",
+            "group": "Data",
         },
     )
     calibration_folder: str | None = field(
         default=None,
         metadata={
             "name": "Calibration Folder",
-            "help": "Optional override for the calibration output folder.",
-            "group": "Calibration",
+            "help": "Optional override for the calibration root folder (baseline spectrum, "
+            "color range, etc.). Does not affect where color-path values are stored "
+            "(see 'Data' field).",
             "hidden": True,
         },
     )
