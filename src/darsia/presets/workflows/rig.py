@@ -232,9 +232,7 @@ class Rig:
                         f"Must be 'scale' or 'target_shape'."
                     )
 
-                self.rescale_correction = darsia.ResizeCorrection(
-                    shape=target_shape
-                )
+                self.rescale_correction = darsia.ResizeCorrection(shape=target_shape)
                 """User-configured resize correction."""
                 baseline_for_setup = self.rescale_correction(baseline_for_setup)
 
