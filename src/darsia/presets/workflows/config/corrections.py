@@ -142,6 +142,36 @@ class ResizeCorrectionConfig:
 
         return self
 
+    def resolve(
+        self, current_shape: tuple[int, int]
+    ) -> tuple[tuple[int, int], float | tuple[float, float]]:
+        """Resolve target shape and resize factor for a given current shape.
+
+        Args:
+            current_shape: current (rows, cols) shape of the image to be
+                resized.
+
+        Returns:
+            (target_shape, resize_factor) tuple where:
+            - target_shape: resolved (rows, cols) target shape.
+            - resize_factor: scalar factor (mode='scale') or (scale_x,
+              scale_y) tuple (mode='target_shape') to pass to downstream
+              corrections (e.g. CurvatureCorrection) that need to rescale
+              pixel-calibrated config values.
+
+        """
+        if self.mode == "scale":
+            target_shape = tuple(
+                int(round(s * self.scale)) for s in current_shape
+            )
+            resize_factor = self.scale
+        else:  # mode == "target_shape"
+            target_shape = self.target_shape
+            scale_x = target_shape[1] / current_shape[1]
+            scale_y = target_shape[0] / current_shape[0]
+            resize_factor = (scale_x, scale_y)
+        return target_shape, resize_factor
+
 
 @dataclass
 class InitCorrectionConfig:
