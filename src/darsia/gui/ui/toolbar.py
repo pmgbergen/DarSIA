@@ -4,21 +4,17 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QStyle
 
 from .icons import themed_icon
 from .theme import theme_signal
 
 _ICON_DIR = Path(__file__).parent.parent / "icons"
 
-_STANDARD_ICONS = {
-    "new": QStyle.StandardPixmap.SP_FileIcon,
-    "open": QStyle.StandardPixmap.SP_DirOpenIcon,
-    "save": QStyle.StandardPixmap.SP_DriveFDIcon,
-    "settings": QStyle.StandardPixmap.SP_FileDialogDetailedView,
-}
-
 _QTA_ICONS = {
+    "new": "fa5s.file",
+    "open": "fa5s.folder-open",
+    "save": "fa5s.save",
+    "settings": "fa5s.sliders-h",
     "play": "fa5s.play",
     "stop": "fa5s.stop",
 }
@@ -92,5 +88,4 @@ class ToolbarBuilder:
         if key in _QTA_ICONS:
             return themed_icon(_QTA_ICONS[key])
 
-        # Fallback to standard Qt icon
-        return self.main_window.style().standardIcon(_STANDARD_ICONS[key])
+        return QIcon()
