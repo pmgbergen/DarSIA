@@ -77,6 +77,7 @@ from darsia.corrections.shape.generalizedperspective import *
 from darsia.corrections.shape.rotation import *
 from darsia.corrections.shape.drift import *
 from darsia.corrections.shape.deformation import *
+from darsia.corrections.shape.resize import *
 from darsia.corrections.color.colorbalance import *
 from darsia.corrections.color.colorcheckerfinder import *
 from darsia.corrections.color.illuminationcorrection import *
