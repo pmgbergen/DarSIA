@@ -208,29 +208,12 @@ class Rig:
 
             # Apply user-configured resize if present.
             if corrections_config.resize:
-                mode = corrections_config.resize.mode
-                if mode == "scale":
-                    scale = corrections_config.resize.scale
-                    target_shape = tuple(
-                        int(round(s * scale))
-                        for s in baseline_for_setup.shape[
-                            : baseline_for_setup.space_dim
-                        ]
-                    )
-                    self.resize_factor = scale
-                elif mode == "target_shape":
-                    target_shape = corrections_config.resize.target_shape
-                    current_shape = baseline_for_setup.shape[
-                        : baseline_for_setup.space_dim
-                    ]
-                    scale_x = target_shape[1] / current_shape[1]
-                    scale_y = target_shape[0] / current_shape[0]
-                    self.resize_factor = (scale_x, scale_y)
-                else:
-                    raise ValueError(
-                        f"Invalid resize mode {mode!r}. "
-                        f"Must be 'scale' or 'target_shape'."
-                    )
+                current_shape = baseline_for_setup.shape[
+                    : baseline_for_setup.space_dim
+                ]
+                target_shape, self.resize_factor = (
+                    corrections_config.resize.resolve(current_shape)
+                )
 
                 self.rescale_correction = darsia.ResizeCorrection(shape=target_shape)
                 """User-configured resize correction."""
