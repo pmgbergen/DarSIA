@@ -36,7 +36,7 @@ class TypeCorrectionConfig:
         Returns:
             self with loaded configuration
         """
-        str_target_type = sec.get("type", "float64")
+        str_target_type = sec.get("target_type", "float64")
         if str_target_type == "float32":
             self.target_type = np.float32
         elif str_target_type == "float64":
