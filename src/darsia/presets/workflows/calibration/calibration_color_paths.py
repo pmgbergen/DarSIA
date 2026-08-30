@@ -57,11 +57,16 @@ def calibration_color_paths_from_context(
 
     # ! ---- SELECT EMBEDDING AND LABELS ----
 
-    embedding = config.calibration.color.color
+    embedding = config.calibration.color.embedding
     assert embedding is not None
     if not isinstance(embedding, ColorPathEmbedding):
+        logger.error(
+            "calibration.color.embedding '%s' is a %s; only color-path calibration is "
+            "implemented.", embedding.embedding_id, type(embedding).__name__,
+        )
         raise NotImplementedError(
-            "calibration.color currently supports only color path embeddings."
+            f"Calibration of {type(embedding).__name__} is not yet implemented; "
+            "only ColorPathEmbedding is supported."
         )
     selected_basis = embedding.basis
     selected_labels = embedding.get_labels(fluidflower)
@@ -146,17 +151,20 @@ def calibration_color_paths_from_context(
 
     # ! ---- COLOR PATH TOOL ----
 
+    calibration_cfg = config.calibration.color.color_path
+    assert calibration_cfg is not None
+
     color_path_regression = darsia.LabelColorPathMapRegression(
         labels=selected_labels,
         color_range=tracer_color_range,
         mask=calibration_mask,
-        resolution=embedding.resolution,
-        ignore_labels=embedding.ignore_labels,
+        resolution=calibration_cfg.resolution,
+        ignore_labels=calibration_cfg.ignore_labels,
     )
 
     # ! ---- ANALYZE FLUCTUATIONS IN BASELINE IMAGES ----
 
-    ignore_mode = embedding.ignore_baseline_spectrum
+    ignore_mode = calibration_cfg.ignore_baseline_spectrum
     ignore_spectrum: darsia.LabelColorSpectrumMap | None = None
 
     if ignore_mode in ("baseline", "expanded"):
@@ -164,7 +172,7 @@ def calibration_color_paths_from_context(
             color_path_regression.get_color_spectrum(
                 images=baseline_images,
                 baseline=fluidflower.baseline,
-                threshold_significant=embedding.threshold_baseline,
+                threshold_significant=calibration_cfg.threshold_baseline,
                 verbose=show,
             )
         )
@@ -194,7 +202,7 @@ def calibration_color_paths_from_context(
         images=calibration_images,
         baseline=fluidflower.baseline,
         ignore=ignore_spectrum,
-        threshold_significant=embedding.threshold_calibration,
+        threshold_significant=calibration_cfg.threshold_calibration,
         path=embedding.color_paths_folder,
         verbose=show,
     )
@@ -205,10 +213,11 @@ def calibration_color_paths_from_context(
         color_path_regression.find_color_path(
             color_spectrum=tracer_color_spectrum,
             ignore=ignore_spectrum,
-            num_segments=embedding.num_segments,
+            num_segments=calibration_cfg.num_segments,
             directory=embedding.color_paths_folder,
-            weighting=embedding.histogram_weighting,
-            mode=embedding.calibration_mode,
+            weighting=calibration_cfg.histogram_weighting,
+            mode=calibration_cfg.calibration_mode,
+            ignore_labels=calibration_cfg.ignore_labels,
             preview_image=preview_calibration_image,
             preview_images=calibration_images,
             preview_baseline=fluidflower.baseline,
