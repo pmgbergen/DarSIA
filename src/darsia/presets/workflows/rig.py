@@ -193,7 +193,7 @@ class Rig:
         # curvature).
         self.resize_factor = 1.0
 
-        if True:  # corrections_config.resize:
+        if corrections_config.resize:
             # Define resize correction that resizes to the shape of the baseline
             # image. This is needed to ensure that later curvature corrections or
             # concentration analysis work correctly.
@@ -208,11 +208,9 @@ class Rig:
 
             # Apply user-configured resize if present.
             if corrections_config.resize:
-                current_shape = baseline_for_setup.shape[
-                    : baseline_for_setup.space_dim
-                ]
-                target_shape, self.resize_factor = (
-                    corrections_config.resize.resolve(current_shape)
+                current_shape = baseline_for_setup.shape[: baseline_for_setup.space_dim]
+                target_shape, self.resize_factor = corrections_config.resize.resolve(
+                    current_shape
                 )
 
                 self.rescale_correction = darsia.ResizeCorrection(shape=target_shape)
