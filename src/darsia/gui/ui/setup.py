@@ -173,7 +173,6 @@ class SetupTab:
             (
                 "Setup steps",
                 [
-                    ("Rig", "rig", "fa5s.circle", get_help_text("setup", "rig", "Rig")),
                     (
                         "Depth",
                         "depth",
@@ -192,6 +191,7 @@ class SetupTab:
                         "fa5s.circle",
                         get_help_text("setup", "facies", "Facies"),
                     ),
+                    ("Rig", "rig", "fa5s.circle", get_help_text("setup", "rig", "Rig")),
                 ],
             ),
         ]
