@@ -461,8 +461,17 @@ class SettingsFactory:
                 # spanning row; settings_inputs gets the row-tracking payload save_settings
                 # expects.
                 target_form.addRow("", field_or_result["widget"])
-                self.main_window.settings_inputs[setting["key"]] = (
-                    self._wrap_multi_row_result(field_or_result)
+                wrapped = self._wrap_multi_row_result(field_or_result)
+                self.main_window.settings_inputs[setting["key"]] = wrapped
+                # Track for depends_on wiring — lets other fields use this as a driver
+                # (store raw field_or_result to keep embedding_type_map/rows)
+                unqualified_key = setting["key"].rsplit(".", 1)[-1]
+                row_index = target_form.rowCount() - 1
+                field_row_map[unqualified_key] = (
+                    row_index,
+                    field_or_result,
+                    setting,
+                    target_form,
                 )
             elif auto_grouped and isinstance(field_or_result, dict):
                 # Multi-row field that created its own result dict
@@ -499,21 +508,36 @@ class SettingsFactory:
 
             driver_field_key = depends_on.get("field")
             driver_value = depends_on.get("value")
-            if driver_field_key is None or driver_value is None:
+            driver_type = depends_on.get("type")
+
+            # Handle both value-based and type-based dependencies
+            if driver_field_key is None or (driver_value is None and driver_type is None):
                 continue
 
-            # Find the driver field's widget — must be a scalar field in the same form
-            # (typically at the top level; handle via full key lookup in settings_inputs)
+            # Find the driver field's widget — can be scalar or multi-row
             section = setting["key"].rsplit(".", 1)[0]
             driver_full_key = f"{section}.{driver_field_key}"
 
-            # Look up the driver widget in settings_inputs
+            # Look up the driver widget in settings_inputs (top-level field_row_map not
+            # available here, so use settings_inputs directly for both scalar and multi-row)
             if driver_full_key not in self.main_window.settings_inputs:
                 continue
 
-            driver_widget = self.main_window.settings_inputs[driver_full_key]
-            # Unwrap composite widget to get the real QComboBox
-            driver_combo = unwrap_composite_widget(driver_widget)
+            driver_field_or_result = self.main_window.settings_inputs[driver_full_key]
+
+            # Extract the QComboBox and type_map, handling both scalar and multi-row drivers
+            if isinstance(driver_field_or_result, dict) and driver_field_or_result.get(
+                "color_key_list"
+            ):
+                # Multi-row color embedding selector
+                rows = driver_field_or_result.get("rows", [])
+                driver_combo = rows[0] if rows else None
+                type_map = driver_field_or_result.get("embedding_type_map", {})
+            else:
+                # Scalar field: unwrap to get QComboBox
+                driver_combo = unwrap_composite_widget(driver_field_or_result)
+                type_map = {}
+
             if not isinstance(driver_combo, QComboBox):
                 continue
 
@@ -522,19 +546,28 @@ class SettingsFactory:
             if group_widget is None:
                 continue
 
-            # Create visibility handler supporting both single and list values
-            def make_visibility_handler(widget, required_val):
+            # Create visibility handler supporting both value-based and type-based checks
+            def make_visibility_handler(widget, required_val, required_type, type_map):
                 def handler(current_text):
-                    is_visible = (
-                        current_text in required_val
-                        if isinstance(required_val, (list, set, tuple))
-                        else current_text == required_val
-                    )
+                    if required_type is not None:
+                        # Type-based check: look up the type of the selected embedding
+                        selected_type = type_map.get(current_text)
+                        is_visible = selected_type == required_type
+                    else:
+                        # Value-based check (original behavior)
+                        is_visible = (
+                            current_text in required_val
+                            if isinstance(required_val, (list, set, tuple))
+                            else current_text == required_val
+                        )
                     widget.setVisible(is_visible)
 
                 return handler
 
-            handler = make_visibility_handler(group_widget, driver_value)
+            # type_map already extracted from driver_field_or_result above
+            handler = make_visibility_handler(
+                group_widget, driver_value, driver_type, type_map
+            )
             driver_combo.currentTextChanged.connect(handler)
 
             # Set initial visibility
@@ -1454,19 +1487,31 @@ class SettingsFactory:
     def create_color_key_list_input(self, setting_dict, form_context=None):
         """Create a multi-row color-embedding-key selector with dropdowns.
 
-        Reads from the [[color]] array-of-tables TOML shape.
-        Each row is a QComboBox populated with available color embedding names.
+        Reads from the [[color_path]], [[color_range]], and [[color_channel]]
+        array-of-tables TOML shapes. Each row is a QComboBox populated with
+        available color embedding names, tagged by type.
 
-        Returns (display_name, enriched_dict) with "widget" and "rows".
+        Returns (display_name, enriched_dict) with "widget", "rows", and "embedding_type_map".
         """
         key = setting_dict["key"]
         display_name = setting_dict.get("name", key)
 
-        # Gather available color-embedding keys from the raw [[color]] array-of-tables
-        color_list = self.main_window.config_dict.get("color", [])
-        available_keys = sorted(
-            {entry.get("name", "") for entry in color_list if entry.get("name")}
-        )
+        # Gather available color-embedding keys from all three arrays with type tags
+        embedding_type_map = {}  # name -> type ("color_path", "color_range", "color_channel")
+
+        # Aggregate embeddings from all three arrays
+        for array_key, type_name in [
+            ("color_path", "color_path"),
+            ("color_range", "color_range"),
+            ("color_channel", "color_channel"),
+        ]:
+            array = self.main_window.config_dict.get(array_key, [])
+            for entry in array:
+                name = entry.get("name", "")
+                if name:
+                    embedding_type_map[name] = type_name
+
+        available_keys = sorted(embedding_type_map.keys())
 
         # Get current value and normalize to list
         value = self.get_value(self.main_window.config_dict, key)
@@ -1576,11 +1621,12 @@ class SettingsFactory:
                 # Always at least one empty row
                 add_row()
 
-            # Return enriched dict with color_key_list marker and max_rows if set
+            # Return enriched dict with color_key_list marker, max_rows if set, and type map
             result_dict = {
                 "widget": header_widget,
                 "color_key_list": True,
                 "rows": row_combos,
+                "embedding_type_map": embedding_type_map,
             }
             if max_rows is not None:
                 result_dict["max_rows"] = max_rows
@@ -1588,7 +1634,11 @@ class SettingsFactory:
             return display_name, result_dict
 
         else:
-            return display_name, {"color_key_list": True, "rows": []}
+            return display_name, {
+                "color_key_list": True,
+                "rows": [],
+                "embedding_type_map": embedding_type_map,
+            }
 
     def create_simple_input(self, setting_dict):
         """Create a line edit input for numeric or string values.
@@ -2499,6 +2549,16 @@ class SettingsFactory:
                     sub_inputs[sub_setting["key"]] = self._wrap_multi_row_result(
                         field_or_result
                     )
+                    # Track for depends_on wiring — lets other fields use this as a driver
+                    # (store raw result_or_field, not the stripped _wrap_multi_row_result,
+                    # so embedding_type_map and rows stay accessible)
+                    unqualified_key = sub_setting["key"].rsplit(".", 1)[-1]
+                    row_index = multi_row_form.rowCount() - 1
+                    field_row_map[unqualified_key] = (
+                        row_index,
+                        field_or_result,
+                        sub_setting,
+                    )
                 continue
 
             # Handle nested groups (e.g., curvature correction stages)
@@ -2546,7 +2606,8 @@ class SettingsFactory:
 
             driver_field_key = depends_on.get("field")
             driver_value = depends_on.get("value")
-            if driver_field_key is None or driver_value is None:
+            driver_type = depends_on.get("type")
+            if driver_field_key is None or (driver_value is None and driver_type is None):
                 continue
 
             # Find the driver field's widget
@@ -2554,13 +2615,22 @@ class SettingsFactory:
                 continue  # Driver field not found in this group, skip
             _, driver_widget, _ = field_row_map[driver_field_key]
 
-            # Extract the QComboBox from the composite field_widget via the stored property
-            driver_combo = driver_widget.property("value_widget")
+            # Extract the QComboBox and type_map, handling both scalar and multi-row drivers
+            if isinstance(driver_widget, dict) and driver_widget.get("color_key_list"):
+                # Multi-row color embedding selector: extract first combo and its type map
+                rows = driver_widget.get("rows", [])
+                driver_combo = rows[0] if rows else None
+                type_map = driver_widget.get("embedding_type_map", {})
+            else:
+                # Scalar field: extract QComboBox via property
+                driver_combo = driver_widget.property("value_widget")
+                type_map = {}
             if driver_combo is None:
                 continue  # Driver is not a dropdown, skip
 
             # Create a closure to capture the target widget and driver_value
             # Support both single-value (string) and multi-value (list/set/tuple) comparisons
+            # Support both value-based and type-based dependencies
             # Handle both scalar widgets (use setRowVisible) and group result dicts
             # (setVisible)
             if isinstance(field_widget, dict) and field_widget.get("is_group_result"):
@@ -2569,18 +2639,27 @@ class SettingsFactory:
                 if target_widget is None:
                     continue
 
-                def make_group_visibility_handler(widget, required_val):
+                def make_group_visibility_handler(widget, required_val, required_type, type_map):
                     def handler(current_text):
-                        is_visible = (
-                            current_text in required_val
-                            if isinstance(required_val, (list, set, tuple))
-                            else current_text == required_val
-                        )
+                        if required_type is not None:
+                            # Type-based check
+                            selected_type = type_map.get(current_text)
+                            is_visible = selected_type == required_type
+                        else:
+                            # Value-based check (original behavior)
+                            is_visible = (
+                                current_text in required_val
+                                if isinstance(required_val, (list, set, tuple))
+                                else current_text == required_val
+                            )
                         widget.setVisible(is_visible)
 
                     return handler
 
-                handler = make_group_visibility_handler(target_widget, driver_value)
+                # type_map already extracted from driver_widget above
+                handler = make_group_visibility_handler(
+                    target_widget, driver_value, driver_type, type_map
+                )
             else:
                 # Scalar widget: use setRowVisible
                 def make_scalar_visibility_handler(row_idx, required_val):
