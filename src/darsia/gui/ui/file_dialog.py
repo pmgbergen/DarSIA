@@ -1,5 +1,7 @@
 """File dialog and file selection utilities for DarSIA GUI."""
 
+from pathlib import Path
+
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -11,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from .help import build_help_column
+from .table_viewer import TABLE_LOADERS, TableViewerDialog
 
 NO_FILE_CHOSEN = "No file chosen"
 
@@ -153,6 +156,38 @@ class FileDialogHelper:
 
         field_layout.addWidget(browse_button)
         field_layout.addWidget(path_edit, stretch=1)
+
+        # Optional "View" button for table viewers
+        if setting_dict and setting_dict.get("table_viewer"):
+            view_button = QPushButton("View")
+            view_button.setMaximumWidth(80)
+
+            def open_table_viewer():
+                path_text = path_edit.text()
+                if not path_text:
+                    self.main_window.print_log("No path set for table viewer")
+                    return
+                loader_key = setting_dict.get("table_viewer")
+                if loader_key not in TABLE_LOADERS:
+                    self.main_window.print_log(
+                        f"Unknown table viewer format: {loader_key}"
+                    )
+                    return
+                loader = TABLE_LOADERS[loader_key]
+                try:
+                    df = loader(Path(path_text))
+                    title = setting_dict.get("name", loader_key)
+                    dialog = TableViewerDialog(
+                        parent=self.main_window, title=title, dataframe=df
+                    )
+                    dialog.exec()
+                except Exception as e:
+                    self.main_window.print_log(f"Error opening table viewer: {e}")
+                    import traceback
+                    self.main_window.print_log(traceback.format_exc())
+
+            view_button.clicked.connect(open_table_viewer)
+            field_layout.addWidget(view_button)
 
         # Right column: help button or spacer (fixed 40px)
         field_layout.addWidget(build_help_column(setting_dict))
