@@ -19,8 +19,7 @@ logger = logging.getLogger(__name__)
 # Composite entries: list of (action, checkbox_id) keys — union of those checkboxes'
 #   sections (in order, deduplicated)
 CHECKBOX_TO_SECTIONS = {
-    # Setup leaf mappings — point to the functions the GUI's setup.py::run_setup() calls
-    # Ordered to match sidebar layout (Preparation → Setup steps).
+    # Setup leaf mappings — preparation steps (protocols, crop).
     ("setup", "protocols"): (
         "darsia.presets.workflows.setup.setup_protocols",
         "setup_imaging_protocol",
@@ -29,6 +28,14 @@ CHECKBOX_TO_SECTIONS = {
         "darsia.presets.workflows.setup.setup_crop",
         "setup_crop_correction",
     ),
+    # Setup composite mapping - full setup
+    ("setup", "all"): [
+        ("setup", "depth"),
+        ("setup", "segmentation"),
+        ("setup", "facies"),
+        ("setup", "rig"),
+    ],
+    # Setup leaf mappings — individual steps
     ("setup", "rig"): (
         "darsia.presets.workflows.setup.setup_rig",
         "setup_rig",
@@ -45,14 +52,6 @@ CHECKBOX_TO_SECTIONS = {
         "darsia.presets.workflows.setup.setup_facies",
         "setup_facies",
     ),
-    # Setup composite mapping: "all" runs depth + segmentation + facies + rig
-    # (no protocols/crop)
-    ("setup", "all"): [
-        ("setup", "depth"),
-        ("setup", "segmentation"),
-        ("setup", "facies"),
-        ("setup", "rig"),
-    ],
     # Calibration leaf mappings
     ("calibration", "color"): (
         "darsia.presets.workflows.calibration.calibration_color_paths",
@@ -210,8 +209,9 @@ def filter_visible_sections(
     """Filter visible sections based on customization, force-showing unmet ones.
 
     Ensures no required section is hidden if it's not yet satisfied in the
-    config. Only displays sections listed in tab_customization.toml unless
-    they are currently unsatisfied (missing/empty).
+    config. When TAB_VISIBILITY is defined, its tuple order determines display
+    order; only displays sections listed in TAB_VISIBILITY unless they are
+    currently unsatisfied (missing/empty).
 
     Args:
         action: Workflow action (e.g., "calibration").
