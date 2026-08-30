@@ -8,6 +8,10 @@ Composite entries are lists of other (action, checkbox_id) keys whose sections s
 be unioned together.
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Mapping: (action, checkbox_id) -> (module_path, function_name) | list[(action, checkbox_id)]
 #
 # Leaf entries: (module_path, function_name) — resolves a function decorated with
@@ -80,6 +84,15 @@ CHECKBOX_TO_SECTIONS = {
     ),
 }
 
+# Tab visibility override: limit which sections are shown for specific workflows.
+# If a (action, checkbox_id) key is absent, all required sections are shown.
+# Used for workflows where some required sections are always pre-populated by
+# an earlier step (e.g., Setup) and would just add visual clutter here.
+TAB_VISIBILITY = {
+    ("calibration", "color"): ("color", "calibration", "options"),
+    ("calibration", "mass"): ("color", "calibration", "options"),
+}
+
 
 def get_required_sections(action: str, checkbox_id: str) -> tuple[str, ...] | None:
     """Get the required config sections for a checkbox.
@@ -135,3 +148,75 @@ def get_required_sections(action: str, checkbox_id: str) -> tuple[str, ...] | No
         if isinstance(e, ValueError):
             raise
         raise ValueError(f"Error loading sections for {action}.{checkbox_id}: {e}")
+
+
+def _is_section_satisfied(config_dict: dict, section: str) -> bool:
+    """Check whether a section already has a non-empty value in the GUI's
+    TOML-parsed config dict.
+
+    Args:
+        config_dict: The GUI's raw config dict (main_window.config_dict).
+        section: Section name (e.g., "rig", "calibration.color").
+
+    Returns:
+        True if the section key path resolves to a non-empty dict or value;
+        False otherwise.
+    """
+    if not isinstance(config_dict, dict):
+        return False
+    try:
+        value = config_dict
+        for key in section.split("."):
+            if not isinstance(value, dict) or key not in value:
+                return False
+            value = value[key]
+        # Section is satisfied if the final value is non-empty dict or non-None
+        return bool(value) if isinstance(value, dict) else value is not None
+    except Exception as e:
+        logger.debug(f"Error checking section {section}: {e}")
+        return False
+
+
+def filter_visible_sections(
+    action: str,
+    checkbox_id: str,
+    required_sections: tuple[str, ...],
+    config_dict: dict,
+) -> tuple[str, ...]:
+    """Filter visible sections based on customization, force-showing unmet ones.
+
+    Ensures no required section is hidden if it's not yet satisfied in the
+    config. Only displays sections listed in tab_customization.toml unless
+    they are currently unsatisfied (missing/empty).
+
+    Args:
+        action: Workflow action (e.g., "calibration").
+        checkbox_id: Checkbox ID (e.g., "color").
+        required_sections: Tuple of required sections from the decorator.
+        config_dict: The GUI's raw TOML-parsed config dict
+            (main_window.config_dict).
+
+    Returns:
+        Filtered tuple of section names to display (always includes unmet ones).
+    """
+    wanted = TAB_VISIBILITY.get((action, checkbox_id))
+
+    # No customization for this action/checkbox; show all required sections
+    if wanted is None:
+        return required_sections
+
+    # Filter to wanted sections, but force-show unsatisfied ones
+    visible = []
+    seen = set()
+
+    for section in required_sections:
+        # Extract base name for matching (e.g., "calibration.color" -> "calibration")
+        base = section.split(".")[0]
+
+        # If wanted OR unsatisfied, include it
+        if base in wanted or not _is_section_satisfied(config_dict, section):
+            if section not in seen:
+                visible.append(section)
+                seen.add(section)
+
+    return tuple(visible)
