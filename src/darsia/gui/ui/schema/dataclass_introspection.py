@@ -1,9 +1,10 @@
 """Introspect FluidFlowerConfig section dataclasses to derive GUI widget schema."""
 
+import sys
 import types
 from dataclasses import MISSING, fields, is_dataclass
 from pathlib import Path
-from typing import Any, Union, get_args, get_origin, get_type_hints
+from typing import Any, Union, get_args, get_origin
 
 from darsia.presets.workflows.config.analysis import AnalysisConfig
 from darsia.presets.workflows.config.calibration import CalibrationConfig
@@ -97,6 +98,31 @@ def _unwrap_optional(field_type: Any) -> Any:
         if len(non_none) == 1:
             return non_none[0]
     return field_type
+
+
+def _resolve_field_type(dataclass_type: type, raw_type: Any) -> Any:
+    """Resolve one field's annotation to a real type, tolerating unresolvable
+    forward refs elsewhere in the class (e.g. TYPE_CHECKING-only imports).
+
+    Falls back to the raw (possibly still-a-string) annotation on failure —
+    callers already handle non-type field_type values via metadata overrides
+    and the `_infer_widget_type` string fallback.
+
+    Args:
+        dataclass_type: The dataclass being introspected.
+        raw_type: The field's raw type annotation (might be a string).
+
+    Returns:
+        The resolved type if resolvable, otherwise the raw annotation.
+    """
+    if not isinstance(raw_type, str):
+        return raw_type
+    module = sys.modules.get(dataclass_type.__module__)
+    globalns = getattr(module, "__dict__", {})
+    try:
+        return eval(raw_type, globalns, {})
+    except Exception:
+        return raw_type
 
 
 def _infer_widget_type(field_type: Any, metadata: dict) -> str:
@@ -220,16 +246,14 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
         List of setting dicts with key, type, help, link, options, fields (for groups),
         list_type (for lists), default, etc.
     """
-    # Use get_type_hints to resolve string annotations (from __future__ import annotations)
-    try:
-        type_hints = get_type_hints(dataclass_type)
-    except Exception:
-        type_hints = {}
-
     settings = []
     for field in fields(dataclass_type):
-        # Use resolved type hint if available, otherwise use field.type
-        field_type = type_hints.get(field.name, field.type)
+        # Resolve each field's type annotation independently to tolerate
+        # unresolvable forward refs elsewhere in the class (e.g. TYPE_CHECKING
+        # -only imports). Use _resolve_field_type to handle per-field resolution
+        # rather than a class-wide get_type_hints that would blank all types if
+        # any one field's annotation fails to resolve.
+        field_type = _resolve_field_type(dataclass_type, field.type)
         # Skip fields marked as hidden (outputs, derived fields)
         if field.metadata.get("hidden", False):
             continue
