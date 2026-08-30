@@ -161,9 +161,7 @@ class ResizeCorrectionConfig:
 
         """
         if self.mode == "scale":
-            target_shape = tuple(
-                int(round(s * self.scale)) for s in current_shape
-            )
+            target_shape = tuple(int(round(s * self.scale)) for s in current_shape)
             resize_factor = self.scale
         else:  # mode == "target_shape"
             target_shape = self.target_shape
