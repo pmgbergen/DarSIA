@@ -20,9 +20,18 @@ logger = logging.getLogger(__name__)
 #   sections (in order, deduplicated)
 CHECKBOX_TO_SECTIONS = {
     # Setup leaf mappings — point to the functions the GUI's setup.py::run_setup() calls
+    # Ordered to match sidebar layout (Preparation → Setup steps).
     ("setup", "protocols"): (
         "darsia.presets.workflows.setup.setup_protocols",
         "setup_imaging_protocol",
+    ),
+    ("setup", "crop"): (
+        "darsia.presets.workflows.setup.setup_crop",
+        "setup_crop_correction",
+    ),
+    ("setup", "rig"): (
+        "darsia.presets.workflows.setup.setup_rig",
+        "setup_rig",
     ),
     ("setup", "depth"): (
         "darsia.presets.workflows.setup.setup_depth",
@@ -36,12 +45,8 @@ CHECKBOX_TO_SECTIONS = {
         "darsia.presets.workflows.setup.setup_facies",
         "setup_facies",
     ),
-    ("setup", "rig"): (
-        "darsia.presets.workflows.setup.setup_rig",
-        "setup_rig",
-    ),
-    # Setup composite mapping: "all" runs depth + segmentation + facies + rig (no protocol)
-    # Mirrors setup.py:104-115 run_setup() logic exactly.
+    # Setup composite mapping: "all" runs depth + segmentation + facies + rig
+    # (no protocols/crop)
     ("setup", "all"): [
         ("setup", "depth"),
         ("setup", "segmentation"),
@@ -89,6 +94,25 @@ CHECKBOX_TO_SECTIONS = {
 # Used for workflows where some required sections are always pre-populated by
 # an earlier step (e.g., Setup) and would just add visual clutter here.
 TAB_VISIBILITY = {
+    # Setup > Preparation
+    ("setup", "protocols"): ("data", "protocols"),
+    ("setup", "crop"): ("rig", "corrections", "options"),
+    # Setup > Full setup
+    ("setup", "all"): (
+        "rig",
+        "depth",
+        "labeling",
+        "facies",
+        "image_porosity",
+        "corrections",
+        "options",
+    ),
+    # Setup > Single steps
+    ("setup", "depth"): ("depth", "options"),
+    ("setup", "segmentation"): ("labeling", "options"),
+    ("setup", "facies"): ("facies", "options"),
+    ("setup", "rig"): ("rig", "corrections", "image_porosity", "options"),
+    # Calibration > Color & Mass
     ("calibration", "color"): ("color", "calibration", "options"),
     ("calibration", "mass"): ("color", "calibration", "options"),
 }
