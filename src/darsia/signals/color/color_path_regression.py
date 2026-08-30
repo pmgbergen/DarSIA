@@ -1484,6 +1484,7 @@ class LabelColorPathMapRegression:
         preview_image: darsia.Image | None = None,
         preview_images: list[darsia.Image] | None = None,
         preview_baseline: darsia.Image | None = None,
+        ignore_labels: list[int] | None = None,
         verbose: bool = False,
     ) -> darsia.LabelColorPathMap:
         """Find relative color paths for each label in the spectrum map.
@@ -1505,17 +1506,33 @@ class LabelColorPathMapRegression:
             preview_images (list[darsia.Image] | None): Calibration images for manual
                 preview navigation.
             preview_baseline (darsia.Image | None): Baseline used for relative color preview.
+            ignore_labels (list[int] | None): Label IDs to skip fitting and produce
+                zero-paths for instead. Defaults to None (no labels ignored).
             verbose (bool): Whether to print additional information.
 
         Returns:
             LabelColorPathMap: The relative color path map through the significant boxes.
 
         """
+        if ignore_labels is None:
+            ignore_labels = []
+
+        # Helper to create a zero-path (all-zero color path for ignored labels)
+        def create_zero_path(label: int) -> darsia.ColorPath:
+            """Create a zero-path (constant zero colors) for an ignored label."""
+            return darsia.ColorPath(
+                colors=[np.zeros(3), np.zeros(3)],
+                mode="rgb",
+                name=f"Zero Path for Label {label}",
+            )
+
         label_color_path_map = darsia.LabelColorPathMap(
             dict(
                 (
                     label,
-                    self._find_color_path(
+                    create_zero_path(label)
+                    if label in ignore_labels
+                    else self._find_color_path(
                         spectrum=color_spectrum[label],
                         label=label,
                         ignore=ignore[label] if ignore is not None else None,
