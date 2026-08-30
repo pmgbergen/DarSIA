@@ -220,26 +220,12 @@ class Rig:
                     self.resize_factor = scale
                 elif mode == "target_shape":
                     target_shape = corrections_config.resize.target_shape
-                    # Derive scale factors for each axis; they must match within
-                    # tolerance since curvature correction only accepts a single
-                    # resize_factor.
                     current_shape = baseline_for_setup.shape[
                         : baseline_for_setup.space_dim
                     ]
-                    scales = [
-                        target_shape[i] / current_shape[i]
-                        for i in range(len(current_shape))
-                    ]
-                    if not all(
-                        abs(scales[0] - scales[i]) < 1e-6 for i in range(1, len(scales))
-                    ):
-                        raise ValueError(
-                            f"Target shape {target_shape} would require "
-                            f"non-uniform scaling {scales}. "
-                            f"Curvature correction only supports uniform scaling. "
-                            f"Use mode='scale' instead."
-                        )
-                    self.resize_factor = scales[0]
+                    scale_x = target_shape[1] / current_shape[1]
+                    scale_y = target_shape[0] / current_shape[0]
+                    self.resize_factor = (scale_x, scale_y)
                 else:
                     raise ValueError(
                         f"Invalid resize mode {mode!r}. "
@@ -247,9 +233,7 @@ class Rig:
                     )
 
                 self.rescale_correction = darsia.ResizeCorrection(
-                    shape=target_shape,
-                    fx=self.resize_factor,
-                    fy=self.resize_factor,
+                    shape=target_shape
                 )
                 """User-configured resize correction."""
                 baseline_for_setup = self.rescale_correction(baseline_for_setup)
@@ -284,9 +268,12 @@ class Rig:
             self.shape_corrections.append(self.drift_correction)
 
         if corrections_config.curvature:
-            # Define curvature correction as derived from analysis of laser grid images
+            # Define curvature correction as derived from analysis of laser grid
+            # images. Pass resize_factor to rescale pixel-calibrated config values
+            # (crop corners, bulge/stretch offsets) if images were resized.
             self.curvature_correction = darsia.CurvatureCorrection(
-                config=corrections_config.curvature.to_dict()
+                config=corrections_config.curvature.to_dict(),
+                resize_factor=self.resize_factor,
             )
             """Curvature correction based on laser grid analysis."""
             baseline_for_setup = self.curvature_correction(baseline_for_setup)
