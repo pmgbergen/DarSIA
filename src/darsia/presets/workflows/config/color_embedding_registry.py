@@ -40,9 +40,9 @@ def parse_color_path_embedding(
         cfg.get("mode", "relative"), context=f"color.path.{embedding_id}"
     )
     basis = parse_color_embedding_basis(cfg.get("basis", "labels"))
-    calibration_root = (
-        Path(cfg["calibration_folder"])
-        if "calibration_folder" in cfg
+    root = (
+        Path(cfg["root"])
+        if "root" in cfg
         else (color_root / embedding_id if color_root is not None else Path())
     )
 
@@ -50,7 +50,7 @@ def parse_color_path_embedding(
         embedding_id=embedding_id,
         mode=mode,
         basis=basis,
-        calibration_root=calibration_root,
+        root=root,
         reference_label=int(cfg.get("reference_label", 0)),
         data=cfg.get("data"),
     )
@@ -86,9 +86,9 @@ def parse_color_range_embedding(
                 None if high is None else float(high),
             )
         )
-    calibration_root = (
-        Path(cfg["calibration_folder"])
-        if "calibration_folder" in cfg
+    root = (
+        Path(cfg["root"])
+        if "root" in cfg
         else (color_root / embedding_id if color_root is not None else Path())
     )
     if "color_space" not in cfg:
@@ -105,7 +105,7 @@ def parse_color_range_embedding(
         embedding_id=embedding_id,
         mode=mode,
         basis=basis,
-        calibration_root=calibration_root,
+        root=root,
         color_space=str(cfg["color_space"]).upper().strip(),
         ranges=ranges,
         restoration_config=restoration_config if "restoration" in cfg else None,
@@ -127,9 +127,9 @@ def parse_color_channel_embedding(
         raise NotImplementedError(
             "color.channel.<id> currently only supports basis='global'."
         )
-    calibration_root = (
-        Path(cfg["calibration_folder"])
-        if "calibration_folder" in cfg
+    root = (
+        Path(cfg["root"])
+        if "root" in cfg
         else (color_root / embedding_id if color_root is not None else Path())
     )
     for key in ["color_space", "channel"]:
@@ -142,7 +142,7 @@ def parse_color_channel_embedding(
         mask_embedding = parse_color_range_embedding(
             cfg=cfg["mask"],
             embedding_id=f"{embedding_id}_mask",
-            color_root=calibration_root,
+            color_root=root,
             data=data,
         )
     if "restoration" in cfg:
@@ -157,7 +157,7 @@ def parse_color_channel_embedding(
         embedding_id=embedding_id,
         mode=mode,
         basis=basis,
-        calibration_root=calibration_root,
+        root=root,
         color_space=str(cfg["color_space"]).upper().strip(),
         channel=str(cfg["channel"]).lower().strip(),
         mask_embedding=mask_embedding,
@@ -346,25 +346,32 @@ class ColorPathEmbeddingConfig:
             "group": "Properties",
         },
     )
-    data: str | None = field(
+    data: Path | None = field(
         default=None,
         metadata={
             "name": "Data",
-            "help": "Path to color-path data (CSV) or inline TOML table reference. "
-            "If unset, falls back to legacy per-label JSON files.",
-            "group": "Data",
+            "help": "Path to color-path CSV file. Leave blank to use the default "
+            "location (root/color_paths.csv). Auto-populated after "
+            "calibration runs.",
+            "widget": "file",
+            "table_viewer": "csv",
         },
     )
-    calibration_folder: str | None = field(
+    root: Path | None = field(
         default=None,
         metadata={
-            "name": "Calibration Folder",
+            "name": "Calibration Root",
             "help": "Optional override for the calibration root folder (baseline spectrum, "
             "color range, etc.). Does not affect where color-path values are stored "
             "(see 'Data' field).",
             "hidden": True,
         },
     )
+
+    def __post_init__(self) -> None:
+        """Ensure data is a string or None."""
+        if self.data is None and self.root is not None:
+            self.data = self.root / "color_paths.csv"
 
 
 @dataclass
@@ -418,11 +425,11 @@ class ColorRangeEmbeddingConfig:
             "help": "Optional restoration applied to this range/mask.",
         },
     )
-    calibration_folder: str | None = field(
+    root: Path | None = field(
         default=None,
         metadata={
-            "name": "Calibration Folder",
-            "help": "Optional override for the calibration output folder.",
+            "name": "Calibration Root",
+            "help": "Optional override for the calibration root folder.",
             "hidden": True,
         },
     )
@@ -472,11 +479,11 @@ class ColorChannelEmbeddingConfig:
             "help": "Optional restoration applied to this channel.",
         },
     )
-    calibration_folder: str | None = field(
+    root: Path | None = field(
         default=None,
         metadata={
-            "name": "Calibration Folder",
-            "help": "Optional override for the calibration output folder.",
+            "name": "Calibration Root",
+            "help": "Optional override for the calibration root folder.",
             "hidden": True,
         },
     )

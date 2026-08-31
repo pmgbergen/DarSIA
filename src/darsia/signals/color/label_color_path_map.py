@@ -95,9 +95,7 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
                 )
 
         df = pd.DataFrame(rows)
-        df = df.astype(
-            {"label": "int64", "segment_index": "int64"}
-        )
+        df = df.astype({"label": "int64", "segment_index": "int64"})
         df.to_csv(path, index=False)
         logger.info("Saved color paths to %s", path)
 
@@ -154,8 +152,11 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
                 colors.append(np.array([row["r"], row["g"], row["b"]]))
 
             base_color = np.array(
-                [group.iloc[0]["base_r"], group.iloc[0]["base_g"],
-                 group.iloc[0]["base_b"]]
+                [
+                    group.iloc[0]["base_r"],
+                    group.iloc[0]["base_g"],
+                    group.iloc[0]["base_b"],
+                ]
             )
 
             color_path = darsia.ColorPath(
