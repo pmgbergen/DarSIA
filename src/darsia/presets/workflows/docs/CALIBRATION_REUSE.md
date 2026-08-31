@@ -54,8 +54,8 @@ inside the import target folder.
 Copy the generated snippet entries into your config file. Typical keys are:
 
 - `[analysis.mass].color`
-- `[calibration.color].color`
-- `[calibration.mass].color`
+- `[calibration.color].embedding`
+- `[calibration.mass].embedding`
 
 Use absolute paths to make sharing and deployment robust.
 

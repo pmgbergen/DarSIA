@@ -91,7 +91,7 @@ class TestCalibrationMassConfig:
         color_registry = _make_color_embedding_registry(tmp_path)
         roi_registry = _make_registry_with_roi("valid_roi")
         sec = {
-            "color": "color_path",  # CalibrationMassConfig uses "color" key
+            "embedding": "color_path",
             "rois": ["unknown_roi"],
         }
         with pytest.raises(KeyError, match="unknown_roi.*not found"):
@@ -107,7 +107,7 @@ class TestCalibrationMassConfig:
         color_registry = _make_color_embedding_registry(tmp_path)
         roi_registry = _make_registry_with_roi("my_roi")
         sec = {
-            "color": "color_path",  # CalibrationMassConfig uses "color" key
+            "embedding": "color_path",
             "rois": ["my_roi"],
         }
         cfg = CalibrationMassConfig().load(
