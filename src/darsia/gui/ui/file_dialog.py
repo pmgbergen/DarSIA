@@ -164,9 +164,6 @@ class FileDialogHelper:
 
             def open_table_viewer():
                 path_text = path_edit.text()
-                if not path_text:
-                    self.main_window.print_log("No path set for table viewer")
-                    return
                 loader_key = setting_dict.get("table_viewer")
                 if loader_key not in TABLE_LOADERS:
                     self.main_window.print_log(
@@ -175,7 +172,9 @@ class FileDialogHelper:
                     return
                 loader = TABLE_LOADERS[loader_key]
                 try:
-                    df = loader(Path(path_text))
+                    df = None
+                    if path_text:
+                        df = loader(Path(path_text))
                     title = setting_dict.get("name", loader_key)
                     dialog = TableViewerDialog(
                         parent=self.main_window, title=title, dataframe=df
@@ -184,6 +183,7 @@ class FileDialogHelper:
                 except Exception as e:
                     self.main_window.print_log(f"Error opening table viewer: {e}")
                     import traceback
+
                     self.main_window.print_log(traceback.format_exc())
 
             view_button.clicked.connect(open_table_viewer)
