@@ -123,7 +123,22 @@ def load_color_path_dir_table(directory: Path) -> pd.DataFrame:
     return df
 
 
+def load_json_dir_table(directory: Path) -> pd.DataFrame:
+    """Load color paths from a directory of per-label JSON files.
+
+    Alias for load_color_path_dir_table for consistency with naming conventions.
+
+    Args:
+        directory: Path to the directory containing color_path_*.json files.
+
+    Returns:
+        pandas.DataFrame with flattened color path data, or empty DataFrame if no files.
+    """
+    return load_color_path_dir_table(directory)
+
+
 TABLE_LOADERS = {
     "csv": load_csv_table,
     "color_path_dir": load_color_path_dir_table,
+    "json_dir": load_json_dir_table,
 }
