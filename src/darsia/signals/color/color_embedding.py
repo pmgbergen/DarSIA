@@ -39,13 +39,6 @@ def parse_color_embedding_basis(
     raise TypeError(f"Unsupported color embedding basis value type: {type(value)}")
 
 
-def calibration_basis_folder(basis: str | ColorEmbeddingBasis) -> str:
-    """Return standard folder suffix for basis-aware calibration artifacts."""
-
-    parsed = parse_color_embedding_basis(basis)
-    return f"from_{parsed.value}"
-
-
 @dataclass
 class ColorEmbeddingRuntime:
     """Runtime context for color embedding execution."""

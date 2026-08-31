@@ -43,7 +43,11 @@ def parse_color_path_embedding(
     root = (
         Path(cfg["root"])
         if "root" in cfg
-        else (color_root / embedding_id if color_root is not None else Path())
+        else (
+            color_root / "color_path" / embedding_id
+            if color_root is not None
+            else Path()
+        )
     )
 
     embedding = ColorPathEmbedding(
@@ -52,7 +56,6 @@ def parse_color_path_embedding(
         basis=basis,
         root=root,
         reference_label=int(cfg.get("reference_label", 0)),
-        data=cfg.get("data"),
     )
     return embedding
 
@@ -89,7 +92,11 @@ def parse_color_range_embedding(
     root = (
         Path(cfg["root"])
         if "root" in cfg
-        else (color_root / embedding_id if color_root is not None else Path())
+        else (
+            color_root / "color_range" / embedding_id
+            if color_root is not None
+            else Path()
+        )
     )
     if "color_space" not in cfg:
         raise ValueError(f"color.range.{embedding_id}.color_space is required.")
@@ -130,7 +137,11 @@ def parse_color_channel_embedding(
     root = (
         Path(cfg["root"])
         if "root" in cfg
-        else (color_root / embedding_id if color_root is not None else Path())
+        else (
+            color_root / "color_channel" / embedding_id
+            if color_root is not None
+            else Path()
+        )
     )
     for key in ["color_space", "channel"]:
         if key not in cfg:
@@ -202,7 +213,7 @@ class ColorEmbeddingRegistry:
         """
         paths = [path] if isinstance(path, Path) else path
         self._embeddings = {}
-        color_root = results / "calibration" / "color" if results is not None else None
+        color_root = results / "color" if results is not None else None
 
         for p in paths:
             if not p.exists():
@@ -346,32 +357,15 @@ class ColorPathEmbeddingConfig:
             "group": "Properties",
         },
     )
-    data: Path | None = field(
-        default=None,
-        metadata={
-            "name": "Data",
-            "help": "Path to color-path CSV file. Leave blank to use the default "
-            "location (root/color_paths.csv). Auto-populated after "
-            "calibration runs.",
-            "widget": "file",
-            "table_viewer": "csv",
-        },
-    )
     root: Path | None = field(
         default=None,
         metadata={
             "name": "Calibration Root",
             "help": "Optional override for the calibration root folder (baseline spectrum, "
-            "color range, etc.). Does not affect where color-path values are stored "
-            "(see 'Data' field).",
+            "color range, etc.).",
             "hidden": True,
         },
     )
-
-    def __post_init__(self) -> None:
-        """Ensure data is a string or None."""
-        if self.data is None and self.root is not None:
-            self.data = self.root / "color_paths.csv"
 
 
 @dataclass

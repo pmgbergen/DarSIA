@@ -11,7 +11,6 @@ from darsia.signals.color.color_embedding import (
     ColorEmbeddingBasis,
     ColorEmbeddingRuntime,
     ColorEmbeddingTransform,
-    calibration_basis_folder,
 )
 
 
@@ -34,48 +33,37 @@ class ColorPathEmbedding(ColorEmbedding):
     basis: ColorEmbeddingBasis
     root: Path
     reference_label: int = 0
-    data: Path | None = None
-
-    def __post_init__(self) -> None:
-        """Set default data path if unset."""
-        if self.data is None:
-            self.data = self.root / "color_paths.csv"
 
     @property
-    def color_paths_folder(self) -> Path:
-        return self.root / "color_paths" / calibration_basis_folder(self.basis)
+    def color_paths_csv_file(self) -> Path:
+        """Color-paths CSV file path."""
+        return self.root / "color_paths.csv"
+
+    @property
+    def metadata_file(self) -> Path:
+        """Calibration metadata file path."""
+        return self.root / "metadata.json"
+
+    @property
+    def figures_folder(self) -> Path:
+        """Diagnostic figures folder."""
+        return self.root / "figures"
 
     @property
     def baseline_color_spectrum_folder(self) -> Path:
         return self.root / "baseline_color_spectrum"
 
     @property
-    def color_range_file(self) -> Path:
-        return self.root / "color_range"
-
-    @property
     def color_to_mass_folder(self) -> Path:
-        return self.root / "color_to_mass" / calibration_basis_folder(self.basis)
-
-    # TODO: Flatten.
-    @property
-    def color_paths_csv_file(self) -> Path:
-        """Resolved color-paths CSV path.
-
-        Always returns the path from `data` (set by __post_init__ to canonical
-        location if not explicitly provided).
-        """
-        return Path(self.data)
+        return self.root / "interpolation" / "mass"
 
     def canonical_transform(
         self, runtime: ColorEmbeddingRuntime
     ) -> ColorEmbeddingTransform:
         labels = self.get_labels(runtime)
-        csv_path = self.color_paths_csv_file
-        if csv_path.exists():
-            color_paths = darsia.LabelColorPathMap.load_csv(csv_path)
-        else:
-            color_paths = darsia.LabelColorPathMap.load(self.color_paths_folder)
+        color_paths = darsia.LabelColorPathMap.load_csv(
+            self.color_paths_csv_file
+        )
         interpolation = {
             label: darsia.ColorPathInterpolation(
                 color_path=path,

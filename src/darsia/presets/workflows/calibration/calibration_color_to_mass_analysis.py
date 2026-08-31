@@ -108,10 +108,7 @@ def calibration_color_to_mass_analysis_from_context(
     selected_labels = embedding.get_labels(fluidflower)
     current_label_ids = label_ids_from_image(selected_labels)
 
-    calibration_folder = embedding.color_paths_folder
-    color_paths_metadata = read_calibration_metadata(
-        calibration_folder / "metadata.json"
-    )
+    color_paths_metadata = read_calibration_metadata(embedding.metadata_file)
     validate_basis_metadata(
         metadata=color_paths_metadata,
         expected_basis=selected_basis,
@@ -125,7 +122,9 @@ def calibration_color_to_mass_analysis_from_context(
         else []
     )
 
-    color_paths = darsia.LabelColorPathMap.load(calibration_folder)
+    color_paths = darsia.LabelColorPathMap.load_csv(
+        embedding.color_paths_csv_file
+    )
 
     # Pick a reference color path - merely for visualization
     reference_label = embedding.reference_label
