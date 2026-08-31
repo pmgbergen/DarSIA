@@ -61,9 +61,7 @@ class ColorPathEmbedding(ColorEmbedding):
         self, runtime: ColorEmbeddingRuntime
     ) -> ColorEmbeddingTransform:
         labels = self.get_labels(runtime)
-        color_paths = darsia.LabelColorPathMap.load_csv(
-            self.color_paths_csv_file
-        )
+        color_paths = darsia.LabelColorPathMap.load_csv(self.color_paths_csv_file)
         interpolation = {
             label: darsia.ColorPathInterpolation(
                 color_path=path,

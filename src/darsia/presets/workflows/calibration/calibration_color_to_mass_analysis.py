@@ -117,14 +117,10 @@ def calibration_color_to_mass_analysis_from_context(
     )
 
     calibration_ignore_labels = (
-        color_paths_metadata.get("ignore_labels", [])
-        if color_paths_metadata
-        else []
+        color_paths_metadata.get("ignore_labels", []) if color_paths_metadata else []
     )
 
-    color_paths = darsia.LabelColorPathMap.load_csv(
-        embedding.color_paths_csv_file
-    )
+    color_paths = darsia.LabelColorPathMap.load_csv(embedding.color_paths_csv_file)
 
     # Pick a reference color path - merely for visualization
     reference_label = embedding.reference_label
