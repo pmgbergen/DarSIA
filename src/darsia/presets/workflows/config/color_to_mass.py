@@ -8,7 +8,6 @@ from warnings import warn
 
 from darsia.signals.color.color_embedding import (
     ColorEmbeddingBasis,
-    calibration_basis_folder,
     parse_color_embedding_basis,
 )
 
@@ -101,7 +100,7 @@ class ColorToMassConfig:
                 results
                 / "calibration"
                 / "color_to_mass"
-                / calibration_basis_folder(self.basis)
+                / f"from_{self.basis.value}"
             )
 
         return self
