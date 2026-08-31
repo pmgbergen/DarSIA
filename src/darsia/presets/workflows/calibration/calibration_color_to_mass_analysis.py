@@ -29,30 +29,14 @@ logger = logging.getLogger(__name__)
 
 def _load_baseline_color_spectrum_for_color_to_mass(
     *,
-    ignore_mode: str,
     baseline_color_spectrum_folder: Path,
     required_labels: set[int],
 ) -> darsia.LabelColorSpectrumMap | None:
-    """Load baseline colour spectrum for color-to-mass calibration if configured."""
-
-    if ignore_mode == "none":
-        return None
-
-    if ignore_mode not in ("baseline", "expanded"):
-        raise ValueError(
-            f"Unsupported ignore_baseline_spectrum mode '{ignore_mode}' in "
-            "color-to-mass calibration. Valid modes are: 'none', 'baseline', "
-            "'expanded'."
-        )
+    """Load baseline colour spectrum for color-to-mass calibration if present."""
 
     spectrum_files = list(baseline_color_spectrum_folder.glob("color_spectrum_*.json"))
     if len(spectrum_files) == 0:
-        raise FileNotFoundError(
-            "Baseline colour spectrum files were not found, but "
-            f"ignore_baseline_spectrum='{ignore_mode}' requires them. Expected files "
-            f"matching 'color_spectrum_*.json' in {baseline_color_spectrum_folder}. "
-            "Run color-path calibration first or set ignore_baseline_spectrum='none'."
-        )
+        return None
 
     baseline_color_spectrum = darsia.LabelColorSpectrumMap.load(
         baseline_color_spectrum_folder
@@ -135,6 +119,12 @@ def calibration_color_to_mass_analysis_from_context(
         artifact="color_paths",
     )
 
+    calibration_ignore_labels = (
+        color_paths_metadata.get("ignore_labels", [])
+        if color_paths_metadata
+        else []
+    )
+
     color_paths = darsia.LabelColorPathMap.load(calibration_folder)
 
     # Pick a reference color path - merely for visualization
@@ -145,7 +135,6 @@ def calibration_color_to_mass_analysis_from_context(
         reference_color_path.show_path()
 
     baseline_color_spectrum = _load_baseline_color_spectrum_for_color_to_mass(
-        ignore_mode=embedding.ignore_baseline_spectrum,
         baseline_color_spectrum_folder=embedding.baseline_color_spectrum_folder,
         required_labels=set(color_paths.keys()),
     )
@@ -246,7 +235,7 @@ def calibration_color_to_mass_analysis_from_context(
 
     # Overwrite the color paths with updated interpolation values
     for label in np.unique(selected_labels.img):
-        if label in embedding.ignore_labels or label in ignore_labels:
+        if label in calibration_ignore_labels or label in ignore_labels:
             color_path_interpolation[label] = color_path_interpolation[reference_label]
 
     # ! ---- COLOR PATH INTERPRETATION ---- ! #
@@ -330,7 +319,7 @@ def calibration_color_to_mass_analysis_from_context(
         # Start from scratch
         signal_functions = {}
         for label in color_path_interpolation:
-            if label in embedding.ignore_labels or label in ignore_labels:
+            if label in calibration_ignore_labels or label in ignore_labels:
                 signal_functions[label] = darsia.PWTransformation(
                     color_paths[reference_label].equidistant_distances,
                     np.zeros(len(color_paths[reference_label].equidistant_distances)),
@@ -365,7 +354,7 @@ def calibration_color_to_mass_analysis_from_context(
             co2_mass_analysis=co2_mass_analysis,
             geometry=fluidflower.geometry,
             restoration=restoration,
-            ignore_labels=embedding.ignore_labels + ignore_labels,
+            ignore_labels=calibration_ignore_labels + ignore_labels,
             basis=selected_basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
             contour_smoother=contour_smoother,
@@ -409,7 +398,7 @@ def calibration_color_to_mass_analysis_from_context(
         )
 
     for label in np.unique(selected_labels.img):
-        if label in embedding.ignore_labels or label in ignore_labels:
+        if label in calibration_ignore_labels or label in ignore_labels:
             color_paths[label] = color_paths[reference_label]
 
     # Store calibration
