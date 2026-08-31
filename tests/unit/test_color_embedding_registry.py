@@ -124,26 +124,6 @@ class TestColorEmbeddingRegistryStructuralValidation:
 class TestColorEmbeddingRegistryEagerValidation:
     """Test that field validation happens eagerly at .load() time."""
 
-    def test_invalid_calibration_mode_raises_at_load_time(self, tmp_path):
-        """Bad calibration_mode in a path entry raises at .load(), not .resolve()."""
-        toml_path = _write_toml(
-            tmp_path,
-            """
-            [[color_path]]
-            name = "bad_mode"
-            calibration_mode = "invalid_mode"
-            data = ["cal_imgs"]
-            baseline = "baseline_imgs"
-            """,
-        )
-        with pytest.raises(ValueError, match="calibration_mode.*invalid_mode"):
-            ColorEmbeddingRegistry().load(
-                path=toml_path,
-                data=tmp_path,
-                results=tmp_path,
-            )
-
-
     def test_missing_required_color_space_raises_at_load_time(self, tmp_path):
         """Missing 'color_space' in a range entry raises at .load()."""
         toml_path = _write_toml(

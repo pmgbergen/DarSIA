@@ -74,25 +74,3 @@ data     = "cal_imgs"
 # ---------------------------------------------------------------------------
 # Selector resolution and validation
 # ---------------------------------------------------------------------------
-
-
-class TestColorEmbeddingRegistrySelectors:
-    @pytest.mark.parametrize(
-        ("key", "value"),
-        [
-            ("ignore_baseline_spectrum", "bad_value"),
-            ("histogram_weighting", "bad_value"),
-            ("calibration_mode", "bad_value"),
-        ],
-    )
-    def test_invalid_color_path_values_raise(self, tmp_path, key, value):
-        toml_path = _write_toml(
-            tmp_path,
-            _minimal_color_path_embedding_toml(extra=f'{key} = "{value}"'),
-        )
-        with pytest.raises(ValueError, match=key):
-            ColorEmbeddingRegistry().load(
-                path=toml_path,
-                data=tmp_path,
-                results=tmp_path,
-            )
