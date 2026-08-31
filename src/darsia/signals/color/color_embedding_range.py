@@ -76,14 +76,14 @@ class ColorRangeEmbedding(ColorEmbedding):
     embedding_id: str
     mode: darsia.ColorMode
     basis: ColorEmbeddingBasis
-    calibration_root: Path
+    root: Path
     color_space: str
     ranges: list[tuple[float | None, float | None]]
     restoration_config: RestorationConfig | None = None
 
     @property
     def config_file(self) -> Path:
-        return self.calibration_root / "embedding.json"
+        return self.root / "embedding.json"
 
     def canonical_transform(
         self, runtime: ColorEmbeddingRuntime

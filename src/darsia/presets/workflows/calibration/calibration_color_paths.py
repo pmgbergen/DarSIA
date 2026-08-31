@@ -62,7 +62,9 @@ def calibration_color_paths_from_context(
     if not isinstance(embedding, ColorPathEmbedding):
         logger.error(
             "calibration.color.embedding '%s' is a %s; only color-path calibration is "
-            "implemented.", embedding.embedding_id, type(embedding).__name__,
+            "implemented.",
+            embedding.embedding_id,
+            type(embedding).__name__,
         )
         raise NotImplementedError(
             f"Calibration of {type(embedding).__name__} is not yet implemented; "
@@ -231,7 +233,13 @@ def calibration_color_paths_from_context(
         embedding.color_paths_folder / "metadata.json",
         basis=selected_basis,
         label_ids=label_ids_from_image(selected_labels),
+        extra={"ignore_labels": calibration_cfg.ignore_labels},
     )
+
+    # Write CSV to resolved location (explicit `data` override, or canonical default)
+    csv_path = embedding.color_paths_csv_file
+    label_color_path_map.save_csv(csv_path)
+    embedding.data = str(csv_path)
 
     # Display the color paths
     # if show:
@@ -258,7 +266,7 @@ def collect_existing_calibration_paths_to_delete(path: Path | list[Path]) -> lis
     paths_to_delete: list[Path] = []
     if config.color is not None:
         for embedding in config.color.resolve_all().values():
-            paths_to_delete.append(embedding.calibration_root)
+            paths_to_delete.append(embedding.root)
     if config.data is not None and config.data.cache is not None:
         paths_to_delete.append(config.data.cache)
 

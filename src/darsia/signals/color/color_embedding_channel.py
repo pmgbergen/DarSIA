@@ -66,7 +66,7 @@ class ColorChannelEmbedding(ColorEmbedding):
     embedding_id: str
     mode: darsia.ColorMode
     basis: ColorEmbeddingBasis
-    calibration_root: Path
+    root: Path
     color_space: str
     channel: str
     mask_embedding: ColorRangeEmbedding | None = None
@@ -74,7 +74,7 @@ class ColorChannelEmbedding(ColorEmbedding):
 
     @property
     def config_file(self) -> Path:
-        return self.calibration_root / "embedding.json"
+        return self.root / "embedding.json"
 
     def canonical_transform(
         self, runtime: ColorEmbeddingRuntime

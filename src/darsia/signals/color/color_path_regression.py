@@ -1530,21 +1530,23 @@ class LabelColorPathMapRegression:
             dict(
                 (
                     label,
-                    create_zero_path(label)
-                    if label in ignore_labels
-                    else self._find_color_path(
-                        spectrum=color_spectrum[label],
-                        label=label,
-                        ignore=ignore[label] if ignore is not None else None,
-                        num_segments=num_segments,
-                        name=f"Color Path for Label {label}",
-                        directory=directory,
-                        weighting=weighting,
-                        mode=mode,
-                        preview_image=preview_image,
-                        preview_images=preview_images,
-                        preview_baseline=preview_baseline,
-                        verbose=verbose,
+                    (
+                        create_zero_path(label)
+                        if label in ignore_labels
+                        else self._find_color_path(
+                            spectrum=color_spectrum[label],
+                            label=label,
+                            ignore=ignore[label] if ignore is not None else None,
+                            num_segments=num_segments,
+                            name=f"Color Path for Label {label}",
+                            directory=directory,
+                            weighting=weighting,
+                            mode=mode,
+                            preview_image=preview_image,
+                            preview_images=preview_images,
+                            preview_baseline=preview_baseline,
+                            verbose=verbose,
+                        )
                     ),
                 )
                 for label in color_spectrum.keys()
