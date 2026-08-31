@@ -178,6 +178,11 @@ class CalibrationColorConfig:
                 default="auto",
                 type_=str,
             )
+            if self.color_path.calibration_mode not in {"manual", "auto"}:
+                raise ValueError(
+                    "calibration.color.color_path.calibration_mode must be "
+                    f"'manual' or 'auto', got '{self.color_path.calibration_mode}'."
+                )
             self.color_path.threshold_baseline = _get_key(
                 color_path_sec,
                 "threshold_baseline",
@@ -199,6 +204,16 @@ class CalibrationColorConfig:
                 default="expanded",
                 type_=str,
             )
+            if self.color_path.ignore_baseline_spectrum not in {
+                "none",
+                "baseline",
+                "expanded",
+            }:
+                raise ValueError(
+                    "calibration.color.color_path.ignore_baseline_spectrum must be "
+                    "'none', 'baseline', or 'expanded', got "
+                    f"'{self.color_path.ignore_baseline_spectrum}'."
+                )
             self.color_path.histogram_weighting = _get_key(
                 color_path_sec,
                 "histogram_weighting",
@@ -206,6 +221,17 @@ class CalibrationColorConfig:
                 default="threshold",
                 type_=str,
             )
+            if self.color_path.histogram_weighting not in {
+                "threshold",
+                "wls",
+                "wls_sqrt",
+                "wls_log",
+            }:
+                raise ValueError(
+                    "calibration.color.color_path.histogram_weighting must be one "
+                    "of 'threshold', 'wls', 'wls_sqrt', 'wls_log', got "
+                    f"'{self.color_path.histogram_weighting}'."
+                )
             self.color_path.ignore_labels = list(
                 _get_key(
                     color_path_sec,
