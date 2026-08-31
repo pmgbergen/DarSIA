@@ -428,7 +428,7 @@ class TestColorEmbeddingRegistryResolve:
             embedding_id="not_registered",
             mode="relative",
             basis="labels",
-            calibration_root=None,
+            root=tmp_path / "color" / "color_path" / "dummy",
         )
         with pytest.raises(KeyError, match="not found in registry"):
             registry.resolve(unregistered)

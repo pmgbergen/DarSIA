@@ -149,7 +149,6 @@ def calibration_color_paths_from_context(
         baseline=fluidflower.baseline,
         mask=calibration_mask,
     )
-    tracer_color_range.save(embedding.color_range_file)
 
     # ! ---- COLOR PATH TOOL ----
 
@@ -205,7 +204,7 @@ def calibration_color_paths_from_context(
         baseline=fluidflower.baseline,
         ignore=ignore_spectrum,
         threshold_significant=calibration_cfg.threshold_calibration,
-        path=embedding.color_paths_folder,
+        path=embedding.figures_folder,
         verbose=show,
     )
     preview_calibration_image = calibration_images[0] if calibration_images else None
@@ -216,7 +215,7 @@ def calibration_color_paths_from_context(
             color_spectrum=tracer_color_spectrum,
             ignore=ignore_spectrum,
             num_segments=calibration_cfg.num_segments,
-            directory=embedding.color_paths_folder,
+            directory=embedding.figures_folder,
             weighting=calibration_cfg.histogram_weighting,
             mode=calibration_cfg.calibration_mode,
             ignore_labels=calibration_cfg.ignore_labels,
@@ -227,19 +226,14 @@ def calibration_color_paths_from_context(
         )
     )
 
-    # Store the color paths to file
-    label_color_path_map.save(embedding.color_paths_folder)
+    # Store color paths to CSV and metadata
     write_calibration_metadata(
-        embedding.color_paths_folder / "metadata.json",
+        embedding.metadata_file,
         basis=selected_basis,
         label_ids=label_ids_from_image(selected_labels),
         extra={"ignore_labels": calibration_cfg.ignore_labels},
     )
-
-    # Write CSV to resolved location (explicit `data` override, or canonical default)
-    csv_path = embedding.color_paths_csv_file
-    label_color_path_map.save_csv(csv_path)
-    embedding.data = str(csv_path)
+    label_color_path_map.save_csv(embedding.color_paths_csv_file)
 
     # Display the color paths
     # if show:
