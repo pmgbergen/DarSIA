@@ -95,7 +95,7 @@ def calibration_color_to_mass_analysis_from_context(
     assert config.calibration.mass is not None
     assert config.rig is not None
     mass_cfg = config.calibration.mass
-    embedding = mass_cfg.color
+    embedding = mass_cfg.embedding
     assert embedding is not None
     if not isinstance(embedding, ColorPathEmbedding):
         raise NotImplementedError(

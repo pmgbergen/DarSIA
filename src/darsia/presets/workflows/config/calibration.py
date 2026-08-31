@@ -251,14 +251,6 @@ class CalibrationColorConfig:
 class CalibrationMassConfig:
     """Config for mass calibration using a selected color embedding."""
 
-    color: "ColorEmbedding | None" = field(
-        default=None,
-        metadata={
-            "name": "Color embedding",
-            "widget": "color_key_list",
-            "max_rows": 1,
-        },
-    )
     mode: str = field(
         default="manual",
         metadata={
@@ -274,6 +266,15 @@ class CalibrationMassConfig:
         metadata={
             "name": "Fluid",
             "help": "Fluid identifier for mass calibration (e.g. 'co2').",
+            "options": ["co2"],
+        },
+    )
+    embedding: ColorEmbedding | None = field(
+        default=None,
+        metadata={
+            "name": "Color embedding",
+            "widget": "color_key_list",
+            "max_rows": 1,
         },
     )
     data_selection: str | list[str] | None = field(
@@ -310,18 +311,18 @@ class CalibrationMassConfig:
         color_embedding_registry: "ColorEmbeddingRegistry | None" = None,
         roi_registry: "RoiRegistry | None" = None,
     ) -> "CalibrationMassConfig":
-        color_key = _get_key(sec, "color", required=True, type_=str).strip()
+        embedding_key = _get_key(sec, "embedding", required=True, type_=str).strip()
         if color_embedding_registry is None:
             raise ValueError(
-                "calibration.mass.color references [color.*.*], but no "
+                "calibration.mass.embedding references [color.*.*], but no "
                 "ColorEmbeddingRegistry is available."
             )
         try:
-            self.color = color_embedding_registry.resolve(color_key)
+            self.embedding = color_embedding_registry.resolve(embedding_key)
         except KeyError as exc:
             raise ValueError(
-                "Unknown calibration.mass.color embedding "
-                f"'{color_key}'. Define it under [color.*.*]."
+                "Unknown calibration.mass.embedding "
+                f"'{embedding_key}'. Define it under [color.*.*]."
             ) from exc
 
         self.mode = _get_key(sec, "mode", default="manual", required=False, type_=str)

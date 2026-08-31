@@ -57,10 +57,10 @@ def _write_config_snippet(target_root: Path, embedding_ids: list[str]) -> Path:
         [
             "",
             "[calibration.color]",
-            'color = "<embedding_id>"',
+            'embedding = "<embedding_id>"',
             "",
             "[calibration.mass]",
-            'color = "<embedding_id>"',
+            'embedding = "<embedding_id>"',
             "",
         ]
     )
