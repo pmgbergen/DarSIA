@@ -1,6 +1,7 @@
 """Settings and input widget factory for DarSIA GUI."""
 
 import ast
+from pathlib import Path
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -511,7 +512,9 @@ class SettingsFactory:
             driver_type = depends_on.get("type")
 
             # Handle both value-based and type-based dependencies
-            if driver_field_key is None or (driver_value is None and driver_type is None):
+            if driver_field_key is None or (
+                driver_value is None and driver_type is None
+            ):
                 continue
 
             # Find the driver field's widget — can be scalar or multi-row
@@ -1497,7 +1500,9 @@ class SettingsFactory:
         display_name = setting_dict.get("name", key)
 
         # Gather available color-embedding keys from all three arrays with type tags
-        embedding_type_map = {}  # name -> type ("color_path", "color_range", "color_channel")
+        embedding_type_map = (
+            {}
+        )  # name -> type ("color_path", "color_range", "color_channel")
 
         # Aggregate embeddings from all three arrays
         for array_key, type_name in [
@@ -2245,7 +2250,6 @@ class SettingsFactory:
             return None
 
         # Map loadable_type to config class, catalogue class, catalogue filename
-        from pathlib import Path
 
         loadable_config = {
             "curvature": {
@@ -2607,7 +2611,9 @@ class SettingsFactory:
             driver_field_key = depends_on.get("field")
             driver_value = depends_on.get("value")
             driver_type = depends_on.get("type")
-            if driver_field_key is None or (driver_value is None and driver_type is None):
+            if driver_field_key is None or (
+                driver_value is None and driver_type is None
+            ):
                 continue
 
             # Find the driver field's widget
@@ -2639,7 +2645,9 @@ class SettingsFactory:
                 if target_widget is None:
                     continue
 
-                def make_group_visibility_handler(widget, required_val, required_type, type_map):
+                def make_group_visibility_handler(
+                    widget, required_val, required_type, type_map
+                ):
                     def handler(current_text):
                         if required_type is not None:
                             # Type-based check
