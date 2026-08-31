@@ -97,10 +97,7 @@ class ColorToMassConfig:
         if not self.calibration_folder:
             assert results is not None
             self.calibration_folder = (
-                results
-                / "calibration"
-                / "color_to_mass"
-                / f"from_{self.basis.value}"
+                results / "calibration" / "color_to_mass" / f"from_{self.basis.value}"
             )
 
         return self
