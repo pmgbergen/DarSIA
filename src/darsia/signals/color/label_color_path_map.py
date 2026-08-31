@@ -4,6 +4,9 @@ import logging
 from pathlib import Path
 from typing import Literal
 
+import numpy as np
+import pandas as pd
+
 import darsia
 
 logger = logging.getLogger(__name__)
@@ -57,6 +60,47 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
         for label, color_path in self.items():
             color_path.save(directory / f"color_path_{label}.json")
 
+    def save_csv(self, path: Path) -> None:
+        """Save color paths to a CSV file.
+
+        One row per (label, segment_index) with columns:
+        label, segment_index, r, g, b, rel_r, rel_g, rel_b, base_r, base_g, base_b
+
+        Args:
+            path (Path): The CSV file path to write.
+        """
+        path = Path(path)
+        rows = []
+        for label, color_path in sorted(self.items()):
+            for segment_idx, color in enumerate(color_path.colors):
+                rel_color = (
+                    color_path.relative_colors[segment_idx]
+                    if segment_idx < len(color_path.relative_colors)
+                    else np.array([0.0, 0.0, 0.0])
+                )
+                rows.append(
+                    {
+                        "label": int(label),
+                        "segment_index": int(segment_idx),
+                        "r": float(color[0]),
+                        "g": float(color[1]),
+                        "b": float(color[2]),
+                        "rel_r": float(rel_color[0]),
+                        "rel_g": float(rel_color[1]),
+                        "rel_b": float(rel_color[2]),
+                        "base_r": float(color_path.base_color[0]),
+                        "base_g": float(color_path.base_color[1]),
+                        "base_b": float(color_path.base_color[2]),
+                    }
+                )
+
+        df = pd.DataFrame(rows)
+        df = df.astype(
+            {"label": "int64", "segment_index": "int64"}
+        )
+        df.to_csv(path, index=False)
+        logger.info("Saved color paths to %s", path)
+
     @classmethod
     def load(cls, directory: Path) -> "LabelColorPathMap":
         """Load color paths from a directory.
@@ -80,6 +124,48 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
 
         logger.info("Loaded color paths from %s", directory)
 
+        return cls(color_path_map)
+
+    @classmethod
+    def load_csv(cls, path: Path) -> "LabelColorPathMap":
+        """Load color paths from a CSV file.
+
+        Expects columns: label, segment_index, r, g, b, rel_r, rel_g, rel_b,
+        base_r, base_g, base_b.
+
+        Args:
+            path (Path): The CSV file path to read.
+
+        Returns:
+            LabelColorPathMap with reconstructed color paths.
+        """
+        path = Path(path)
+        if not path.exists():
+            logger.warning("CSV file not found: %s", path)
+            return cls()
+
+        df = pd.read_csv(path)
+        color_path_map = {}
+
+        for label, group in df.groupby("label"):
+            group = group.sort_values("segment_index")
+            colors = []
+            for _, row in group.iterrows():
+                colors.append(np.array([row["r"], row["g"], row["b"]]))
+
+            base_color = np.array(
+                [group.iloc[0]["base_r"], group.iloc[0]["base_g"],
+                 group.iloc[0]["base_b"]]
+            )
+
+            color_path = darsia.ColorPath(
+                colors=colors,
+                base_color=base_color,
+                mode="rgb",
+            )
+            color_path_map[int(label)] = color_path
+
+        logger.info("Loaded color paths from CSV %s", path)
         return cls(color_path_map)
 
     @classmethod
