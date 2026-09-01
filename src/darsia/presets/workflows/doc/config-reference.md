@@ -116,21 +116,25 @@ cmap = "matplotlib.viridis"
 dtype = "np.float32"
 ```
 
-Use these identifiers from `[analysis].formats`:
+Use these identifiers in each `[analysis.<mode>].formats`:
 ```toml
-[analysis]
-data = ["analysis_set"]
+[analysis.mass]
+data_selection = ["analysis_set"]
 formats = ["my_npy", "4k"]
 ```
 
 Outputs are written to `<type>_<identifier>` subfolders (for example `jpg_4k`).
 
 ## Analysis subsections
-- `[analysis.data]`: selected analysis image set
-- `[analysis]`: optional `formats` (list of format identifiers from `[format.*.*]`)
-- `[analysis.cropping]`: cropping image selection and output formats (`formats = ["npz", "jpg"]`)
-- `[analysis.segmentation]`: contour config(s)
+
+Each analysis mode owns its own `data_selection` and `formats`:
+
+- `[analysis.cropping]`: cropping image selection and output formats
+  - `data_selection`: image set to analyze
+  - `formats`: output format identifiers
 - `[analysis.mass]`: mass analysis and optional ROIs
+  - `data_selection`: image set to analyze
+  - `formats`: output format identifiers
   - Optional `export` controls which scalar products are written to disk.
     - Default (`None`): `["mass"]`
     - Supported values:
@@ -153,8 +157,19 @@ Outputs are written to `<type>_<identifier>` subfolders (for example `jpg_4k`).
     - `<results>/concentration_aq/{npz,jpg}/`
     - `<results>/rescaled_concentration_aq/{npz,jpg}/`
 - `[analysis.volume]`: volume analysis and optional ROIs
-- `[analysis.fingers]`: finger detection mode/threshold and optional ROIs
+  - `data_selection`: image set to analyze
+  - `formats`: output format identifiers
+- `[analysis.segmentation]`: contour layer configuration(s)
+  - `data_selection`: image set to analyze
+  - `formats`: output format identifiers
+  - `[analysis.segmentation.aqueous]` and `[analysis.segmentation.gas]` define layer thresholds
 - `[analysis.thresholding]`: threshold selected analysis modes and export mask previews
+  - `data_selection`: image set to analyze
+  - `formats`: output format identifiers
+  - `[analysis.thresholding.layers.<name>]` defines each threshold layer
+- `[analysis.fingers]`: finger detection mode/threshold and optional ROIs
+  - `data_selection`: image set to analyze
+  - `formats`: output format identifiers
 - `[analysis.expert_knowledge]`: optional ROI constraints for saturation and concentration
 
 ## Helper subsections
