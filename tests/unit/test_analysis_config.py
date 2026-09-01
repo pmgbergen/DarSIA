@@ -330,7 +330,8 @@ def test_analysis_data_can_be_resolved_from_data_registry(tmp_path: Path) -> Non
         tmp_path / "config.toml",
         """
 [analysis]
-data = "analysis_set"
+[analysis.cropping]
+data_selection = "analysis_set"
 """.strip(),
     )
     data_registry = DataRegistry().load(
@@ -351,9 +352,10 @@ data = "analysis_set"
         results=tmp_path,
     )
 
-    assert config.data_selection == "analysis_set"
+    assert config.cropping is not None
+    assert config.cropping.data_selection == "analysis_set"
     # Verify resolution works when called downstream
-    resolved = data_registry.resolve(config.data_selection)
+    resolved = data_registry.resolve(config.cropping.data_selection)
     assert resolved.image_times == pytest.approx([1.0, 2.0])
 
 
@@ -361,8 +363,18 @@ def test_analysis_formats_load_from_registry_identifiers(tmp_path: Path) -> None
     config_path = _write(
         tmp_path / "config.toml",
         """
+[[color_path]]
+type = "channel"
+name = "my_colorpath"
+mode = "absolute"
+basis = "global"
+color_space = "RGB"
+channel = "r"
+
 [analysis]
+[analysis.mass]
 formats = ["my_npy", "4k"]
+color = "my_colorpath"
 
 [[format]]
 type = "npy"
@@ -378,15 +390,18 @@ resolution = [2160, 4096]
 """.strip(),
     )
     format_registry = FormatRegistry().load(config_path)
+    color_registry = _load_color_registry(config_path, tmp_path)
 
     config = AnalysisConfig().load(
         path=config_path,
         data=tmp_path,
         results=tmp_path,
         format_registry=format_registry,
+        color_embedding_registry=color_registry,
     )
 
-    assert config.formats == ["my_npy", "4k"]
+    assert config.mass is not None
+    assert config.mass.formats == ["my_npy", "4k"]
 
 
 def test_analysis_mass_export_defaults_to_none(tmp_path: Path) -> None:
