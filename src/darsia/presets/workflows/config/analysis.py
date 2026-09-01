@@ -509,7 +509,11 @@ class AnalysisMassConfig:
     """Path to the results folder for mass analysis."""
     contour_smoother_selection: ContourSmootherSelection = field(
         default_factory=ContourSmootherSelection,
-        metadata={"name": "Contour smoother", "help": "Contour smoothing algorithm."},
+        metadata={
+            "name": "Contour smoother",
+            "help": "Contour smoothing algorithm.",
+            "active_list_key": "active",
+        },
     )
     """Contour smoother selection and options."""
 

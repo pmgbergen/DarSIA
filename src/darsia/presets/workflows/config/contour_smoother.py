@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     pass
 
 SUPPORTED_CONTOUR_SMOOTHER_TYPES = {
-    "none",
     "poly_dp",
     "moving_average",
     "gaussian",
@@ -160,11 +159,20 @@ class SavitzkyGolaySmootherConfig(ContourSmootherConfig):
 class ContourSmootherSelection:
     """Unified config for selecting and configuring a contour smoother."""
 
-    type: str = field(
-        default="none",
+    active: bool = field(
+        default=True,
         metadata={
-            "name": "Contour smoother",
-            "help": "Contour smoothing algorithm.",
+            "name": "Activate contour smoothing",
+            "help": "Enable contour smoothing for extracted contours.",
+            "hidden": True,
+        },
+    )
+    """Whether contour smoothing is enabled."""
+    type: str = field(
+        default="savitzky_golay",
+        metadata={
+            "name": "Method",
+            "help": "Smoothing algorithm to apply.",
             "options": sorted(SUPPORTED_CONTOUR_SMOOTHER_TYPES),
         },
     )
@@ -172,7 +180,7 @@ class ContourSmootherSelection:
     poly_dp_options: PolyDPSmootherConfig | None = field(
         default=None,
         metadata={
-            "name": "Options",
+            "name": "Polynomial DP",
             "toml_key": "contour_smoother_options",
             "depends_on": {"field": "type", "value": "poly_dp"},
         },
@@ -181,7 +189,7 @@ class ContourSmootherSelection:
     moving_average_options: MovingAverageSmootherConfig | None = field(
         default=None,
         metadata={
-            "name": "Options",
+            "name": "Moving Average",
             "toml_key": "contour_smoother_options",
             "depends_on": {"field": "type", "value": "moving_average"},
         },
@@ -190,7 +198,7 @@ class ContourSmootherSelection:
     gaussian_options: GaussianSmootherConfig | None = field(
         default=None,
         metadata={
-            "name": "Options",
+            "name": "Gaussian",
             "toml_key": "contour_smoother_options",
             "depends_on": {"field": "type", "value": "gaussian"},
         },
@@ -199,7 +207,7 @@ class ContourSmootherSelection:
     savitzky_golay_options: SavitzkyGolaySmootherConfig | None = field(
         default=None,
         metadata={
-            "name": "Options",
+            "name": "Savitzky-Golay",
             "toml_key": "contour_smoother_options",
             "depends_on": {"field": "type", "value": "savitzky_golay"},
         },
@@ -208,8 +216,15 @@ class ContourSmootherSelection:
 
     def load(self, sec: dict) -> "ContourSmootherSelection":
         """Load contour smoother config from TOML section."""
+        # Check if smoothing is enabled
+        self.active = bool(sec.get("active", self.active))
+
+        if not self.active:
+            return self
+
+        # Load smoother type
         self.type = _get_key(
-            sec, "contour_smoother", required=False, default="none", type_=str
+            sec, "contour_smoother", required=False, default=self.type, type_=str
         ).lower()
         if self.type not in SUPPORTED_CONTOUR_SMOOTHER_TYPES:
             raise ValueError(
@@ -217,6 +232,7 @@ class ContourSmootherSelection:
                 f"Supported values: {', '.join(sorted(SUPPORTED_CONTOUR_SMOOTHER_TYPES))}."
             )
 
+        # Load type-specific options
         options_sec = sec.get("contour_smoother_options", {})
         if self.type == "poly_dp":
             self.poly_dp_options = PolyDPSmootherConfig().load(options_sec)
@@ -235,7 +251,7 @@ class ContourSmootherSelection:
 
     def build(self) -> darsia.ContourSmoother | None:
         """Construct the configured ContourSmoother instance."""
-        if self.type == "none":
+        if not self.active:
             return None
         elif self.type == "poly_dp":
             o = self.poly_dp_options
