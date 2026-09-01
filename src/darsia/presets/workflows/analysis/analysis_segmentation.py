@@ -12,6 +12,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     infer_require_color_to_mass_from_config,
     prepare_analysis_context,
+    select_image_paths,
 )
 from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.analysis.progress import (
@@ -49,10 +50,17 @@ def analysis_segmentation_from_context(
 
     fluidflower = ctx.fluidflower
     experiment = ctx.experiment
-    image_paths = ctx.image_paths
 
     # Extract segmentation config (asserted not None above)
     segmentation_config = ctx.config.analysis.segmentation
+
+    # Select image paths based on segmentation config's data_selection
+    image_paths = select_image_paths(
+        ctx.config,
+        experiment,
+        all=False,
+        sub_config=segmentation_config,
+    )
     _config = segmentation_config.config
     if isinstance(_config, dict):
         modes = [cfg.mode for cfg in _config.values() if cfg.mode is not None]
@@ -70,9 +78,7 @@ def analysis_segmentation_from_context(
     segmentation_contours = SegmentationContours(segmentation_config.config)
     requested_modes = segmentation_contours.requested_modes()
     need_rescaled = requires_rescaled_modes(requested_modes)
-    exporter = ImageExportFormats.from_analysis_config(
-        ctx.config, fallback_formats=["jpg"]
-    )
+    exporter = ImageExportFormats(ctx.config, segmentation_config.formats or ["jpg"])
 
     # Loop over images and analyze
     step_started_at = time.monotonic()

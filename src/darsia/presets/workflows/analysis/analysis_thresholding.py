@@ -17,6 +17,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     infer_require_color_to_mass_from_config,
     prepare_analysis_context,
+    select_image_paths,
 )
 from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.analysis.progress import (
@@ -158,7 +159,6 @@ def analysis_thresholding_from_context(
     config = ctx.config
     experiment = ctx.experiment
     fluidflower = ctx.fluidflower
-    image_paths = ctx.image_paths
 
     if config.analysis.thresholding is None:
         config.analysis.thresholding = AnalysisThresholdingConfig().load(
@@ -167,6 +167,14 @@ def analysis_thresholding_from_context(
         )
 
     thresholding_config = config.analysis.thresholding
+
+    # Select image paths based on thresholding config's data_selection
+    image_paths = select_image_paths(
+        config,
+        experiment,
+        all=False,
+        sub_config=thresholding_config,
+    )
     thresholding_config.folder.mkdir(parents=True, exist_ok=True)
     requires_color_to_mass = any(
         mode_requires_color_to_mass(layer.mode)
@@ -182,10 +190,7 @@ def analysis_thresholding_from_context(
     layer_names = list(thresholding_config.layers.keys())
     requested_modes = {layer.mode for layer in thresholding_config.layers.values()}
     need_rescaled = requires_rescaled_modes(requested_modes)
-    exporter = ImageExportFormats.from_analysis_config(
-        config,
-        fallback_formats=thresholding_config.formats,
-    )
+    exporter = ImageExportFormats(config, thresholding_config.formats)
 
     # Loop over images and apply thresholding for each layer.
     step_started_at = time.monotonic()

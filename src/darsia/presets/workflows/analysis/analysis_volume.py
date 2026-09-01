@@ -13,6 +13,7 @@ import pandas as pd
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
+    select_image_paths,
 )
 from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.analysis.progress import (
@@ -45,7 +46,7 @@ def analysis_volume_from_context(
 
     config = ctx.config
     fluidflower = ctx.fluidflower
-    image_paths = ctx.image_paths
+    experiment = ctx.experiment
     color_to_mass_analysis = ctx.color_to_mass_analysis
 
     # ! ---- ENSURE VOLUME CONFIGURATION ----
@@ -55,6 +56,14 @@ def analysis_volume_from_context(
             results=config.data.results,
             roi_registry=config.roi_registry,
         )
+
+    # Select image paths based on volume config's data_selection
+    image_paths = select_image_paths(
+        config,
+        experiment,
+        all=False,
+        sub_config=config.analysis.volume,
+    )
 
     # Resolve ROI registry keys to actual ROI configs
     resolved_roi = config.roi_registry.resolve_rois(config.analysis.volume.roi)
@@ -113,7 +122,7 @@ def analysis_volume_from_context(
     folder_concentration_aq = config.data.results / "concentration_aq"
     folder_saturation_g.mkdir(parents=True, exist_ok=True)
     folder_concentration_aq.mkdir(parents=True, exist_ok=True)
-    exporter = ImageExportFormats.from_analysis_config(config, fallback_formats=["npz"])
+    exporter = ImageExportFormats(config, config.analysis.volume.formats or ["npz"])
 
     # ! ---- ANALYSIS ----
 

@@ -104,10 +104,10 @@ class AnalysisContext:
     config: FluidFlowerConfig
     experiment: darsia.ProtocolledExperiment
     fluidflower: Rig
-    analysis_labels: darsia.Image
-    image_paths: list[Path]
+    analysis_labels: darsia.Image | None
 
     # Optional - only initialized for mass/volume/segmentation analyses
+    image_paths: list[Path] | None = None
     restoration: darsia.VolumeAveraging | darsia.TVD | None = None
     color_to_mass_analysis: HeterogeneousColorToMassAnalysis | None = None
     expert_knowledge_adapter: ExpertKnowledgeAdapter | None = None
@@ -119,9 +119,9 @@ class AnalysisContext:
 def select_image_paths(
     config: FluidFlowerConfig,
     experiment: darsia.ProtocolledExperiment,
-    all: bool = False,
-    sub_config=None,
-    source: Path | None = None,
+    all: bool = False,  # TODO all=True used anywhere?
+    sub_config=None,  # TODO: sub_config used anywhere?
+    source: Path | None = None,  # TODO: source used anywhere?
 ) -> list[Path]:
     """Select image paths based on configuration and flags.
 
@@ -321,22 +321,16 @@ def prepare_analysis_context(
     fluidflower = cls.load(config.rig.path, config.corrections)
     fluidflower.load_experiment(experiment)
 
-    # ! ---- SELECT IMAGE PATHS ----
-
-    if sub_config is None:
-        if section == "analysis" and config.analysis is not None:
-            sub_config = config.analysis
-        elif section == "helper" and config.helper is not None:
-            sub_config = config.helper
-        else:
-            sub_config = None
-
-    image_paths = select_image_paths(
-        config,
-        experiment,
-        all=all,
-        sub_config=sub_config,
-    )
+    # ! ---- SELECT IMAGE PATHS (deprecated path for helper only) ----
+    # Analysis modes now select image paths individually from their own data_selection.
+    image_paths = None
+    if section == "helper" and config.helper is not None:
+        image_paths = select_image_paths(
+            config,
+            experiment,
+            all=all,
+            sub_config=config.helper,
+        )
 
     # ! ---- RESTORATION ----
     restoration = build_restoration(config.restoration, fluidflower)

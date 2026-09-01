@@ -9,6 +9,7 @@ from collections.abc import Callable
 from darsia.presets.workflows.analysis.analysis_context import (
     infer_require_color_to_mass_from_config,
     prepare_analysis_context,
+    select_image_paths,
 )
 from darsia.presets.workflows.analysis.analysis_cropping import (
     analysis_cropping_from_context,
@@ -140,8 +141,21 @@ def run_analysis(
     # Run requested analyses using shared context
     if args.cropping:
         step_started_at = time.monotonic()
+        # TODO: This is a bit of a hack, but it works for now.
+        # We should refactor the analysis functions to return the image paths they process.
+        # This will allow us to avoid this duplication and make the code cleaner.
+        cropping_image_paths = (
+            select_image_paths(
+                ctx.config,
+                ctx.experiment,
+                all=args.all,
+                sub_config=ctx.config.analysis.cropping,
+            )
+            if ctx.config.analysis.cropping
+            else []
+        )
         publish_step_start(
-            progress_callback, step="cropping", image_total=len(ctx.image_paths)
+            progress_callback, step="cropping", image_total=len(cropping_image_paths)
         )
         analysis_cropping_from_context(
             ctx,
@@ -152,14 +166,24 @@ def run_analysis(
         publish_step_complete(
             progress_callback,
             step="cropping",
-            image_total=len(ctx.image_paths),
+            image_total=len(cropping_image_paths),
             step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     if args.mass:
         step_started_at = time.monotonic()
+        mass_image_paths = (
+            select_image_paths(
+                ctx.config,
+                ctx.experiment,
+                all=args.all,
+                sub_config=ctx.config.analysis.mass,
+            )
+            if ctx.config.analysis.mass
+            else []
+        )
         publish_step_start(
-            progress_callback, step="mass", image_total=len(ctx.image_paths)
+            progress_callback, step="mass", image_total=len(mass_image_paths)
         )
         analysis_mass_from_context(
             ctx,
@@ -170,14 +194,24 @@ def run_analysis(
         publish_step_complete(
             progress_callback,
             step="mass",
-            image_total=len(ctx.image_paths),
+            image_total=len(mass_image_paths),
             step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     if args.volume:
         step_started_at = time.monotonic()
+        volume_image_paths = (
+            select_image_paths(
+                ctx.config,
+                ctx.experiment,
+                all=args.all,
+                sub_config=ctx.config.analysis.volume,
+            )
+            if ctx.config.analysis.volume
+            else []
+        )
         publish_step_start(
-            progress_callback, step="volume", image_total=len(ctx.image_paths)
+            progress_callback, step="volume", image_total=len(volume_image_paths)
         )
         analysis_volume_from_context(
             ctx,
@@ -188,14 +222,26 @@ def run_analysis(
         publish_step_complete(
             progress_callback,
             step="volume",
-            image_total=len(ctx.image_paths),
+            image_total=len(volume_image_paths),
             step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     if args.segmentation:
         step_started_at = time.monotonic()
+        segmentation_image_paths = (
+            select_image_paths(
+                ctx.config,
+                ctx.experiment,
+                all=args.all,
+                sub_config=ctx.config.analysis.segmentation,
+            )
+            if ctx.config.analysis.segmentation
+            else []
+        )
         publish_step_start(
-            progress_callback, step="segmentation", image_total=len(ctx.image_paths)
+            progress_callback,
+            step="segmentation",
+            image_total=len(segmentation_image_paths),
         )
         analysis_segmentation_from_context(
             ctx,
@@ -206,14 +252,24 @@ def run_analysis(
         publish_step_complete(
             progress_callback,
             step="segmentation",
-            image_total=len(ctx.image_paths),
+            image_total=len(segmentation_image_paths),
             step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     if args.fingers:
         step_started_at = time.monotonic()
+        fingers_image_paths = (
+            select_image_paths(
+                ctx.config,
+                ctx.experiment,
+                all=args.all,
+                sub_config=ctx.config.analysis.fingers,
+            )
+            if ctx.config.analysis.fingers
+            else []
+        )
         publish_step_start(
-            progress_callback, step="fingers", image_total=len(ctx.image_paths)
+            progress_callback, step="fingers", image_total=len(fingers_image_paths)
         )
         analysis_fingers_from_context(
             ctx,
@@ -224,14 +280,26 @@ def run_analysis(
         publish_step_complete(
             progress_callback,
             step="fingers",
-            image_total=len(ctx.image_paths),
+            image_total=len(fingers_image_paths),
             step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     if args.thresholding:
         step_started_at = time.monotonic()
+        thresholding_image_paths = (
+            select_image_paths(
+                ctx.config,
+                ctx.experiment,
+                all=args.all,
+                sub_config=ctx.config.analysis.thresholding,
+            )
+            if ctx.config.analysis.thresholding
+            else []
+        )
         publish_step_start(
-            progress_callback, step="thresholding", image_total=len(ctx.image_paths)
+            progress_callback,
+            step="thresholding",
+            image_total=len(thresholding_image_paths),
         )
         analysis_thresholding_from_context(
             ctx,
@@ -242,7 +310,7 @@ def run_analysis(
         publish_step_complete(
             progress_callback,
             step="thresholding",
-            image_total=len(ctx.image_paths),
+            image_total=len(thresholding_image_paths),
             step_elapsed_s=time.monotonic() - step_started_at,
         )
 

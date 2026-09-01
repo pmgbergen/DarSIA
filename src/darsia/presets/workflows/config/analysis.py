@@ -251,6 +251,15 @@ class AnalysisThresholdingConfig:
 
             return self
 
+    data_selection: str | list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Data selection",
+            "help": "Registry key name(s) whose data is used for thresholding.",
+            "widget": "registry_key_list",
+        },
+    )
+    """Name(s) of data registry entries to use for thresholding."""
     formats: list[str] = field(
         default_factory=lambda: ["jpg", "npz"],
         metadata={
@@ -286,6 +295,10 @@ class AnalysisThresholdingConfig:
         format_registry: "FormatRegistry | None" = None,
     ) -> "AnalysisThresholdingConfig":
         sub_sec = _get_section(sec, "thresholding")
+
+        self.data_selection = _get_key(
+            sub_sec, "data_selection", required=False, default=None
+        )
 
         raw_formats = _get_key(sub_sec, "formats", required=False, default=self.formats)
         if not isinstance(raw_formats, list):
@@ -336,6 +349,25 @@ class AnalysisThresholdingConfig:
 
 @dataclass
 class AnalysisSegmentationConfig:
+    data_selection: str | list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Data selection",
+            "help": "Registry key name(s) whose data is used for segmentation.",
+            "widget": "registry_key_list",
+        },
+    )
+    """Name(s) of data registry entries to use for segmentation."""
+    formats: list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Export formats",
+            "help": "Image formats to save for segmentation.",
+            "widget": "format_key_list",
+            "format_types": {"jpg", "png", "npz", "npy"},
+        },
+    )
+    """Output formats for segmentation images."""
     config: SegmentationConfig | dict[str, SegmentationConfig] = field(
         default_factory=lambda: SegmentationConfig(),
         metadata={"name": "Config", "hidden": True},
@@ -354,9 +386,32 @@ class AnalysisSegmentationConfig:
         sec: dict,
         results: Path | None,
         color_embedding_registry: ColorEmbeddingRegistry | None = None,
+        format_registry: "FormatRegistry | None" = None,
     ) -> "AnalysisSegmentationConfig":
         # Allow for two scenarios: single segmentation or multiple segmentations
         sub_sec = _get_section(sec, "segmentation")
+
+        self.data_selection = _get_key(
+            sub_sec, "data_selection", required=False, default=None
+        )
+
+        raw_formats = _get_key(sub_sec, "formats", required=False, default=None)
+        if raw_formats is None:
+            self.formats = None
+        else:
+            if not isinstance(raw_formats, list):
+                raise ValueError("analysis.segmentation.formats must be a list.")
+            if not all(isinstance(fmt, str) for fmt in raw_formats):
+                raise ValueError(
+                    "analysis.segmentation.formats entries must be strings."
+                )
+            self.formats = [fmt.strip().lower() for fmt in raw_formats]
+            _validate_format_keys(
+                self.formats,
+                format_registry,
+                {"jpg", "png", "npz", "npy"},
+                "[analysis.segmentation].formats",
+            )
 
         try:
             self.config = SegmentationConfig().load(
@@ -395,6 +450,25 @@ class AnalysisSegmentationConfig:
 
 @dataclass
 class AnalysisMassConfig:
+    data_selection: str | list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Data selection",
+            "help": "Registry key name(s) whose data is used for mass analysis.",
+            "widget": "registry_key_list",
+        },
+    )
+    """Name(s) of data registry entries to use for mass analysis."""
+    formats: list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Export formats",
+            "help": "Image formats to save for mass analysis.",
+            "widget": "format_key_list",
+            "format_types": {"jpg", "png", "npz", "npy"},
+        },
+    )
+    """Output formats for mass analysis images."""
     color: "ColorEmbedding | None" = field(
         default=None,
         metadata={
@@ -450,8 +524,30 @@ class AnalysisMassConfig:
         results: Path | None,
         roi_registry: RoiRegistry | None = None,
         color_embedding_registry: ColorEmbeddingRegistry | None = None,
+        format_registry: "FormatRegistry | None" = None,
     ) -> "AnalysisMassConfig":
         sub_sec = _get_section(sec, "mass")
+
+        self.data_selection = _get_key(
+            sub_sec, "data_selection", required=False, default=None
+        )
+
+        raw_formats = _get_key(sub_sec, "formats", required=False, default=None)
+        if raw_formats is None:
+            self.formats = None
+        else:
+            if not isinstance(raw_formats, list):
+                raise ValueError("analysis.mass.formats must be a list.")
+            if not all(isinstance(fmt, str) for fmt in raw_formats):
+                raise ValueError("analysis.mass.formats entries must be strings.")
+            self.formats = [fmt.strip().lower() for fmt in raw_formats]
+            _validate_format_keys(
+                self.formats,
+                format_registry,
+                {"jpg", "png", "npz", "npy"},
+                "[analysis.mass].formats",
+            )
+
         color_key = _get_key(sub_sec, "color", required=True, type_=str).strip()
         if color_embedding_registry is None:
             raise ValueError(
@@ -542,6 +638,25 @@ class AnalysisMassConfig:
 
 @dataclass
 class AnalysisVolumeConfig:
+    data_selection: str | list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Data selection",
+            "help": "Registry key name(s) whose data is used for volume analysis.",
+            "widget": "registry_key_list",
+        },
+    )
+    """Name(s) of data registry entries to use for volume analysis."""
+    formats: list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Export formats",
+            "help": "Image formats to save for volume analysis.",
+            "widget": "format_key_list",
+            "format_types": {"jpg", "png", "npz", "npy"},
+        },
+    )
+    """Output formats for volume analysis images."""
     roi: list[str] = field(
         default_factory=list,
         metadata={
@@ -574,8 +689,29 @@ class AnalysisVolumeConfig:
         sec: dict,
         results: Path | None,
         roi_registry: RoiRegistry | None = None,
+        format_registry: "FormatRegistry | None" = None,
     ) -> "AnalysisVolumeConfig":
         sub_sec = _get_section(sec, "volume")
+
+        self.data_selection = _get_key(
+            sub_sec, "data_selection", required=False, default=None
+        )
+
+        raw_formats = _get_key(sub_sec, "formats", required=False, default=None)
+        if raw_formats is None:
+            self.formats = None
+        else:
+            if not isinstance(raw_formats, list):
+                raise ValueError("analysis.volume.formats must be a list.")
+            if not all(isinstance(fmt, str) for fmt in raw_formats):
+                raise ValueError("analysis.volume.formats entries must be strings.")
+            self.formats = [fmt.strip().lower() for fmt in raw_formats]
+            _validate_format_keys(
+                self.formats,
+                format_registry,
+                {"jpg", "png", "npz", "npy"},
+                "[analysis.volume].formats",
+            )
 
         # Load ROIs – support registry-key references as list[str].
         self.roi = _load_roi_key_list(
@@ -667,6 +803,25 @@ class AnalysisExpertKnowledgeConfig:
 
 @dataclass
 class AnalysisFingersConfig:
+    data_selection: str | list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Data selection",
+            "help": "Registry key name(s) whose data is used for fingers analysis.",
+            "widget": "registry_key_list",
+        },
+    )
+    """Name(s) of data registry entries to use for fingers analysis."""
+    formats: list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Export formats",
+            "help": "Image formats to save for fingers analysis.",
+            "widget": "format_key_list",
+            "format_types": {"jpg", "png", "npz", "npy"},
+        },
+    )
+    """Output formats for fingers analysis images."""
     config: FingersConfig | dict[str, FingersConfig] = field(
         default_factory=lambda: FingersConfig(),
         metadata={"name": "Config", "hidden": True},
@@ -694,9 +849,30 @@ class AnalysisFingersConfig:
         results: Path | None,
         roi_registry: RoiRegistry | None = None,
         color_embedding_registry: ColorEmbeddingRegistry | None = None,
+        format_registry: "FormatRegistry | None" = None,
     ) -> "AnalysisFingersConfig":
         # Allow for two scenarios: single fingers or multiple fingers
         sub_sec = _get_section(sec, "fingers")
+
+        self.data_selection = _get_key(
+            sub_sec, "data_selection", required=False, default=None
+        )
+
+        raw_formats = _get_key(sub_sec, "formats", required=False, default=None)
+        if raw_formats is None:
+            self.formats = None
+        else:
+            if not isinstance(raw_formats, list):
+                raise ValueError("analysis.fingers.formats must be a list.")
+            if not all(isinstance(fmt, str) for fmt in raw_formats):
+                raise ValueError("analysis.fingers.formats entries must be strings.")
+            self.formats = [fmt.strip().lower() for fmt in raw_formats]
+            _validate_format_keys(
+                self.formats,
+                format_registry,
+                {"jpg", "png", "npz", "npy"},
+                "[analysis.fingers].formats",
+            )
 
         try:
             self.config = FingersConfig().load(
@@ -737,6 +913,15 @@ class AnalysisFingersConfig:
 
 @dataclass
 class AnalysisCroppingConfig:
+    data_selection: str | list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Data selection",
+            "help": "Registry key name(s) whose data is used for cropping.",
+            "widget": "registry_key_list",
+        },
+    )
+    """Name(s) of data registry entries to use for cropping."""
     formats: list[str] = field(
         default_factory=lambda: ["jpg"],
         metadata={
@@ -752,9 +937,15 @@ class AnalysisCroppingConfig:
     """Output formats for cropping images."""
 
     def load(
-        self, sec: dict, format_registry: "FormatRegistry | None" = None
+        self,
+        sec: dict,
+        format_registry: "FormatRegistry | None" = None,
     ) -> "AnalysisCroppingConfig":
         sub_sec = _get_section(sec, "cropping")
+
+        self.data_selection = _get_key(
+            sub_sec, "data_selection", required=False, default=None
+        )
 
         raw_formats = _get_key(sub_sec, "formats", default=["jpg"], required=False)
         if not isinstance(raw_formats, list):
@@ -773,15 +964,6 @@ class AnalysisCroppingConfig:
 
 @dataclass
 class AnalysisConfig:
-    data_selection: str | list[str] | None = field(
-        default=None,
-        metadata={
-            "name": "Data selection",
-            "help": "Registry key name(s) whose data is unioned for analysis.",
-            "widget": "registry_key_list",
-        },
-    )
-    """Name(s) of data registry entries to use for analysis."""
     random_traverse: bool = field(
         default=False,
         metadata={
@@ -790,18 +972,6 @@ class AnalysisConfig:
         },
     )
     """Whether to randomly traverse the data."""
-    formats: list[str] | None = field(
-        default=None,
-        metadata={
-            "name": "Export formats",
-            "help": (
-                "Global export format identifiers for all analyses "
-                "(any registered format)."
-            ),
-            "widget": "format_key_list",
-        },
-    )
-    """Optional analysis-wide export format identifiers."""
     cropping: AnalysisCroppingConfig | None = field(
         default=None, metadata={"name": "Cropping"}
     )
@@ -841,44 +1011,9 @@ class AnalysisConfig:
     ) -> "AnalysisConfig":
         sec = _get_section_from_toml(path, "analysis")
 
-        # Config to load analysis data selection (registry reference)
-        self.data_selection = _get_key(
-            sec, "data_selection", required=False, default=None
-        )
-        # Fallback to deprecated 'data' key for backward compat
-        if self.data_selection is None:
-            self.data_selection = _get_key(sec, "data", required=False, default=None)
-
         self.random_traverse = _get_key(
             sec, "random_traverse", required=False, default=False, type_=bool
         )
-
-        raw_formats = _get_key(sec, "formats", required=False, default=None)
-        if raw_formats is None:
-            self.formats = None
-        else:
-            if not isinstance(raw_formats, list):
-                raise ValueError("analysis.formats must be a list.")
-            if not all(isinstance(fmt, str) for fmt in raw_formats):
-                raise ValueError("analysis.formats entries must be strings.")
-            self.formats = [fmt.strip() for fmt in raw_formats if fmt.strip()]
-            if len(self.formats) == 0:
-                raise ValueError("analysis.formats must not be empty.")
-            # Validate against global registry keys when available.
-            if format_registry is not None:
-                available = set(format_registry.keys())
-                unsupported = sorted(
-                    key
-                    for key in self.formats
-                    if key not in available
-                    and key.lower() not in {"jpg", "png", "npz", "npy", "csv"}
-                )
-                if len(unsupported) > 0:
-                    raise ValueError(
-                        "Unsupported [analysis].formats entries: "
-                        f"{', '.join(unsupported)}. "
-                        "Use top-level [format.<type>.<identifier>] keys."
-                    )
 
         # Config to load analysis cropping
         try:
@@ -895,6 +1030,7 @@ class AnalysisConfig:
                 sec,
                 results,
                 color_embedding_registry=color_embedding_registry,
+                format_registry=format_registry,
             )
         except KeyError:
             warn("No analysis segmentation found. Use [analysis.segmentation].")
@@ -907,6 +1043,7 @@ class AnalysisConfig:
                 results,
                 roi_registry=roi_registry,
                 color_embedding_registry=color_embedding_registry,
+                format_registry=format_registry,
             )
         except KeyError:
             warn("No analysis mass found. Use [analysis.mass].")
@@ -915,7 +1052,10 @@ class AnalysisConfig:
         # Config to load analysis volume
         try:
             self.volume = AnalysisVolumeConfig().load(
-                sec, results, roi_registry=roi_registry
+                sec,
+                results,
+                roi_registry=roi_registry,
+                format_registry=format_registry,
             )
         except KeyError:
             warn("No analysis volume found. Use [analysis.volume].")
@@ -928,6 +1068,7 @@ class AnalysisConfig:
                 results,
                 roi_registry=roi_registry,
                 color_embedding_registry=color_embedding_registry,
+                format_registry=format_registry,
             )
         except KeyError:
             warn("No analysis fingers found. Use [analysis.fingers].")

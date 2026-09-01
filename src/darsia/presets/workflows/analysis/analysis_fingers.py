@@ -18,6 +18,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     infer_require_color_to_mass_from_config,
     prepare_analysis_context,
+    select_image_paths,
 )
 from darsia.presets.workflows.analysis.progress import (
     AnalysisProgressEvent,
@@ -123,7 +124,15 @@ def analysis_fingers_from_context(
     assert ctx.config.analysis.fingers is not None
 
     fluidflower = ctx.fluidflower
-    image_paths = ctx.image_paths
+    experiment = ctx.experiment
+
+    # Select image paths based on fingers config's data_selection
+    image_paths = select_image_paths(
+        ctx.config,
+        experiment,
+        all=False,
+        sub_config=ctx.config.analysis.fingers,
+    )
 
     # Extract finger analysis config (asserted not None above)
     fingers_config = ctx.config.analysis.fingers.config
