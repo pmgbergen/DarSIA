@@ -30,7 +30,6 @@ HELP_TEXT_ANALYSIS = {
     "mass": "Quantify CO₂ mass distribution from segmented images.",
     "volume": "Calculate volume metrics from segmented phases.",
     "thresholding": "Apply intensity thresholding for phase separation.",
-    "all": "Process all images in the dataset.",
     "show": "Display analysis results and plots.",
 }
 
