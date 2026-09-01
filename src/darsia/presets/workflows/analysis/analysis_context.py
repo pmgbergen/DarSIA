@@ -374,3 +374,151 @@ def prepare_analysis_context(
         expert_knowledge_adapter=expert_knowledge_adapter,
         color_embedding_runtime=color_embedding_runtime,
     )
+
+
+# Per-mode entry points for GUI checkbox wiring.
+# Each declares its own required_sections and delegates to the actual analysis function.
+
+
+@required_sections("rig", "data", "analysis.cropping")
+def analysis_cropping_entry(
+    cls: type[Rig],
+    path: Path | list[Path],
+    all: bool = False,
+    show: bool = False,
+    stream_callback: Any = None,
+    progress_callback: Any = None,
+) -> None:
+    """Cropping analysis entry point (GUI checkbox wrapper)."""
+    from darsia.presets.workflows.analysis.analysis_cropping import (
+        analysis_cropping_from_context,
+    )
+
+    ctx = prepare_analysis_context(cls=cls, path=path, all=all)
+    analysis_cropping_from_context(
+        ctx,
+        show=show,
+        stream_callback=stream_callback,
+        progress_callback=progress_callback,
+    )
+
+
+@required_sections("rig", "data", "color", "analysis.mass")
+def analysis_mass_entry(
+    cls: type[Rig],
+    path: Path | list[Path],
+    all: bool = False,
+    show: bool = False,
+    stream_callback: Any = None,
+    progress_callback: Any = None,
+) -> None:
+    """Mass analysis entry point (GUI checkbox wrapper)."""
+    from darsia.presets.workflows.analysis.analysis_mass import (
+        analysis_mass_from_context,
+    )
+
+    ctx = prepare_analysis_context(
+        cls=cls, path=path, all=all, require_color_to_mass=True
+    )
+    analysis_mass_from_context(
+        ctx,
+        show=show,
+        stream_callback=stream_callback,
+        progress_callback=progress_callback,
+    )
+
+
+@required_sections("rig", "data", "color", "analysis.volume")
+def analysis_volume_entry(
+    cls: type[Rig],
+    path: Path | list[Path],
+    all: bool = False,
+    show: bool = False,
+    stream_callback: Any = None,
+    progress_callback: Any = None,
+) -> None:
+    """Volume analysis entry point (GUI checkbox wrapper)."""
+    from darsia.presets.workflows.analysis.analysis_volume import (
+        analysis_volume_from_context,
+    )
+
+    ctx = prepare_analysis_context(
+        cls=cls, path=path, all=all, require_color_to_mass=True
+    )
+    analysis_volume_from_context(
+        ctx,
+        show=show,
+        stream_callback=stream_callback,
+        progress_callback=progress_callback,
+    )
+
+
+@required_sections("rig", "data", "color", "analysis.segmentation")
+def analysis_segmentation_entry(
+    cls: type[Rig],
+    path: Path | list[Path],
+    all: bool = False,
+    show: bool = False,
+    stream_callback: Any = None,
+    progress_callback: Any = None,
+) -> None:
+    """Segmentation analysis entry point (GUI checkbox wrapper)."""
+    from darsia.presets.workflows.analysis.analysis_segmentation import (
+        analysis_segmentation_from_context,
+    )
+
+    ctx = prepare_analysis_context(cls=cls, path=path, all=all)
+    analysis_segmentation_from_context(
+        ctx,
+        show=show,
+        stream_callback=stream_callback,
+        progress_callback=progress_callback,
+    )
+
+
+@required_sections("rig", "data", "color", "analysis.thresholding")
+def analysis_thresholding_entry(
+    cls: type[Rig],
+    path: Path | list[Path],
+    all: bool = False,
+    show: bool = False,
+    stream_callback: Any = None,
+    progress_callback: Any = None,
+) -> None:
+    """Thresholding analysis entry point (GUI checkbox wrapper)."""
+    from darsia.presets.workflows.analysis.analysis_thresholding import (
+        analysis_thresholding_from_context,
+    )
+
+    ctx = prepare_analysis_context(cls=cls, path=path, all=all)
+    analysis_thresholding_from_context(
+        ctx,
+        show=show,
+        stream_callback=stream_callback,
+        progress_callback=progress_callback,
+    )
+
+
+@required_sections("rig", "data", "color", "analysis.fingers")
+def analysis_fingers_entry(
+    cls: type[Rig],
+    path: Path | list[Path],
+    all: bool = False,
+    show: bool = False,
+    stream_callback: Any = None,
+    progress_callback: Any = None,
+) -> None:
+    """Fingers analysis entry point (GUI checkbox wrapper)."""
+    from darsia.presets.workflows.analysis.analysis_fingers import (
+        analysis_fingers_from_context,
+    )
+
+    ctx = prepare_analysis_context(
+        cls=cls, path=path, all=all, require_color_to_mass=True
+    )
+    analysis_fingers_from_context(
+        ctx,
+        show=show,
+        stream_callback=stream_callback,
+        progress_callback=progress_callback,
+    )
