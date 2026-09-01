@@ -15,6 +15,7 @@ import darsia
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
+    select_image_paths,
 )
 from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.analysis.progress import (
@@ -83,17 +84,24 @@ def analysis_mass_from_context(
     config = ctx.config
     experiment = ctx.experiment
     fluidflower = ctx.fluidflower
-    image_paths = ctx.image_paths
     color_to_mass_analysis = ctx.color_to_mass_analysis
+
+    # ! ---- ENSURE MASS CONFIGURATION ----
+    if config.analysis.mass is None:
+        raise ValueError("Mass analysis requires an explicit [analysis.mass] section.")
+
+    # Select image paths based on mass config's data_selection
+    image_paths = select_image_paths(
+        config,
+        experiment,
+        all=False,
+        sub_config=config.analysis.mass,
+    )
     if not hasattr(color_to_mass_analysis, "co2_mass_analysis"):
         raise AttributeError(
             "Mass rescaling requires 'co2_mass_analysis' on color_to_mass_analysis."
         )
     co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
-
-    # ! ---- ENSURE MASS CONFIGURATION ----
-    if config.analysis.mass is None:
-        raise ValueError("Mass analysis requires an explicit [analysis.mass] section.")
 
     # Resolve ROI registry keys to actual ROI configs
     resolved_roi = config.roi_registry.resolve_rois(config.analysis.mass.roi)
@@ -143,8 +151,9 @@ def analysis_mass_from_context(
     }
     for mode in export_modes:
         output_folders[mode].mkdir(parents=True, exist_ok=True)
-    exporter = ImageExportFormats.from_analysis_config(
-        config, fallback_formats=["npz", "jpg"]
+
+    exporter = ImageExportFormats(
+        config, config.analysis.mass.formats or ["npz", "jpg"]
     )
 
     vmax_mass = max(

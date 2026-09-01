@@ -15,6 +15,7 @@ import darsia
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
+    select_image_paths,
 )
 from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.analysis.progress import (
@@ -49,9 +50,15 @@ def analysis_cropping_from_context(
     assert ctx.config.analysis is not None
 
     fluidflower = ctx.fluidflower
-    image_paths = ctx.image_paths
-
     cropping_config = ctx.config.analysis.cropping
+
+    # Select image paths based on cropping config's data_selection
+    image_paths = select_image_paths(
+        ctx.config,
+        ctx.experiment,
+        all=False,
+        sub_config=cropping_config,
+    )
     legacy_formats = cropping_config.formats if cropping_config is not None else ["jpg"]
     exporter = ImageExportFormats.from_analysis_config(
         ctx.config, fallback_formats=legacy_formats
