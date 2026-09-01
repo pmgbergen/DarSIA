@@ -48,7 +48,6 @@ class AnalysisTab:
             "mass": selected_id == "mass",
             "volume": selected_id == "volume",
             "thresholding": selected_id == "thresholding",
-            "all": selected_id == "all",
             "show": show_plots,
         }
 
@@ -76,8 +75,6 @@ class AnalysisTab:
             argv.append("--volume")
         if options["thresholding"]:
             argv.append("--thresholding")
-        if options["all"]:
-            argv.append("--all")
         if options["show"]:
             argv.append("--show")
 
@@ -103,6 +100,12 @@ class AnalysisTab:
                         get_help_text("analysis", "cropping", "Cropping"),
                     ),
                     (
+                        "Mass",
+                        "mass",
+                        "fa5s.circle",
+                        get_help_text("analysis", "mass", "Mass"),
+                    ),
+                    (
                         "Segmentation",
                         "segmentation",
                         "fa5s.circle",
@@ -115,33 +118,16 @@ class AnalysisTab:
                         get_help_text("analysis", "fingers", "Fingers"),
                     ),
                     (
-                        "Mass",
-                        "mass",
+                        "Thresholding",
+                        "thresholding",
                         "fa5s.circle",
-                        get_help_text("analysis", "mass", "Mass"),
+                        get_help_text("analysis", "thresholding", "Thresholding"),
                     ),
                     (
                         "Volume",
                         "volume",
                         "fa5s.circle",
                         get_help_text("analysis", "volume", "Volume"),
-                    ),
-                    (
-                        "Thresholding",
-                        "thresholding",
-                        "fa5s.circle",
-                        get_help_text("analysis", "thresholding", "Thresholding"),
-                    ),
-                ],
-            ),
-            (
-                "Actions",
-                [
-                    (
-                        "All images",
-                        "all",
-                        "fa5s.circle",
-                        get_help_text("analysis", "all", "All images"),
                     ),
                 ],
             ),
