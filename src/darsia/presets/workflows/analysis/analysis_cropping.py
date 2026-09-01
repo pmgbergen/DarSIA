@@ -60,9 +60,7 @@ def analysis_cropping_from_context(
         sub_config=cropping_config,
     )
     legacy_formats = cropping_config.formats if cropping_config is not None else ["jpg"]
-    exporter = ImageExportFormats.from_analysis_config(
-        ctx.config, fallback_formats=legacy_formats
-    )
+    exporter = ImageExportFormats(ctx.config, legacy_formats)
 
     if not (show or len(exporter.formats) > 0):
         raise ValueError(

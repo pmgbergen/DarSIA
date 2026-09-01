@@ -67,9 +67,6 @@ def analysis_volume_from_context(
 
     # Resolve ROI registry keys to actual ROI configs
     resolved_roi = config.roi_registry.resolve_rois(config.analysis.volume.roi)
-    resolved_roi_and_label = config.roi_registry.resolve_roi_and_labels(
-        config.analysis.volume.roi_and_label
-    )
 
     # ! ---- GEOMETRY FOR INTEGRATION ----
     geometry = {}
@@ -79,33 +76,16 @@ def analysis_volume_from_context(
             for roi_config in resolved_roi.values()
         }
     )
-    geometry.update(
-        {
-            roi_and_label_config.name: fluidflower.geometry.subregion(
-                roi_and_label_config.roi
-            )
-            for roi_and_label_config in resolved_roi_and_label.values()
-        }
-    )
 
     # Initialize DataFrame for storing integrated masses
     detected_cols = [
         f"{roi_config.name}_detected_volume" for roi_config in resolved_roi.values()
-    ] + [
-        f"{roi_and_label_config.name}_detected_volume"
-        for roi_and_label_config in resolved_roi_and_label.values()
     ]
     detected_cols_g = [
         f"{roi_config.name}_detected_volume_g" for roi_config in resolved_roi.values()
-    ] + [
-        f"{roi_and_label_config.name}_detected_volume_g"
-        for roi_and_label_config in resolved_roi_and_label.values()
     ]
     detected_cols_aq = [
         f"{roi_config.name}_detected_volume_aq" for roi_config in resolved_roi.values()
-    ] + [
-        f"{roi_and_label_config.name}_detected_volume_aq"
-        for roi_and_label_config in resolved_roi_and_label.values()
     ]
     columns = (
         ["time", "datetime", "stem"]
@@ -179,27 +159,6 @@ def analysis_volume_from_context(
             # Integrate over chosen roi
             volume_g_roi = geometry[key].integrate(saturation_g.subregion(roi))
             volume_aq_roi = geometry[key].integrate(saturation_aq.subregion(roi))
-            volume_roi = volume_g_roi + volume_aq_roi
-
-            # Store
-            row_data[f"{key}_detected_volume"] = volume_roi
-            row_data[f"{key}_detected_volume_g"] = volume_g_roi
-            row_data[f"{key}_detected_volume_aq"] = volume_aq_roi
-
-        for roi_and_label_config in resolved_roi_and_label.values():
-            key = roi_and_label_config.name
-            label = roi_and_label_config.label
-            roi = roi_and_label_config.roi
-
-            # Restrict mass arrays to labeled area.
-            _saturation_g = saturation_g.copy()
-            _saturation_g.img[ctx.analysis_labels.img != label] = 0.0
-            _saturation_aq = saturation_aq.copy()
-            _saturation_aq.img[ctx.analysis_labels.img != label] = 0.0
-
-            # Integrate over chosen roi
-            volume_g_roi = geometry[key].integrate(_saturation_g.subregion(roi))
-            volume_aq_roi = geometry[key].integrate(_saturation_aq.subregion(roi))
             volume_roi = volume_g_roi + volume_aq_roi
 
             # Store
