@@ -105,9 +105,6 @@ def analysis_mass_from_context(
 
     # Resolve ROI registry keys to actual ROI configs
     resolved_roi = config.roi_registry.resolve_rois(config.analysis.mass.roi)
-    resolved_roi_and_label = config.roi_registry.resolve_roi_and_labels(
-        config.analysis.mass.roi_and_label
-    )
 
     # ! ---- GEOMETRY FOR INTEGRATION ----
     geometry = {}
@@ -115,14 +112,6 @@ def analysis_mass_from_context(
         {
             roi_config.name: fluidflower.geometry.subregion(roi_config.roi)
             for roi_config in resolved_roi.values()
-        }
-    )
-    geometry.update(
-        {
-            roi_and_label_config.name: fluidflower.geometry.subregion(
-                roi_and_label_config.roi
-            )
-            for roi_and_label_config in resolved_roi_and_label.values()
         }
     )
 
@@ -181,21 +170,12 @@ def analysis_mass_from_context(
     # Initialize DataFrame for storing integrated masses
     detected_cols = [
         f"{roi_config.name}_detected_mass" for roi_config in resolved_roi.values()
-    ] + [
-        f"{roi_and_label_config.name}_detected_mass"
-        for roi_and_label_config in resolved_roi_and_label.values()
     ]
     detected_cols_g = [
         f"{roi_config.name}_detected_mass_g" for roi_config in resolved_roi.values()
-    ] + [
-        f"{roi_and_label_config.name}_detected_mass_g"
-        for roi_and_label_config in resolved_roi_and_label.values()
     ]
     detected_cols_aq = [
         f"{roi_config.name}_detected_mass_aq" for roi_config in resolved_roi.values()
-    ] + [
-        f"{roi_and_label_config.name}_detected_mass_aq"
-        for roi_and_label_config in resolved_roi_and_label.values()
     ]
     exact_cols = [
         f"{roi_config.name}_exact_mass" for roi_config in resolved_roi.values()
@@ -313,30 +293,6 @@ def analysis_mass_from_context(
 
             # Store
             row_data[f"{key}_exact_mass"] = exact_mass_roi
-            row_data[f"{key}_detected_mass"] = mass_roi
-            row_data[f"{key}_detected_mass_g"] = mass_g_roi
-            row_data[f"{key}_detected_mass_aq"] = mass_aq_roi
-
-        # Compute integrated mass, mass_g, mass_aq in sub-ROIs and add to row data
-        for roi_and_label_config in resolved_roi_and_label.values():
-            key = roi_and_label_config.name
-            label = roi_and_label_config.label
-            roi = roi_and_label_config.roi
-
-            # Restrict mass arrays to labeled area.
-            _mass = mass.copy()
-            _mass.img[ctx.analysis_labels.img != label] = 0.0
-            _mass_g = mass_g.copy()
-            _mass_g.img[ctx.analysis_labels.img != label] = 0.0
-            _mass_aq = mass_aq.copy()
-            _mass_aq.img[ctx.analysis_labels.img != label] = 0.0
-
-            # Integrate over chosen roi
-            mass_roi = geometry[key].integrate(_mass.subregion(roi))
-            mass_g_roi = geometry[key].integrate(_mass_g.subregion(roi))
-            mass_aq_roi = geometry[key].integrate(_mass_aq.subregion(roi))
-
-            # Store
             row_data[f"{key}_detected_mass"] = mass_roi
             row_data[f"{key}_detected_mass_g"] = mass_g_roi
             row_data[f"{key}_detected_mass_aq"] = mass_aq_roi
