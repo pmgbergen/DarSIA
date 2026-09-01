@@ -31,9 +31,24 @@ class ContourSmootherConfig(ABC):
 class PolyDPSmootherConfig(ContourSmootherConfig):
     """Configuration for PolyDP contour smoother."""
 
-    epsilon: float = 0.01
-    closed: bool = True
-    use_ratio: bool = True
+    epsilon: float = field(
+        default=0.01,
+        metadata={
+            "name": "Epsilon",
+            "help": "Approximation accuracy (pixels or ratio of arc length).",
+        },
+    )
+    closed: bool = field(
+        default=True,
+        metadata={"name": "Closed", "help": "Whether contour is closed."},
+    )
+    use_ratio: bool = field(
+        default=True,
+        metadata={
+            "name": "Use ratio",
+            "help": "If true, epsilon is ratio of arc length; else absolute pixels.",
+        },
+    )
 
     def load(self, sec: dict) -> "PolyDPSmootherConfig":
         self.epsilon = float(
@@ -52,8 +67,20 @@ class PolyDPSmootherConfig(ContourSmootherConfig):
 class MovingAverageSmootherConfig(ContourSmootherConfig):
     """Configuration for moving average contour smoother."""
 
-    window: int = 9
-    closed: bool | None = None
+    window: int = field(
+        default=9,
+        metadata={
+            "name": "Window size",
+            "help": "Averaging window size in number of points.",
+        },
+    )
+    closed: bool | None = field(
+        default=None,
+        metadata={
+            "name": "Closed",
+            "help": "Closed contour (true/false/unset for auto-detect).",
+        },
+    )
 
     def load(self, sec: dict) -> "MovingAverageSmootherConfig":
         self.window = int(_get_key(sec, "window", default=self.window, required=False))
@@ -67,9 +94,27 @@ class MovingAverageSmootherConfig(ContourSmootherConfig):
 class GaussianSmootherConfig(ContourSmootherConfig):
     """Configuration for Gaussian contour smoother."""
 
-    sigma: float = 2.0
-    window: int | None = None
-    closed: bool | None = None
+    sigma: float = field(
+        default=2.0,
+        metadata={
+            "name": "Sigma",
+            "help": "Gaussian standard deviation.",
+        },
+    )
+    window: int | None = field(
+        default=None,
+        metadata={
+            "name": "Window size",
+            "help": "Gaussian kernel size (computed from sigma if unset).",
+        },
+    )
+    closed: bool | None = field(
+        default=None,
+        metadata={
+            "name": "Closed",
+            "help": "Closed contour (true/false/unset for auto-detect).",
+        },
+    )
 
     def load(self, sec: dict) -> "GaussianSmootherConfig":
         self.sigma = float(_get_key(sec, "sigma", default=self.sigma, required=False))
@@ -86,8 +131,20 @@ class GaussianSmootherConfig(ContourSmootherConfig):
 class SavitzkyGolaySmootherConfig(ContourSmootherConfig):
     """Configuration for Savitzky-Golay contour smoother."""
 
-    window_length: int = 21
-    polyorder: int = 3
+    window_length: int = field(
+        default=21,
+        metadata={
+            "name": "Window length",
+            "help": "Filter window length (must be odd).",
+        },
+    )
+    polyorder: int = field(
+        default=3,
+        metadata={
+            "name": "Polynomial order",
+            "help": "Order of the polynomial fit (must be < window_length).",
+        },
+    )
 
     def load(self, sec: dict) -> "SavitzkyGolaySmootherConfig":
         self.window_length = int(
