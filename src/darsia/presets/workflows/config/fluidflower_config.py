@@ -40,10 +40,10 @@ def _load_section(
     try:
         setattr(config, attr_name, config_obj)
         load_fn()
-    except exception_types:
+    except exception_types as e:
         setattr(config, attr_name, None)
         if warn_on_missing:
-            warn(f"Section {attr_name} not found, use [{attr_name}].")
+            warn(f"Section {attr_name} not found or invalid, use [{attr_name}]. ({e})")
 
 
 def _load_image_porosity(config, path: Path) -> None:
