@@ -187,7 +187,6 @@ class HelperResultsConfig:
             "roi",
             context="helper.results.roi",
             roi_registry=roi_registry,
-            restricted=False,
             allow_str=True,
             none_if_absent=True,
         )
