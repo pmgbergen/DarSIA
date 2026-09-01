@@ -315,7 +315,7 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
             }
 
             # For list/tuple types, add the element type label and infer fixed_length
-            if widget_type == "list":
+            if widget_type in ("list", "fixed_list"):
                 setting_dict["list_type"] = _infer_list_type(inner_type)
                 # Infer fixed_length from tuple[X, ...] arity (the type is the source of truth)
                 setting_dict["fixed_length"] = _infer_fixed_length(inner_type)

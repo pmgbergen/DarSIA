@@ -1907,6 +1907,9 @@ class SettingsFactory:
         # Right column: help button or spacer (fixed 40px)
         field_layout.addWidget(build_help_column(setting_dict))
 
+        # Store reference to the real control(s) for unwrapping in sync
+        field_widget.setProperty("value_widget", check_boxes)
+
         return display_name, field_widget
 
     def create_int_group_list_input(self, setting_dict, form_context=None):
