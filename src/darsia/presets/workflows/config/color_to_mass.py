@@ -78,7 +78,6 @@ class ColorToMassConfig:
             "rois",
             context="color_to_mass.rois",
             roi_registry=roi_registry,
-            restricted=False,
         )
 
         # Calibration data – centralized selector resolution.

@@ -70,7 +70,6 @@ class FingersConfig:
             "roi",
             context="analysis.fingers.roi",
             roi_registry=roi_registry,
-            restricted=False,
             none_if_absent=True,
         )
 

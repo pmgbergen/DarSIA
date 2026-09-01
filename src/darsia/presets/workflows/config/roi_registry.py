@@ -17,24 +17,21 @@ def _load_roi_key_list(
     *,
     context: str,
     roi_registry: "RoiRegistry | None",
-    restricted: bool,
     allow_str: bool = False,
     none_if_absent: bool = False,
 ) -> list[str] | None:
     """Validate and normalize a ROI-registry-key-reference field.
 
     Reads `sub_sec[key]`, validates it's a list[str] (or a bare str if `allow_str`),
-    and validates each entry resolves in `roi_registry` — using `resolve_roi_and_labels`
-    if `restricted` else `resolve_rois`. Returns the validated list[str] unresolved
-    (resolution to RoiConfig objects happens at point of use, not here).
+    and validates each entry resolves in `roi_registry`. Returns the validated
+    list[str] unresolved (resolution to RoiConfig objects happens at point of use,
+    not here).
 
     Args:
         sub_sec: Section dict to read from.
         key: Key name within the section.
         context: Human-readable context for error messages (e.g. "analysis.mass.roi").
         roi_registry: ROI registry to validate keys against (required if keys are present).
-        restricted: If True, use resolve_roi_and_labels (label-restricted). If False,
-            use resolve_rois (plain ROIs only).
         allow_str: If True, accept a bare string and wrap as single-entry list.
         none_if_absent: If True, return None when the key is absent. If False, return [].
 
@@ -43,8 +40,7 @@ def _load_roi_key_list(
 
     Raises:
         ValueError: If the value is not a valid list[str]/str, if the registry is
-            missing when keys are present, or if any key doesn't resolve or has
-            the wrong type (label-restricted vs. plain).
+            missing when keys are present, or if any key doesn't resolve.
     """
     raw_value = _convert_none(sub_sec.get(key))
 
@@ -76,20 +72,11 @@ def _load_roi_key_list(
             "Define top-level [[roi]] entries."
         )
 
-    # Validate each key resolves and has the correct type
-    if restricted:
-        resolved = roi_registry.resolve_roi_and_labels(roi_keys)
-        unrestricted_keys = [k for k in roi_keys if k not in resolved]
-        if unrestricted_keys:
-            raise ValueError(
-                f"{context} contains unknown or unrestricted ROI keys: "
-                f"{unrestricted_keys}"
-            )
-    else:
-        resolved = roi_registry.resolve_rois(roi_keys)
-        missing_keys = [k for k in roi_keys if k not in resolved]
-        if missing_keys:
-            raise ValueError(f"{context} contains unknown ROI keys: {missing_keys}")
+    # Validate each key resolves
+    resolved = roi_registry.resolve_rois(roi_keys)
+    missing_keys = [k for k in roi_keys if k not in resolved]
+    if missing_keys:
+        raise ValueError(f"{context} contains unknown ROI keys: {missing_keys}")
 
     return roi_keys
 
@@ -239,21 +226,4 @@ class RoiRegistry:
             k: v
             for k, v in resolved.items()
             if isinstance(v, RoiConfig) and v.label is None
-        }
-
-    def resolve_roi_and_labels(self, keys: str | list[str]) -> dict[str, RoiConfig]:
-        """Return ROI entries with label restriction for the given keys.
-
-        Args:
-            keys: A single key string or a list of key strings.
-
-        Returns:
-            Dict containing only the entries with ``label is not None`` (label-restricted
-            RoiConfig instances, which may be RoiConfig or RoiAndSubroiConfig subclasses).
-        """
-        resolved = self.resolve(keys)
-        return {
-            k: v
-            for k, v in resolved.items()
-            if isinstance(v, RoiConfig) and v.label is not None
         }

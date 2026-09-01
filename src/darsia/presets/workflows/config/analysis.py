@@ -486,20 +486,11 @@ class AnalysisMassConfig:
         default_factory=list,
         metadata={
             "name": "ROIs",
-            "help": "ROI definitions with no label restriction.",
+            "help": "ROI definitions for mass analysis.",
             "widget": "roi_key_list",
         },
     )
-    """ROI names (with no label restriction) for mass analysis."""
-    roi_and_label: list[str] = field(
-        default_factory=list,
-        metadata={
-            "name": "ROIs with labels",
-            "help": "ROI definitions restricted to specific labels.",
-            "widget": "roi_key_list",
-        },
-    )
-    """ROI names (label-restricted) for mass analysis."""
+    """ROI names for mass analysis."""
     export: list[str] | None = field(
         default=None,
         metadata={"name": "Export fields", "help": "Mass analysis scalars to save."},
@@ -567,16 +558,6 @@ class AnalysisMassConfig:
             "roi",
             context="analysis.mass.roi",
             roi_registry=roi_registry,
-            restricted=False,
-        )
-
-        # Load ROIs with labels – support registry-key references as list[str].
-        self.roi_and_label = _load_roi_key_list(
-            sub_sec,
-            "roi_and_label",
-            context="analysis.mass.roi_and_label",
-            roi_registry=roi_registry,
-            restricted=True,
         )
 
         raw_export = _get_key(sub_sec, "export", required=False, default=None)
@@ -661,20 +642,11 @@ class AnalysisVolumeConfig:
         default_factory=list,
         metadata={
             "name": "ROIs",
-            "help": "ROI definitions with no label restriction.",
+            "help": "ROI definitions for volume analysis.",
             "widget": "roi_key_list",
         },
     )
-    """ROI names (with no label restriction) for volume analysis."""
-    roi_and_label: list[str] = field(
-        default_factory=list,
-        metadata={
-            "name": "ROIs with labels",
-            "help": "ROI definitions restricted to specific labels.",
-            "widget": "roi_key_list",
-        },
-    )
-    """ROI names (label-restricted) for volume analysis."""
+    """ROI names for volume analysis."""
     folder: Path = field(
         default_factory=Path,
         metadata={
@@ -719,16 +691,6 @@ class AnalysisVolumeConfig:
             "roi",
             context="analysis.volume.roi",
             roi_registry=roi_registry,
-            restricted=False,
-        )
-
-        # Load ROIs with labels – support registry-key references as list[str].
-        self.roi_and_label = _load_roi_key_list(
-            sub_sec,
-            "roi_and_label",
-            context="analysis.volume.roi_and_label",
-            roi_registry=roi_registry,
-            restricted=True,
         )
 
         folder = _get_key(sub_sec, "folder", required=False, type_=Path)

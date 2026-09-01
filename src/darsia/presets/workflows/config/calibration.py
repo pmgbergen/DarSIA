@@ -158,7 +158,6 @@ class CalibrationColorConfig:
             "rois",
             context="calibration.color.rois",
             roi_registry=roi_registry,
-            restricted=False,
         )
 
         # Load color_path calibration config if present
@@ -339,7 +338,6 @@ class CalibrationMassConfig:
             "rois",
             context="calibration.mass.rois",
             roi_registry=roi_registry,
-            restricted=False,
         )
 
         # Load data selection
