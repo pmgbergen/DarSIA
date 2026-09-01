@@ -731,7 +731,7 @@ class Rig:
         """Image porosity for the rig object."""
 
         if log:
-            out_dir = Path(log) / "image_porosity"
+            out_dir = Path(log)
             out_dir.mkdir(parents=True, exist_ok=True)
             save_scalar_map_illustration(
                 self.image_porosity.img,
@@ -795,7 +795,7 @@ class Rig:
             self.boolean_porosity = self.image_porosity > tol
 
         if log:
-            out_dir = Path(log) / "image_porosity"
+            out_dir = Path(log)
             out_dir.mkdir(parents=True, exist_ok=True)
             save_scalar_map_illustration(
                 self.boolean_porosity.img.astype(float),
