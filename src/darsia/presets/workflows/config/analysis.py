@@ -11,7 +11,7 @@ from warnings import warn
 import darsia
 from darsia.presets.workflows.mode_resolution import validate_mode_syntax
 
-from .contour_smoother import SavitzkyGolaySmootherConfig
+from .contour_smoother import ContourSmootherSelection
 from .fingers import FingersConfig
 from .roi_registry import _load_roi_key_list
 from .segmentation import SegmentationConfig
@@ -507,10 +507,16 @@ class AnalysisMassConfig:
         },
     )
     """Path to the results folder for mass analysis."""
-    contour_smoother: darsia.ContourSmoother | None = field(
-        default=None, metadata={"name": "Contour smoother", "hidden": True}
+    contour_smoother_selection: ContourSmootherSelection = field(
+        default_factory=ContourSmootherSelection,
+        metadata={"name": "Contour smoother", "help": "Contour smoothing algorithm."},
     )
-    """Optional contour smoother for finger contours."""
+    """Contour smoother selection and options."""
+
+    @property
+    def contour_smoother(self) -> darsia.ContourSmoother | None:
+        """Backward-compatible property: returns the built contour smoother."""
+        return self.contour_smoother_selection.build()
 
     def load(
         self,
@@ -563,6 +569,7 @@ class AnalysisMassConfig:
             roi_registry=roi_registry,
         )
 
+        # TODO: Can this be unified and simplified across analysis workflows?
         raw_export = _get_key(sub_sec, "export", required=False, default=None)
         if raw_export is None:
             self.export = None
@@ -596,26 +603,7 @@ class AnalysisMassConfig:
         self.folder = folder
 
         # Load contour smoother
-        contour_smoother = _get_key(
-            sub_sec, "contour_smoother", required=False, default="none", type_=str
-        ).lower()
-        if contour_smoother == "none":
-            self.contour_smoother = None
-        else:
-            smoother_options_sec = sub_sec.get("contour_smoother_options", {})
-
-            if contour_smoother == "savitzky_golay":
-                smoother_options = SavitzkyGolaySmootherConfig().load(
-                    smoother_options_sec
-                )
-                self.contour_smoother = darsia.SavitzkyGolaySmoother(
-                    window_length=smoother_options.window_length,
-                    polyorder=smoother_options.polyorder,
-                )
-            else:
-                raise NotImplementedError(
-                    f"Unsupported contour smoother type: {contour_smoother}"
-                )
+        self.contour_smoother_selection = ContourSmootherSelection().load(sub_sec)
 
         return self
 

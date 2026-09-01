@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import darsia
 from darsia.presets.workflows.mode_resolution import validate_mode_syntax
 
-from .contour_smoother import SavitzkyGolaySmootherConfig
+from .contour_smoother import ContourSmootherSelection
 from .utils import _get_key
 
 if TYPE_CHECKING:
@@ -89,8 +89,16 @@ class SegmentationConfig:
         default_factory=SegmentationValueLabelsConfig
     )
     """Contour value labels configuration."""
-    contour_smoother: darsia.ContourSmoother | None = None
-    """Optional contour smoother for finger contours."""
+    contour_smoother_selection: ContourSmootherSelection = field(
+        default_factory=ContourSmootherSelection,
+        metadata={"name": "Contour smoother", "help": "Contour smoothing algorithm."},
+    )
+    """Contour smoother selection and options."""
+
+    @property
+    def contour_smoother(self) -> darsia.ContourSmoother | None:
+        """Backward-compatible property: returns the built contour smoother."""
+        return self.contour_smoother_selection.build()
 
     def load(
         self, sec: dict, color_embedding_registry: ColorEmbeddingRegistry | None = None
@@ -114,26 +122,7 @@ class SegmentationConfig:
         self.values = SegmentationValueLabelsConfig().load(values_sec, self.color)
 
         # Load contour smoother
-        contour_smoother = _get_key(
-            sec, "contour_smoother", required=False, default="none", type_=str
-        ).lower()
-        if contour_smoother == "none":
-            self.contour_smoother = None
-        else:
-            smoother_options_sec = sec.get("contour_smoother_options", {})
-
-            if contour_smoother == "savitzky_golay":
-                smoother_options = SavitzkyGolaySmootherConfig().load(
-                    smoother_options_sec
-                )
-                self.contour_smoother = darsia.SavitzkyGolaySmoother(
-                    window_length=smoother_options.window_length,
-                    polyorder=smoother_options.polyorder,
-                )
-            else:
-                raise NotImplementedError(
-                    f"Unsupported contour smoother type: {contour_smoother}"
-                )
+        self.contour_smoother_selection = ContourSmootherSelection().load(sec)
 
         return self
 
