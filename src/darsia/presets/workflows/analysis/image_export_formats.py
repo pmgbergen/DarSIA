@@ -80,20 +80,6 @@ class ImageExportFormats:
         self._registry = getattr(config, "format_registry", None)
         self.formats = self._resolve_formats(format_keys or [])
 
-    @classmethod
-    def from_analysis_config(
-        cls,
-        config: Any,
-        *,
-        fallback_formats: list[str] | None = None,
-    ) -> "ImageExportFormats":
-        format_keys = None
-        if getattr(config, "analysis", None) is not None:
-            format_keys = getattr(config.analysis, "formats", None)
-        if format_keys is None:
-            format_keys = fallback_formats
-        return cls(config, format_keys)
-
     def _resolve_formats(self, format_keys: list[str]) -> list[ImageExportFormat]:
         resolved: list[ImageExportFormat] = []
         seen: set[str] = set()
