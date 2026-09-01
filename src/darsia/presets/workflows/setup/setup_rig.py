@@ -107,7 +107,7 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
         facies_props_path=config.facies.props,
         corrections_config=config.corrections,
         image_porosity_config=config.image_porosity,
-        log=config.rig.path / "log",
+        log=config.rig.path / "figures",
         show_plot=show,
     )
     rig.save(config.rig.path)
