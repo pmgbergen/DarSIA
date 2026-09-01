@@ -61,30 +61,30 @@ CHECKBOX_TO_SECTIONS = {
         "darsia.presets.workflows.calibration.calibration_color_to_mass_analysis",
         "calibration_color_to_mass_analysis_from_context",
     ),
-    # Analysis leaf mappings — all point to the same branching function
+    # Analysis leaf mappings — each mode has its own entry point with per-mode sections
     ("analysis", "cropping"): (
         "darsia.presets.workflows.analysis.analysis_context",
-        "prepare_analysis_context",
+        "analysis_cropping_entry",
     ),
     ("analysis", "fingers"): (
         "darsia.presets.workflows.analysis.analysis_context",
-        "prepare_analysis_context",
+        "analysis_fingers_entry",
     ),
     ("analysis", "mass"): (
         "darsia.presets.workflows.analysis.analysis_context",
-        "prepare_analysis_context",
+        "analysis_mass_entry",
     ),
     ("analysis", "segmentation"): (
         "darsia.presets.workflows.analysis.analysis_context",
-        "prepare_analysis_context",
+        "analysis_segmentation_entry",
     ),
     ("analysis", "thresholding"): (
         "darsia.presets.workflows.analysis.analysis_context",
-        "prepare_analysis_context",
+        "analysis_thresholding_entry",
     ),
     ("analysis", "volume"): (
         "darsia.presets.workflows.analysis.analysis_context",
-        "prepare_analysis_context",
+        "analysis_volume_entry",
     ),
 }
 
@@ -114,6 +114,13 @@ TAB_VISIBILITY = {
     # Calibration > Color & Mass
     ("calibration", "color"): ("color", "calibration", "options"),
     ("calibration", "mass"): ("color", "calibration", "options"),
+    # Analysis
+    ("analysis", "cropping"): ("analysis", "options"),
+    ("analysis", "fingers"): ("analysis", "options"),
+    ("analysis", "mass"): ("analysis", "options"),
+    ("analysis", "segmentation"): ("analysis", "options"),
+    ("analysis", "thresholding"): ("analysis", "options"),
+    ("analysis", "volume"): ("analysis", "options"),
 }
 
 
@@ -135,6 +142,7 @@ def get_required_sections(action: str, checkbox_id: str) -> tuple[str, ...] | No
             decorator or if the decorator is misconfigured.
     """
     key = (action, checkbox_id)
+
     if key not in CHECKBOX_TO_SECTIONS:
         return None
 
