@@ -75,6 +75,8 @@ def _validate_format_keys(
 
 @dataclass
 class AnalysisThresholdingLegendConfig:
+    """Configuration for thresholding legend overlay."""
+
     show: bool = field(
         default=True,
         metadata={
@@ -164,6 +166,8 @@ class AnalysisThresholdingLegendConfig:
 
 @dataclass
 class AnalysisThresholdingConfig:
+    """Configuration for thresholding analysis."""
+
     @dataclass
     class LayerConfig:
         mode: str = field(default="concentration_aq", metadata={"name": "Mode"})
@@ -350,6 +354,8 @@ class AnalysisThresholdingConfig:
 
 @dataclass
 class AnalysisSegmentationConfig:
+    """Configuration for segmentation analysis."""
+
     data_selection: str | list[str] | None = field(
         default=None,
         metadata={
@@ -452,6 +458,31 @@ class AnalysisSegmentationConfig:
 
 @dataclass
 class AnalysisMassConfig:
+    """Configuration for mass analysis."""
+
+    export: list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Export fields",
+            "help": "Mass analysis scalars to save.",
+            "widget": "fixed_list",
+            "options": sorted(SUPPORTED_ANALYSIS_MASS_EXPORT_MODES),
+        },
+    )
+    """Optional selection of mass-analysis scalar fields exported to disk."""
+    color: "ColorEmbedding | None" = field(
+        default=None,
+        metadata={
+            "name": "Color embedding",
+            "widget": "color_key_list",
+            "max_rows": 1,
+        },
+    )
+    """Color embedding identifier used for mass conversion.
+
+    The value must be a non-empty key defined in the centralized
+    ``[color.*.*]`` registry.
+    """
     data_selection: str | list[str] | None = field(
         default=None,
         metadata={
@@ -471,19 +502,6 @@ class AnalysisMassConfig:
         },
     )
     """Output formats for mass analysis images."""
-    color: "ColorEmbedding | None" = field(
-        default=None,
-        metadata={
-            "name": "Color embedding",
-            "widget": "color_key_list",
-            "max_rows": 1,
-        },
-    )
-    """Color embedding identifier used for mass conversion.
-
-    The value must be a non-empty key defined in the centralized
-    ``[color.*.*]`` registry.
-    """
     roi: list[str] = field(
         default_factory=list,
         metadata={
@@ -493,11 +511,6 @@ class AnalysisMassConfig:
         },
     )
     """ROI names for mass analysis."""
-    export: list[str] | None = field(
-        default=None,
-        metadata={"name": "Export fields", "help": "Mass analysis scalars to save."},
-    )
-    """Optional selection of mass-analysis scalar fields exported to disk."""
     folder: Path | None = field(
         default=None,
         metadata={
@@ -614,6 +627,8 @@ class AnalysisMassConfig:
 
 @dataclass
 class AnalysisVolumeConfig:
+    """Configuration for volume analysis."""
+
     data_selection: str | list[str] | None = field(
         default=None,
         metadata={
@@ -761,6 +776,8 @@ class AnalysisExpertKnowledgeConfig:
 
 @dataclass
 class AnalysisFingersConfig:
+    """Configuration for fingers analysis."""
+
     data_selection: str | list[str] | None = field(
         default=None,
         metadata={
@@ -864,6 +881,8 @@ class AnalysisFingersConfig:
 
 @dataclass
 class AnalysisCroppingConfig:
+    """Configuration for cropping analysis."""
+
     data_selection: str | list[str] | None = field(
         default=None,
         metadata={
@@ -915,6 +934,8 @@ class AnalysisCroppingConfig:
 
 @dataclass
 class AnalysisConfig:
+    """Configuration for analysis workflows."""
+
     random_traverse: bool = field(
         default=False,
         metadata={
