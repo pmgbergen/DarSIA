@@ -278,11 +278,12 @@ class AnalysisThresholdingConfig:
     legend: AnalysisThresholdingLegendConfig = field(
         default_factory=AnalysisThresholdingLegendConfig, metadata={"name": "Legend"}
     )
-    folder: Path = field(
-        default_factory=Path,
+    folder: Path | None = field(
+        default=None,
         metadata={
             "name": "Output folder",
             "help": "Directory for thresholded results.",
+            "hidden": True,
         },
     )
     """Path to the results folder for thresholding analysis."""
@@ -372,11 +373,12 @@ class AnalysisSegmentationConfig:
         default_factory=lambda: SegmentationConfig(),
         metadata={"name": "Config", "hidden": True},
     )
-    folder: Path = field(
-        default_factory=Path,
+    folder: Path | None = field(
+        default=None,
         metadata={
             "name": "Output folder",
             "help": "Directory for segmentation results.",
+            "hidden": True,
         },
     )
     """Path to the results folder for segmentation."""
@@ -496,11 +498,12 @@ class AnalysisMassConfig:
         metadata={"name": "Export fields", "help": "Mass analysis scalars to save."},
     )
     """Optional selection of mass-analysis scalar fields exported to disk."""
-    folder: Path = field(
-        default_factory=Path,
+    folder: Path | None = field(
+        default=None,
         metadata={
             "name": "Output folder",
             "help": "Directory for mass analysis results.",
+            "hidden": True,
         },
     )
     """Path to the results folder for mass analysis."""
@@ -647,11 +650,12 @@ class AnalysisVolumeConfig:
         },
     )
     """ROI names for volume analysis."""
-    folder: Path = field(
-        default_factory=Path,
+    folder: Path | None = field(
+        default=None,
         metadata={
             "name": "Output folder",
             "help": "Directory for volume analysis results.",
+            "hidden": True,
         },
     )
     """Path to the results folder for volume analysis."""
@@ -788,22 +792,15 @@ class AnalysisFingersConfig:
         default_factory=lambda: FingersConfig(),
         metadata={"name": "Config", "hidden": True},
     )
-    folder: Path = field(
-        default_factory=Path,
+    folder: Path | None = field(
+        default=None,
         metadata={
             "name": "Output folder",
             "help": "Directory for fingers analysis results.",
+            "hidden": True,
         },
     )
-    """Path to the results folder for segmentation."""
-    img_folder: Path = field(
-        default_factory=Path,
-        metadata={
-            "name": "Image folder",
-            "help": "Directory for finger image exports.",
-        },
-    )
-    """Path to the image results folder."""
+    """Path to the results folder for fingers analysis."""
 
     def load(
         self,
