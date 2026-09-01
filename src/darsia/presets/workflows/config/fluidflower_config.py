@@ -17,6 +17,7 @@ from .format_registry import FormatRegistry
 from .helper import HelperConfig
 from .image_porosity import ImagePorosityConfig
 from .labeling import LabelingConfig
+from .options import OptionsConfig
 from .protocols import ProtocolsConfig
 from .restoration import RestorationConfig
 from .rig import RigConfig
@@ -97,6 +98,7 @@ class FluidFlowerConfig:
         self.calibration: CalibrationConfig | None = None
         self.format_registry: FormatRegistry | None = None
         self.analysis: AnalysisConfig | None = None
+        self.options: OptionsConfig | None = None
         self.helper: HelperConfig | None = None
         self.download: DownloadConfig | None = None
         self.workflow_utils: WorkflowUtilsConfig | None = None
@@ -246,6 +248,14 @@ class FluidFlowerConfig:
             ),
             warn_on_missing=True,
             exception_types=(ValueError, KeyError),
+        )
+
+        _load_section(
+            self,
+            "options",
+            OptionsConfig(),
+            lambda: self.options.load(path),
+            warn_on_missing=False,
         )
 
         _load_section(

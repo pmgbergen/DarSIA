@@ -111,7 +111,7 @@ def analysis_volume_from_context(
     image_total = len(image_paths)
 
     # Random shuffle for faster preview of analysis.
-    if ctx.config.analysis.random_traverse:
+    if ctx.config.options and ctx.config.options.analysis.random_traverse:
         random.shuffle(image_paths)
 
     for image_index, path in enumerate(image_paths, start=1):

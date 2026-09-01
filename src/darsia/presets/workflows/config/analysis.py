@@ -936,14 +936,6 @@ class AnalysisCroppingConfig:
 class AnalysisConfig:
     """Configuration for analysis workflows."""
 
-    random_traverse: bool = field(
-        default=False,
-        metadata={
-            "name": "Random traverse",
-            "help": "Process images in random order instead of chronological.",
-        },
-    )
-    """Whether to randomly traverse the data."""
     cropping: AnalysisCroppingConfig | None = field(
         default=None, metadata={"name": "Cropping"}
     )
@@ -982,10 +974,6 @@ class AnalysisConfig:
         color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "AnalysisConfig":
         sec = _get_section_from_toml(path, "analysis")
-
-        self.random_traverse = _get_key(
-            sec, "random_traverse", required=False, default=False, type_=bool
-        )
 
         # Config to load analysis cropping
         try:
