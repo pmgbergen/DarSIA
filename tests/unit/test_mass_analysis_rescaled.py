@@ -116,9 +116,8 @@ def test_analysis_mass_writes_default_artifacts_only(
     ctx = SimpleNamespace(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
-            analysis=SimpleNamespace(
-                mass=SimpleNamespace(roi=[]), random_traverse=False
-            ),
+            analysis=SimpleNamespace(mass=SimpleNamespace(roi=[])),
+            options=SimpleNamespace(analysis=SimpleNamespace(random_traverse=False)),
             roi_registry=RoiRegistry(),
         ),
         experiment=SimpleNamespace(injection_protocol=_FakeInjectionProtocol()),
@@ -218,11 +217,9 @@ def test_analysis_mass_writes_configured_export_subset_with_extensive_modes(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
             analysis=SimpleNamespace(
-                mass=SimpleNamespace(
-                    roi=[], export=configured_export
-                ),
-                random_traverse=False,
+                mass=SimpleNamespace(roi=[], export=configured_export),
             ),
+            options=SimpleNamespace(analysis=SimpleNamespace(random_traverse=False)),
             roi_registry=RoiRegistry(),
         ),
         experiment=SimpleNamespace(injection_protocol=_FakeInjectionProtocol()),
@@ -318,8 +315,8 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
                     roi=[],
                     export=["rescaled_saturation_g", "rescaled_concentration_aq"],
                 ),
-                random_traverse=False,
             ),
+            options=SimpleNamespace(analysis=SimpleNamespace(random_traverse=False)),
             roi_registry=RoiRegistry(),
         ),
         experiment=SimpleNamespace(injection_protocol=_FakeInjectionProtocol()),
@@ -410,11 +407,9 @@ def test_analysis_mass_passes_natural_scalar_write_bounds(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
             analysis=SimpleNamespace(
-                mass=SimpleNamespace(
-                    roi=[], export=configured_export
-                ),
-                random_traverse=False,
+                mass=SimpleNamespace(roi=[], export=configured_export),
             ),
+            options=SimpleNamespace(analysis=SimpleNamespace(random_traverse=False)),
             roi_registry=RoiRegistry(),
         ),
         experiment=SimpleNamespace(injection_protocol=_FakeInjectionProtocol()),
