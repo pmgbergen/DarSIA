@@ -20,7 +20,7 @@ threshold = 0.2
 roi = ["storage"]
 ```
 
-Finger plot exports use the global `[analysis].formats` identifiers and write to
+Finger plot exports use the `[analysis.fingers].formats` identifiers and write to
 `<type>_<identifier>` folders under `fingers/tips`, `fingers/fjords`, and
 `fingers/paths`. Non-image formats are skipped for finger plots.
 

@@ -27,13 +27,23 @@ python -m darsia.presets.workflows.user_interface_analysis \
 Color-based scalar modes are now configured via centralized color embeddings and used as
 `color.<id>` in segmentation/fingers/thresholding modes.
 
-For analysis exports, define global format identifiers under `[analysis].formats`:
+For analysis exports, each analysis mode defines its own format identifiers:
 ```toml
-[analysis]
+[analysis.mass]
 formats = ["my_npy", "4k"]
+
+[analysis.thresholding]
+formats = ["jpg", "csv"]
 ```
 
 These keys reference top-level `[format.<type>.<identifier>]` presets and produce
 output folders named `<type>_<identifier>` (for example `jpg_4k`).
+
+Each mode also specifies its own `data_selection` for independent image selection:
+```toml
+[analysis.mass]
+data_selection = ["injection", "analysis"]
+formats = ["my_npy", "4k"]
+```
 
 See [ROI reference](./roi-reference.md), [image selection](./image-selection.md), and [config reference](./config-reference.md).
