@@ -144,7 +144,7 @@ class TestSetupImagePorosity:
         """Image porosity JPG is stored when log is provided."""
         rig = _make_rig()
         rig.setup_image_porosity(config=ImagePorosityConfig(mode="full"), log=tmp_path)
-        jpg = tmp_path / "image_porosity" / "image_porosity.jpg"
+        jpg = tmp_path / "image_porosity.jpg"
         assert jpg.exists()
         assert jpg.stat().st_size > 0
 
@@ -153,7 +153,7 @@ class TestSetupImagePorosity:
         rig = _make_rig(shape=(6, 8))
         cfg = ImagePorosityConfig(mode="from_image")
         rig.setup_image_porosity(config=cfg, log=tmp_path)
-        jpg = tmp_path / "image_porosity" / "image_porosity.jpg"
+        jpg = tmp_path / "image_porosity.jpg"
         assert jpg.exists()
         assert jpg.stat().st_size > 0
 
@@ -230,6 +230,6 @@ class TestSetupBooleanImagePorosity:
         rig = _make_rig()
         rig.setup_image_porosity(config=ImagePorosityConfig(mode="full"))
         rig.setup_boolean_image_porosity(log=tmp_path)
-        jpg = tmp_path / "image_porosity" / "boolean_porosity.jpg"
+        jpg = tmp_path / "boolean_porosity.jpg"
         assert jpg.exists()
         assert jpg.stat().st_size > 0
