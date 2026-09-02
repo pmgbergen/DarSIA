@@ -235,7 +235,9 @@ box_alpha = 0.4
 box_padding = 10
 
 # Optional segmentation with per-layer styling and separate format outputs.
-[analysis.segmentation.aqueous]
+[analysis.segmentation]
+
+[[analysis.segmentation.config]]
 label = "CO2(aq)"
 mode = "concentration_aq"
 thresholds = [0.05, 0.1, 0.5, 0.9]
@@ -252,7 +254,7 @@ value_max_per_contour = 4
 value_format = "{:.2f}"
 contour_smoother = "savitzky_golay" # If chosen, contours are smoothed.
 
-[analysis.segmentation.gas]
+[[analysis.segmentation.config]]
 label = "CO2(g)"
 mode = "saturation_g"
 thresholds = [0.01, 0.05, 0.5]
