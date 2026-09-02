@@ -375,9 +375,14 @@ class AnalysisSegmentationConfig:
         },
     )
     """Output formats for segmentation images."""
-    config: SegmentationConfig | dict[str, SegmentationConfig] = field(
-        default_factory=lambda: SegmentationConfig(),
-        metadata={"name": "Config", "hidden": True},
+    config: list[SegmentationConfig] = field(
+        default_factory=list,
+        metadata={
+            "name": "Config",
+            "help": "One or more segmentation configurations.",
+            "widget": "dataclass_list_map",
+            "title_field": "label",
+        },
     )
     folder: Path | None = field(
         default=None,
@@ -421,28 +426,23 @@ class AnalysisSegmentationConfig:
                 "[analysis.segmentation].formats",
             )
 
-        try:
-            self.config = SegmentationConfig().load(
-                sub_sec, color_embedding_registry=color_embedding_registry
+        raw_config = _get_key(sub_sec, "config", required=False, default=None)
+        if not raw_config:
+            raise KeyError(
+                "[analysis.segmentation] requires at least one "
+                "[[analysis.segmentation.config]] entry."
             )
-        except KeyError:
-            self.config = {}
-            for key in sub_sec.keys():
-                self.config[key] = SegmentationConfig().load(
-                    _get_section(sub_sec, key),
-                    color_embedding_registry=color_embedding_registry,
-                )
-            try:
-                self.config = {}
-                for key in sub_sec.keys():
-                    self.config[key] = SegmentationConfig().load(
-                        _get_section(sub_sec, key),
-                        color_embedding_registry=color_embedding_registry,
-                    )
-            except KeyError as e:
-                raise KeyError(
-                    "Segmentation config must be either a single or multiple segmentations."
-                ) from e
+        if not isinstance(raw_config, list):
+            raise ValueError(
+                "analysis.segmentation.config must be a list of tables "
+                "(use [[analysis.segmentation.config]])."
+            )
+        self.config = [
+            SegmentationConfig().load(
+                entry, color_embedding_registry=color_embedding_registry
+            )
+            for entry in raw_config
+        ]
 
         folder = _get_key(sub_sec, "folder", required=False, type_=Path)
         if not folder:
