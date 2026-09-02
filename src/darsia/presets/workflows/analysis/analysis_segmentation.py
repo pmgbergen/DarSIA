@@ -61,11 +61,7 @@ def analysis_segmentation_from_context(
         all=False,
         sub_config=segmentation_config,
     )
-    _config = segmentation_config.config
-    if isinstance(_config, dict):
-        modes = [cfg.mode for cfg in _config.values() if cfg.mode is not None]
-    else:
-        modes = [_config.mode] if _config.mode is not None else []
+    modes = [cfg.mode for cfg in segmentation_config.config if cfg.mode is not None]
     requires_color_to_mass = any(mode_requires_color_to_mass(mode) for mode in modes)
     if requires_color_to_mass and ctx.color_to_mass_analysis is None:
         raise ValueError(
