@@ -53,13 +53,11 @@ def infer_require_color_to_mass_from_config(
 
     modes: list[str] = []
     if include_segmentation and config.analysis.segmentation is not None:
-        segmentation_config = config.analysis.segmentation.config
-        if isinstance(segmentation_config, dict):
-            modes.extend(
-                cfg.mode for cfg in segmentation_config.values() if cfg.mode is not None
-            )
-        elif segmentation_config.mode is not None:
-            modes.append(segmentation_config.mode)
+        modes.extend(
+            cfg.mode
+            for cfg in config.analysis.segmentation.config
+            if cfg.mode is not None
+        )
 
     if include_fingers and config.analysis.fingers is not None:
         fingers_config = config.analysis.fingers.config
