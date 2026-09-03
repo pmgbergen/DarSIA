@@ -55,7 +55,7 @@ def infer_require_color_to_mass_from_config(
     if include_segmentation and config.analysis.segmentation is not None:
         modes.extend(
             cfg.mode
-            for cfg in config.analysis.segmentation.config
+            for cfg in config.analysis.segmentation.config.values()
             if cfg.mode is not None
         )
 
