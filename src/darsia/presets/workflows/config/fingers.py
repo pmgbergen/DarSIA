@@ -82,7 +82,6 @@ class FingersConfig:
             "name": "Contour smoother",
             "help": "Contour smoothing algorithm.",
             "active_list_key": "active",
-            "group": "Contour processing",
         },
     )
     """Contour smoother selection and options."""
