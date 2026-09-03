@@ -3144,12 +3144,11 @@ class SettingsFactory:
                     # Write to array-of-tables style (e.g. [[format]], [[roi]])
                     self.main_window.config_dict[array_key] = result
                 else:
-                    # Write to nested table style (default): convert list to dict
-                    nested = {}
-                    for entry_dict in result:
-                        entry_name = entry_dict.pop("name")
-                        nested[entry_name] = entry_dict
-                    self.set_value(self.main_window.config_dict, key, nested)
+                    # Write to array-of-tables style with embedded "name" (default) —
+                    # matches the read-side list-to-dict conversion above and consumer
+                    # loaders (e.g. AnalysisSegmentationConfig, AnalysisFingersConfig)
+                    # which require [[<key>]] entries with a "name" field.
+                    self.set_value(self.main_window.config_dict, key, result)
 
         # Twelfth pass: parse format_key_list rows into list[str] (or single str)
         for key, value in self.main_window.settings_inputs.items():
