@@ -375,13 +375,12 @@ class AnalysisSegmentationConfig:
         },
     )
     """Output formats for segmentation images."""
-    config: list[SegmentationConfig] = field(
-        default_factory=list,
+    config: dict[str, SegmentationConfig] = field(
+        default_factory=dict,
         metadata={
             "name": "Config",
-            "help": "One or more segmentation configurations.",
-            "widget": "dataclass_list_map",
-            "title_field": "label",
+            "help": "One or more segmentation configurations, keyed by name.",
+            "widget": "dataclass_group_map",
         },
     )
     folder: Path | None = field(
@@ -434,15 +433,16 @@ class AnalysisSegmentationConfig:
             )
         if not isinstance(raw_config, list):
             raise ValueError(
-                "analysis.segmentation.config must be a list of tables "
+                "analysis.segmentation.config must be an array of tables "
                 "(use [[analysis.segmentation.config]])."
             )
-        self.config = [
-            SegmentationConfig().load(
+        self.config = {
+            entry.get("name", ""): SegmentationConfig().load(
                 entry, color_embedding_registry=color_embedding_registry
             )
             for entry in raw_config
-        ]
+            if entry.get("name")
+        }
 
         folder = _get_key(sub_sec, "folder", required=False, type_=Path)
         if not folder:

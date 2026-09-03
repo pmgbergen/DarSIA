@@ -73,6 +73,8 @@ class SegmentationValueLabelsConfig:
 class SegmentationConfig:
     """Configuration for segmentation."""
 
+    name: str | None = None
+    """Name/key for this segmentation configuration."""
     label: str | None = None
     """Label for segmentation."""
     mode: str | None = None
@@ -107,6 +109,7 @@ class SegmentationConfig:
     def load(
         self, sec: dict, color_embedding_registry: ColorEmbeddingRegistry | None = None
     ) -> "SegmentationConfig":
+        self.name = _get_key(sec, "name", required=False, default=None, type_=str)
         self.label = _get_key(sec, "label", required=True, type_=str)
         self.mode = _get_key(sec, "mode", required=True, type_=str)
         validate_mode_syntax(
