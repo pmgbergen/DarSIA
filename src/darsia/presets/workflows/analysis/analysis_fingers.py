@@ -135,7 +135,12 @@ def analysis_fingers_from_context(
     )
 
     # Extract finger analysis config (asserted not None above)
-    fingers_config = ctx.config.analysis.fingers.config
+    fingers_configs = ctx.config.analysis.fingers.config
+    # For now, process only the first configuration (refactor needed for multi-config)
+    if not fingers_configs:
+        raise ValueError("At least one fingers configuration is required.")
+    fingers_config = next(iter(fingers_configs.values()))
+
     assert fingers_config.roi is not None
 
     resolved_roi = ctx.config.roi_registry.resolve_rois(fingers_config.roi)
@@ -879,8 +884,8 @@ def analysis_fingers_from_context(
                         # this time are continuations of paths from the previous time point.
                         for curr in current_origin:
                             no_match = True
-                            for next in next_origin:
-                                if np.allclose(curr, next, atol=1e-10):
+                            for next_orig in next_origin:
+                                if np.allclose(curr, next_orig, atol=1e-10):
                                     no_match = False
                                     break
                             if no_match:
