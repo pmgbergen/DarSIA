@@ -220,6 +220,23 @@ class SettingsFactory:
         else:
             return field_or_result["rows"]
 
+    @staticmethod
+    def _extract_key_list_rows(rows):
+        """Extract deduplicated, stripped text values from a list of QComboBox rows.
+
+        Shared by all "key list" widget types (roi_key_list, registry_key_list,
+        format_key_list, color_key_list) at both the top-level save pass and inside
+        dataclass_group_map entries.
+        """
+        result = []
+        seen = set()
+        for combo in rows:
+            text = combo.currentText().strip()
+            if text and text not in seen:
+                result.append(text)
+                seen.add(text)
+        return result
+
     def __init__(self, main_window):
         self.main_window = main_window
         self.file_dialog = FileDialogHelper(main_window)
@@ -831,6 +848,52 @@ class SettingsFactory:
                     if field_name == "name":
                         continue
 
+                    # Handle multi-row key-list fields (roi_key_list, registry_key_list,
+                    # etc.) — need form_context to render header/add-row UI
+                    if field_schema.get("type") in {
+                        "roi_key_list",
+                        "registry_key_list",
+                        "format_key_list",
+                        "color_key_list",
+                    }:
+                        own_name = field_schema.get("name", field_name)
+                        target_form = self._get_or_create_group_form(
+                            group_forms, group_layout, own_name, own_name
+                        )
+                        # Temporarily inject entry value into config_dict so the widget's
+                        # create_setting_edit can read it via get_value()
+                        injected = (
+                            field_name in entry_data
+                            and entry_data[field_name] is not None
+                        )
+                        if injected:
+                            self.set_value(
+                                self.main_window.config_dict,
+                                field_schema["key"],
+                                entry_data[field_name],
+                            )
+                        try:
+                            label_text, field_widget = self.create_setting_edit(
+                                field_schema, {"form": target_form}
+                            )
+                        finally:
+                            if injected:
+                                self.main_window.config_dict.pop("entry", None)
+
+                        if isinstance(field_widget, dict) and "widget" in field_widget:
+                            target_form.addRow("", field_widget["widget"])
+                            field_widgets[field_name] = self._wrap_multi_row_result(
+                                field_widget
+                            )
+                            row_index = target_form.rowCount() - 1
+                            field_row_map[field_name] = (
+                                row_index,
+                                field_widget,
+                                field_schema,
+                                target_form,
+                            )
+                        continue
+
                     # Use create_setting_edit for all other fields (returns composite
                     # wrapper or group result)
                     label_text, field_widget = self.create_setting_edit(field_schema)
@@ -1035,10 +1098,10 @@ class SettingsFactory:
 
                 # Return enriched dict (thread array_key through for save-pass)
                 result = {
+                    "dataclass_group_map": True,
                     "widget": header_widget,
                     "entries": entries_data,
                 }
-                result = {"dataclass_group_map": True, "entries": entries_data}
                 if array_key:
                     result["array_key"] = array_key
                 return display_name, result
@@ -2923,13 +2986,7 @@ class SettingsFactory:
         # Tenth pass: parse registry_key_list rows into list[str]
         for key, value in self.main_window.settings_inputs.items():
             if isinstance(value, dict) and "registry_key_list" in value:
-                result = []
-                seen = set()
-                for combo in value["rows"]:
-                    text = combo.currentText().strip()
-                    if text and text not in seen:
-                        result.append(text)
-                        seen.add(text)
+                result = self._extract_key_list_rows(value["rows"])
                 # Write as list[str] (empty list if no selections, never None)
                 if result:
                     self.set_value(self.main_window.config_dict, key, result)
@@ -2993,6 +3050,23 @@ class SettingsFactory:
                                         nested_dict[sub_key.split(".", 1)[-1]] = val
                             if nested_dict:
                                 entry_dict[field_name] = nested_dict
+                            continue
+
+                        # Handle multi-row key-list fields (roi_key_list, etc.)
+                        if isinstance(field_widget, dict) and any(
+                            tag in field_widget
+                            for tag in (
+                                "roi_key_list",
+                                "registry_key_list",
+                                "format_key_list",
+                                "color_key_list",
+                            )
+                        ):
+                            result_list = self._extract_key_list_rows(
+                                field_widget.get("rows", [])
+                            )
+                            if result_list:
+                                entry_dict[field_name] = result_list
                             continue
 
                         # Unwrap composite widget to get the real control
@@ -3079,13 +3153,7 @@ class SettingsFactory:
         # Twelfth pass: parse format_key_list rows into list[str] (or single str)
         for key, value in self.main_window.settings_inputs.items():
             if isinstance(value, dict) and "format_key_list" in value:
-                result = []
-                seen = set()
-                for combo in value["rows"]:
-                    text = combo.currentText().strip()
-                    if text and text not in seen:
-                        result.append(text)
-                        seen.add(text)
+                result = self._extract_key_list_rows(value["rows"])
                 if value.get("max_rows") == 1:
                     self.set_value(
                         self.main_window.config_dict, key, result[0] if result else None
@@ -3098,13 +3166,7 @@ class SettingsFactory:
         # Fourteenth pass: parse roi_key_list rows into list[str] (or single str)
         for key, value in self.main_window.settings_inputs.items():
             if isinstance(value, dict) and "roi_key_list" in value:
-                result = []
-                seen = set()
-                for combo in value["rows"]:
-                    text = combo.currentText().strip()
-                    if text and text not in seen:
-                        result.append(text)
-                        seen.add(text)
+                result = self._extract_key_list_rows(value["rows"])
                 if value.get("max_rows") == 1:
                     self.set_value(
                         self.main_window.config_dict, key, result[0] if result else None
@@ -3117,13 +3179,7 @@ class SettingsFactory:
         # Fourteenth-and-a-half pass: parse color_key_list rows into list[str] (or single str)
         for key, value in self.main_window.settings_inputs.items():
             if isinstance(value, dict) and "color_key_list" in value:
-                result = []
-                seen = set()
-                for combo in value["rows"]:
-                    text = combo.currentText().strip()
-                    if text and text not in seen:
-                        result.append(text)
-                        seen.add(text)
+                result = self._extract_key_list_rows(value["rows"])
                 if value.get("max_rows") == 1:
                     self.set_value(
                         self.main_window.config_dict, key, result[0] if result else None
