@@ -73,19 +73,68 @@ class SegmentationValueLabelsConfig:
 class SegmentationConfig:
     """Configuration for segmentation."""
 
-    name: str | None = None
+    name: str | None = field(
+        default=None,
+        metadata={
+            "name": "Entry name",
+            "help": "Unique identifier/key for this segmentation configuration.",
+            "placeholder": "e.g., aqueous, gas",
+        },
+    )
     """Name/key for this segmentation configuration."""
-    label: str | None = None
+    label: str | None = field(
+        default=None,
+        metadata={
+            "name": "Label",
+            "help": "Display label for segmentation (e.g., 'CO2(aq)', 'CO2(g)').",
+            "placeholder": "e.g., CO2(aq)",
+        },
+    )
     """Label for segmentation."""
-    mode: str | None = None
+    mode: str | None = field(
+        default=None,
+        metadata={
+            "name": "Mode",
+            "help": "Segmentation mode (e.g., 'concentration_aq', 'saturation_g').",
+            "placeholder": "e.g., concentration_aq",
+        },
+    )
     """Type for segmentation."""
-    thresholds: list[float] = field(default_factory=list)
+    thresholds: list[float] = field(
+        default_factory=list,
+        metadata={
+            "name": "Thresholds",
+            "help": "List of threshold values for contour generation.",
+            "placeholder": "Threshold values, e.g., 0.05, 0.1, 0.5, 0.9",
+        },
+    )
     """List of thresholds."""
-    color: tuple[int, int, int] = field(default=(0, 0, 0))
+    color: tuple[int, int, int] = field(
+        default=(0, 0, 0),
+        metadata={
+            "name": "Color",
+            "help": "RGB color for contours [0-255, 0-255, 0-255].",
+            "placeholder": "RGB color, e.g., 255, 113, 107",
+        },
+    )
     """RGB color for contours."""
-    alpha: list[float] = field(default_factory=list)
+    alpha: list[float] = field(
+        default_factory=list,
+        metadata={
+            "name": "Alpha",
+            "help": "Opacity values for each threshold [0.0-1.0].",
+            "placeholder": "Opacity values, e.g., 0.6, 0.7, 0.9, 1.0",
+        },
+    )
     """Alpha values for contours."""
-    linewidth: int = 2
+    linewidth: int = field(
+        default=2,
+        metadata={
+            "name": "Line width",
+            "help": "Contour line thickness in pixels.",
+            "placeholder": "e.g., 8",
+        },
+    )
     """Line width for contour visualization."""
     values: SegmentationValueLabelsConfig = field(
         default_factory=SegmentationValueLabelsConfig
@@ -135,5 +184,5 @@ class SegmentationConfig:
 
     def error(self):
         raise ValueError(
-            f"Use [analysis.segmentation] in the config file to load segmentation."
+            "Use [analysis.segmentation] in the config file to load segmentation."
         )
