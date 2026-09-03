@@ -101,10 +101,10 @@ def test_contour_value_labels_toggle_changes_rendered_image():
         }
     )
 
-    without_values = SegmentationContours(cfg_no_values)(
+    without_values = SegmentationContours({"cfg": cfg_no_values})(
         img, saturation_g=None, concentration_aq=None, mass=values
     )
-    with_values = SegmentationContours(cfg_with_values)(
+    with_values = SegmentationContours({"cfg": cfg_with_values})(
         img, saturation_g=None, concentration_aq=None, mass=values
     )
 
@@ -124,7 +124,7 @@ def test_segmentation_contours_supports_rescaled_modes():
         }
     )
 
-    rendered = SegmentationContours(cfg)(
+    rendered = SegmentationContours({"cfg": cfg})(
         img,
         scalar_products={"rescaled_mass": values},
     )
@@ -146,7 +146,7 @@ def test_segmentation_contours_mass_alias_remains_supported():
         }
     )
 
-    rendered = SegmentationContours(cfg)(
+    rendered = SegmentationContours({"cfg": cfg})(
         img,
         scalar_products={"mass": values},
     )
@@ -156,8 +156,8 @@ def test_segmentation_contours_mass_alias_remains_supported():
 def test_select_label_positions_respects_spacing_and_cap():
     """Selected positions satisfy min distance and max-per-contour cap."""
     contour = cv2.ellipse2Poly((100, 100), (70, 40), 0, 0, 360, 3).reshape(-1, 1, 2)
-    seg = SegmentationContours(
-        SegmentationConfig().load(
+    seg = SegmentationContours({
+        "phase": SegmentationConfig().load(
             {
                 "label": "phase",
                 "mode": "mass",
@@ -165,7 +165,7 @@ def test_select_label_positions_respects_spacing_and_cap():
                 "color": [255, 0, 0],
             }
         )
-    )
+    })
 
     positions, _ = seg._select_label_positions(
         contour=contour,
