@@ -19,6 +19,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+SUPPORTED_ANALYSIS_FINGER_MODES = {
+    "mass",
+    "rescaled_mass",
+    "extensive_mass",
+    "extensive_rescaled_mass",
+    "saturation_g",
+    "rescaled_saturation_g",
+    "concentration_aq",
+    "rescaled_concentration_aq",
+}
+
 
 @dataclass
 class FingersConfig:
@@ -39,6 +50,7 @@ class FingersConfig:
             "name": "Mode",
             "help": "Analysis mode (e.g., 'mass', 'concentration_aq').",
             "placeholder": "e.g., mass",
+            "options": list(SUPPORTED_ANALYSIS_FINGER_MODES),
         },
     )
     """Type for segmentation."""
@@ -51,15 +63,16 @@ class FingersConfig:
         },
     )
     """Threshold for segmentation."""
-    roi: list[str] | None = field(
+    roi: str | None = field(
         default=None,
         metadata={
-            "name": "ROIs",
-            "help": "ROI definitions for finger analysis.",
+            "name": "ROI",
+            "help": "ROI definition for finger analysis.",
             "widget": "roi_key_list",
+            "max_rows": 1,
         },
     )
-    """ROIs for analysis."""
+    """ROI for analysis."""
     contour_smoother_selection: ContourSmootherSelection = field(
         default_factory=ContourSmootherSelection,
         metadata={
@@ -108,7 +121,7 @@ class FingersConfig:
         metadata={
             "name": "Gradient mode",
             "help": "Mode for gradient-based analysis, if included.",
-            "placeholder": "e.g., mass",
+            "options": list(SUPPORTED_ANALYSIS_FINGER_MODES),
         },
     )
     """Mode for gradient-based analysis, if included."""
@@ -133,14 +146,17 @@ class FingersConfig:
         )
         self.threshold = _get_key(sec, "threshold", required=True, type_=float)
 
-        # Load ROIs – support registry-key references as list[str].
-        self.roi = _load_roi_key_list(
+        # Load ROI – single selection (max_rows=1 in GUI)
+        roi_list = _load_roi_key_list(
             sec,
             "roi",
             context="analysis.fingers.roi",
             roi_registry=roi_registry,
+            allow_str=True,
             none_if_absent=True,
         )
+        # Extract single ROI name if list provided, or use directly if string
+        self.roi = roi_list[0] if isinstance(roi_list, list) and roi_list else roi_list
 
         # Load contour smoother
         self.contour_smoother_selection = ContourSmootherSelection().load(sec)
@@ -186,4 +202,4 @@ class FingersConfig:
         return self
 
     def error(self):
-        raise ValueError(f"Use [analysis.fingers] in the config file to load fingers.")
+        raise ValueError("Use [analysis.fingers] in the config file to load fingers.")
