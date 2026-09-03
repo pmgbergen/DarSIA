@@ -238,6 +238,7 @@ box_padding = 10
 [analysis.segmentation]
 
 [[analysis.segmentation.config]]
+name = "aqueous"
 label = "CO2(aq)"
 mode = "concentration_aq"
 thresholds = [0.05, 0.1, 0.5, 0.9]
@@ -255,6 +256,7 @@ value_format = "{:.2f}"
 contour_smoother = "savitzky_golay" # If chosen, contours are smoothed.
 
 [[analysis.segmentation.config]]
+name = "gas"
 label = "CO2(g)"
 mode = "saturation_g"
 thresholds = [0.01, 0.05, 0.5]
