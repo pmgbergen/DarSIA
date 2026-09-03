@@ -22,29 +22,96 @@ logger = logging.getLogger(__name__)
 class SegmentationValueLabelsConfig:
     """Configuration for optional contour value labels."""
 
-    show_values: bool = False
-    """Whether to plot threshold values along contours."""
-    value_color: tuple[int, int, int] = field(default=(0, 0, 0))
+    active: bool = field(
+        default=False,
+        metadata={
+            "name": "Activate value labels",
+            "help": (
+                "When enabled, threshold values are plotted along contours. "
+                "Other settings below are preserved even when disabled."
+            ),
+            "section_active": True,
+            "hidden": True,
+        },
+    )
+    """Whether to enable value labels on contours."""
+    value_color: tuple[int, int, int] = field(
+        default=(0, 0, 0),
+        metadata={
+            "name": "Color",
+            "help": "RGB color for value labels.",
+            "placeholder": "255, 255, 255",
+        },
+    )
     """RGB color for contour value labels."""
-    value_size: float = 0.5
+    value_size: float = field(
+        default=0.5,
+        metadata={
+            "name": "Font size",
+            "help": "Font scale factor for value labels.",
+            "placeholder": "0.5",
+        },
+    )
     """Font scale for contour value labels."""
-    value_alpha: float = 1.0
+    value_alpha: float = field(
+        default=1.0,
+        metadata={
+            "name": "Opacity",
+            "help": "Alpha value (opacity) for value labels [0.0-1.0].",
+            "placeholder": "1.0",
+        },
+    )
     """Alpha value for contour value labels."""
-    value_density: float = 0.35
+    value_density: float = field(
+        default=0.35,
+        metadata={
+            "name": "Label density",
+            "help": "Density of labels along contours [0.0-1.0].",
+            "placeholder": "0.35",
+        },
+    )
     """Label density along contours."""
-    value_min_distance_px: float = 40.0
+    value_min_distance_px: float = field(
+        default=40.0,
+        metadata={
+            "name": "Min distance (px)",
+            "help": "Minimum pixel distance between adjacent labels.",
+            "placeholder": "40.0",
+        },
+    )
     """Minimum pixel distance between two labels."""
-    value_max_per_contour: int = 3
+    value_max_per_contour: int = field(
+        default=3,
+        metadata={
+            "name": "Max labels per contour",
+            "help": "Maximum number of labels per contour.",
+            "placeholder": "3",
+        },
+    )
     """Maximum number of labels per contour."""
-    value_format: str = "{:.2f}"
+    value_format: str = field(
+        default="{:.2f}",
+        metadata={
+            "name": "Format string",
+            "help": "Python format string for threshold values (e.g., '{:.2f}').",
+            "placeholder": "{:.2f}",
+        },
+    )
     """Format string used for threshold values."""
+
+    @property
+    def show_values(self) -> bool:
+        """Shallow wrapper for `active` to keep GUI and analysis code in sync.
+
+        TODO: Consolidate `active` and `show_values` into a single field after
+        refactoring downstream consumers to use `active` directly.
+        """
+        return self.active
 
     def load(
         self, sec: dict, default_color: list[int]
     ) -> "SegmentationValueLabelsConfig":
-        self.show_values = _get_key(
-            sec, "show_values", default=False, required=False, type_=bool
-        )
+        self.active = _get_key(sec, "active", default=False, required=False, type_=bool)
         self.value_color = _get_key(
             sec, "value_color", default=default_color, required=False, type_=tuple
         )
@@ -137,7 +204,12 @@ class SegmentationConfig:
     )
     """Line width for contour visualization."""
     values: SegmentationValueLabelsConfig = field(
-        default_factory=SegmentationValueLabelsConfig
+        default_factory=SegmentationValueLabelsConfig,
+        metadata={
+            "name": "Show labels",
+            "help": "Optional contour value label configuration.",
+            "active_list_key": "active",
+        },
     )
     """Contour value labels configuration."""
     contour_smoother_selection: ContourSmootherSelection = field(
