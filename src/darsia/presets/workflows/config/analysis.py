@@ -797,9 +797,13 @@ class AnalysisFingersConfig:
         },
     )
     """Output formats for fingers analysis images."""
-    config: FingersConfig | dict[str, FingersConfig] = field(
-        default_factory=lambda: FingersConfig(),
-        metadata={"name": "Config", "hidden": True},
+    config: dict[str, FingersConfig] = field(
+        default_factory=dict,
+        metadata={
+            "name": "Config",
+            "help": "One or more fingers configurations, keyed by name.",
+            "widget": "dataclass_group_map",
+        },
     )
     folder: Path | None = field(
         default=None,
@@ -819,7 +823,6 @@ class AnalysisFingersConfig:
         color_embedding_registry: ColorEmbeddingRegistry | None = None,
         format_registry: "FormatRegistry | None" = None,
     ) -> "AnalysisFingersConfig":
-        # Allow for two scenarios: single fingers or multiple fingers
         sub_sec = _get_section(sec, "fingers")
 
         self.data_selection = _get_key(
@@ -842,32 +845,25 @@ class AnalysisFingersConfig:
                 "[analysis.fingers].formats",
             )
 
-        try:
-            self.config = FingersConfig().load(
-                sub_sec,
+        raw_config = _get_key(sub_sec, "config", required=False, default=None)
+        if not raw_config:
+            raise KeyError(
+                "[analysis.fingers] requires at least one entry under "
+                "[analysis.fingers.config.<name>]."
+            )
+        if not isinstance(raw_config, dict):
+            raise ValueError(
+                "analysis.fingers.config must be a table of named entries "
+                "(use [analysis.fingers.config.<name>])."
+            )
+        self.config = {
+            name: FingersConfig().load(
+                entry,
                 roi_registry=roi_registry,
                 color_embedding_registry=color_embedding_registry,
             )
-        except KeyError:
-            self.config = {}
-            for key in sub_sec.keys():
-                self.config[key] = FingersConfig().load(
-                    _get_section(sub_sec, key),
-                    roi_registry=roi_registry,
-                    color_embedding_registry=color_embedding_registry,
-                )
-            try:
-                self.config = {}
-                for key in sub_sec.keys():
-                    self.config[key] = FingersConfig().load(
-                        _get_section(sub_sec, key),
-                        roi_registry=roi_registry,
-                        color_embedding_registry=color_embedding_registry,
-                    )
-            except KeyError as e:
-                raise KeyError(
-                    "Fingers config must be either a single or multiple fingers."
-                ) from e
+            for name, entry in raw_config.items()
+        }
 
         folder = _get_key(sub_sec, "folder", required=False, type_=Path)
         if not folder:
