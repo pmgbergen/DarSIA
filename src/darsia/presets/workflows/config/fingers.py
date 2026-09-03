@@ -24,9 +24,32 @@ logger = logging.getLogger(__name__)
 class FingersConfig:
     """Configuration for fingers."""
 
-    mode: str | None = None
+    name: str | None = field(
+        default=None,
+        metadata={
+            "name": "Entry name",
+            "help": "Unique identifier/key for this fingers configuration.",
+            "placeholder": "e.g., primary, secondary",
+        },
+    )
+    """Name/key for this fingers configuration."""
+    mode: str | None = field(
+        default=None,
+        metadata={
+            "name": "Mode",
+            "help": "Analysis mode (e.g., 'mass', 'concentration_aq').",
+            "placeholder": "e.g., mass",
+        },
+    )
     """Type for segmentation."""
-    threshold: float = 0.0
+    threshold: float = field(
+        default=0.0,
+        metadata={
+            "name": "Threshold",
+            "help": "Threshold value for finger detection.",
+            "placeholder": "0.0",
+        },
+    )
     """Threshold for segmentation."""
     roi: list[str] | None = field(
         default=None,
@@ -46,15 +69,48 @@ class FingersConfig:
         },
     )
     """Contour smoother selection and options."""
-    reduce_to_main_contour: bool = True
+    reduce_to_main_contour: bool = field(
+        default=True,
+        metadata={
+            "name": "Reduce to main contour",
+            "help": "Whether to keep only the main contour (e.g., for mass mode).",
+        },
+    )
     """Whether to reduce to main contour (e.g. for mass mode)."""
-    fill_holes: bool = False
+    fill_holes: bool = field(
+        default=False,
+        metadata={
+            "name": "Fill holes",
+            "help": "Whether to fill holes in finger segmentation masks.",
+        },
+    )
     """Whether to fill holes in finger segmentation masks before contour extraction."""
-    include_skeleton_analysis: bool = False
+    include_skeleton_analysis: bool = field(
+        default=False,
+        metadata={
+            "name": "Include skeleton analysis",
+            "help": "Whether to include skeleton analysis in the workflow.",
+        },
+    )
     """Whether to include skeleton analysis in the fingers workflow."""
-    include_gradient_based_analysis: bool = False
+    include_gradient_based_analysis: bool = field(
+        default=False,
+        metadata={
+            "name": "Include gradient analysis",
+            "help": (
+                "Whether to include gradient-based analysis (requires gradient_mode)."
+            ),
+        },
+    )
     """Whether to include gradient-based analysis in the fingers workflow."""
-    gradient_mode: str | None = None
+    gradient_mode: str | None = field(
+        default=None,
+        metadata={
+            "name": "Gradient mode",
+            "help": "Mode for gradient-based analysis, if included.",
+            "placeholder": "e.g., mass",
+        },
+    )
     """Mode for gradient-based analysis, if included."""
 
     @property
@@ -68,6 +124,7 @@ class FingersConfig:
         roi_registry: RoiRegistry | None = None,
         color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "FingersConfig":
+        self.name = _get_key(sec, "name", required=False, default=None, type_=str)
         self.mode = _get_key(sec, "mode", required=True, type_=str)
         validate_mode_syntax(
             self.mode,
