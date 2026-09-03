@@ -263,6 +263,9 @@ def test_analysis_segmentation_accepts_rescaled_mode(tmp_path: Path) -> None:
         """
 [analysis]
 [analysis.segmentation]
+
+[[analysis.segmentation.config]]
+name = "gas"
 label = "Gas contour"
 mode = "rescaled_saturation_g"
 thresholds = [0.1]
@@ -277,7 +280,7 @@ color = [255, 0, 0]
     )
 
     assert config.segmentation is not None
-    assert config.segmentation.config.mode == "rescaled_saturation_g"
+    assert config.segmentation.config["gas"].mode == "rescaled_saturation_g"
 
 
 def test_analysis_segmentation_rejects_invalid_mode(tmp_path: Path) -> None:
@@ -286,6 +289,9 @@ def test_analysis_segmentation_rejects_invalid_mode(tmp_path: Path) -> None:
         """
 [analysis]
 [analysis.segmentation]
+
+[[analysis.segmentation.config]]
+name = "bad"
 label = "Bad contour"
 mode = "invalid_mode"
 thresholds = [0.1]
@@ -307,6 +313,9 @@ def test_analysis_segmentation_rejects_invalid_color_mode_token(tmp_path: Path) 
         """
 [analysis]
 [analysis.segmentation]
+
+[[analysis.segmentation.config]]
+name = "bad"
 label = "Bad contour"
 mode = "color.rgb.r"
 thresholds = [0.1]
