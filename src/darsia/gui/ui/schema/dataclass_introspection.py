@@ -320,7 +320,6 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 # Infer fixed_length from tuple[X, ...] arity (the type is the source of truth)
                 setting_dict["fixed_length"] = _infer_fixed_length(inner_type)
             elif widget_type == "dataclass_group_map":
-                # Infer entry_dataclass from dict[str, X] type annotation
                 args = get_args(field_type)
                 if len(args) == 2 and is_dataclass(args[1]):
                     setting_dict["entry_dataclass"] = args[1]

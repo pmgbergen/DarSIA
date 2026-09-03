@@ -722,10 +722,8 @@ class SettingsFactory:
             display_name = setting_dict.get("name", key)
         except Exception as e:
             self.main_window.print_log(f"Error extracting setting dict keys: {e}")
-            return setting_dict.get("name", "Unknown"), {
-                "dataclass_group_map": True,
-                "entries": [],
-            }
+            result = {"dataclass_group_map": True, "entries": []}
+            return setting_dict.get("name", "Unknown"), result
 
         # Read existing entries from config_dict
         # For array-of-tables TOML (marked by metadata), read from config_dict[array_key]
@@ -733,7 +731,6 @@ class SettingsFactory:
         try:
             array_key = setting_dict.get("array_key")
             if array_key:
-                # Array-of-tables style: [[format]], [[roi]], etc.
                 entry_list = self.main_window.config_dict.get(array_key, [])
                 value = {
                     entry.get("name", ""): entry
@@ -741,10 +738,16 @@ class SettingsFactory:
                     if entry.get("name")
                 }
             else:
-                # Generic nested-table style
                 value = self.get_value(self.main_window.config_dict, key)
                 if value is None:
                     value = {}
+                elif isinstance(value, list):
+                    # Convert array-of-tables list to dict keyed by "name"
+                    value = {
+                        entry.get("name", ""): entry
+                        for entry in value
+                        if entry.get("name")
+                    }
 
             entries_data = []  # List of {name, widget, fields, field_widgets}
             entry_schema_list = _build_fields(
@@ -757,13 +760,15 @@ class SettingsFactory:
             import traceback
 
             self.main_window.print_log(traceback.format_exc())
-            return display_name, {"dataclass_group_map": True, "entries": []}
+            result = {"dataclass_group_map": True, "entries": []}
+            return display_name, result
 
         try:
             add_button = QPushButton("Add Entry")
         except Exception as e:
             self.main_window.print_log(f"Error creating add button: {e}")
-            return display_name, {"dataclass_group_map": True, "entries": []}
+            result = {"dataclass_group_map": True, "entries": []}
+            return display_name, result
 
         if form_context:
             try:
@@ -782,7 +787,8 @@ class SettingsFactory:
                 import traceback
 
                 self.main_window.print_log(traceback.format_exc())
-                return display_name, {"dataclass_group_map": True, "entries": []}
+                result = {"dataclass_group_map": True, "entries": []}
+                return display_name, result
 
             def add_entry(entry_name="", entry_data=None):
                 """Add one entry group box with labeled sub-fields."""
@@ -978,12 +984,12 @@ class SettingsFactory:
                 entry = {
                     "name": entry_name,
                     "widget": group_box,
-                    "name_edit": name_edit,
                     "fields": field_widgets,
                     "field_schemas": {
                         fs["key"].split(".", 1)[-1]: fs for fs in entry_schema_list
                     },
                     "remove_button": remove_button,
+                    "name_edit": name_edit,
                 }
                 entries_data.append(entry)
                 refresh_remove_buttons()
@@ -1023,16 +1029,16 @@ class SettingsFactory:
                             entry_data if isinstance(entry_data, dict) else {},
                         )
                 elif setting_dict.get("auto_add_empty", False):
-                    # Auto-create one empty entry if list is empty (unless disabled via
+                    # Auto-create one empty entry if dict is empty (unless disabled via
                     # metadata)
                     add_entry()
 
                 # Return enriched dict (thread array_key through for save-pass)
                 result = {
                     "widget": header_widget,
-                    "dataclass_group_map": True,
                     "entries": entries_data,
                 }
+                result = {"dataclass_group_map": True, "entries": entries_data}
                 if array_key:
                     result["array_key"] = array_key
                 return display_name, result
@@ -1042,8 +1048,8 @@ class SettingsFactory:
 
                 self.main_window.print_log(traceback.format_exc())
                 fallback = {
-                    "widget": header_widget,
                     "dataclass_group_map": True,
+                    "widget": header_widget,
                     "entries": entries_data,
                 }
                 if array_key:
@@ -1051,7 +1057,8 @@ class SettingsFactory:
                 return display_name, fallback
 
         else:
-            return display_name, {"dataclass_group_map": True, "entries": []}
+            result = {"dataclass_group_map": True, "entries": []}
+            return display_name, result
 
     def create_registry_key_list_input(self, setting_dict, form_context=None):
         """Create a multi-row registry-key selector with dropdowns.
@@ -3062,8 +3069,12 @@ class SettingsFactory:
                     # Write to array-of-tables style (e.g. [[format]], [[roi]])
                     self.main_window.config_dict[array_key] = result
                 else:
-                    # Write to nested table style (default)
-                    self.set_value(self.main_window.config_dict, key, result)
+                    # Write to nested table style (default): convert list to dict
+                    nested = {}
+                    for entry_dict in result:
+                        entry_name = entry_dict.pop("name")
+                        nested[entry_name] = entry_dict
+                    self.set_value(self.main_window.config_dict, key, nested)
 
         # Twelfth pass: parse format_key_list rows into list[str] (or single str)
         for key, value in self.main_window.settings_inputs.items():
