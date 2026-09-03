@@ -629,8 +629,8 @@ class AnalysisMassConfig:
 class AnalysisVolumeConfig:
     """Configuration for volume analysis."""
 
-    data_selection: str | list[str] | None = field(
-        default=None,
+    data_selection: list[str] = field(
+        default_factory=list,
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is used for volume analysis.",
