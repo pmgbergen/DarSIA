@@ -995,18 +995,15 @@ class SettingsFactory:
 
                     # Unwrap composite widget to get the real control
                     unwrapped_driver = unwrap_composite_widget(driver_widget)
-                    if isinstance(unwrapped_driver, QComboBox):
-                        driver_combo = unwrapped_driver
-                    else:
-                        continue
 
-                    # Create visibility handler supporting both single and list values
+                    # Create visibility handler supporting both single and list values,
+                    # for either a QComboBox (str) or QCheckBox (bool) driver
                     def make_visibility_handler(row_idx, required_val, form):
-                        def handler(current_text):
+                        def handler(current_value):
                             is_visible = (
-                                current_text in required_val
+                                current_value in required_val
                                 if isinstance(required_val, (list, set, tuple))
-                                else current_text == required_val
+                                else current_value == required_val
                             )
                             form.setRowVisible(row_idx, is_visible)
 
@@ -1015,10 +1012,14 @@ class SettingsFactory:
                     handler = make_visibility_handler(
                         row_index, driver_value, field_target_form
                     )
-                    driver_combo.currentTextChanged.connect(handler)
-
-                    # Set initial visibility
-                    handler(driver_combo.currentText())
+                    if isinstance(unwrapped_driver, QComboBox):
+                        unwrapped_driver.currentTextChanged.connect(handler)
+                        handler(unwrapped_driver.currentText())
+                    elif isinstance(unwrapped_driver, QCheckBox):
+                        unwrapped_driver.toggled.connect(handler)
+                        handler(unwrapped_driver.isChecked())
+                    else:
+                        continue
 
                 # Remove button
                 remove_button = QPushButton("Remove")
