@@ -61,12 +61,9 @@ def infer_require_color_to_mass_from_config(
 
     if include_fingers and config.analysis.fingers is not None:
         fingers_config = config.analysis.fingers.config
-        if isinstance(fingers_config, dict):
-            modes.extend(
-                cfg.mode for cfg in fingers_config.values() if cfg.mode is not None
-            )
-        elif fingers_config.mode is not None:
-            modes.append(fingers_config.mode)
+        modes.extend(
+            cfg.mode for cfg in fingers_config.values() if cfg.mode is not None
+        )
 
     if include_thresholding and config.analysis.thresholding is not None:
         modes.extend(
