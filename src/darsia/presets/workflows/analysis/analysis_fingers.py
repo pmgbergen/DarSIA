@@ -143,7 +143,8 @@ def analysis_fingers_from_context(
 
     assert fingers_config.roi is not None
 
-    resolved_roi = ctx.config.roi_registry.resolve_rois(fingers_config.roi)
+    # Resolve single ROI to RoiConfig
+    resolved_roi = ctx.config.roi_registry.resolve_rois([fingers_config.roi])
 
     requires_color_to_mass = mode_requires_color_to_mass(fingers_config.mode)
     if requires_color_to_mass and ctx.color_to_mass_analysis is None:
@@ -188,17 +189,16 @@ def analysis_fingers_from_context(
         path_categories.append("interface_paths")
 
     # Keep evolution state per ROI to prevent mixing path histories across ROIs.
-    evolution_times = {key: [] for key in fingers_config.roi}
+    roi_keys = [fingers_config.roi]
+    evolution_times = {key: [] for key in roi_keys}
     evolution_analysis = {}
     for key in categories:
-        evolution_analysis[key] = {
-            key: PathEvolutionAnalysis() for key in fingers_config.roi
-        }
+        evolution_analysis[key] = {key: PathEvolutionAnalysis() for key in roi_keys}
 
     # Data management.
     results_folder = ctx.config.analysis.fingers.folder
     results_folder.mkdir(parents=True, exist_ok=True)
-    for key in fingers_config.roi:
+    for key in roi_keys:
         (results_folder / "tips" / key).mkdir(parents=True, exist_ok=True)
         (results_folder / "fjords" / key).mkdir(parents=True, exist_ok=True)
         (results_folder / "paths" / key).mkdir(parents=True, exist_ok=True)
