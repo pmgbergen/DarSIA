@@ -137,12 +137,12 @@ class GradientBasedSegmentation(SimpleSegmentation):
 class SegmentationContours:
     """Threshold based segmentation analysis."""
 
-    def __init__(self, config: list[SegmentationConfig]) -> None:
+    def __init__(self, config: dict[str, SegmentationConfig]) -> None:
         self.config = config
 
     def requested_modes(self) -> set[str]:
         """Return configured segmentation modes."""
-        return {cfg.mode for cfg in self.config}
+        return {cfg.mode for cfg in self.config.values()}
 
     def extract_mask(
         self, img: darsia.ScalarImage, thresholds: list[float]
@@ -382,7 +382,7 @@ class SegmentationContours:
             mass_analysis_result = _compose_mass_analysis_result(
                 saturation_g, concentration_aq, mass
             )
-        for segmentation_config in self.config:
+        for segmentation_config in self.config.values():
             values = resolve_mode_image(
                 segmentation_config.mode,
                 img,
