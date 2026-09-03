@@ -47,7 +47,7 @@ def test_segmentation_config_value_labels_nested_override():
         "show_values": False,
         "value_color": [10, 10, 10],
         "values": {
-            "show_values": True,
+            "active": True,
             "value_color": [1, 2, 3],
             "value_size": 0.9,
             "value_alpha": 0.6,
@@ -80,7 +80,7 @@ def test_contour_value_labels_toggle_changes_rendered_image():
             "color": [255, 0, 0],
             "alpha": [1.0],
             "linewidth": 2,
-            "show_values": False,
+            "values": {"active": False},
         }
     )
     cfg_with_values = SegmentationConfig().load(
@@ -91,13 +91,15 @@ def test_contour_value_labels_toggle_changes_rendered_image():
             "color": [255, 0, 0],
             "alpha": [1.0],
             "linewidth": 2,
-            "show_values": True,
-            "value_color": [255, 255, 255],
-            "value_size": 0.6,
-            "value_density": 1.0,
-            "value_min_distance_px": 15.0,
-            "value_max_per_contour": 4,
-            "value_format": "{:.1f}",
+            "values": {
+                "active": True,
+                "value_color": [255, 255, 255],
+                "value_size": 0.6,
+                "value_density": 1.0,
+                "value_min_distance_px": 15.0,
+                "value_max_per_contour": 4,
+                "value_format": "{:.1f}",
+            },
         }
     )
 
