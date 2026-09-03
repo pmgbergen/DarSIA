@@ -848,21 +848,22 @@ class AnalysisFingersConfig:
         raw_config = _get_key(sub_sec, "config", required=False, default=None)
         if not raw_config:
             raise KeyError(
-                "[analysis.fingers] requires at least one entry under "
-                "[analysis.fingers.config.<name>]."
+                "[analysis.fingers] requires at least one "
+                "[[analysis.fingers.config]] entry."
             )
-        if not isinstance(raw_config, dict):
+        if not isinstance(raw_config, list):
             raise ValueError(
-                "analysis.fingers.config must be a table of named entries "
-                "(use [analysis.fingers.config.<name>])."
+                "analysis.fingers.config must be an array of tables "
+                "(use [[analysis.fingers.config]])."
             )
         self.config = {
-            name: FingersConfig().load(
+            entry.get("name", ""): FingersConfig().load(
                 entry,
                 roi_registry=roi_registry,
                 color_embedding_registry=color_embedding_registry,
             )
-            for name, entry in raw_config.items()
+            for entry in raw_config
+            if entry.get("name")
         }
 
         folder = _get_key(sub_sec, "folder", required=False, type_=Path)
