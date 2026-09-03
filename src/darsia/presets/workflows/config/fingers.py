@@ -51,18 +51,10 @@ class FingersConfig:
             "help": "Analysis mode (e.g., 'mass', 'concentration_aq').",
             "placeholder": "e.g., mass",
             "options": list(SUPPORTED_ANALYSIS_FINGER_MODES),
+            "group": "Contour",
         },
     )
     """Type for segmentation."""
-    threshold: float = field(
-        default=0.0,
-        metadata={
-            "name": "Threshold",
-            "help": "Threshold value for finger detection.",
-            "placeholder": "0.0",
-        },
-    )
-    """Threshold for segmentation."""
     roi: str | None = field(
         default=None,
         metadata={
@@ -70,15 +62,27 @@ class FingersConfig:
             "help": "ROI definition for finger analysis.",
             "widget": "roi_key_list",
             "max_rows": 1,
+            "group": "Contour",
         },
     )
     """ROI for analysis."""
+    threshold: float = field(
+        default=0.0,
+        metadata={
+            "name": "Threshold",
+            "help": "Threshold value for finger detection.",
+            "placeholder": "0.0",
+            "group": "Contour",
+        },
+    )
+    """Threshold for segmentation."""
     contour_smoother_selection: ContourSmootherSelection = field(
         default_factory=ContourSmootherSelection,
         metadata={
             "name": "Contour smoother",
             "help": "Contour smoothing algorithm.",
             "active_list_key": "active",
+            "group": "Contour processing",
         },
     )
     """Contour smoother selection and options."""
@@ -87,6 +91,7 @@ class FingersConfig:
         metadata={
             "name": "Reduce to main contour",
             "help": "Whether to keep only the main contour (e.g., for mass mode).",
+            "group": "Contour processing",
         },
     )
     """Whether to reduce to main contour (e.g. for mass mode)."""
@@ -95,6 +100,7 @@ class FingersConfig:
         metadata={
             "name": "Fill holes",
             "help": "Whether to fill holes in finger segmentation masks.",
+            "group": "Contour processing",
         },
     )
     """Whether to fill holes in finger segmentation masks before contour extraction."""
@@ -103,6 +109,7 @@ class FingersConfig:
         metadata={
             "name": "Include skeleton analysis",
             "help": "Whether to include skeleton analysis in the workflow.",
+            "group": "Extra analysis",
         },
     )
     """Whether to include skeleton analysis in the fingers workflow."""
@@ -113,6 +120,7 @@ class FingersConfig:
             "help": (
                 "Whether to include gradient-based analysis (requires gradient_mode)."
             ),
+            "group": "Extra analysis",
         },
     )
     """Whether to include gradient-based analysis in the fingers workflow."""
@@ -122,6 +130,11 @@ class FingersConfig:
             "name": "Gradient mode",
             "help": "Mode for gradient-based analysis, if included.",
             "options": list(SUPPORTED_ANALYSIS_FINGER_MODES),
+            "depends_on": {
+                "field": "include_gradient_based_analysis",
+                "value": True,
+            },
+            "group": "Extra analysis",
         },
     )
     """Mode for gradient-based analysis, if included."""
