@@ -82,23 +82,7 @@ def format_roi_template(corner_1: np.ndarray, corner_2: np.ndarray) -> str:
 
 
 def _copy_roi_to_clipboard(template: str) -> None:
-    try:
-        import tkinter as tk
-    except ModuleNotFoundError:
-        logger.info("ROI template:\n%s", template)
-        return
-
-    try:
-        root = tk.Tk()
-        root.withdraw()
-        root.clipboard_clear()
-        root.clipboard_append(template)
-        logger.info("ROI template copied to clipboard.")
-    except Exception as exc:  # pragma: no cover - platform specific
-        logger.warning(f"Copy to clipboard failed:\n{exc}")
-    finally:
-        if "root" in locals():
-            root.destroy()
+    raise NotImplementedError
 
 
 def _box_from_zoom_limits(
