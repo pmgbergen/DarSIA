@@ -88,6 +88,11 @@ def build_parser_for_analysis():
         help="Directory to write streamed preview PNGs to. Required with --stream.",
     )
     parser.add_argument(
+        "--progress",
+        action="store_true",
+        help="Emit per-image progress events (step/image count) as stdout lines.",
+    )
+    parser.add_argument(
         "--info", action="store_true", help="Provide help for activated flags."
     )
     return parser
@@ -329,23 +334,26 @@ def run_analysis(
         )
 
 
-def _stream_progress_wrapper(
-    seq_cell: dict[str, int],
+def _progress_wrapper(
+    seq_cell: dict[str, int] | None = None,
 ) -> Callable[[AnalysisProgressEvent], None]:
-    """Progress wrapper used only to correlate streamed frames with their real
-    image index/datetime for the Streaming Preview panel's timeline slider.
-    Not a general progress reporter (see Batch Monitor, out of scope here) —
-    only "image_progress" events are forwarded, tagged with the same seq
-    value the immediately-preceding stream_callback call just used.
+    """Progress wrapper that prints every progress event as a stdout line.
+
+    Used both for the minimal status-bar batch monitor (all event types:
+    step_start carries image_total before any image has been processed,
+    image_progress carries the running count, step_complete marks a mode
+    finishing) and, when seq_cell is given, to additionally correlate
+    streamed frames with their real image index/datetime for the Streaming
+    Preview panel's timeline slider — only "image_progress" events are
+    tagged with the same seq value the immediately-preceding stream_callback
+    call just used.
     """
 
     def _callback(event: AnalysisProgressEvent) -> None:
-        if event.get("event") != "image_progress":
-            return
-        print(
-            encode_progress_line({**event, "seq": seq_cell["n"]}),
-            flush=True,
-        )
+        payload = event
+        if seq_cell is not None and event.get("event") == "image_progress":
+            payload = {**event, "seq": seq_cell["n"]}
+        print(encode_progress_line(payload), flush=True)
 
     return _callback
 
@@ -354,14 +362,18 @@ def preset_analysis(rig_cls: type[Rig], **kwargs):
     parser = build_parser_for_analysis()
     args = parser.parse_args()
     print_help_for_flags(args, parser)
-    if getattr(args, "stream", False) and "stream_callback" not in kwargs:
+    streaming = getattr(args, "stream", False)
+    seq_cell = {"n": 0} if streaming else None
+    if streaming and "stream_callback" not in kwargs:
         if not args.stream_cache_dir:
             raise ValueError("--stream requires --stream-cache-dir.")
-        seq_cell = {"n": 0}
         kwargs["stream_callback"] = build_file_cache_stream_callback(
             Path(args.stream_cache_dir), seq_cell
         )
-        kwargs.setdefault("progress_callback", _stream_progress_wrapper(seq_cell))
+    if (
+        streaming or getattr(args, "progress", False)
+    ) and "progress_callback" not in kwargs:
+        kwargs["progress_callback"] = _progress_wrapper(seq_cell)
     run_analysis(rig_cls, args, **kwargs)
 
 
