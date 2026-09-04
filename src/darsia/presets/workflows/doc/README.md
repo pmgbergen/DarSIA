@@ -15,7 +15,6 @@ This section documents the maintained presets/workflows interface in DarSIA.
 - [Analysis deep-dive](./analysis.md)
 - [Finger analysis](./finger_analysis.md)
 - [Comparison workflow](./workflow-comparison.md)
-- [GUI workflow](./workflow-gui.md)
 
 ## Configuration reference
 - [Full config reference](./config-reference.md)
