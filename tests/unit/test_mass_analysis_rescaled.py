@@ -130,7 +130,9 @@ def test_analysis_mass_writes_default_artifacts_only(
     )
 
     monkeypatch.setattr(
-        analysis_mass_module, "select_image_paths", lambda *args, **kwargs: ctx.image_paths
+        analysis_mass_module,
+        "select_image_paths",
+        lambda *args, **kwargs: ctx.image_paths,
     )
 
     def _stream_callback(payload):
@@ -237,7 +239,9 @@ def test_analysis_mass_writes_configured_export_subset_with_extensive_modes(
     )
 
     monkeypatch.setattr(
-        analysis_mass_module, "select_image_paths", lambda *args, **kwargs: ctx.image_paths
+        analysis_mass_module,
+        "select_image_paths",
+        lambda *args, **kwargs: ctx.image_paths,
     )
 
     analysis_mass_from_context(ctx)
@@ -340,7 +344,9 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
     )
 
     monkeypatch.setattr(
-        analysis_mass_module, "select_image_paths", lambda *args, **kwargs: ctx.image_paths
+        analysis_mass_module,
+        "select_image_paths",
+        lambda *args, **kwargs: ctx.image_paths,
     )
 
     analysis_mass_from_context(ctx)
@@ -447,7 +453,9 @@ def test_analysis_mass_passes_natural_scalar_write_bounds(
         analysis_mass_module.ImageExportFormats, "export_image", _capture_export
     )
     monkeypatch.setattr(
-        analysis_mass_module, "select_image_paths", lambda *args, **kwargs: ctx.image_paths
+        analysis_mass_module,
+        "select_image_paths",
+        lambda *args, **kwargs: ctx.image_paths,
     )
 
     analysis_mass_from_context(ctx)
