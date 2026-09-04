@@ -11,7 +11,10 @@ import numpy as np
 import pandas as pd
 
 import darsia
-from darsia.presets.workflows.fluidflower_config import MultiFluidFlowerConfig
+from darsia.presets.workflows.config.multi_fluidflower_config import (
+    MultiFluidFlowerConfig,
+)
+from darsia.presets.workflows.config.sections import required_sections
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.utils.mass import load_data
 
@@ -106,6 +109,7 @@ class WassersteinDistanceResult:
         return cls(**data)
 
 
+@required_sections("wasserstein")
 def comparison_wasserstein(
     cls: type[Rig],
     path: Path | list[Path],

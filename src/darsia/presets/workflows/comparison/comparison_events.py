@@ -6,11 +6,15 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from darsia.presets.workflows.config.fluidflower_config import MultiFluidFlowerConfig
+from darsia.presets.workflows.config.multi_fluidflower_config import (
+    MultiFluidFlowerConfig,
+)
+from darsia.presets.workflows.config.sections import required_sections
 
 logger = logging.getLogger(__name__)
 
 
+@required_sections("events")
 def comparison_events(
     path: Path,
 ):
@@ -21,12 +25,13 @@ def comparison_events(
 
     # Safety checks
     assert config.events is not None
+    assert config.runs is not None
 
     # Prepare data frame to store results
     events = pd.DataFrame(columns=["run"] + list(config.events.events.keys()))
 
     # Prepare overall data frame file
-    for run, run_config in config.sub_config.items():
+    for run, run_config in config.runs.config.items():
         # Safety checks
         assert run_config.data is not None
 
