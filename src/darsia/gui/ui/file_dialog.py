@@ -615,7 +615,9 @@ class FileDialogHelper:
                 key_edit = QLineEdit(str(folder))
                 key_edit.setReadOnly(True)
 
-                value_browse_button, value_edit = build_locked_value_field(initial_value)
+                value_browse_button, value_edit = build_locked_value_field(
+                    initial_value
+                )
 
                 row_layout.addWidget(key_edit, stretch=1)
                 row_layout.addWidget(value_browse_button)
@@ -665,9 +667,7 @@ class FileDialogHelper:
             else:
                 # No data folders configured yet.
                 header_layout.addWidget(
-                    QLabel(
-                        "No data folders configured — add folders in the Data tab."
-                    ),
+                    QLabel("No data folders configured — add folders in the Data tab."),
                     stretch=1,
                 )
                 header_layout.addWidget(build_help_column(setting_dict))
