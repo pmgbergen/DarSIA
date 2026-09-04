@@ -64,6 +64,16 @@ class AnalysisOptions:
             "help": "Process images in random order instead of chronological.",
         },
     )
+    stream_preview: bool = field(
+        default=False,
+        metadata={
+            "name": "Stream preview",
+            "help": (
+                "Publish low-res preview images during analysis for the "
+                "Streaming Preview panel."
+            ),
+        },
+    )
 
     def load(self, sec: dict) -> "AnalysisOptions":
         self.show_plots = _get_key(
@@ -71,6 +81,9 @@ class AnalysisOptions:
         )
         self.random_traverse = _get_key(
             sec, "random_traverse", required=False, default=False, type_=bool
+        )
+        self.stream_preview = _get_key(
+            sec, "stream_preview", required=False, default=False, type_=bool
         )
         return self
 
