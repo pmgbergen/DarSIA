@@ -258,7 +258,7 @@ def analysis_thresholding_from_context(
             elif threshold_max is not None:
                 mask = (scalar <= threshold_max).astype(np.uint8)
 
-            mask_image = darsia.Image(img=mask)
+            mask_image = darsia.ScalarImage(img=mask)
             exporter.export_image(
                 mask_image,
                 thresholding_config.folder,
