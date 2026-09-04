@@ -480,17 +480,14 @@ class FileDialogHelper:
         if form_context:
             form = form_context["form"]
 
-            # Build composite header widget:
-            # [add_button (stretch=1)][help_button_or_spacer (fixed 40px)]
+            # Header widget: unlocked mode gets its own [add_button][help] row.
+            # Locked mode instead folds the first data row (and the help button)
+            # directly into the header, so the field takes exactly len(locked_keys)
+            # rows rather than reserving an extra, otherwise-empty header row.
             header_widget = QWidget()
             header_layout = QHBoxLayout(header_widget)
             header_layout.setContentsMargins(0, 0, 0, 0)
             header_layout.setSpacing(4)
-            if add_button is not None:
-                header_layout.addWidget(add_button, stretch=1)
-            else:
-                header_layout.addStretch(1)
-            header_layout.addWidget(build_help_column(setting_dict))
 
             def insert_row(row_widget):
                 # Find the correct insertion index: after the header_widget header row
@@ -581,17 +578,9 @@ class FileDialogHelper:
                 row_pairs.append((key_edit, value_edit))
                 refresh_remove_buttons()
 
-            def add_locked_row(folder, initial_value=""):
-                row_widget = QWidget()
-                row_layout = QHBoxLayout(row_widget)
-                row_layout.setContentsMargins(0, 0, 0, 0)
-                row_layout.setSpacing(4)
-
-                # Key column: read-only, sourced from key_source — not user-editable.
-                key_edit = QLineEdit(str(folder))
-                key_edit.setReadOnly(True)
-
-                # Value column
+            def build_locked_value_field(initial_value=""):
+                """Browse button + editable value field shared by every locked row,
+                including the one embedded directly in the header."""
                 value_browse_button = QPushButton("Browse")
                 value_browse_button.setMaximumWidth(80)
                 value_edit = QLineEdit()
@@ -603,7 +592,6 @@ class FileDialogHelper:
                 value_edit.setPlaceholderText(value_placeholder)
                 if initial_value:
                     value_edit.setText(str(initial_value))
-
                 value_browse_button.clicked.connect(
                     lambda: self._browse_for_path(
                         value_is_directory,
@@ -615,6 +603,19 @@ class FileDialogHelper:
                         value_edit,
                     )
                 )
+                return value_browse_button, value_edit
+
+            def add_locked_row(folder, initial_value=""):
+                row_widget = QWidget()
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(0, 0, 0, 0)
+                row_layout.setSpacing(4)
+
+                # Key column: read-only, sourced from key_source — not user-editable.
+                key_edit = QLineEdit(str(folder))
+                key_edit.setReadOnly(True)
+
+                value_browse_button, value_edit = build_locked_value_field(initial_value)
 
                 row_layout.addWidget(key_edit, stretch=1)
                 row_layout.addWidget(value_browse_button)
@@ -628,7 +629,9 @@ class FileDialogHelper:
             # Defer pre-fill until after header row is added to form
             from PySide6.QtCore import QTimer
 
-            if locked_keys is None:
+            if add_button is not None:
+                header_layout.addWidget(add_button, stretch=1)
+                header_layout.addWidget(build_help_column(setting_dict))
                 add_button.clicked.connect(lambda: add_editable_row())
 
                 def deferred_prefill():
@@ -638,12 +641,39 @@ class FileDialogHelper:
                     else:
                         add_editable_row("")
 
-            else:
+            elif locked_keys:
+                # Fold the first locked row into the header itself, so the field
+                # takes exactly len(locked_keys) rows, not one extra blank row.
+                saved = values if isinstance(values, dict) else {}
+                first_folder = locked_keys[0]
+                key_edit = QLineEdit(str(first_folder))
+                key_edit.setReadOnly(True)
+                value_browse_button, value_edit = build_locked_value_field(
+                    saved.get(first_folder, "")
+                )
+                header_layout.addWidget(key_edit, stretch=1)
+                header_layout.addWidget(value_browse_button)
+                header_layout.addWidget(value_edit, stretch=1)
+                header_layout.addWidget(build_help_column(setting_dict))
+                row_data_list.append({"widget": header_widget})
+                row_pairs.append((key_edit, value_edit))
 
                 def deferred_prefill():
-                    saved = values if isinstance(values, dict) else {}
-                    for folder in locked_keys:
+                    for folder in locked_keys[1:]:
                         add_locked_row(folder, saved.get(folder, ""))
+
+            else:
+                # No data folders configured yet.
+                header_layout.addWidget(
+                    QLabel(
+                        "No data folders configured — add folders in the Data tab."
+                    ),
+                    stretch=1,
+                )
+                header_layout.addWidget(build_help_column(setting_dict))
+
+                def deferred_prefill():
+                    return None
 
             QTimer.singleShot(0, deferred_prefill)
 
