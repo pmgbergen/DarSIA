@@ -5,7 +5,7 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .roi import RoiAndSubroiConfig, RoiConfig
+from .roi import RoiConfig
 from .utils import _convert_none
 
 logger = logging.getLogger(__name__)
@@ -85,9 +85,7 @@ def _load_roi_key_list(
 class RoiRegistry:
     """A registry of named ROI entries loaded from a top-level [[roi]] TOML array-of-tables.
 
-    Entries are auto-typed on load:
-    - If the entry has a ``subroi`` sub-section → :class:`RoiAndSubroiConfig`.
-    - Otherwise → :class:`RoiConfig` (with optional ``label`` field).
+    Entries are loaded as :class:`RoiConfig` (with optional ``label`` field).
     """
 
     rois: dict[str, RoiConfig] = field(
@@ -153,14 +151,11 @@ class RoiRegistry:
                     )
                 seen_names.add(name)
 
-                if "subroi" in entry:
-                    self.rois[name] = RoiAndSubroiConfig().load(entry)
-                else:
-                    self.rois[name] = RoiConfig().load(entry)
+                self.rois[name] = RoiConfig().load(entry)
 
         return self
 
-    def register(self, key: str, roi: "RoiConfig | RoiAndSubroiConfig") -> None:
+    def register(self, key: str, roi: RoiConfig) -> None:
         """Add a single ROI entry to the registry without overwriting existing entries.
 
         This is useful when inline ROI definitions (e.g. from a
@@ -187,7 +182,7 @@ class RoiRegistry:
 
     def resolve(
         self, keys: str | list[str]
-    ) -> dict[str, RoiConfig | RoiAndSubroiConfig]:
+    ) -> dict[str, RoiConfig]:
         """Return a dict of the requested entries keyed by their registry name.
 
         Args:
@@ -218,8 +213,8 @@ class RoiRegistry:
             keys: A single key string or a list of key strings.
 
         Returns:
-            Dict containing only the entries with ``label is None`` (plain RoiConfig
-            instances or RoiAndSubroiConfig with no label, but not label-restricted entries).
+            Dict containing only the entries with ``label is None``, i.e. not
+            label-restricted entries.
         """
         resolved = self.resolve(keys)
         return {

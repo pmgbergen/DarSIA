@@ -78,17 +78,3 @@ class MultiRoiConfig:
 
 RoiAndLabelConfig = RoiConfig
 """Deprecated alias for RoiConfig. Kept for backward compatibility."""
-
-
-@dataclass
-class RoiAndSubroiConfig(RoiConfig):
-    """Configuration for an ROI with a sub-ROI (inherits optional label from RoiConfig)."""
-
-    subroi_config: RoiConfig = field(default_factory=RoiConfig)
-    """Sub-ROI configuration."""
-
-    def load(self, sec: dict) -> "RoiAndSubroiConfig":
-        super().load(sec)
-        subroi_sec = _get_section(sec, "subroi")
-        self.subroi_config = RoiConfig().load(subroi_sec)
-        return self
