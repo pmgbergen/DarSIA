@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import cv2
 import numpy as np
+
+STREAM_LINE_PREFIX = "__DARSIA_STREAM__:"
 
 
 def _to_uint8_gray(array: np.ndarray) -> np.ndarray:
@@ -156,3 +161,47 @@ def publish_stream_images(
             stream_callback(None)
         except Exception:
             pass
+
+
+def write_stream_frame(cache_dir: Path, key: str, png_bytes: bytes) -> None:
+    """Atomically write/overwrite one stream frame file in cache_dir."""
+    target = cache_dir / f"{key}.png"
+    tmp = cache_dir / f"{key}.png.tmp"
+    tmp.write_bytes(png_bytes)
+    os.replace(tmp, target)
+
+
+def encode_stream_notify_line(payload: dict[str, bytes] | None, seq: int) -> str:
+    """Encode a tiny stdout line noting which keys were just (re)written.
+
+    Carries no image bytes, only key names, so it can never be split across
+    a pipe-buffer boundary in a way that matters. payload=None encodes as a
+    "clear the stream" notification (keys=None).
+    """
+    keys = None if payload is None else sorted(payload.keys())
+    return f"{STREAM_LINE_PREFIX}{json.dumps({'keys': keys, 'seq': seq})}"
+
+
+def try_decode_stream_notify_line(line: str) -> tuple[bool, dict[str, Any] | None]:
+    """Return (False, None) if line isn't a stream line, else (True, decoded)."""
+    if not line.startswith(STREAM_LINE_PREFIX):
+        return False, None
+    return True, json.loads(line[len(STREAM_LINE_PREFIX) :])
+
+
+def build_file_cache_stream_callback(
+    cache_dir: Path,
+) -> Callable[[dict[str, bytes] | None], None]:
+    """Return a stream_callback that writes frames to cache_dir and prints a
+    notify line to stdout for each publish (flushed immediately, since stdout
+    is block-buffered when not attached to a TTY)."""
+    seq = {"n": 0}
+
+    def _callback(payload: dict[str, bytes] | None) -> None:
+        seq["n"] += 1
+        if payload is not None:
+            for key, png_bytes in payload.items():
+                write_stream_frame(cache_dir, key, png_bytes)
+        print(encode_stream_notify_line(payload, seq["n"]), flush=True)
+
+    return _callback
