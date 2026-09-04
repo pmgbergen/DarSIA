@@ -11,6 +11,10 @@ from typing import Literal
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    list_required_sections,
+    required_sections,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -88,11 +92,13 @@ def preview_calibration_bundle_import_conflicts(
     return sorted({dst for _, dst in targets if dst.exists()})
 
 
+@required_sections("data", "workflow_utils")
 def export_calibration_bundle(
     path: Path | list[Path], bundle: Path | None = None
 ) -> Path:
     """Export workflow calibration artifacts to a zipped bundle."""
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
+    config.check(*list_required_sections(export_calibration_bundle))
     calibration_root = _calibration_color_root(config)
     if not calibration_root.exists():
         raise FileNotFoundError(
@@ -145,6 +151,7 @@ def export_calibration_bundle(
     return bundle
 
 
+@required_sections("data", "workflow_utils")
 def import_calibration_bundle(
     path: Path | list[Path],
     bundle: Path,
@@ -154,6 +161,7 @@ def import_calibration_bundle(
 ) -> dict[str, Path]:
     """Import a calibration bundle and provide config-ready path mapping."""
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
+    config.check(*list_required_sections(import_calibration_bundle))
     bundle = Path(bundle)
     if not bundle.exists():
         raise FileNotFoundError(f"Calibration bundle not found: {bundle}")

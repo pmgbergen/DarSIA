@@ -14,6 +14,10 @@ from PIL import Image as PILImage
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    list_required_sections,
+    required_sections,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -218,10 +222,11 @@ def _write_gif(
     )
 
 
+@required_sections("data", "protocols", "video")
 def build_media(path: Path | list[Path]) -> dict[str, Path]:
     """Build protocol-time ordered MP4/GIF from configured analysis outputs."""
     config = FluidFlowerConfig(path, require_data=True, require_results=False)
-    config.check("data", "protocols", "video")
+    config.check(*list_required_sections(build_media))
     assert config.video is not None
     assert config.data is not None
 
