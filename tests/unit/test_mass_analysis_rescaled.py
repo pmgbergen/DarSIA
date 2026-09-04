@@ -62,6 +62,7 @@ def test_inverse_mass_analysis_handles_zero_denominator() -> None:
 
 def test_analysis_mass_writes_default_artifacts_only(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     injected_mass = 8.0
     stream_payloads: list[dict[str, bytes]] = []
@@ -116,7 +117,7 @@ def test_analysis_mass_writes_default_artifacts_only(
     ctx = SimpleNamespace(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
-            analysis=SimpleNamespace(mass=SimpleNamespace(roi=[])),
+            analysis=SimpleNamespace(mass=SimpleNamespace(roi=[], formats=None)),
             options=SimpleNamespace(analysis=SimpleNamespace(random_traverse=False)),
             roi_registry=RoiRegistry(),
         ),
@@ -126,6 +127,10 @@ def test_analysis_mass_writes_default_artifacts_only(
         color_to_mass_analysis=_FakeColorToMass(co2),
         analysis_labels=darsia.ScalarImage(np.zeros((4, 4), dtype=np.uint8)),
         expert_knowledge_adapter=None,
+    )
+
+    monkeypatch.setattr(
+        analysis_mass_module, "select_image_paths", lambda *args, **kwargs: ctx.image_paths
     )
 
     def _stream_callback(payload):
@@ -158,6 +163,7 @@ def test_analysis_mass_writes_default_artifacts_only(
 
 def test_analysis_mass_writes_configured_export_subset_with_extensive_modes(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     injected_mass = 8.0
     image_path = tmp_path / "img001.png"
@@ -217,7 +223,7 @@ def test_analysis_mass_writes_configured_export_subset_with_extensive_modes(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
             analysis=SimpleNamespace(
-                mass=SimpleNamespace(roi=[], export=configured_export),
+                mass=SimpleNamespace(roi=[], export=configured_export, formats=None),
             ),
             options=SimpleNamespace(analysis=SimpleNamespace(random_traverse=False)),
             roi_registry=RoiRegistry(),
@@ -228,6 +234,10 @@ def test_analysis_mass_writes_configured_export_subset_with_extensive_modes(
         color_to_mass_analysis=_FakeColorToMass(co2),
         analysis_labels=darsia.ScalarImage(np.zeros((4, 4), dtype=np.uint8)),
         expert_knowledge_adapter=None,
+    )
+
+    monkeypatch.setattr(
+        analysis_mass_module, "select_image_paths", lambda *args, **kwargs: ctx.image_paths
     )
 
     analysis_mass_from_context(ctx)
@@ -252,6 +262,7 @@ def test_analysis_mass_writes_configured_export_subset_with_extensive_modes(
 
 def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     injected_mass = 8.0
     image_path = tmp_path / "img001.png"
@@ -314,6 +325,7 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
                 mass=SimpleNamespace(
                     roi=[],
                     export=["rescaled_saturation_g", "rescaled_concentration_aq"],
+                    formats=None,
                 ),
             ),
             options=SimpleNamespace(analysis=SimpleNamespace(random_traverse=False)),
@@ -325,6 +337,10 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
         color_to_mass_analysis=_FakeColorToMass(co2),
         analysis_labels=darsia.ScalarImage(np.zeros((4, 4), dtype=np.uint8)),
         expert_knowledge_adapter=adapter,
+    )
+
+    monkeypatch.setattr(
+        analysis_mass_module, "select_image_paths", lambda *args, **kwargs: ctx.image_paths
     )
 
     analysis_mass_from_context(ctx)
@@ -407,7 +423,7 @@ def test_analysis_mass_passes_natural_scalar_write_bounds(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
             analysis=SimpleNamespace(
-                mass=SimpleNamespace(roi=[], export=configured_export),
+                mass=SimpleNamespace(roi=[], export=configured_export, formats=None),
             ),
             options=SimpleNamespace(analysis=SimpleNamespace(random_traverse=False)),
             roi_registry=RoiRegistry(),
@@ -429,6 +445,9 @@ def test_analysis_mass_passes_natural_scalar_write_bounds(
 
     monkeypatch.setattr(
         analysis_mass_module.ImageExportFormats, "export_image", _capture_export
+    )
+    monkeypatch.setattr(
+        analysis_mass_module, "select_image_paths", lambda *args, **kwargs: ctx.image_paths
     )
 
     analysis_mass_from_context(ctx)
