@@ -5,6 +5,7 @@ import logging
 import sys
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 from darsia.presets.workflows.analysis.analysis_context import (
     infer_require_color_to_mass_from_config,
@@ -32,6 +33,7 @@ from darsia.presets.workflows.analysis.progress import (
     publish_step_complete,
     publish_step_start,
 )
+from darsia.presets.workflows.analysis.streaming import build_file_cache_stream_callback
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -72,6 +74,17 @@ def build_parser_for_analysis():
         "--show",
         action="store_true",
         help="Show the labels after each step.",
+    )
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Publish low-res preview images to --stream-cache-dir as they're produced.",
+    )
+    parser.add_argument(
+        "--stream-cache-dir",
+        type=str,
+        default=None,
+        help="Directory to write streamed preview PNGs to. Required with --stream.",
     )
     parser.add_argument(
         "--info", action="store_true", help="Provide help for activated flags."
@@ -319,6 +332,12 @@ def preset_analysis(rig_cls: type[Rig], **kwargs):
     parser = build_parser_for_analysis()
     args = parser.parse_args()
     print_help_for_flags(args, parser)
+    if getattr(args, "stream", False) and "stream_callback" not in kwargs:
+        if not args.stream_cache_dir:
+            raise ValueError("--stream requires --stream-cache-dir.")
+        kwargs["stream_callback"] = build_file_cache_stream_callback(
+            Path(args.stream_cache_dir)
+        )
     run_analysis(rig_cls, args, **kwargs)
 
 
