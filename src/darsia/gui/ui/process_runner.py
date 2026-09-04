@@ -4,6 +4,7 @@ import psutil
 from PySide6.QtCore import QProcess
 from PySide6.QtWidgets import QMessageBox
 
+from darsia.presets.workflows.analysis.streaming import STREAM_LINE_PREFIX
 from darsia.presets.workflows.results_folder import (
     open_in_file_explorer,
     suggested_workflow_results_folder,
@@ -29,6 +30,7 @@ class ProcessRunner:
         workflow=None,
         actions=None,
         config_paths=None,
+        on_stream_line=None,
     ):
         """Launch argv as a QProcess, streaming merged stdout/stderr to the log.
         Disables run_button and shows/enables abort_button while running; restores
@@ -46,6 +48,10 @@ class ProcessRunner:
             actions: Enabled action labels for this run, used to infer a results
                 folder for the Done dialog's "Open in folder" button.
             config_paths: Config paths for this run, used for the same purpose.
+            on_stream_line: Called with each raw output line that starts with
+                STREAM_LINE_PREFIX; such lines are not logged or included in
+                the error-dialog detail text. All other lines are handled as
+                before (logged + buffered for the error dialog).
         """
         process = QProcess(self.main_window)
         process.setProgram(argv[0])
@@ -55,15 +61,34 @@ class ProcessRunner:
         process.setProcessChannelMode(QProcess.MergedChannels)
 
         output_lines = []
+        pending = bytearray()
 
         def handle_output():
-            data = bytes(process.readAllStandardOutput()).decode(errors="replace")
-            for line in data.splitlines():
-                if line:
-                    output_lines.append(line)
-                    self.main_window.print_log(line)
+            pending.extend(bytes(process.readAllStandardOutput()))
+            *complete_lines, remainder = pending.split(b"\n")
+            pending[:] = remainder
+            for raw_line in complete_lines:
+                # Strip a trailing \r left over from \r\n (e.g. Windows stdout
+                # text-mode translation), matching str.splitlines()'s handling
+                # of \r\n as a single line terminator.
+                line = raw_line.rstrip(b"\r").decode(errors="replace")
+                if not line:
+                    continue
+                if on_stream_line is not None and line.startswith(STREAM_LINE_PREFIX):
+                    on_stream_line(line)
+                    continue
+                output_lines.append(line)
+                self.main_window.print_log(line)
 
         def handle_finished(exit_code, exit_status):
+            if pending:
+                line = bytes(pending).rstrip(b"\r").decode(errors="replace")
+                pending.clear()
+                if line and not (
+                    on_stream_line is not None and line.startswith(STREAM_LINE_PREFIX)
+                ):
+                    output_lines.append(line)
+                    self.main_window.print_log(line)
             run_button.setEnabled(True)
             abort_button.setVisible(False)
             abort_button.setEnabled(False)

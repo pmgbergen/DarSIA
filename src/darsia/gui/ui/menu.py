@@ -103,6 +103,15 @@ class MenuBuilder:
         self.show_logging_action.toggled.connect(self.main_window.toggle_logging)
         view_menu.addAction(self.show_logging_action)
 
+        # Streaming Preview dock's built-in toggle action (checkable, tracks
+        # the dock's shown/hidden state automatically).
+        self.streaming_toggle_action = (
+            self.main_window.streaming_dock.toggleViewAction()
+        )
+        self.streaming_toggle_action.setText("Show &Streaming Preview")
+        self.streaming_toggle_action.setShortcut(QKeySequence("Ctrl+P"))
+        view_menu.addAction(self.streaming_toggle_action)
+
         help_menu = menu_bar.addMenu("&Help")
         self._add_action(help_menu, "&About", self.main_window.show_about_dialog)
 

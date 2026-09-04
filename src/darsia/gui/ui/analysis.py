@@ -39,6 +39,11 @@ class AnalysisTab:
                 self.main_window.config_dict, "options.analysis.show_plots"
             )
         )
+        stream_preview = bool(
+            self.main_window.settings_factory.get_value(
+                self.main_window.config_dict, "options.analysis.stream_preview"
+            )
+        )
 
         # Build options dictionary matching the CLI interface
         options = {
@@ -78,6 +83,12 @@ class AnalysisTab:
         if options["show"]:
             argv.append("--show")
 
+        cache_dir = None
+        if stream_preview:
+            cache_dir = self.main_window.streaming_panel.prepare_cache_dir()
+            argv += ["--stream", "--stream-cache-dir", str(cache_dir)]
+        self.main_window.streaming_panel.reset_for_run(stream_preview, cache_dir)
+
         # Launch workflow in a separate process
         play_action = self.main_window.toolbar_builder.play_action
         stop_action = self.main_window.toolbar_builder.stop_action
@@ -89,6 +100,11 @@ class AnalysisTab:
             workflow="analysis",
             actions=[selected_id],
             config_paths=[Path(config_file)],
+            on_stream_line=(
+                self.main_window.streaming_panel.handle_stream_line
+                if stream_preview
+                else None
+            ),
         )
 
     def sidebar_items(self):

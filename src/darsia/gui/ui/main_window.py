@@ -5,6 +5,7 @@ import psutil
 from PySide6.QtCore import QSettings, Qt, QTimer, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
+    QDockWidget,
     QLabel,
     QMainWindow,
     QScrollArea,
@@ -25,6 +26,7 @@ from .process_runner import ProcessRunner
 from .settings import SettingsFactory
 from .setup import SetupTab
 from .sidebar import Sidebar
+from .streaming import StreamingPanel
 from .theme import apply_theme
 from .theme import set_theme as save_theme
 from .toolbar import ToolbarBuilder
@@ -73,6 +75,14 @@ class MainWindow(QMainWindow):
 
         # Initialize process runner
         self.process_runner = ProcessRunner(self)
+
+        # Streaming preview dock (right of the tabs), created before the menu
+        # builder since it wires a View-menu toggle action for this dock.
+        self.streaming_panel = StreamingPanel(self)
+        self.streaming_dock = QDockWidget("Streaming Preview", self)
+        self.streaming_dock.setWidget(self.streaming_panel)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.streaming_dock)
+        self.streaming_dock.hide()
 
         # Set up the menu bar
         self.menu_builder = MenuBuilder(self)
@@ -318,3 +328,8 @@ class MainWindow(QMainWindow):
         """Slot that appends text to log window and prints to console."""
         self.log_text.append(text)
         print(text)
+
+    def closeEvent(self, event):
+        """Clean up the streaming preview cache directory on window close."""
+        self.streaming_panel.cleanup()
+        super().closeEvent(event)
