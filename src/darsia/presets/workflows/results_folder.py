@@ -1,9 +1,8 @@
 """Results-folder inference and OS file-explorer helpers for workflow GUIs.
 
-Extracted from ``user_interface_gui.py`` (the tkinter GUI) so that GUI
-frontends other than tkinter (e.g. the Qt GUI under ``darsia.gui``) can reuse
-this pure, framework-independent logic without depending on a module slated
-for removal once the tkinter GUI is deprecated.
+Pure, framework-independent logic shared by GUI frontends (e.g. the Qt GUI
+under ``darsia.gui``) for inferring a workflow run's results folder and
+opening it in the OS file explorer.
 """
 
 from __future__ import annotations
