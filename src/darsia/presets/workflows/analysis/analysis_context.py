@@ -316,17 +316,6 @@ def prepare_analysis_context(
     fluidflower = cls.load(config.rig.path, config.corrections)
     fluidflower.load_experiment(experiment)
 
-    # ! ---- SELECT IMAGE PATHS (deprecated path for helper only) ----
-    # Analysis modes now select image paths individually from their own data_selection.
-    image_paths = None
-    if section == "helper" and config.helper is not None:
-        image_paths = select_image_paths(
-            config,
-            experiment,
-            all=all,
-            sub_config=config.helper,
-        )
-
     # ! ---- RESTORATION ----
     restoration = build_restoration(config.restoration, fluidflower)
 
@@ -363,7 +352,6 @@ def prepare_analysis_context(
         experiment=experiment,
         fluidflower=fluidflower,
         analysis_labels=analysis_labels,  # TODO: remove, not used much
-        image_paths=image_paths,
         restoration=restoration,
         color_to_mass_analysis=color_to_mass_analysis,
         expert_knowledge_adapter=expert_knowledge_adapter,
