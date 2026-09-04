@@ -112,6 +112,19 @@ class FingersConfig:
         },
     )
     """Whether to include skeleton analysis in the fingers workflow."""
+    save_result_plots: bool = field(
+        default=True,
+        metadata={
+            "name": "Save result plots",
+            "help": (
+                "Whether to render and save tips/fjords/skeleton/path-evolution "
+                "overlay PNGs to disk. Disable to speed up fingers analysis when "
+                "these diagnostic images aren't needed."
+            ),
+            "group": "Extra analysis",
+        },
+    )
+    """Whether to render and save fingers-analysis result overlay PNGs."""
     include_gradient_based_analysis: bool = field(
         default=False,
         metadata={
@@ -187,6 +200,14 @@ class FingersConfig:
             "include_skeleton_analysis",
             required=False,
             default=self.include_skeleton_analysis,
+            type_=bool,
+        )
+
+        self.save_result_plots = _get_key(
+            sec,
+            "save_result_plots",
+            required=False,
+            default=self.save_result_plots,
             type_=bool,
         )
 
