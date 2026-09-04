@@ -424,7 +424,6 @@ class FileDialogHelper:
     def create_path_map_input(
         self,
         setting_dict,
-        key_is_directory=False,
         value_is_directory=False,
         key_source=None,
         form_context=None,
@@ -435,8 +434,6 @@ class FileDialogHelper:
         ----------
         setting_dict : dict
             Setting configuration dictionary with 'key' field
-        key_is_directory : bool, optional
-            If True, key column opens directory selection; if False, file selection
         value_is_directory : bool, optional
             If True, value column opens directory selection; if False, file selection
         key_source : str, optional
@@ -516,12 +513,7 @@ class FileDialogHelper:
                 key_browse_button = QPushButton("Browse")
                 key_browse_button.setMaximumWidth(80)
                 key_edit = QLineEdit()
-                key_placeholder = (
-                    "Select folder or type path"
-                    if key_is_directory
-                    else "Select file or type path"
-                )
-                key_edit.setPlaceholderText(key_placeholder)
+                key_edit.setPlaceholderText("Select file or type path")
                 if initial_key:
                     key_edit.setText(str(initial_key))
 
@@ -555,12 +547,8 @@ class FileDialogHelper:
 
                 key_browse_button.clicked.connect(
                     lambda: self._browse_for_path(
-                        key_is_directory,
-                        (
-                            """Select key """
-                            f"""({"folder" if key_is_directory else "file"}) """
-                            f"""for {display_name}"""
-                        ),
+                        False,
+                        f"Select key (file) for {display_name}",
                         key_edit,
                     )
                 )
@@ -696,12 +684,7 @@ class FileDialogHelper:
                 key_browse_button = QPushButton("Browse")
                 key_browse_button.setMaximumWidth(80)
                 key_edit = QLineEdit()
-                key_placeholder = (
-                    "Select folder or type path"
-                    if key_is_directory
-                    else "Select file or type path"
-                )
-                key_edit.setPlaceholderText(key_placeholder)
+                key_edit.setPlaceholderText("Select file or type path")
                 if initial_key:
                     key_edit.setText(str(initial_key))
 
@@ -732,12 +715,8 @@ class FileDialogHelper:
 
                 key_browse_button.clicked.connect(
                     lambda: self._browse_for_path(
-                        key_is_directory,
-                        (
-                            """Select key """
-                            """({'folder' if key_is_directory else 'file'}) """
-                            f"""for {display_name}"""
-                        ),
+                        False,
+                        f"Select key (file) for {display_name}",
                         key_edit,
                     )
                 )

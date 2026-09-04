@@ -664,12 +664,10 @@ class SettingsFactory:
                 setting_dict, is_directory=True, form_context=form_context
             )
         elif setting_type == "path_map":
-            key_is_directory = setting_dict.get("key_is_directory", False)
             value_is_directory = setting_dict.get("value_is_directory", False)
             key_source = setting_dict.get("key_source")
             return self.file_dialog.create_path_map_input(
                 setting_dict,
-                key_is_directory=key_is_directory,
                 value_is_directory=value_is_directory,
                 key_source=key_source,
                 form_context=form_context,
