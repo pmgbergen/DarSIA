@@ -20,6 +20,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     prepare_analysis_context,
     select_image_paths,
 )
+from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.analysis.progress import (
     AnalysisProgressEvent,
     publish_image_progress,
@@ -178,6 +179,18 @@ def analysis_fingers_from_context(
             contour_smoother=fingers_config.contour_smoother,
             reduce_to_main_contour=fingers_config.reduce_to_main_contour,
         )
+
+    # Result plots (tips/fjords/skeleton/path-evolution overlays) are only
+    # rendered and saved when the fingers section is configured to export
+    # png/jpg images -- not an independent toggle. Resolves registry-preset
+    # format keys too (not just raw "png"/"jpg" strings), same as every
+    # other analysis mode's export-format handling.
+    _plot_export_formats = ImageExportFormats(
+        ctx.config, ctx.config.analysis.fingers.formats
+    )
+    save_result_plots = any(
+        spec.type in {"png", "jpg"} for spec in _plot_export_formats.formats
+    )
 
     categories = ["peak", "fjord"]
     if fingers_config.include_skeleton_analysis:
@@ -425,7 +438,7 @@ def analysis_fingers_from_context(
             tips_path = (results_folder / "tips" / key / f"{path.stem}").with_suffix(
                 ".png"
             )
-            if fingers_config.save_result_plots:
+            if save_result_plots:
                 contour_analysis.plot_peaks(
                     img,
                     peaks,
@@ -469,7 +482,7 @@ def analysis_fingers_from_context(
                 gradient_path_contour = (
                     results_folder / "interface-contour" / key / f"{path.stem}"
                 ).with_suffix(".png")
-                if fingers_config.save_result_plots:
+                if save_result_plots:
                     gradient_based_contour_analysis.plot_peaks(
                         img,
                         gradient_based_peaks,
@@ -545,10 +558,7 @@ def analysis_fingers_from_context(
                 results_folder / "skeleton" / key / f"{path.stem}"
             ).with_suffix(".png")
 
-            if (
-                fingers_config.include_skeleton_analysis
-                and fingers_config.save_result_plots
-            ):
+            if fingers_config.include_skeleton_analysis and save_result_plots:
                 skeleton_analysis.plot_skeleton(
                     img=img,
                     skeleton=skeleton,
@@ -608,7 +618,7 @@ def analysis_fingers_from_context(
             peak_paths_path = (
                 results_folder / "paths" / key / f"{path.stem}"
             ).with_suffix(".png")
-            if fingers_config.save_result_plots:
+            if save_result_plots:
                 evolution_analysis["peak"][key].plot_paths(
                     img,
                     roi=roi_config.roi,
@@ -620,10 +630,7 @@ def analysis_fingers_from_context(
                 gradient_paths_path = (
                     results_folder / "interface-paths" / key / f"{path.stem}"
                 ).with_suffix(".png")
-            if (
-                fingers_config.include_gradient_based_analysis
-                and fingers_config.save_result_plots
-            ):
+            if fingers_config.include_gradient_based_analysis and save_result_plots:
                 evolution_analysis["interface"][key].plot_paths(
                     img,
                     roi=roi_config.roi,
@@ -640,10 +647,7 @@ def analysis_fingers_from_context(
             base_junction_paths_path = (
                 results_folder / "skeleton-base-junction-paths" / key / f"{path.stem}"
             ).with_suffix(".png")
-            if (
-                fingers_config.include_skeleton_analysis
-                and fingers_config.save_result_plots
-            ):
+            if fingers_config.include_skeleton_analysis and save_result_plots:
                 evolution_analysis["leaf"][key].plot_paths(
                     img,
                     roi=roi_config.roi,
