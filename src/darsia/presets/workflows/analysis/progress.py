@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import math
 from collections.abc import Callable
 from typing import Literal, TypedDict
+
+PROGRESS_LINE_PREFIX = "__DARSIA_PROGRESS__:"
 
 
 class AnalysisProgressEvent(TypedDict, total=False):
@@ -15,8 +18,10 @@ class AnalysisProgressEvent(TypedDict, total=False):
     image_path: str
     image_index: int
     image_total: int
+    image_datetime: str
     image_duration_s: float
     step_elapsed_s: float
+    seq: int
 
 
 def _safe_duration(value: float | int | None) -> float | None:
@@ -78,6 +83,7 @@ def publish_image_progress(
     image_total: int,
     image_duration_s: float | int | None,
     step_elapsed_s: float | int | None,
+    image_datetime: str | None = None,
 ) -> None:
     """Publish per-image analysis progress event."""
     payload: AnalysisProgressEvent = {
@@ -87,6 +93,8 @@ def publish_image_progress(
         "image_index": max(0, image_index),
         "image_total": max(0, image_total),
     }
+    if image_datetime is not None:
+        payload["image_datetime"] = image_datetime
     safe_image_duration = _safe_duration(image_duration_s)
     if safe_image_duration is not None:
         payload["image_duration_s"] = safe_image_duration
@@ -136,9 +144,17 @@ def normalize_progress_event(payload: object) -> AnalysisProgressEvent | None:
     if image_index is not None:
         normalized["image_index"] = image_index
 
+    seq = _safe_nonnegative_int(payload.get("seq"))
+    if seq is not None:
+        normalized["seq"] = seq
+
     image_path = payload.get("image_path")
     if isinstance(image_path, str):
         normalized["image_path"] = image_path
+
+    image_datetime = payload.get("image_datetime")
+    if isinstance(image_datetime, str):
+        normalized["image_datetime"] = image_datetime
 
     image_duration_s = _safe_duration(payload.get("image_duration_s"))
     if image_duration_s is not None:
@@ -149,3 +165,18 @@ def normalize_progress_event(payload: object) -> AnalysisProgressEvent | None:
         normalized["step_elapsed_s"] = step_elapsed_s
 
     return normalized
+
+
+def encode_progress_line(event: AnalysisProgressEvent) -> str:
+    """Encode a progress event as a single stdout line."""
+    return f"{PROGRESS_LINE_PREFIX}{json.dumps(event)}"
+
+
+def try_decode_progress_line(
+    line: str,
+) -> tuple[bool, AnalysisProgressEvent | None]:
+    """Return (False, None) if line isn't a progress line, else (True, decoded)."""
+    if not line.startswith(PROGRESS_LINE_PREFIX):
+        return False, None
+    raw = json.loads(line[len(PROGRESS_LINE_PREFIX) :])
+    return True, normalize_progress_event(raw)

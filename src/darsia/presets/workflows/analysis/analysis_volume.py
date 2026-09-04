@@ -213,6 +213,9 @@ def analysis_volume_from_context(
             image_total=image_total,
             image_duration_s=time.monotonic() - image_started_at,
             step_elapsed_s=time.monotonic() - step_started_at,
+            image_datetime=(
+                img.date.isoformat() if getattr(img, "date", None) else None
+            ),
         )
 
 
