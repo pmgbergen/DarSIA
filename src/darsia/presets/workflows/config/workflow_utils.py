@@ -1,6 +1,6 @@
 """Configuration for workflow utility options."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .utils import _get_key, _get_section_from_toml
@@ -10,8 +10,22 @@ from .utils import _get_key, _get_section_from_toml
 class WorkflowUtilsConfig:
     """Configuration for utility workflows."""
 
-    export_calibration_bundle: Path | None = None
-    import_calibration_bundle: Path | None = None
+    export_calibration_bundle: Path | None = field(
+        default=None,
+        metadata={
+            "name": "Export calibration bundle",
+            "help": "Destination zip path for exporting calibration artifacts.",
+            "widget": "file",
+        },
+    )
+    import_calibration_bundle: Path | None = field(
+        default=None,
+        metadata={
+            "name": "Import calibration bundle",
+            "help": "Source zip path to import calibration artifacts from.",
+            "widget": "file",
+        },
+    )
 
     def load(self, path: Path | list[Path]) -> "WorkflowUtilsConfig":
         sec = _get_section_from_toml(path, "utils")
