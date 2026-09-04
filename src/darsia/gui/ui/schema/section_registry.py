@@ -104,6 +104,36 @@ CHECKBOX_TO_SECTIONS = {
         "darsia.presets.workflows.helper.helper_result_reader",
         "helper_result_reader",
     ),
+    # Comparison leaf mappings
+    ("comparison", "events"): (
+        "darsia.presets.workflows.comparison.comparison_events",
+        "comparison_events",
+    ),
+    ("comparison", "wasserstein_compute"): (
+        "darsia.presets.workflows.comparison.comparison_wasserstein",
+        "comparison_wasserstein",
+    ),
+    ("comparison", "wasserstein_assemble"): (
+        "darsia.presets.workflows.comparison.comparison_wasserstein",
+        "comparison_wasserstein",
+    ),
+    # Utils leaf mappings
+    ("utils", "build_media"): (
+        "darsia.presets.workflows.utils.utils_media",
+        "build_media",
+    ),
+    ("utils", "download_data"): (
+        "darsia.presets.workflows.utils.utils_download",
+        "download_data",
+    ),
+    ("utils", "export_calibration"): (
+        "darsia.presets.workflows.utils.calibration_bundle",
+        "export_calibration_bundle",
+    ),
+    ("utils", "import_calibration"): (
+        "darsia.presets.workflows.utils.calibration_bundle",
+        "import_calibration_bundle",
+    ),
 }
 
 # Tab visibility override: limit which sections are shown for specific workflows.
@@ -144,6 +174,18 @@ TAB_VISIBILITY = {
     ("helper", "roi"): ("helper", "options"),
     ("helper", "roi_viewer"): ("helper", "options"),
     ("helper", "results"): ("helper", "options"),
+    # Comparison
+    ("comparison", "events"): ("events",),
+    ("comparison", "wasserstein_compute"): ("wasserstein",),
+    ("comparison", "wasserstein_assemble"): ("wasserstein",),
+    # Utils — "workflow_utils" is force-included here (not part of either
+    # calibration-bundle function's @required_sections, since the bundle
+    # path is GUI-only plumbing passed in as an argument) so the bundle-path
+    # file choosers actually appear.
+    ("utils", "build_media"): ("protocols", "video"),
+    ("utils", "download_data"): ("download",),
+    ("utils", "export_calibration"): ("data", "workflow_utils"),
+    ("utils", "import_calibration"): ("data", "workflow_utils"),
 }
 
 

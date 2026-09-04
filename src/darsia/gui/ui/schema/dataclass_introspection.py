@@ -21,12 +21,14 @@ from darsia.presets.workflows.config.format_registry import FormatRegistry
 from darsia.presets.workflows.config.helper import HelperConfig
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.config.labeling import LabelingConfig
+from darsia.presets.workflows.config.multi_fluidflower_config import EventsConfig
 from darsia.presets.workflows.config.options import OptionsConfig
 from darsia.presets.workflows.config.protocols import ProtocolsConfig
 from darsia.presets.workflows.config.restoration import RestorationConfig
 from darsia.presets.workflows.config.rig import RigConfig
 from darsia.presets.workflows.config.roi_registry import RoiRegistry
 from darsia.presets.workflows.config.video import VideoConfig
+from darsia.presets.workflows.config.wasserstein import WassersteinDistancesConfig
 from darsia.presets.workflows.config.workflow_utils import WorkflowUtilsConfig
 
 # Mapping from section name to its config dataclass
@@ -38,6 +40,7 @@ SECTION_TO_DATACLASS = {
     "data": DataConfig,
     "depth": DepthConfig,
     "download": DownloadConfig,
+    "events": EventsConfig,
     "facies": FaciesConfig,
     "format_registry": FormatRegistry,
     "helper": HelperConfig,
@@ -50,6 +53,7 @@ SECTION_TO_DATACLASS = {
     "rig": RigConfig,
     "roi": RoiRegistry,
     "video": VideoConfig,
+    "wasserstein": WassersteinDistancesConfig,
     "workflow_utils": WorkflowUtilsConfig,
 }
 
@@ -76,6 +80,8 @@ ALL_SECTIONS = [
     "download",
     "workflow_utils",
     "video",
+    "events",
+    "wasserstein",
 ]
 
 SECTION_LOADABLE = {"rig": "rig"}
