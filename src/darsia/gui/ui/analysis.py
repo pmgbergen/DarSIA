@@ -105,6 +105,11 @@ class AnalysisTab:
                 if stream_preview
                 else None
             ),
+            on_progress_line=(
+                self.main_window.streaming_panel.handle_progress_line
+                if stream_preview
+                else None
+            ),
         )
 
     def sidebar_items(self):

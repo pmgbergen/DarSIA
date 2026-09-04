@@ -4,6 +4,7 @@ import psutil
 from PySide6.QtCore import QProcess
 from PySide6.QtWidgets import QMessageBox
 
+from darsia.presets.workflows.analysis.progress import PROGRESS_LINE_PREFIX
 from darsia.presets.workflows.analysis.streaming import STREAM_LINE_PREFIX
 from darsia.presets.workflows.results_folder import (
     open_in_file_explorer,
@@ -31,6 +32,7 @@ class ProcessRunner:
         actions=None,
         config_paths=None,
         on_stream_line=None,
+        on_progress_line=None,
     ):
         """Launch argv as a QProcess, streaming merged stdout/stderr to the log.
         Disables run_button and shows/enables abort_button while running; restores
@@ -52,6 +54,8 @@ class ProcessRunner:
                 STREAM_LINE_PREFIX; such lines are not logged or included in
                 the error-dialog detail text. All other lines are handled as
                 before (logged + buffered for the error dialog).
+            on_progress_line: Same, but for lines starting with
+                PROGRESS_LINE_PREFIX.
         """
         process = QProcess(self.main_window)
         process.setProgram(argv[0])
@@ -77,16 +81,26 @@ class ProcessRunner:
                 if on_stream_line is not None and line.startswith(STREAM_LINE_PREFIX):
                     on_stream_line(line)
                     continue
+                if on_progress_line is not None and line.startswith(
+                    PROGRESS_LINE_PREFIX
+                ):
+                    on_progress_line(line)
+                    continue
                 output_lines.append(line)
                 self.main_window.print_log(line)
+
+        def _is_side_channel_line(line):
+            return (
+                on_stream_line is not None and line.startswith(STREAM_LINE_PREFIX)
+            ) or (
+                on_progress_line is not None and line.startswith(PROGRESS_LINE_PREFIX)
+            )
 
         def handle_finished(exit_code, exit_status):
             if pending:
                 line = bytes(pending).rstrip(b"\r").decode(errors="replace")
                 pending.clear()
-                if line and not (
-                    on_stream_line is not None and line.startswith(STREAM_LINE_PREFIX)
-                ):
+                if line and not _is_side_channel_line(line):
                     output_lines.append(line)
                     self.main_window.print_log(line)
             run_button.setEnabled(True)
