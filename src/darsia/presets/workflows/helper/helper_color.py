@@ -11,7 +11,10 @@ from matplotlib.colors import rgb_to_hsv
 from matplotlib.widgets import Button
 
 import darsia
-from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_context
+from darsia.presets.workflows.analysis.analysis_context import (
+    prepare_analysis_context,
+    select_image_paths,
+)
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.sections import required_sections
 from darsia.presets.workflows.rig import Rig
@@ -44,10 +47,17 @@ def _normalize_unit(arr: np.ndarray) -> np.ndarray:
     return np.clip(scaled, 0.0, 1.0)
 
 
-def _scale_for_display(arr: np.ndarray) -> np.ndarray:
-    if np.nanmin(arr) < 0 or np.nanmax(arr) > 1:
-        return _normalize_unit(arr)
-    return arr
+def _scale_for_display(arr: np.ndarray, *, relative: bool) -> np.ndarray:
+    if relative:
+        # Difference images have no fixed valid range; keep contrast-stretching.
+        if np.nanmin(arr) < 0 or np.nanmax(arr) > 1:
+            return _normalize_unit(arr)
+        return arr
+    # Absolute images are semantically bounded to [0, 1]; values above 1 (e.g. from
+    # illumination-gain compensation) are "brighter than reference" and should
+    # saturate to white rather than drag down the rest of the scene via a global
+    # min-max stretch.
+    return np.clip(arr, 0.0, 1.0)
 
 
 def _clamp_range(limits: tuple[float, float], max_value: int) -> tuple[int, int]:
@@ -85,7 +95,7 @@ def launch_color_helper(
         return img_arr
 
     def _current_display(raw: np.ndarray) -> np.ndarray:
-        return _scale_for_display(raw)
+        return _scale_for_display(raw, relative=state["relative"])
 
     def _hist_data(raw: np.ndarray) -> np.ndarray:
         """Return channel data; HSV normalization is applied via _normalize_unit."""
@@ -217,10 +227,14 @@ def helper_color(
         section="helper",
         require_results=False,
         require_data=True,
-        sub_config=config.helper.color,
     )
 
-    image_paths = ctx.image_paths
+    image_paths = select_image_paths(
+        ctx.config,
+        ctx.experiment,
+        all=False,
+        sub_config=config.helper.color,
+    )
     if len(image_paths) == 0:
         raise ValueError("Color helper received no images.")
     source_images = load_images_with_cache(
