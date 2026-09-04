@@ -8,6 +8,10 @@ from pathlib import Path
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import (
+    list_required_sections,
+    required_sections,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +54,7 @@ def prepare_download_data(path: Path | list[Path] | list[str] | str) -> Download
     """
 
     config = FluidFlowerConfig(path, require_data=True, require_results=False)
-    config.check("data")
+    config.check(*list_required_sections(download_data))
 
     # ! ---- LOAD EXPERIMENT ----
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
@@ -100,6 +104,7 @@ def prepare_download_data(path: Path | list[Path] | list[str] | str) -> Download
     )
 
 
+@required_sections("data", "download")
 def download_data(
     path: Path | list[Path] | list[str] | str, require_confirmation: bool = True
 ):
