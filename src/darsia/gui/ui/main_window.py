@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from darsia.presets.workflows.analysis.progress import try_decode_progress_line
+
 from .about_dialog import AboutDialog
 from .analysis import AnalysisTab
 from .calibration import CalibrationTab
@@ -31,6 +33,24 @@ from .theme import apply_theme
 from .theme import set_theme as save_theme
 from .toolbar import ToolbarBuilder
 from .utils_tab import UtilsTab
+
+_BATCH_DURATION_WINDOW = 5
+
+
+def _format_duration(seconds) -> str:
+    """Format seconds as H:MM:SS / M:SS, or 'n/a' for missing/invalid input."""
+    try:
+        seconds = float(seconds)
+    except (TypeError, ValueError):
+        return "n/a"
+    if seconds < 0:
+        return "n/a"
+    total_seconds = int(seconds)
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes}:{secs:02d}"
 
 
 class MainWindow(QMainWindow):
@@ -216,10 +236,13 @@ class MainWindow(QMainWindow):
         """Set up the status-bar dashboard (CPU / memory / process status)."""
         self.dashboard_cpu_label = QLabel()
         self.dashboard_memory_label = QLabel()
+        self.batch_progress_label = QLabel()
         self.dashboard_process_label = QLabel()
+        self._batch_image_durations = []
         status_bar = self.statusBar()
         status_bar.addPermanentWidget(self.dashboard_cpu_label)
         status_bar.addPermanentWidget(self.dashboard_memory_label)
+        status_bar.addPermanentWidget(self.batch_progress_label)
         status_bar.addPermanentWidget(self.dashboard_process_label)
 
         self._dashboard_timer = QTimer(self)
@@ -249,6 +272,65 @@ class MainWindow(QMainWindow):
         self.dashboard_cpu_label.setText(cpu_text)
         self.dashboard_memory_label.setText(memory_text)
         self.dashboard_process_label.setText(process_text)
+
+    def reset_batch_progress(self):
+        """Clear the status-bar batch-progress label; called at the start of
+        every Analysis run."""
+        self._batch_image_durations = []
+        self.batch_progress_label.setText("")
+
+    def update_batch_progress(self, line):
+        """Update the status-bar batch-progress label from one progress-notify
+        stdout line (minimal batch monitor: image count, elapsed time, and a
+        rolling-average ETA — see darsia.presets.workflows.analysis.progress).
+        """
+        try:
+            is_progress_line, event = try_decode_progress_line(line)
+        except Exception:
+            return
+        if not is_progress_line or event is None:
+            return
+
+        event_type = event.get("event")
+        step = event.get("step", "")
+        image_total = event.get("image_total")
+
+        if event_type == "step_start":
+            self._batch_image_durations = []
+            self.batch_progress_label.setText(f"Images: 0/{image_total} ({step})")
+            return
+
+        if event_type == "image_progress":
+            image_index = event.get("image_index")
+            duration = event.get("image_duration_s")
+            if isinstance(duration, (int, float)):
+                self._batch_image_durations.append(duration)
+                self._batch_image_durations = self._batch_image_durations[
+                    -_BATCH_DURATION_WINDOW:
+                ]
+            elapsed_text = _format_duration(event.get("step_elapsed_s"))
+            text = (
+                f"Images: {image_index}/{image_total} ({step}) — elapsed {elapsed_text}"
+            )
+            if (
+                len(self._batch_image_durations) >= 2
+                and isinstance(image_index, int)
+                and isinstance(image_total, int)
+            ):
+                remaining = image_total - image_index
+                if remaining > 0:
+                    average = sum(self._batch_image_durations) / len(
+                        self._batch_image_durations
+                    )
+                    text += f", ETA {_format_duration(average * remaining)}"
+            self.batch_progress_label.setText(text)
+            return
+
+        if event_type == "step_complete":
+            elapsed_text = _format_duration(event.get("step_elapsed_s"))
+            self.batch_progress_label.setText(
+                f"Images: {image_total}/{image_total} ({step}) — elapsed {elapsed_text}"
+            )
 
     def _on_splitter_moved(self):
         """Save the sidebar width when splitter is moved."""
