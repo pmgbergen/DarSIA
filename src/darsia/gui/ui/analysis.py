@@ -82,7 +82,13 @@ class AnalysisTab:
         play_action = self.main_window.toolbar_builder.play_action
         stop_action = self.main_window.toolbar_builder.stop_action
         self.process = self.main_window.process_runner.start_workflow_process(
-            argv, play_action, stop_action, cwd=Path.cwd()
+            argv,
+            play_action,
+            stop_action,
+            cwd=Path.cwd(),
+            workflow="analysis",
+            actions=[selected_id],
+            config_paths=[Path(config_file)],
         )
 
     def sidebar_items(self):

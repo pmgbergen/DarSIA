@@ -75,11 +75,27 @@ class CalibrationTab:
         if options["show"]:
             argv.append("--show")
 
+        # Map sidebar ids to the human labels the results-folder inference
+        # (suggested_workflow_results_folder) matches against.
+        action_label = {
+            "color": "color embedding",
+            "mass": "mass",
+            "default_mass": "default mass",
+            "delete": "delete",
+            "reset": "reset",
+        }.get(selected_id, selected_id)
+
         # Launch workflow in a separate process
         play_action = self.main_window.toolbar_builder.play_action
         stop_action = self.main_window.toolbar_builder.stop_action
         self.process = self.main_window.process_runner.start_workflow_process(
-            argv, play_action, stop_action, cwd=Path.cwd()
+            argv,
+            play_action,
+            stop_action,
+            cwd=Path.cwd(),
+            workflow="calibration",
+            actions=[action_label],
+            config_paths=[Path(config_file)],
         )
 
     def sidebar_items(self):
