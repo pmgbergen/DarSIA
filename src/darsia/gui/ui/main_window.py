@@ -142,6 +142,7 @@ class MainWindow(QMainWindow):
             "calibration": self.calibration_tab,
             "analysis": self.analysis_tab,
             "helper": self.helper_tab,
+            "comparison": self.comparison_tab,
             "utils": self.utils_tab,
         }
 
@@ -159,6 +160,11 @@ class MainWindow(QMainWindow):
                 self.analysis_tab.sidebar_items(),
             ),
             "helper": ("Helper", "fa5s.life-ring", self.helper_tab.sidebar_items()),
+            "comparison": (
+                "Comparison",
+                "fa5s.exchange-alt",
+                self.comparison_tab.sidebar_items(),
+            ),
             "utils": ("Utils", "fa5s.toolbox", self.utils_tab.sidebar_items()),
         }
         self.sidebar = Sidebar(sidebar_data)
