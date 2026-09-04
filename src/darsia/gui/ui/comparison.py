@@ -62,7 +62,7 @@ class ComparisonTab:
             cwd=Path.cwd(),
             workflow="comparison",
             actions=[selected_id],
-            config_paths=[Path(config_file)],
+            config_path=Path(config_file),
         )
 
     def sidebar_items(self):

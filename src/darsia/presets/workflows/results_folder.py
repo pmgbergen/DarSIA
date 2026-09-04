@@ -31,22 +31,9 @@ _ANALYSIS_MODE_DEFAULT_SUBFOLDER = {
 }
 
 
-def _deep_merge_dict(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
-    """Recursively merge update dictionary into base dictionary."""
-    for key, value in update.items():
-        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
-            _deep_merge_dict(base[key], value)
-        else:
-            base[key] = value
-    return base
-
-
-def _load_merged_workflow_config(config_paths: list[Path]) -> dict[str, Any]:
-    """Load and deeply merge workflow TOML config files."""
-    merged: dict[str, Any] = {}
-    for path in config_paths:
-        _deep_merge_dict(merged, tomllib.loads(path.read_text()))
-    return merged
+def _load_workflow_config(config_path: Path) -> dict[str, Any]:
+    """Load a workflow TOML config file."""
+    return tomllib.loads(config_path.read_text())
 
 
 def _results_folder_from_merged_config(merged: dict[str, Any]) -> Path | None:
@@ -61,10 +48,10 @@ def _results_folder_from_merged_config(merged: dict[str, Any]) -> Path | None:
 
 
 def suggested_analysis_results_folder(
-    config_paths: list[Path], actions: list[str]
+    config_path: Path, actions: list[str]
 ) -> Path | None:
     """Return suggested analysis results folder for completed runs."""
-    merged = _load_merged_workflow_config(config_paths)
+    merged = _load_workflow_config(config_path)
     results = _results_folder_from_merged_config(merged)
     if results is None:
         return None
@@ -89,16 +76,16 @@ def suggested_analysis_results_folder(
 
 
 def suggested_workflow_results_folder(
-    workflow: str, config_paths: list[Path], actions: list[str]
+    workflow: str, config_path: Path, actions: list[str]
 ) -> Path | None:
     """Return suggested output folder for successful GUI workflow runs."""
-    merged = _load_merged_workflow_config(config_paths)
+    merged = _load_workflow_config(config_path)
     results = _results_folder_from_merged_config(merged)
     if results is None:
         return None
 
     if workflow == "analysis":
-        return suggested_analysis_results_folder(config_paths, actions)
+        return suggested_analysis_results_folder(config_path, actions)
 
     selected_actions = {action.strip().lower() for action in actions}
 

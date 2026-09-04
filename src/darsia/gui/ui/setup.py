@@ -145,7 +145,7 @@ class SetupTab:
             cwd=Path.cwd(),
             workflow="setup",
             actions=[selected_id],
-            config_paths=config_paths,
+            config_path=config_paths[0],
         )
 
     def sidebar_items(self):
