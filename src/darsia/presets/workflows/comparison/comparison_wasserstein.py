@@ -508,26 +508,6 @@ def _compute_wasserstein_distances(
                                 / roi_integral_average,
                             }
 
-                            # Control evaluation of the transport density over sub-rois
-                            # weighted_transport_density = darsia.full_like(
-                            #    roi_mass_1,
-                            #    info.get("weighted_transport_density"),
-                            # )
-                            # transport_density.show()
-                            # for sub_roi_name in roi_config.sub_roi:
-                            #    sub_roi_config = config.wasserstein.sub_roi[sub_roi_name]
-                            # subroi_distance = _evaluate_single_wasserstein_roi(
-                            #    distance,
-                            #    info,
-                            #    sub_roi_name,
-                            #    sub_roi_config,
-                            #    results_dir,
-                            #    skip_existing,
-                            # )
-
-                            # sub_roi_result = None
-                            # ...
-
                             computation_time = time_.time() - start_time
 
                         # Create and save result
