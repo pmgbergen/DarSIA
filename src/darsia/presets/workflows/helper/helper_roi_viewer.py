@@ -13,6 +13,7 @@ import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.roi import RoiConfig
+from darsia.presets.workflows.config.sections import required_sections
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.presets.workflows.utils.roi_visualization import (
@@ -120,6 +121,7 @@ def launch_roi_viewer(
     plt.show()
 
 
+@required_sections("rig", "data", "protocols", "helper.roi_viewer")
 def helper_roi_viewer(
     rig_cls: type[Rig], path: Path | list[Path], show: bool = False
 ) -> None:
