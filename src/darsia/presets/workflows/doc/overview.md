@@ -7,7 +7,7 @@ DarSIA workflows are organized in phases:
 3. **Analysis**: Process selected images for cropping, mass, segmentation, fingers, and volume.
 4. **Helper**: Run interactive helper tools (ROI helper and ROI Viewer).
 5. **Comparison**: Compare runs/events and Wasserstein-based distances.
-6. **GUI (optional)**: Use the Tkinter GUI as an additive interface for the same workflows.
+6. **GUI (optional)**: Use the Qt GUI (`uv run python -m darsia.gui`) as an additive interface for the same workflows.
 
 Start with [Introduction](./introduction.md) for config-file composition guidance, then
 continue with [Quickstart](./quickstart.md) for a minimal command sequence.
