@@ -163,10 +163,17 @@ def publish_stream_images(
             pass
 
 
-def write_stream_frame(cache_dir: Path, key: str, png_bytes: bytes) -> None:
-    """Atomically write/overwrite one stream frame file in cache_dir."""
-    target = cache_dir / f"{key}.png"
-    tmp = cache_dir / f"{key}.png.tmp"
+def write_stream_frame(cache_dir: Path, key: str, seq: int, png_bytes: bytes) -> None:
+    """Atomically write one stream frame file to cache_dir/key/seq.png.
+
+    One file per (key, seq) is retained (not overwritten) so the Streaming
+    Preview panel can scrub back through every frame of a run, not just the
+    latest.
+    """
+    key_dir = cache_dir / key
+    key_dir.mkdir(parents=True, exist_ok=True)
+    target = key_dir / f"{seq}.png"
+    tmp = key_dir / f"{seq}.png.tmp"
     tmp.write_bytes(png_bytes)
     os.replace(tmp, target)
 
@@ -191,17 +198,25 @@ def try_decode_stream_notify_line(line: str) -> tuple[bool, dict[str, Any] | Non
 
 def build_file_cache_stream_callback(
     cache_dir: Path,
+    seq_cell: dict[str, int],
 ) -> Callable[[dict[str, bytes] | None], None]:
     """Return a stream_callback that writes frames to cache_dir and prints a
     notify line to stdout for each publish (flushed immediately, since stdout
-    is block-buffered when not attached to a TTY)."""
-    seq = {"n": 0}
+    is block-buffered when not attached to a TTY).
+
+    seq_cell (e.g. {"n": 0}) is shared with the caller's progress_callback
+    wrapper so the two can be correlated: this callback increments and uses
+    it as the on-disk frame id, and the progress wrapper tags its own notify
+    line with the same value, since it always fires immediately afterwards
+    for the same image.
+    """
 
     def _callback(payload: dict[str, bytes] | None) -> None:
-        seq["n"] += 1
+        seq_cell["n"] += 1
+        seq = seq_cell["n"]
         if payload is not None:
             for key, png_bytes in payload.items():
-                write_stream_frame(cache_dir, key, png_bytes)
-        print(encode_stream_notify_line(payload, seq["n"]), flush=True)
+                write_stream_frame(cache_dir, key, seq, png_bytes)
+        print(encode_stream_notify_line(payload, seq), flush=True)
 
     return _callback

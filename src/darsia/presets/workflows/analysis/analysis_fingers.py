@@ -1057,6 +1057,9 @@ def analysis_fingers_from_context(
             image_total=image_total,
             image_duration_s=monotonic() - image_started_at,
             step_elapsed_s=monotonic() - step_started_at,
+            image_datetime=(
+                img.date.isoformat() if getattr(img, "date", None) else None
+            ),
         )
 
 

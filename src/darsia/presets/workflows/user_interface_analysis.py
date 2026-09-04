@@ -30,6 +30,7 @@ from darsia.presets.workflows.analysis.analysis_volume import (
 )
 from darsia.presets.workflows.analysis.progress import (
     AnalysisProgressEvent,
+    encode_progress_line,
     publish_step_complete,
     publish_step_start,
 )
@@ -328,6 +329,27 @@ def run_analysis(
         )
 
 
+def _stream_progress_wrapper(
+    seq_cell: dict[str, int],
+) -> Callable[[AnalysisProgressEvent], None]:
+    """Progress wrapper used only to correlate streamed frames with their real
+    image index/datetime for the Streaming Preview panel's timeline slider.
+    Not a general progress reporter (see Batch Monitor, out of scope here) —
+    only "image_progress" events are forwarded, tagged with the same seq
+    value the immediately-preceding stream_callback call just used.
+    """
+
+    def _callback(event: AnalysisProgressEvent) -> None:
+        if event.get("event") != "image_progress":
+            return
+        print(
+            encode_progress_line({**event, "seq": seq_cell["n"]}),
+            flush=True,
+        )
+
+    return _callback
+
+
 def preset_analysis(rig_cls: type[Rig], **kwargs):
     parser = build_parser_for_analysis()
     args = parser.parse_args()
@@ -335,9 +357,11 @@ def preset_analysis(rig_cls: type[Rig], **kwargs):
     if getattr(args, "stream", False) and "stream_callback" not in kwargs:
         if not args.stream_cache_dir:
             raise ValueError("--stream requires --stream-cache-dir.")
+        seq_cell = {"n": 0}
         kwargs["stream_callback"] = build_file_cache_stream_callback(
-            Path(args.stream_cache_dir)
+            Path(args.stream_cache_dir), seq_cell
         )
+        kwargs.setdefault("progress_callback", _stream_progress_wrapper(seq_cell))
     run_analysis(rig_cls, args, **kwargs)
 
 
