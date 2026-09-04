@@ -82,12 +82,19 @@ class AnalysisTab:
             argv.append("--thresholding")
         if options["show"]:
             argv.append("--show")
+        argv.append("--progress")
 
         cache_dir = None
         if stream_preview:
             cache_dir = self.main_window.streaming_panel.prepare_cache_dir()
             argv += ["--stream", "--stream-cache-dir", str(cache_dir)]
         self.main_window.streaming_panel.reset_for_run(stream_preview, cache_dir)
+        self.main_window.reset_batch_progress()
+
+        def _on_progress_line(line):
+            self.main_window.update_batch_progress(line)
+            if stream_preview:
+                self.main_window.streaming_panel.handle_progress_line(line)
 
         # Launch workflow in a separate process
         play_action = self.main_window.toolbar_builder.play_action
@@ -105,11 +112,7 @@ class AnalysisTab:
                 if stream_preview
                 else None
             ),
-            on_progress_line=(
-                self.main_window.streaming_panel.handle_progress_line
-                if stream_preview
-                else None
-            ),
+            on_progress_line=_on_progress_line,
         )
 
     def sidebar_items(self):
