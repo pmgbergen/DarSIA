@@ -13,6 +13,7 @@ from matplotlib.widgets import Button
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_context
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import required_sections
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.utils.images import load_images_with_cache
 
@@ -194,6 +195,7 @@ def launch_color_helper(
     plt.show()
 
 
+@required_sections("rig", "data", "protocols", "helper.color")
 def helper_color(
     rig_cls: type[Rig], path: Path | list[Path], show: bool = False
 ) -> None:

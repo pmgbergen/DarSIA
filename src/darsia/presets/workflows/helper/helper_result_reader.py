@@ -15,6 +15,7 @@ from darsia.presets.workflows.analysis.analysis_context import select_image_path
 from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.format_registry import ImageExportFormat
+from darsia.presets.workflows.config.sections import required_sections
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -171,6 +172,7 @@ def launch_result_reader(frames: list[ResultFrame], *, mode: str, cmap) -> None:
     plt.show()
 
 
+@required_sections("rig", "data", "protocols", "helper.results")
 def helper_result_reader(
     rig_cls: type[Rig], path: Path | list[Path], show: bool = False
 ):

@@ -23,6 +23,7 @@ from darsia.presets.workflows.analysis.scalar_products import (
     requires_rescaled_modes,
 )
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.sections import required_sections
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
@@ -237,6 +238,7 @@ def launch_roi_helper_viewer(
     plt.show()
 
 
+@required_sections("rig", "data", "protocols", "helper.roi")
 def helper_roi(cls: type[Rig], path: Path | list[Path], show: bool = False) -> None:
     if show:
         logger.info(
