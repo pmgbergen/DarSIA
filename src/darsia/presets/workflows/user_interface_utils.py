@@ -64,6 +64,14 @@ def build_parser_for_setup():
         help="Allow import to overwrite all conflicting existing calibration files.",
     )
     parser.add_argument(
+        "--conflict-action",
+        type=str,
+        choices=["error", "overwrite_all", "skip_all"],
+        default=None,
+        help="How to resolve import conflicts. Overrides --overwrite when given; "
+        "defaults to overwrite_all if --overwrite is set, else error.",
+    )
+    parser.add_argument(
         "--build-media",
         action="store_true",
         help="Build protocol-time ordered MP4/GIF from analysis result images.",
@@ -112,5 +120,10 @@ def preset_utils():
             bundle=Path(args.calibration_bundle),
             target_folder=target,
             overwrite=args.overwrite,
+            conflict_action=args.conflict_action,
         )
         logger.info("Imported calibration: %s", imported)
+
+
+if __name__ == "__main__":
+    preset_utils()

@@ -81,3 +81,7 @@ def preset_comparison(rig_cls: type[Rig], **kwargs):
     args = parser.parse_args()
     print_help_for_flags(args, parser)
     run_comparison(rig_cls, args, **kwargs)
+
+
+if __name__ == "__main__":
+    preset_comparison(Rig)
