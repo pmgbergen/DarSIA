@@ -101,3 +101,7 @@ def preset_helper(rig_cls: type[Rig], **kwargs):
     args = parser.parse_args()
     print_help_for_flags(args, parser)
     run_helper(rig_cls, args)
+
+
+if __name__ == "__main__":
+    preset_helper(Rig)
