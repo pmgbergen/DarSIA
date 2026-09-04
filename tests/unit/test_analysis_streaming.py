@@ -68,7 +68,18 @@ def test_run_analysis_forwards_stream_and_progress_callbacks_to_all_modes(
         progress_events.append(payload)
 
     fake_ctx = SimpleNamespace(
-        image_paths=[Path("/tmp/img1.png"), Path("/tmp/img2.png")]
+        image_paths=[Path("/tmp/img1.png"), Path("/tmp/img2.png")],
+        experiment=SimpleNamespace(),
+        config=SimpleNamespace(
+            analysis=SimpleNamespace(
+                cropping=SimpleNamespace(),
+                mass=SimpleNamespace(),
+                volume=SimpleNamespace(),
+                segmentation=SimpleNamespace(),
+                fingers=SimpleNamespace(),
+                thresholding=SimpleNamespace(),
+            )
+        ),
     )
 
     def _capture(name):
@@ -82,6 +93,10 @@ def test_run_analysis_forwards_stream_and_progress_callbacks_to_all_modes(
     monkeypatch.setattr(
         "darsia.presets.workflows.user_interface_analysis.prepare_analysis_context",
         lambda **kwargs: fake_ctx,
+    )
+    monkeypatch.setattr(
+        "darsia.presets.workflows.user_interface_analysis.select_image_paths",
+        lambda *args, **kwargs: fake_ctx.image_paths,
     )
     monkeypatch.setattr(
         "darsia.presets.workflows.user_interface_analysis.analysis_cropping_from_context",
@@ -162,6 +177,7 @@ def test_run_analysis_forwards_stream_and_progress_callbacks_to_all_modes(
 
 def test_thresholding_writes_separated_formats_and_streams_layer_keys(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     thresholding_config = AnalysisThresholdingConfig().load(
         sec={
@@ -222,6 +238,11 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
         expert_knowledge_adapter=None,
     )
 
+    monkeypatch.setattr(
+        "darsia.presets.workflows.analysis.analysis_thresholding.select_image_paths",
+        lambda *args, **kwargs: ctx.image_paths,
+    )
+
     def _stream_callback(payload):
         if payload is not None:
             stream_payloads.append(payload)
@@ -243,7 +264,9 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
     assert "thresholding_all" in stream_payloads[0]
 
 
-def test_thresholding_supports_rescaled_layer_modes(tmp_path: Path) -> None:
+def test_thresholding_supports_rescaled_layer_modes(
+    tmp_path: Path, monkeypatch
+) -> None:
     thresholding_config = AnalysisThresholdingConfig().load(
         sec={
             "thresholding": {
@@ -318,12 +341,19 @@ def test_thresholding_supports_rescaled_layer_modes(tmp_path: Path) -> None:
         expert_knowledge_adapter=None,
     )
 
+    monkeypatch.setattr(
+        "darsia.presets.workflows.analysis.analysis_thresholding.select_image_paths",
+        lambda *args, **kwargs: ctx.image_paths,
+    )
+
     analysis_thresholding_from_context(ctx)
 
     assert (tmp_path / "thresholding" / "npz" / "rescaled" / "img001.npz").exists()
 
 
-def test_thresholding_applies_expert_knowledge_constraints(tmp_path: Path) -> None:
+def test_thresholding_applies_expert_knowledge_constraints(
+    tmp_path: Path, monkeypatch
+) -> None:
     thresholding_config = AnalysisThresholdingConfig().load(
         sec={
             "thresholding": {
@@ -380,6 +410,11 @@ def test_thresholding_applies_expert_knowledge_constraints(tmp_path: Path) -> No
         image_paths=[image_path],
         color_to_mass_analysis=_fake_color_to_mass,
         expert_knowledge_adapter=adapter,
+    )
+
+    monkeypatch.setattr(
+        "darsia.presets.workflows.analysis.analysis_thresholding.select_image_paths",
+        lambda *args, **kwargs: ctx.image_paths,
     )
 
     analysis_thresholding_from_context(ctx)
