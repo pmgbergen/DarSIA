@@ -14,17 +14,6 @@ from .utils import _convert_none, _get_key, _get_section, _get_section_from_toml
 class HelperRoiConfig:
     """Configuration for ROI helper."""
 
-    mode: str = "none"
-    data_selection: str | list[str] | None = field(
-        default=None,
-        metadata={
-            "name": "Data selection",
-            "help": "Registry key name(s) whose data is unioned for ROI helper.",
-            "widget": "registry_key_list",
-        },
-    )
-    """Name(s) of data registry entries to use for ROI helper."""
-
     SUPPORTED_MODES = {
         "none",
         "concentration_aq",
@@ -37,6 +26,25 @@ class HelperRoiConfig:
         "rescaled_saturation_g",
         "rescaled_concentration_aq",
     }
+
+    mode: str = field(
+        default="none",
+        metadata={
+            "name": "Mode",
+            "help": "Analysis mode used to resolve the scalar field for ROI helper.",
+            "options": sorted(SUPPORTED_MODES),
+        },
+    )
+    """Mode for ROI helper."""
+    data_selection: str | list[str] | None = field(
+        default=None,
+        metadata={
+            "name": "Data selection",
+            "help": "Registry key name(s) whose data is unioned for ROI helper.",
+            "widget": "registry_key_list",
+        },
+    )
+    """Name(s) of data registry entries to use for ROI helper."""
 
     def load(
         self,
@@ -109,7 +117,15 @@ class HelperResultsConfig:
         },
     )
     """Name(s) of data registry entries to use for results helper."""
-    mode: str = "rescaled_mass"
+    mode: str = field(
+        default="rescaled_mass",
+        metadata={
+            "name": "Mode",
+            "help": "Analysis mode of the results to read back and visualize.",
+            "placeholder": "e.g., rescaled_mass",
+        },
+    )
+    """Mode of the results helper."""
     format: str = field(
         default="npz",
         metadata={
@@ -123,7 +139,15 @@ class HelperResultsConfig:
             "max_rows": 1,
         },
     )
-    cmap: str | None = None
+    cmap: str | None = field(
+        default=None,
+        metadata={
+            "name": "Colormap",
+            "help": "Optional colormap override for result visualization.",
+            "placeholder": "e.g., viridis",
+        },
+    )
+    """Colormap for result visualization."""
     roi: list[str] | None = field(
         default=None,
         metadata={
@@ -236,10 +260,20 @@ class HelperConfig:
         },
     )
     """Name(s) of data registry entries to use for helper."""
-    roi: HelperRoiConfig | None = None
-    roi_viewer: HelperRoiViewerConfig | None = None
-    results: HelperResultsConfig | None = None
-    color: HelperColorConfig | None = None
+    roi: HelperRoiConfig | None = field(default=None, metadata={"name": "ROI helper"})
+    """ROI helper configuration."""
+    roi_viewer: HelperRoiViewerConfig | None = field(
+        default=None, metadata={"name": "ROI viewer helper"}
+    )
+    """ROI viewer helper configuration."""
+    results: HelperResultsConfig | None = field(
+        default=None, metadata={"name": "Results helper"}
+    )
+    """Results helper configuration."""
+    color: HelperColorConfig | None = field(
+        default=None, metadata={"name": "Color helper"}
+    )
+    """Color helper configuration."""
 
     def load(
         self,
