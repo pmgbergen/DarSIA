@@ -426,6 +426,7 @@ class FileDialogHelper:
         setting_dict,
         key_is_directory=False,
         value_is_directory=False,
+        key_source=None,
         form_context=None,
     ):
         """Create a dict[Path, Path] editor with two-column rows (key, value).
@@ -438,6 +439,12 @@ class FileDialogHelper:
             If True, key column opens directory selection; if False, file selection
         value_is_directory : bool, optional
             If True, value column opens directory selection; if False, file selection
+        key_source : str, optional
+            Dotted settings-key (e.g. "data.folders") of another list-valued
+            setting. If given, the key column is locked: rows are generated 1:1
+            from that setting's current values (read-only, no Browse button, no
+            manual add/remove) instead of being freely editable. Only supported
+            when form_context is provided.
         form_context : dict, optional
             If provided, contains "form" (QFormLayout) for dynamic row insertion/removal.
             If None, uses internal QVBoxLayout (fallback for backward compatibility).
@@ -463,7 +470,14 @@ class FileDialogHelper:
             for row in row_data_list:
                 row["remove_button"].setVisible(show_remove)
 
-        add_button = QPushButton("Add row")
+        locked_keys = None
+        if key_source:
+            source_values = self.main_window.settings_factory.get_value(
+                self.main_window.config_dict, key_source
+            )
+            locked_keys = [str(v) for v in source_values] if source_values else []
+
+        add_button = QPushButton("Add row") if locked_keys is None else None
 
         # If form_context provided, use QFormLayout-based insertion
         if form_context:
@@ -475,10 +489,24 @@ class FileDialogHelper:
             header_layout = QHBoxLayout(header_widget)
             header_layout.setContentsMargins(0, 0, 0, 0)
             header_layout.setSpacing(4)
-            header_layout.addWidget(add_button, stretch=1)
+            if add_button is not None:
+                header_layout.addWidget(add_button, stretch=1)
+            else:
+                header_layout.addStretch(1)
             header_layout.addWidget(build_help_column(setting_dict))
 
-            def add_row(initial_key="", initial_value=""):
+            def insert_row(row_widget):
+                # Find the correct insertion index: after the header_widget header row
+                header_idx, _ = form.getWidgetPosition(header_widget)
+                if row_data_list:
+                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
+                    insert_idx = last_idx + 1
+                else:
+                    # Insert right after header row
+                    insert_idx = header_idx + 1
+                form.insertRow(insert_idx, "", row_widget)
+
+            def add_editable_row(initial_key="", initial_value=""):
                 row_widget = QWidget()
                 row_layout = QHBoxLayout(row_widget)
                 row_layout.setContentsMargins(0, 0, 0, 0)
@@ -555,16 +583,7 @@ class FileDialogHelper:
                 row_layout.addWidget(value_edit, stretch=1)
                 row_layout.addWidget(remove_button)
 
-                # Find the correct insertion index: after the header_widget header row
-                header_idx, _ = form.getWidgetPosition(header_widget)
-                if row_data_list:
-                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
-                    insert_idx = last_idx + 1
-                else:
-                    # Insert right after header row
-                    insert_idx = header_idx + 1
-
-                form.insertRow(insert_idx, "", row_widget)
+                insert_row(row_widget)
 
                 row_data = {
                     "widget": row_widget,
@@ -574,18 +593,69 @@ class FileDialogHelper:
                 row_pairs.append((key_edit, value_edit))
                 refresh_remove_buttons()
 
-            # Connect add_button to add_row closure
-            add_button.clicked.connect(lambda: add_row())
+            def add_locked_row(folder, initial_value=""):
+                row_widget = QWidget()
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(0, 0, 0, 0)
+                row_layout.setSpacing(4)
+
+                # Key column: read-only, sourced from key_source — not user-editable.
+                key_edit = QLineEdit(str(folder))
+                key_edit.setReadOnly(True)
+
+                # Value column
+                value_browse_button = QPushButton("Browse")
+                value_browse_button.setMaximumWidth(80)
+                value_edit = QLineEdit()
+                value_placeholder = (
+                    "Select folder or type path"
+                    if value_is_directory
+                    else "Select file or type path"
+                )
+                value_edit.setPlaceholderText(value_placeholder)
+                if initial_value:
+                    value_edit.setText(str(initial_value))
+
+                value_browse_button.clicked.connect(
+                    lambda: self._browse_for_path(
+                        value_is_directory,
+                        (
+                            """Select value """
+                            f"""({"folder" if value_is_directory else "file"}) """
+                            f"""for {display_name}"""
+                        ),
+                        value_edit,
+                    )
+                )
+
+                row_layout.addWidget(key_edit, stretch=1)
+                row_layout.addWidget(value_browse_button)
+                row_layout.addWidget(value_edit, stretch=1)
+
+                insert_row(row_widget)
+
+                row_data_list.append({"widget": row_widget})
+                row_pairs.append((key_edit, value_edit))
 
             # Defer pre-fill until after header row is added to form
             from PySide6.QtCore import QTimer
 
-            def deferred_prefill():
-                if isinstance(values, dict) and values:
-                    for k, v in values.items():
-                        add_row(k, v)
-                else:
-                    add_row("")
+            if locked_keys is None:
+                add_button.clicked.connect(lambda: add_editable_row())
+
+                def deferred_prefill():
+                    if isinstance(values, dict) and values:
+                        for k, v in values.items():
+                            add_editable_row(k, v)
+                    else:
+                        add_editable_row("")
+
+            else:
+
+                def deferred_prefill():
+                    saved = values if isinstance(values, dict) else {}
+                    for folder in locked_keys:
+                        add_locked_row(folder, saved.get(folder, ""))
 
             QTimer.singleShot(0, deferred_prefill)
 

@@ -20,11 +20,11 @@ class ProtocolsConfig:
             "help": (
                 "Table mapping each data folder to its imaging-protocol file, "
                 "or [file, sheet]. Always a table — one row per folder, even "
-                "with a single folder. Note: folder paths must exactly match "
-                "those in [data].folders; use the 'Browse' button."
+                "with a single folder. The folder column mirrors [data].folders "
+                "and is not editable here; add or remove folders in the Data tab."
             ),
             "widget": "path_map",
-            "key_is_directory": True,
+            "key_source": "data.folders",
             "group": "Imaging",
         },
     )
