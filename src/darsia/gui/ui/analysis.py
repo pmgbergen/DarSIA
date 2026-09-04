@@ -106,7 +106,7 @@ class AnalysisTab:
             cwd=Path.cwd(),
             workflow="analysis",
             actions=[selected_id],
-            config_paths=[Path(config_file)],
+            config_path=Path(config_file),
             on_stream_line=(
                 self.main_window.streaming_panel.handle_stream_line
                 if stream_preview

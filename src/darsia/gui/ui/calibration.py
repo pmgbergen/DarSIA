@@ -95,7 +95,7 @@ class CalibrationTab:
             cwd=Path.cwd(),
             workflow="calibration",
             actions=[action_label],
-            config_paths=[Path(config_file)],
+            config_path=Path(config_file),
         )
 
     def sidebar_items(self):

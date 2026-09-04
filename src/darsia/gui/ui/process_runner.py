@@ -30,7 +30,7 @@ class ProcessRunner:
         *,
         workflow=None,
         actions=None,
-        config_paths=None,
+        config_path=None,
         on_stream_line=None,
         on_progress_line=None,
     ):
@@ -49,7 +49,7 @@ class ProcessRunner:
                 the terminal-state Done/Error dialog. Dialog is skipped if None.
             actions: Enabled action labels for this run, used to infer a results
                 folder for the Done dialog's "Open in folder" button.
-            config_paths: Config paths for this run, used for the same purpose.
+            config_path: Config path for this run, used for the same purpose.
             on_stream_line: Called with each raw output line that starts with
                 STREAM_LINE_PREFIX; such lines are not logged or included in
                 the error-dialog detail text. All other lines are handled as
@@ -121,7 +121,7 @@ class ProcessRunner:
             else:
                 self.main_window.print_log("Completed successfully!")
                 self.main_window.config_controller.load_config()
-                self._show_done_dialog(workflow, actions, config_paths)
+                self._show_done_dialog(workflow, actions, config_path)
 
         process.readyReadStandardOutput.connect(handle_output)
         process.finished.connect(handle_finished)
@@ -138,7 +138,7 @@ class ProcessRunner:
             self.active[workflow] = (process, workflow)
         return process
 
-    def _show_done_dialog(self, workflow, actions, config_paths):
+    def _show_done_dialog(self, workflow, actions, config_path):
         """Show a modal completion dialog with an optional 'Open in folder' button."""
         if workflow is None:
             return
@@ -147,7 +147,7 @@ class ProcessRunner:
         box.setWindowTitle("Done")
         box.setText(f"{workflow.capitalize()} workflow completed.")
         open_folder_button = None
-        folder = self._suggested_results_folder(workflow, actions, config_paths)
+        folder = self._suggested_results_folder(workflow, actions, config_path)
         if folder is not None:
             open_folder_button = box.addButton("Open in folder", QMessageBox.ActionRole)
         box.addButton(QMessageBox.Ok)
@@ -173,12 +173,12 @@ class ProcessRunner:
         box.exec()
 
     @staticmethod
-    def _suggested_results_folder(workflow, actions, config_paths):
-        if not config_paths:
+    def _suggested_results_folder(workflow, actions, config_path):
+        if not config_path:
             return None
         try:
             return suggested_workflow_results_folder(
-                workflow, config_paths, actions or []
+                workflow, config_path, actions or []
             )
         except (OSError, ValueError):
             return None

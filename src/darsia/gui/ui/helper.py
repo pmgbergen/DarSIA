@@ -82,7 +82,7 @@ class HelperTab:
             cwd=Path.cwd(),
             workflow="helper",
             actions=[selected_id],
-            config_paths=[Path(config_file)],
+            config_path=Path(config_file),
         )
 
     def sidebar_items(self):

@@ -159,7 +159,7 @@ class UtilsTab:
             cwd=Path.cwd(),
             workflow="utils",
             actions=[selected_id],
-            config_paths=config_paths,
+            config_path=config_paths[0],
         )
 
     def sidebar_items(self):
