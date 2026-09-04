@@ -123,6 +123,7 @@ class HelperResultsConfig:
             "name": "Mode",
             "help": "Analysis mode of the results to read back and visualize.",
             "placeholder": "e.g., rescaled_mass",
+            "options": sorted(HelperRoiConfig.SUPPORTED_MODES - {"none"}),
         },
     )
     """Mode of the results helper."""
