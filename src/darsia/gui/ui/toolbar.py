@@ -17,6 +17,7 @@ _QTA_ICONS = {
     "settings": "fa5s.sliders-h",
     "play": "fa5s.play",
     "stop": "fa5s.stop",
+    "stream": "fa5s.stream",
 }
 
 
@@ -65,6 +66,16 @@ class ToolbarBuilder:
         self.stop_action = self.menu_builder.stop_action
         self._configure(self.stop_action, "stop", "Stop Workflow (Ctrl+Escape)")
         toolbar.addAction(self.stop_action)
+
+        # Reuse the dock's own checkable toggleViewAction so this button stays
+        # in sync with Ctrl+P/View menu/edge button with no extra bookkeeping.
+        toolbar.addSeparator()
+        self._configure(
+            self.menu_builder.streaming_toggle_action,
+            "stream",
+            "Toggle Streaming Preview (Ctrl+P)",
+        )
+        toolbar.addAction(self.menu_builder.streaming_toggle_action)
 
         theme_signal.theme_changed.connect(self.refresh_icons)
 

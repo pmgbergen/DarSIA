@@ -3,11 +3,14 @@ from pathlib import Path
 
 import psutil
 from PySide6.QtCore import QSettings, Qt, QTimer, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QPalette
 from PySide6.QtWidgets import (
+    QApplication,
     QDockWidget,
+    QHBoxLayout,
     QLabel,
     QMainWindow,
+    QPushButton,
     QScrollArea,
     QSplitter,
     QTextEdit,
@@ -31,6 +34,7 @@ from .sidebar import Sidebar
 from .streaming import StreamingPanel
 from .theme import apply_theme
 from .theme import set_theme as save_theme
+from .theme import theme_signal
 from .toolbar import ToolbarBuilder
 from .utils_tab import UtilsTab
 
@@ -101,6 +105,9 @@ class MainWindow(QMainWindow):
         self.streaming_panel = StreamingPanel(self)
         self.streaming_dock = QDockWidget("Streaming Preview", self)
         self.streaming_dock.setWidget(self.streaming_panel)
+        # Closable only: no float/drag, so the fixed edge-toggle button (see
+        # below) always points at where the panel actually is.
+        self.streaming_dock.setFeatures(QDockWidget.DockWidgetClosable)
         self.addDockWidget(Qt.RightDockWidgetArea, self.streaming_dock)
         self.streaming_dock.hide()
 
@@ -227,9 +234,30 @@ class MainWindow(QMainWindow):
 
         # Create central widget with all components
         main_container = QWidget()
-        main_layout = QVBoxLayout(main_container)
+        main_layout = QHBoxLayout(main_container)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         self.setCentralWidget(main_container)
-        main_layout.addWidget(root_splitter)
+        main_layout.addWidget(root_splitter, 1)
+
+        # Thin edge handle to reveal/hide the Streaming Preview dock, sitting
+        # at the boundary between the main content and the (right-docked,
+        # now closable-only) dock. Drives the same toggleViewAction as
+        # Ctrl+P/View menu/toolbar, so all four controls stay in sync for free.
+        self.streaming_toggle_button = QPushButton("<")
+        self.streaming_toggle_button.setFixedWidth(14)
+        self.streaming_toggle_button.setFlat(True)
+        self.streaming_toggle_button.setCursor(Qt.PointingHandCursor)
+        self.streaming_toggle_button.clicked.connect(
+            self.menu_builder.streaming_toggle_action.trigger
+        )
+        self._refresh_streaming_toggle_style()
+        theme_signal.theme_changed.connect(self._refresh_streaming_toggle_style)
+        self.streaming_dock.visibilityChanged.connect(
+            self._sync_streaming_toggle_button
+        )
+        self._sync_streaming_toggle_button(self.streaming_dock.isVisible())
+        main_layout.addWidget(self.streaming_toggle_button)
 
         self._init_dashboard()
 
@@ -237,6 +265,34 @@ class MainWindow(QMainWindow):
 
         # Display welcome message
         self.welcome_message()
+
+    def _sync_streaming_toggle_button(self, visible):
+        """Keep the edge-toggle glyph/tooltip in sync with the dock's actual
+        visibility, whatever triggered the change (Ctrl+P, View menu,
+        toolbar, this button, or the dock's own close button)."""
+        self.streaming_toggle_button.setText(">" if visible else "<")
+        self.streaming_toggle_button.setToolTip(
+            "Hide Streaming Preview (Ctrl+P)"
+            if visible
+            else "Show Streaming Preview (Ctrl+P)"
+        )
+
+    def _refresh_streaming_toggle_style(self):
+        """Rebuild the edge-toggle button's palette-aware styling (theme-safe)."""
+        pal = QApplication.instance().palette()
+        bg_base = pal.color(QPalette.Button)
+        is_dark_mode = pal.color(QPalette.Window).lightnessF() < 0.5
+        bg_color = bg_base.lighter(130) if is_dark_mode else bg_base.darker(120)
+        bg = bg_color.name()
+        hover = bg_color.lighter(115).name()
+        pressed = bg_color.darker(110).name()
+        border = pal.color(QPalette.Mid).name()
+        self.streaming_toggle_button.setStyleSheet(
+            f"QPushButton {{ background-color: {bg}; border: none; "
+            f"border-left: 1px solid {border}; }}"
+            f"QPushButton:hover {{ background-color: {hover}; }}"
+            f"QPushButton:pressed {{ background-color: {pressed}; }}"
+        )
 
     def _init_dashboard(self):
         """Set up the status-bar dashboard (CPU / memory / process status)."""
