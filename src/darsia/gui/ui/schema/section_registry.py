@@ -86,6 +86,24 @@ CHECKBOX_TO_SECTIONS = {
         "darsia.presets.workflows.analysis.analysis_context",
         "analysis_volume_entry",
     ),
+    # Helper leaf mappings — each helper action has its own entry point with
+    # per-action sections
+    ("helper", "color"): (
+        "darsia.presets.workflows.helper.helper_color",
+        "helper_color",
+    ),
+    ("helper", "roi"): (
+        "darsia.presets.workflows.helper.helper_roi",
+        "helper_roi",
+    ),
+    ("helper", "roi_viewer"): (
+        "darsia.presets.workflows.helper.helper_roi_viewer",
+        "helper_roi_viewer",
+    ),
+    ("helper", "results"): (
+        "darsia.presets.workflows.helper.helper_result_reader",
+        "helper_result_reader",
+    ),
 }
 
 # Tab visibility override: limit which sections are shown for specific workflows.
@@ -121,6 +139,11 @@ TAB_VISIBILITY = {
     ("analysis", "segmentation"): ("analysis", "options"),
     ("analysis", "thresholding"): ("analysis", "options"),
     ("analysis", "volume"): ("analysis", "options"),
+    # Helper
+    ("helper", "color"): ("helper", "options"),
+    ("helper", "roi"): ("helper", "options"),
+    ("helper", "roi_viewer"): ("helper", "options"),
+    ("helper", "results"): ("helper", "options"),
 }
 
 
