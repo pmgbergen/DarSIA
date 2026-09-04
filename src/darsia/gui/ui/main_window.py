@@ -1,6 +1,8 @@
+import os
 from pathlib import Path
 
-from PySide6.QtCore import QSettings, Qt, Signal
+import psutil
+from PySide6.QtCore import QSettings, Qt, QTimer, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QLabel,
@@ -193,10 +195,50 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(main_container)
         main_layout.addWidget(root_splitter)
 
+        self._init_dashboard()
+
         self.showMaximized()
 
         # Display welcome message
         self.welcome_message()
+
+    def _init_dashboard(self):
+        """Set up the status-bar dashboard (CPU / memory / process status)."""
+        self.dashboard_cpu_label = QLabel()
+        self.dashboard_memory_label = QLabel()
+        self.dashboard_process_label = QLabel()
+        status_bar = self.statusBar()
+        status_bar.addPermanentWidget(self.dashboard_cpu_label)
+        status_bar.addPermanentWidget(self.dashboard_memory_label)
+        status_bar.addPermanentWidget(self.dashboard_process_label)
+
+        self._dashboard_timer = QTimer(self)
+        self._dashboard_timer.timeout.connect(self._update_dashboard)
+        self._dashboard_timer.start(1000)
+        self._update_dashboard()
+
+    def _update_dashboard(self):
+        """Refresh the status-bar CPU/memory/process-status labels (polled 1/s)."""
+        try:
+            cpu_text = f"CPU: {psutil.cpu_percent(interval=None):.1f}%"
+            memory_text = (
+                f"Memory: {psutil.virtual_memory().percent:.1f}% system, "
+                f"{psutil.Process(os.getpid()).memory_info().rss / (1024**2):.1f} MB GUI"
+            )
+        except Exception:
+            cpu_text = "CPU: n/a"
+            memory_text = "Memory: n/a"
+
+        active = list(self.process_runner.active.values())
+        if active:
+            process, label = active[0]
+            process_text = f"Workflow: running (pid={process.processId()}, {label})"
+        else:
+            process_text = "Workflow: idle"
+
+        self.dashboard_cpu_label.setText(cpu_text)
+        self.dashboard_memory_label.setText(memory_text)
+        self.dashboard_process_label.setText(process_text)
 
     def _on_splitter_moved(self):
         """Save the sidebar width when splitter is moved."""

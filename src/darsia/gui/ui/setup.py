@@ -139,7 +139,13 @@ class SetupTab:
         stop_action = self.main_window.toolbar_builder.stop_action
 
         self.process = self.main_window.process_runner.start_workflow_process(
-            argv, play_action, stop_action, cwd=Path.cwd()
+            argv,
+            play_action,
+            stop_action,
+            cwd=Path.cwd(),
+            workflow="setup",
+            actions=[selected_id],
+            config_paths=config_paths,
         )
 
     def sidebar_items(self):
