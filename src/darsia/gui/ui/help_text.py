@@ -48,6 +48,12 @@ HELP_TEXT_UTILS = {
     "import_calibration": "Import calibration from an external bundle file.",
 }
 
+HELP_TEXT_COMPARISON = {
+    "events": "Determine earliest occurrence times of configured events across runs.",
+    "wasserstein_compute": "Compute Wasserstein (W1) distances over time between runs.",
+    "wasserstein_assemble": "Assemble computed Wasserstein distance results across runs.",
+}
+
 # Mapping of action -> help text dictionary
 _HELP_TEXT_BY_ACTION = {
     "setup": HELP_TEXT_SETUP,
@@ -55,6 +61,7 @@ _HELP_TEXT_BY_ACTION = {
     "analysis": HELP_TEXT_ANALYSIS,
     "helper": HELP_TEXT_HELPER,
     "utils": HELP_TEXT_UTILS,
+    "comparison": HELP_TEXT_COMPARISON,
 }
 
 
