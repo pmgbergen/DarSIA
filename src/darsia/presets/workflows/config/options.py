@@ -68,10 +68,7 @@ class AnalysisOptions:
         default=False,
         metadata={
             "name": "Stream preview",
-            "help": (
-                "Publish low-res preview images during analysis for the "
-                "Streaming Preview panel."
-            ),
+            "help": "Publish low-res preview images during analysis for the View panel.",
         },
     )
 
