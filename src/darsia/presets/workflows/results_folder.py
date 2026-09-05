@@ -87,7 +87,7 @@ def suggested_workflow_results_folder(
     if workflow == "analysis":
         return suggested_analysis_results_folder(config_path, actions)
 
-    selected_actions = {action.strip().lower() for action in actions}
+    selected_actions = {action.strip().lower().replace("_", " ") for action in actions}
 
     if workflow == "setup":
         setup_candidates: list[Path] = []
