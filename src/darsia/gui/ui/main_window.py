@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QSplitter,
     QTextEdit,
     QVBoxLayout,
@@ -273,6 +274,9 @@ class MainWindow(QMainWindow):
         # controls stay in sync for free.
         self.streaming_toggle_button = QPushButton("<")
         self.streaming_toggle_button.setFixedWidth(14)
+        self.streaming_toggle_button.setSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.Expanding
+        )
         self.streaming_toggle_button.setFlat(True)
         self.streaming_toggle_button.setCursor(Qt.PointingHandCursor)
         self.streaming_toggle_button.clicked.connect(
