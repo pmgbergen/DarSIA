@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -14,8 +16,34 @@ from PySide6.QtWidgets import (
 
 from .help import build_help_column
 from .table_viewer import TABLE_LOADERS, TableViewerDialog
+from .theme import danger_color, theme_signal
 
 NO_FILE_CHOSEN = "No file chosen"
+
+
+def make_remove_button(on_click) -> QPushButton:
+    """Build a styled destructive 'Remove' button, quiet until hovered.
+
+    Shared by every entry/row editor (registries, multi-file/path-map rows) so
+    a destructive action never looks identical to the neighboring 'Add'
+    button: a muted danger-colored outline instead of the default flat fill,
+    filling solid only on hover.
+    """
+    button = QPushButton("Remove")
+    button.setCursor(Qt.PointingHandCursor)
+
+    def refresh_style():
+        color = danger_color(QApplication.instance().palette()).name()
+        button.setStyleSheet(
+            f"QPushButton {{ color: {color}; border: 1px solid {color}; "
+            f"background: transparent; border-radius: 3px; }}"
+            f"QPushButton:hover {{ background-color: {color}; color: white; }}"
+        )
+
+    refresh_style()
+    theme_signal.theme_changed.connect(refresh_style)
+    button.clicked.connect(on_click)
+    return button
 
 
 class FileDialogHelper:
@@ -267,8 +295,6 @@ class FileDialogHelper:
                 path_edit.setPlaceholderText(placeholder)
                 if initial_value:
                     path_edit.setText(str(initial_value))
-                remove_button = QPushButton("Remove")
-                remove_button.setMaximumWidth(80)
 
                 def remove():
                     self._remove_form_row(
@@ -281,6 +307,9 @@ class FileDialogHelper:
                         refresh_remove_buttons,
                     )
 
+                remove_button = make_remove_button(remove)
+                remove_button.setMaximumWidth(80)
+
                 browse_button.clicked.connect(
                     lambda: self._browse_for_path(
                         is_directory,
@@ -288,7 +317,6 @@ class FileDialogHelper:
                         path_edit,
                     )
                 )
-                remove_button.clicked.connect(remove)
 
                 row_layout.addWidget(browse_button)
                 row_layout.addWidget(path_edit, stretch=1)
@@ -377,8 +405,6 @@ class FileDialogHelper:
                 path_edit.setPlaceholderText(placeholder)
                 if initial_value:
                     path_edit.setText(str(initial_value))
-                remove_button = QPushButton("Remove")
-                remove_button.setMaximumWidth(80)
 
                 def remove():
                     row_container.deleteLater()
@@ -388,6 +414,9 @@ class FileDialogHelper:
                         file_edits.remove(path_edit)
                     refresh_remove_buttons()
 
+                remove_button = make_remove_button(remove)
+                remove_button.setMaximumWidth(80)
+
                 browse_button.clicked.connect(
                     lambda: self._browse_for_path(
                         is_directory,
@@ -395,7 +424,6 @@ class FileDialogHelper:
                         path_edit,
                     )
                 )
-                remove_button.clicked.connect(remove)
 
                 row_layout.addWidget(browse_button)
                 row_layout.addWidget(path_edit)
@@ -528,9 +556,6 @@ class FileDialogHelper:
                     value_edit.setText(str(initial_value))
 
                 # Remove button
-                remove_button = QPushButton("Remove")
-                remove_button.setMaximumWidth(80)
-
                 def remove():
                     self._remove_form_row(
                         form,
@@ -541,6 +566,9 @@ class FileDialogHelper:
                         row_pairs,
                         refresh_remove_buttons,
                     )
+
+                remove_button = make_remove_button(remove)
+                remove_button.setMaximumWidth(80)
 
                 key_browse_button.clicked.connect(
                     lambda: self._browse_for_path(
@@ -560,7 +588,6 @@ class FileDialogHelper:
                         value_edit,
                     )
                 )
-                remove_button.clicked.connect(remove)
 
                 row_layout.addWidget(key_browse_button)
                 row_layout.addWidget(key_edit, stretch=1)
@@ -732,9 +759,6 @@ class FileDialogHelper:
                     value_edit.setText(str(initial_value))
 
                 # Remove button
-                remove_button = QPushButton("Remove")
-                remove_button.setMaximumWidth(80)
-
                 def remove():
                     row_container.deleteLater()
                     if row_data in row_data_list:
@@ -742,6 +766,9 @@ class FileDialogHelper:
                     if (key_edit, value_edit) in row_pairs:
                         row_pairs.remove((key_edit, value_edit))
                     refresh_remove_buttons()
+
+                remove_button = make_remove_button(remove)
+                remove_button.setMaximumWidth(80)
 
                 key_browse_button.clicked.connect(
                     lambda: self._browse_for_path(
@@ -761,7 +788,6 @@ class FileDialogHelper:
                         value_edit,
                     )
                 )
-                remove_button.clicked.connect(remove)
 
                 row_layout.addWidget(key_browse_button)
                 row_layout.addWidget(key_edit)
