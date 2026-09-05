@@ -170,6 +170,25 @@ def suggested_workflow_results_folder(
     return None
 
 
+def has_workflow_output(workflow: str, config_path: Path, actions: list[str]) -> bool:
+    """Return whether a workflow step already has non-empty output on disk.
+
+    Drives the GUI sidebar's per-step completion dot. Best-effort: any failure
+    to resolve or read the config is treated as "not started" rather than
+    raised, since this powers a passive visual hint, not a gate.
+    """
+    try:
+        folder = suggested_workflow_results_folder(workflow, config_path, actions)
+    except (OSError, ValueError, tomllib.TOMLDecodeError):
+        return False
+    if folder is None:
+        return False
+    try:
+        return folder.exists() and any(folder.iterdir())
+    except OSError:
+        return False
+
+
 def open_in_file_explorer(path: Path) -> None:
     """Open path in the OS file explorer."""
     target = path.expanduser().resolve()
