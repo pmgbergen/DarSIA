@@ -44,6 +44,30 @@ def muted_text_color(pal: QPalette, weight: float = 0.55) -> QColor:
     return QColor(r, g, b)
 
 
+def _blend_toward_text(pal: QPalette, base: QColor, weight: float) -> QColor:
+    """Blend a fixed hue toward WindowText for a theme-adapted semantic color.
+
+    Blending toward the foreground (rather than using the hue verbatim) keeps
+    the result legible against the current background in both Light and Dark
+    modes without per-theme branching.
+    """
+    fg = pal.color(QPalette.WindowText)
+    r = int(base.red() * (1 - weight) + fg.red() * weight)
+    g = int(base.green() * (1 - weight) + fg.green() * weight)
+    b = int(base.blue() * (1 - weight) + fg.blue() * weight)
+    return QColor(r, g, b)
+
+
+def danger_color(pal: QPalette, weight: float = 0.5) -> QColor:
+    """Theme-adapted color for destructive actions (e.g. Remove buttons)."""
+    return _blend_toward_text(pal, QColor(196, 60, 50), weight)
+
+
+def success_color(pal: QPalette, weight: float = 0.5) -> QColor:
+    """Theme-adapted color for completed/successful state (e.g. sidebar dots)."""
+    return _blend_toward_text(pal, QColor(46, 139, 87), weight)
+
+
 def apply_theme(app, mode: str) -> None:
     """Apply a theme (System/Light/Dark) to the application.
 
