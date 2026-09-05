@@ -75,6 +75,26 @@ def suggested_analysis_results_folder(
     return results / _ANALYSIS_MODE_DEFAULT_SUBFOLDER[mode]
 
 
+def _color_path_embedding_root(
+    merged: dict[str, Any], results: Path, embedding_id: str
+) -> Path:
+    """Resolve a [[color_path]] embedding's root folder from merged config.
+
+    Mirrors parse_color_path_embedding's own default
+    (<results>/color/color_path/<embedding_id>), honoring an explicit
+    per-entry `root =` override the same way that function does.
+    """
+    color_path_entries = merged.get("color_path")
+    if isinstance(color_path_entries, list):
+        for entry in color_path_entries:
+            if isinstance(entry, dict) and entry.get("name") == embedding_id:
+                root_raw = entry.get("root")
+                if isinstance(root_raw, str) and root_raw.strip():
+                    return Path(root_raw).expanduser()
+                break
+    return results / "color" / "color_path" / embedding_id
+
+
 def suggested_workflow_results_folder(
     workflow: str, config_path: Path, actions: list[str]
 ) -> Path | None:
@@ -109,11 +129,20 @@ def suggested_workflow_results_folder(
         return setup_candidates[0] if all_setup_same else results / "setup"
 
     if workflow == "calibration":
-        if (
-            "color embedding" in selected_actions
-            or "mass" in selected_actions
-            or "default mass" in selected_actions
-        ):
+        if "color embedding" in selected_actions:
+            calibration = merged.get("calibration")
+            color_section = (
+                calibration.get("color") if isinstance(calibration, dict) else None
+            )
+            embedding_id = (
+                color_section.get("embedding")
+                if isinstance(color_section, dict)
+                else None
+            )
+            if isinstance(embedding_id, str) and embedding_id.strip():
+                return _color_path_embedding_root(merged, results, embedding_id.strip())
+            return None
+        if "mass" in selected_actions or "default mass" in selected_actions:
             return results / "calibration"
         return None
 
