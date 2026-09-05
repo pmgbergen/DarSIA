@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 from darsia.gui.ui.schema.dataclass_introspection import _build_fields
 from darsia.presets.workflows.config.format_registry import _format_entry_to_dict
 
-from .file_dialog import NO_FILE_CHOSEN, FileDialogHelper
+from .file_dialog import NO_FILE_CHOSEN, FileDialogHelper, make_remove_button
 from .help import build_help_column
 from .schema.dataclass_introspection import (
     ALL_SECTIONS,
@@ -1022,8 +1022,6 @@ class SettingsFactory:
                         continue
 
                 # Remove button
-                remove_button = QPushButton("Remove")
-
                 def remove():
                     row_idx, _ = form.getWidgetPosition(group_box)
                     form.removeRow(row_idx)
@@ -1031,7 +1029,7 @@ class SettingsFactory:
                         entries_data.remove(entry)
                     refresh_remove_buttons()
 
-                remove_button.clicked.connect(remove)
+                remove_button = make_remove_button(remove)
                 group_layout.addRow(remove_button)
 
                 # Insert group box into parent form
@@ -1209,9 +1207,6 @@ class SettingsFactory:
                 row_layout.addWidget(combo, 1)
 
                 # Remove button
-                remove_button = QPushButton("Remove")
-                remove_button.setMaximumWidth(80)
-
                 def remove():
                     row_idx, _ = form.getWidgetPosition(row_widget)
                     form.removeRow(row_idx)
@@ -1221,7 +1216,8 @@ class SettingsFactory:
                         row_combos.remove(combo)
                     refresh_remove_buttons()
 
-                remove_button.clicked.connect(remove)
+                remove_button = make_remove_button(remove)
+                remove_button.setMaximumWidth(80)
                 row_layout.addWidget(remove_button, 0)
 
                 # Add row to form
@@ -1362,9 +1358,6 @@ class SettingsFactory:
                 row_layout.addWidget(combo, 1)
 
                 # Remove button
-                remove_button = QPushButton("Remove")
-                remove_button.setMaximumWidth(80)
-
                 def remove():
                     row_idx, _ = form.getWidgetPosition(row_widget)
                     form.removeRow(row_idx)
@@ -1374,7 +1367,8 @@ class SettingsFactory:
                         row_combos.remove(combo)
                     refresh_remove_buttons()
 
-                remove_button.clicked.connect(remove)
+                remove_button = make_remove_button(remove)
+                remove_button.setMaximumWidth(80)
                 row_layout.addWidget(remove_button, 0)
 
                 # Insert row into form
@@ -1501,9 +1495,6 @@ class SettingsFactory:
                 row_layout.addWidget(combo, 1)
 
                 # Remove button
-                remove_button = QPushButton("Remove")
-                remove_button.setMaximumWidth(80)
-
                 def remove():
                     row_idx, _ = form.getWidgetPosition(row_widget)
                     form.removeRow(row_idx)
@@ -1513,7 +1504,8 @@ class SettingsFactory:
                         row_combos.remove(combo)
                     refresh_remove_buttons()
 
-                remove_button.clicked.connect(remove)
+                remove_button = make_remove_button(remove)
+                remove_button.setMaximumWidth(80)
                 row_layout.addWidget(remove_button, 0)
 
                 # Insert row into form
@@ -1654,9 +1646,6 @@ class SettingsFactory:
                 row_layout.addWidget(combo, 1)
 
                 # Remove button
-                remove_button = QPushButton("Remove")
-                remove_button.setMaximumWidth(80)
-
                 def remove():
                     row_idx, _ = form.getWidgetPosition(row_widget)
                     form.removeRow(row_idx)
@@ -1666,7 +1655,8 @@ class SettingsFactory:
                         row_combos.remove(combo)
                     refresh_remove_buttons()
 
-                remove_button.clicked.connect(remove)
+                remove_button = make_remove_button(remove)
+                remove_button.setMaximumWidth(80)
                 row_layout.addWidget(remove_button, 0)
 
                 # Insert row into form
@@ -2035,8 +2025,6 @@ class SettingsFactory:
                     text_edit.setPlaceholderText(placeholder)
                 if initial_value:
                     text_edit.setText(initial_value)
-                remove_button = QPushButton("Remove")
-                remove_button.setMaximumWidth(80)
 
                 def remove():
                     self.file_dialog._remove_form_row(
@@ -2049,7 +2037,8 @@ class SettingsFactory:
                         refresh_remove_buttons,
                     )
 
-                remove_button.clicked.connect(remove)
+                remove_button = make_remove_button(remove)
+                remove_button.setMaximumWidth(80)
 
                 row_layout.addWidget(text_edit, stretch=1)
                 row_layout.addWidget(remove_button)
@@ -2121,8 +2110,6 @@ class SettingsFactory:
                     text_edit.setPlaceholderText(placeholder)
                 if initial_value:
                     text_edit.setText(initial_value)
-                remove_button = QPushButton("Remove")
-                remove_button.setMaximumWidth(80)
 
                 def remove():
                     row_container.deleteLater()
@@ -2132,7 +2119,8 @@ class SettingsFactory:
                         row_edits.remove(text_edit)
                     refresh_remove_buttons()
 
-                remove_button.clicked.connect(remove)
+                remove_button = make_remove_button(remove)
+                remove_button.setMaximumWidth(80)
 
                 row_layout.addWidget(text_edit)
                 row_layout.addWidget(remove_button)
@@ -2239,9 +2227,6 @@ class SettingsFactory:
                     value_edit.setText(initial_value)
 
                 # Remove button
-                remove_button = QPushButton("Remove")
-                remove_button.setMaximumWidth(80)
-
                 def remove():
                     self.file_dialog._remove_form_row(
                         form,
@@ -2253,7 +2238,8 @@ class SettingsFactory:
                         refresh_remove_buttons,
                     )
 
-                remove_button.clicked.connect(remove)
+                remove_button = make_remove_button(remove)
+                remove_button.setMaximumWidth(80)
 
                 row_layout.addWidget(key_edit)
                 row_layout.addWidget(value_edit, stretch=1)
@@ -3328,7 +3314,7 @@ class SettingsFactory:
             tab_form.addItem(QVBoxLayout())
 
             # Add this section as a tab using the section_titles map
-            tab_title = section_titles.get(section, section.capitalize())
+            tab_title = section_titles.get(section, section.replace("_", " ").title())
             tabs.addTab(tab_container, tab_title)
 
         self.main_window.settings_layout.addWidget(tabs)
