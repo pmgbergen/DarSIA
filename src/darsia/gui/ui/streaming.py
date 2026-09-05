@@ -6,15 +6,13 @@ mode_selector:
 - Streaming mode displays the low-resolution preview images an Analysis run
   publishes while "Stream preview" is enabled (options.analysis.stream_preview),
   as a scrubbable timeline: one entry per processed image, sorted by its real
-  imaging-protocol timestamp (not by arrival order, since
-  options.analysis.random_traverse can process images out of chronological
-  order). The workflow subprocess writes each preview frame to a per-run
-  cache directory (one PNG file per (stream key, sequence number), never
-  overwritten) and prints two tiny stdout notification lines per image: a
-  stream line naming which keys were just written, tagged with a sequence
-  number, and a progress line carrying that same sequence number alongside
-  the image's real index/datetime. This panel correlates the two by that
-  shared sequence number. See darsia.presets.workflows.analysis.streaming
+  imaging-protocol timestamp. The workflow subprocess writes each preview
+  frame to a per-run cache directory (one PNG file per (stream key, sequence
+  number), never overwritten) and prints two tiny stdout notification lines
+  per image: a stream line naming which keys were just written, tagged with
+  a sequence number, and a progress line carrying that same sequence number
+  alongside the image's real index/datetime. This panel correlates the two
+  by that shared sequence number. See darsia.presets.workflows.analysis.streaming
   and darsia.presets.workflows.analysis.progress for the producer side.
   Entering this mode is triggered automatically when a run starts with
   Stream preview enabled (reset_for_run); the user can still switch back to
