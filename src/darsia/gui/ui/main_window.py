@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from darsia.presets.workflows.analysis.progress import try_decode_progress_line
+from darsia.presets.workflows.results_folder import has_workflow_output
 
 from .about_dialog import AboutDialog
 from .analysis import AnalysisTab
@@ -64,6 +65,7 @@ class MainWindow(QMainWindow):
 
     _SIDEBAR_WIDTH_SETTINGS_KEY = "ui/sidebar_width"
     _DEFAULT_SIDEBAR_WIDTH = 120
+    _LOG_VISIBLE_SETTINGS_KEY = "ui/log_visible"
 
     def __init__(self):
         super().__init__()
@@ -110,6 +112,23 @@ class MainWindow(QMainWindow):
         self.streaming_dock.setFeatures(QDockWidget.DockWidgetClosable)
         self.addDockWidget(Qt.RightDockWidgetArea, self.streaming_dock)
         self.streaming_dock.hide()
+
+        # Logging dock (bottom), created before the menu builder for the same
+        # reason as Streaming Preview: it wires a View-menu toggle action.
+        log_container = QWidget()
+        log_layout = QVBoxLayout(log_container)
+        log_layout.addWidget(QLabel("Logging:"))
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        log_layout.addWidget(self.log_text)
+        self.log_dock = QDockWidget("Logging", self)
+        self.log_dock.setWidget(log_container)
+        # Closable only: no float/drag, so the fixed edge-toggle button (see
+        # below) always points at where the panel actually is.
+        self.log_dock.setFeatures(QDockWidget.DockWidgetClosable)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.log_dock)
+        log_visible = QSettings().value(self._LOG_VISIBLE_SETTINGS_KEY, True, type=bool)
+        self.log_dock.setVisible(log_visible)
 
         # Set up the menu bar
         self.menu_builder = MenuBuilder(self)
@@ -189,34 +208,15 @@ class MainWindow(QMainWindow):
         self.settings_scroll_area.setWidgetResizable(True)
         upper_right_layout.addWidget(self.settings_scroll_area)
 
-        # Create logging container with its own scroll area
-        log_container = QWidget()
-        log_layout = QVBoxLayout(log_container)
-        log_label = QLabel("Logging:")
-        log_layout.addWidget(log_label)
-
-        # Add a text edit for logging output
-        self.log_text = QTextEdit()
-        self.log_text.setReadOnly(True)
-        log_layout.addWidget(self.log_text)
-
-        self.log_scroll_area = QScrollArea()
-        self.log_scroll_area.setWidget(log_container)
-        self.log_scroll_area.setWidgetResizable(True)
-
-        # Vertical splitter between the log-window and settings/tabs
-        content_splitter = QSplitter(Qt.Vertical)
-        content_splitter.addWidget(upper_right_container)
-        content_splitter.addWidget(self.log_scroll_area)
-        content_splitter.setStretchFactor(0, 3)
-        content_splitter.setStretchFactor(1, 1)
-
-        # Horizontal splitter: sidebar (left) and settings+log column (right)
+        # Horizontal splitter: sidebar (left) and settings column (right).
+        # Logging lives in self.log_dock (bottom dock, built earlier) instead
+        # of a fixed-proportion splitter pane, so it no longer competes with
+        # the settings form for space by default.
         root_splitter = QSplitter(Qt.Horizontal)
         root_splitter.addWidget(upper_mid_container)
-        root_splitter.addWidget(content_splitter)
+        root_splitter.addWidget(upper_right_container)
         root_splitter.setStretchFactor(0, 1)  # sidebar: 1/7 of space
-        root_splitter.setStretchFactor(1, 7)  # settings+log: 6/7 of space
+        root_splitter.setStretchFactor(1, 7)  # settings: 6/7 of space
 
         # Load persisted sidebar width or use default
         sidebar_width = QSettings().value(
@@ -232,18 +232,45 @@ class MainWindow(QMainWindow):
         root_splitter.splitterMoved.connect(self._on_splitter_moved)
         self.root_splitter = root_splitter
 
-        # Create central widget with all components
+        # Create central widget with all components. Outer layout is
+        # horizontal so the streaming edge-handle can span the *entire*
+        # window height on the right, edge to edge (matching the log
+        # edge-handle spanning the entire window width along the bottom);
+        # everything else (content + log bar) lives in a left column next to it.
         main_container = QWidget()
         main_layout = QHBoxLayout(main_container)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         self.setCentralWidget(main_container)
-        main_layout.addWidget(root_splitter, 1)
+
+        left_column = QWidget()
+        left_column_layout = QVBoxLayout(left_column)
+        left_column_layout.setContentsMargins(0, 0, 0, 0)
+        left_column_layout.setSpacing(0)
+        left_column_layout.addWidget(root_splitter, 1)
+
+        # Thin edge handle to reveal/hide the Logging dock, spanning the
+        # full width of the left column along the bottom.
+        self.log_toggle_button = QPushButton()
+        self.log_toggle_button.setFixedHeight(14)
+        self.log_toggle_button.setFlat(True)
+        self.log_toggle_button.setCursor(Qt.PointingHandCursor)
+        self.log_toggle_button.clicked.connect(
+            self.menu_builder.show_logging_action.trigger
+        )
+        self._refresh_log_toggle_style()
+        theme_signal.theme_changed.connect(self._refresh_log_toggle_style)
+        self.log_dock.visibilityChanged.connect(self._sync_log_toggle_button)
+        self._sync_log_toggle_button(self.log_dock.isVisible())
+        left_column_layout.addWidget(self.log_toggle_button)
+
+        main_layout.addWidget(left_column, 1)
 
         # Thin edge handle to reveal/hide the Streaming Preview dock, sitting
         # at the boundary between the main content and the (right-docked,
-        # now closable-only) dock. Drives the same toggleViewAction as
-        # Ctrl+P/View menu/toolbar, so all four controls stay in sync for free.
+        # now closable-only) dock, spanning the full window height. Drives
+        # the same toggleViewAction as Ctrl+P/View menu/toolbar, so all four
+        # controls stay in sync for free.
         self.streaming_toggle_button = QPushButton("<")
         self.streaming_toggle_button.setFixedWidth(14)
         self.streaming_toggle_button.setFlat(True)
@@ -290,6 +317,32 @@ class MainWindow(QMainWindow):
         self.streaming_toggle_button.setStyleSheet(
             f"QPushButton {{ background-color: {bg}; border: none; "
             f"border-left: 1px solid {border}; }}"
+            f"QPushButton:hover {{ background-color: {hover}; }}"
+            f"QPushButton:pressed {{ background-color: {pressed}; }}"
+        )
+
+    def _sync_log_toggle_button(self, visible):
+        """Keep the log edge-toggle glyph/tooltip in sync with the dock's
+        actual visibility, and persist it as the default for next launch."""
+        self.log_toggle_button.setText("⌄" if visible else "⌃")
+        self.log_toggle_button.setToolTip(
+            "Hide Logging (Ctrl+L)" if visible else "Show Logging (Ctrl+L)"
+        )
+        QSettings().setValue(self._LOG_VISIBLE_SETTINGS_KEY, visible)
+
+    def _refresh_log_toggle_style(self):
+        """Rebuild the log edge-toggle button's palette-aware styling (theme-safe)."""
+        pal = QApplication.instance().palette()
+        bg_base = pal.color(QPalette.Button)
+        is_dark_mode = pal.color(QPalette.Window).lightnessF() < 0.5
+        bg_color = bg_base.lighter(130) if is_dark_mode else bg_base.darker(120)
+        bg = bg_color.name()
+        hover = bg_color.lighter(115).name()
+        pressed = bg_color.darker(110).name()
+        border = pal.color(QPalette.Mid).name()
+        self.log_toggle_button.setStyleSheet(
+            f"QPushButton {{ background-color: {bg}; border: none; "
+            f"border-top: 1px solid {border}; }}"
             f"QPushButton:hover {{ background-color: {hover}; }}"
             f"QPushButton:pressed {{ background-color: {pressed}; }}"
         )
@@ -422,6 +475,44 @@ class MainWindow(QMainWindow):
         self.sidebar.deselect_all()
         self.settings_factory.display_full_settings()
 
+    # (action, checkbox_id) -> the exact action-label string
+    # results_folder.has_workflow_output expects, for the few cases that
+    # aren't a mechanical underscore-to-space rename of the checkbox_id
+    # (e.g. Calibration's "color" step is labeled "color embedding" there).
+    _PROGRESS_ACTION_LABEL_OVERRIDES = {("calibration", "color"): "color embedding"}
+
+    def refresh_sidebar_progress(self):
+        """Update sidebar completion dots from on-disk workflow output.
+
+        Best-effort and skipped without a loaded config. Coverage matches
+        what results_folder.suggested_workflow_results_folder understands
+        per category/step; a step outside that coverage (e.g. Setup's Crop
+        correction, which has no known output folder at all) simply keeps
+        its default, uninformative dot rather than showing a wrong one.
+        Helper's items are inspection tools, not one-time pipeline steps, so
+        they're intentionally left out of scope.
+        """
+        if not self.config_file or not Path(self.config_file).exists():
+            return
+        config_path = Path(self.config_file)
+        tab_managers = {
+            "setup": self.setup_tab,
+            "calibration": self.calibration_tab,
+            "analysis": self.analysis_tab,
+            "comparison": self.comparison_tab,
+            "utils": self.utils_tab,
+        }
+        for category, tab_manager in tab_managers.items():
+            for _group_label, items in tab_manager.sidebar_items():
+                for _label, checkbox_id, _icon, _help in items:
+                    action_label = self._PROGRESS_ACTION_LABEL_OVERRIDES.get(
+                        (category, checkbox_id), checkbox_id.replace("_", " ")
+                    )
+                    done = has_workflow_output(category, config_path, [action_label])
+                    self.sidebar.set_item_state(
+                        category, checkbox_id, "done" if done else "none"
+                    )
+
     def run_selected_workflow(self):
         """Run the currently selected sidebar workflow (Play button / Ctrl+Return)."""
         if self.selected_action is None:
@@ -441,10 +532,6 @@ class MainWindow(QMainWindow):
         tab_manager = self.action_dispatch.get(self.selected_action)
         if tab_manager:
             tab_manager.on_abort_clicked()
-
-    def toggle_logging(self, visible: bool):
-        """Show or hide the logging panel (View > Show Logging / Ctrl+L)."""
-        self.log_scroll_area.setVisible(visible)
 
     def set_theme(self, mode: str):
         """Set the application theme (System/Light/Dark).
@@ -469,9 +556,17 @@ class MainWindow(QMainWindow):
         self.log_message.emit(text)
 
     def _append_log(self, text):
-        """Slot that appends text to log window and prints to console."""
+        """Slot that appends text to log window and prints to console.
+
+        Reveals the log dock on an error line if it's currently collapsed, so
+        a failure is never silently missed behind a closed panel. A plain
+        substring check rather than a structured severity level, since no
+        call site currently tags log lines with one.
+        """
         self.log_text.append(text)
         print(text)
+        if "error" in text.lower() and not self.log_dock.isVisible():
+            self.log_dock.show()
 
     def closeEvent(self, event):
         """Clean up the streaming preview cache directory on window close."""
