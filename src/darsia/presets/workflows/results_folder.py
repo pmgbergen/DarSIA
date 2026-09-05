@@ -189,6 +189,51 @@ def has_workflow_output(workflow: str, config_path: Path, actions: list[str]) ->
         return False
 
 
+_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg"}
+
+
+def _resolve_output_images(
+    workflow: str, config_path: Path, actions: list[str]
+) -> list[Path]:
+    """Return every image file under the resolved results folder for this
+    workflow step, in arbitrary order, or [] if no folder resolves, the
+    folder does not exist yet, or it contains no image file.
+
+    Recursively globs for an image rather than encoding each step's own
+    subfolder convention: those conventions vary a lot across steps (flat,
+    mode/fmt/stem, fmt/layer/stem, nested plot-kind trees) and shift
+    whenever a workflow's export logic changes, so this stays
+    low-maintenance at the cost of not knowing which image variant it
+    picked among several a step might produce.
+    """
+    try:
+        folder = suggested_workflow_results_folder(workflow, config_path, actions)
+    except (OSError, ValueError, tomllib.TOMLDecodeError):
+        return []
+    if folder is None:
+        return []
+    try:
+        if not folder.exists():
+            return []
+        return [
+            path
+            for path in folder.rglob("*")
+            if path.is_file() and path.suffix.lower() in _IMAGE_SUFFIXES
+        ]
+    except OSError:
+        return []
+
+
+def list_workflow_output_images(
+    workflow: str, config_path: Path, actions: list[str]
+) -> list[Path]:
+    """Return every image file for this workflow step, sorted by filename.
+    Drives the GUI's View panel's Results-mode browsing.
+    """
+    images = _resolve_output_images(workflow, config_path, actions)
+    return sorted(images, key=lambda path: path.name)
+
+
 def open_in_file_explorer(path: Path) -> None:
     """Open path in the OS file explorer."""
     target = path.expanduser().resolve()
