@@ -143,7 +143,22 @@ def suggested_workflow_results_folder(
                 return _color_path_embedding_root(merged, results, embedding_id.strip())
             return None
         if "mass" in selected_actions or "default mass" in selected_actions:
-            return results / "calibration"
+            calibration = merged.get("calibration")
+            mass_section = (
+                calibration.get("mass") if isinstance(calibration, dict) else None
+            )
+            embedding_id = (
+                mass_section.get("embedding")
+                if isinstance(mass_section, dict)
+                else None
+            )
+            if isinstance(embedding_id, str) and embedding_id.strip():
+                return (
+                    _color_path_embedding_root(merged, results, embedding_id.strip())
+                    / "interpolation"
+                    / "mass"
+                )
+            return None
         return None
 
     if workflow == "comparison":
