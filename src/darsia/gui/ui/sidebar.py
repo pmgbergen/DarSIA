@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 
 from .help import HelpPopup
 from .icons import themed_icon
-from .theme import muted_text_color, theme_signal
+from .theme import danger_color, muted_text_color, success_color, theme_signal
 
 
 class SidebarRow(QWidget):
@@ -33,6 +33,7 @@ class SidebarRow(QWidget):
         self.help_text = help_text
         self._is_selected = False
         self._is_hovering = False
+        self._completion_state = "none"
         self._help_timer = None
         self._help_popup = None
         self._original_icon = None
@@ -97,9 +98,28 @@ class SidebarRow(QWidget):
         self._is_selected = selected
         self.update_selection_style()
 
+    def set_completion_state(self, state: str):
+        """Set per-step completion state: 'none', 'done', or 'error'.
+
+        Swaps the row's bullet icon (fa5s.circle) for a check/exclamation
+        variant and tints it accordingly, leaving the icon untouched (and the
+        original icon_name) for 'none' so items with no known state keep
+        today's plain-dot look.
+        """
+        if state not in ("none", "done", "error"):
+            raise ValueError(f"Unknown completion state: {state!r}")
+        if state == self._completion_state:
+            return
+        self._completion_state = state
+        self.refresh_style()
+
     def refresh_style(self):
         """Rebuild icon and selection styling from current palette."""
-        icon = themed_icon(self.icon_name, scale_factor=1.0)
+        icon_name = {
+            "done": "fa5s.check-circle",
+            "error": "fa5s.exclamation-circle",
+        }.get(self._completion_state, self.icon_name)
+        icon = themed_icon(icon_name, scale_factor=1.0)
         self._original_icon = icon.pixmap(16, 16)
         self._icon_label.setPixmap(self._original_icon)
         self.update_selection_style()
@@ -139,6 +159,14 @@ class SidebarRow(QWidget):
             )
             text_color = hover_color.name()
             icon_color = hover_color
+        elif self._completion_state == "done":
+            # Completion state tints only the icon; text stays neutral so the
+            # signal stays a quiet glance-able hint, not a loud row recolor.
+            text_color = pal.color(QPalette.WindowText).name()
+            icon_color = success_color(pal)
+        elif self._completion_state == "error":
+            text_color = pal.color(QPalette.WindowText).name()
+            icon_color = danger_color(pal)
         else:
             # Default palette text color
             text_color = pal.color(QPalette.WindowText).name()
@@ -302,6 +330,12 @@ class CategorySection(QWidget):
         """Get a specific row by checkbox_id."""
         return self._rows.get(checkbox_id)
 
+    def set_item_state(self, checkbox_id: str, state: str) -> None:
+        """Set completion state on one row, if present in this category."""
+        row = self._rows.get(checkbox_id)
+        if row:
+            row.set_completion_state(state)
+
     def deselect_all(self):
         """Clear selection from all rows in this category."""
         for row in self._rows.values():
@@ -397,3 +431,9 @@ class Sidebar(QWidget):
         self._selected_row = None
         self._selected_action = None
         self._selected_checkbox_id = None
+
+    def set_item_state(self, action: str, checkbox_id: str, state: str) -> None:
+        """Set completion state on one (action, checkbox_id) row, if present."""
+        section = self._sections.get(action)
+        if section:
+            section.set_item_state(checkbox_id, state)
