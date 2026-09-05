@@ -37,6 +37,7 @@ class ConfigController:
         self.main_window.print_log(f"New config created and opened: {file}")
         self.main_window.sidebar.deselect_all()
         self.main_window.settings_factory.display_full_settings()
+        self.main_window.refresh_sidebar_progress()
 
     def open_config(self):
         """Open a config file via dialog and load it immediately."""
@@ -91,6 +92,7 @@ class ConfigController:
             self.main_window.sidebar.deselect_all()
             self.main_window.settings_inputs.clear()
             self.main_window.settings_factory.display_full_settings()
+            self.main_window.refresh_sidebar_progress()
         except Exception as e:
             self.main_window.print_log(f"Error loading config file: {e}")
             return
