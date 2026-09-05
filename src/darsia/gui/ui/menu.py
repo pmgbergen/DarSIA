@@ -95,12 +95,11 @@ class MenuBuilder:
             action.setChecked(theme_name == current_theme)
             theme_group.addAction(action)
 
-        # Add checkable action for toggling the logging panel
-        self.show_logging_action = QAction("Show &Logging", self.main_window)
-        self.show_logging_action.setCheckable(True)
-        self.show_logging_action.setChecked(True)  # log panel starts visible
+        # Logging dock's built-in toggle action (checkable, tracks the dock's
+        # shown/hidden state automatically) — same pattern as Streaming Preview.
+        self.show_logging_action = self.main_window.log_dock.toggleViewAction()
+        self.show_logging_action.setText("Show &Logging")
         self.show_logging_action.setShortcut(QKeySequence("Ctrl+L"))
-        self.show_logging_action.toggled.connect(self.main_window.toggle_logging)
         view_menu.addAction(self.show_logging_action)
 
         # Streaming Preview dock's built-in toggle action (checkable, tracks
