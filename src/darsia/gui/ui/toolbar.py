@@ -75,7 +75,7 @@ class ToolbarBuilder:
         self._configure(
             self.menu_builder.streaming_toggle_action,
             "stream",
-            "Toggle Streaming Preview (Ctrl+P)",
+            "Toggle View (Ctrl+P)",
         )
         toolbar.addAction(self.menu_builder.streaming_toggle_action)
 
