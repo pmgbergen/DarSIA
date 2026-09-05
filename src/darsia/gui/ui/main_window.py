@@ -67,6 +67,7 @@ class MainWindow(QMainWindow):
     _SIDEBAR_WIDTH_SETTINGS_KEY = "ui/sidebar_width"
     _DEFAULT_SIDEBAR_WIDTH = 120
     _LOG_VISIBLE_SETTINGS_KEY = "ui/log_visible"
+    _VIEW_VISIBLE_SETTINGS_KEY = "ui/view_visible"
 
     def __init__(self):
         super().__init__()
@@ -103,19 +104,23 @@ class MainWindow(QMainWindow):
         # Initialize process runner
         self.process_runner = ProcessRunner(self)
 
-        # Streaming preview dock (right of the tabs), created before the menu
+        # View dock (right of the tabs): streaming preview + on-disk results
+        # browsing (StreamingPanel's two modes). Created before the menu
         # builder since it wires a View-menu toggle action for this dock.
         self.streaming_panel = StreamingPanel(self)
-        self.streaming_dock = QDockWidget("Streaming Preview", self)
+        self.streaming_dock = QDockWidget("View", self)
         self.streaming_dock.setWidget(self.streaming_panel)
         # Closable only: no float/drag, so the fixed edge-toggle button (see
         # below) always points at where the panel actually is.
         self.streaming_dock.setFeatures(QDockWidget.DockWidgetClosable)
         self.addDockWidget(Qt.RightDockWidgetArea, self.streaming_dock)
-        self.streaming_dock.hide()
+        view_visible = QSettings().value(
+            self._VIEW_VISIBLE_SETTINGS_KEY, True, type=bool
+        )
+        self.streaming_dock.setVisible(view_visible)
 
         # Logging dock (bottom), created before the menu builder for the same
-        # reason as Streaming Preview: it wires a View-menu toggle action.
+        # reason as the View dock: it wires a View-menu toggle action.
         log_container = QWidget()
         log_layout = QVBoxLayout(log_container)
         log_layout.addWidget(QLabel("Logging:"))
@@ -267,7 +272,7 @@ class MainWindow(QMainWindow):
 
         main_layout.addWidget(left_column, 1)
 
-        # Thin edge handle to reveal/hide the Streaming Preview dock, sitting
+        # Thin edge handle to reveal/hide the View dock, sitting
         # at the boundary between the main content and the (right-docked,
         # now closable-only) dock, spanning the full window height. Drives
         # the same toggleViewAction as Ctrl+P/View menu/toolbar, so all four
@@ -303,10 +308,9 @@ class MainWindow(QMainWindow):
         toolbar, this button, or the dock's own close button)."""
         self.streaming_toggle_button.setText(">" if visible else "<")
         self.streaming_toggle_button.setToolTip(
-            "Hide Streaming Preview (Ctrl+P)"
-            if visible
-            else "Show Streaming Preview (Ctrl+P)"
+            "Hide View (Ctrl+P)" if visible else "Show View (Ctrl+P)"
         )
+        QSettings().setValue(self._VIEW_VISIBLE_SETTINGS_KEY, visible)
 
     def _refresh_streaming_toggle_style(self):
         """Rebuild the edge-toggle button's palette-aware styling (theme-safe)."""
@@ -473,6 +477,7 @@ class MainWindow(QMainWindow):
         self.selected_action = action
         self.selected_checkbox_id = checkbox_id
         self.settings_factory.display_settings(action, [checkbox_id])
+        self.streaming_panel.refresh_results()
 
     def _on_open_full_config(self):
         """Handle opening full config: deselect sidebar and show all settings."""
@@ -484,6 +489,14 @@ class MainWindow(QMainWindow):
     # aren't a mechanical underscore-to-space rename of the checkbox_id
     # (e.g. Calibration's "color" step is labeled "color embedding" there).
     _PROGRESS_ACTION_LABEL_OVERRIDES = {("calibration", "color"): "color embedding"}
+
+    def action_label_for(self, category: str, checkbox_id: str) -> str:
+        """Map a (category, checkbox_id) pair to the action-label string
+        results_folder.py's resolvers expect (see _PROGRESS_ACTION_LABEL_OVERRIDES
+        docstring above for why most are a mechanical rename)."""
+        return self._PROGRESS_ACTION_LABEL_OVERRIDES.get(
+            (category, checkbox_id), checkbox_id.replace("_", " ")
+        )
 
     def refresh_sidebar_progress(self):
         """Update sidebar completion dots from on-disk workflow output.
@@ -509,13 +522,12 @@ class MainWindow(QMainWindow):
         for category, tab_manager in tab_managers.items():
             for _group_label, items in tab_manager.sidebar_items():
                 for _label, checkbox_id, _icon, _help in items:
-                    action_label = self._PROGRESS_ACTION_LABEL_OVERRIDES.get(
-                        (category, checkbox_id), checkbox_id.replace("_", " ")
-                    )
+                    action_label = self.action_label_for(category, checkbox_id)
                     done = has_workflow_output(category, config_path, [action_label])
                     self.sidebar.set_item_state(
                         category, checkbox_id, "done" if done else "none"
                     )
+        self.streaming_panel.refresh_results()
 
     def run_selected_workflow(self):
         """Run the currently selected sidebar workflow (Play button / Ctrl+Return)."""

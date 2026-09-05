@@ -75,6 +75,26 @@ def suggested_analysis_results_folder(
     return results / _ANALYSIS_MODE_DEFAULT_SUBFOLDER[mode]
 
 
+def _color_path_embedding_root(
+    merged: dict[str, Any], results: Path, embedding_id: str
+) -> Path:
+    """Resolve a [[color_path]] embedding's root folder from merged config.
+
+    Mirrors parse_color_path_embedding's own default
+    (<results>/color/color_path/<embedding_id>), honoring an explicit
+    per-entry `root =` override the same way that function does.
+    """
+    color_path_entries = merged.get("color_path")
+    if isinstance(color_path_entries, list):
+        for entry in color_path_entries:
+            if isinstance(entry, dict) and entry.get("name") == embedding_id:
+                root_raw = entry.get("root")
+                if isinstance(root_raw, str) and root_raw.strip():
+                    return Path(root_raw).expanduser()
+                break
+    return results / "color" / "color_path" / embedding_id
+
+
 def suggested_workflow_results_folder(
     workflow: str, config_path: Path, actions: list[str]
 ) -> Path | None:
@@ -109,12 +129,36 @@ def suggested_workflow_results_folder(
         return setup_candidates[0] if all_setup_same else results / "setup"
 
     if workflow == "calibration":
-        if (
-            "color embedding" in selected_actions
-            or "mass" in selected_actions
-            or "default mass" in selected_actions
-        ):
-            return results / "calibration"
+        if "color embedding" in selected_actions:
+            calibration = merged.get("calibration")
+            color_section = (
+                calibration.get("color") if isinstance(calibration, dict) else None
+            )
+            embedding_id = (
+                color_section.get("embedding")
+                if isinstance(color_section, dict)
+                else None
+            )
+            if isinstance(embedding_id, str) and embedding_id.strip():
+                return _color_path_embedding_root(merged, results, embedding_id.strip())
+            return None
+        if "mass" in selected_actions or "default mass" in selected_actions:
+            calibration = merged.get("calibration")
+            mass_section = (
+                calibration.get("mass") if isinstance(calibration, dict) else None
+            )
+            embedding_id = (
+                mass_section.get("embedding")
+                if isinstance(mass_section, dict)
+                else None
+            )
+            if isinstance(embedding_id, str) and embedding_id.strip():
+                return (
+                    _color_path_embedding_root(merged, results, embedding_id.strip())
+                    / "interpolation"
+                    / "mass"
+                )
+            return None
         return None
 
     if workflow == "comparison":
@@ -187,6 +231,51 @@ def has_workflow_output(workflow: str, config_path: Path, actions: list[str]) ->
         return folder.exists() and any(folder.iterdir())
     except OSError:
         return False
+
+
+_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg"}
+
+
+def _resolve_output_images(
+    workflow: str, config_path: Path, actions: list[str]
+) -> list[Path]:
+    """Return every image file under the resolved results folder for this
+    workflow step, in arbitrary order, or [] if no folder resolves, the
+    folder does not exist yet, or it contains no image file.
+
+    Recursively globs for an image rather than encoding each step's own
+    subfolder convention: those conventions vary a lot across steps (flat,
+    mode/fmt/stem, fmt/layer/stem, nested plot-kind trees) and shift
+    whenever a workflow's export logic changes, so this stays
+    low-maintenance at the cost of not knowing which image variant it
+    picked among several a step might produce.
+    """
+    try:
+        folder = suggested_workflow_results_folder(workflow, config_path, actions)
+    except (OSError, ValueError, tomllib.TOMLDecodeError):
+        return []
+    if folder is None:
+        return []
+    try:
+        if not folder.exists():
+            return []
+        return [
+            path
+            for path in folder.rglob("*")
+            if path.is_file() and path.suffix.lower() in _IMAGE_SUFFIXES
+        ]
+    except OSError:
+        return []
+
+
+def list_workflow_output_images(
+    workflow: str, config_path: Path, actions: list[str]
+) -> list[Path]:
+    """Return every image file for this workflow step, sorted by filename.
+    Drives the GUI's View panel's Results-mode browsing.
+    """
+    images = _resolve_output_images(workflow, config_path, actions)
+    return sorted(images, key=lambda path: path.name)
 
 
 def open_in_file_explorer(path: Path) -> None:

@@ -72,15 +72,49 @@ def test_suggested_workflow_results_folder_setup(tmp_path: Path) -> None:
     assert folder == results / "setup" / "depth"
 
 
-def test_suggested_workflow_results_folder_calibration(tmp_path: Path) -> None:
+def test_suggested_workflow_results_folder_calibration_mass(tmp_path: Path) -> None:
     config = tmp_path / "config.toml"
     results = tmp_path / "results"
-    config.write_text(f"[data]\nresults = '{results}'\n")
+    config.write_text(
+        f"[data]\nresults = '{results}'\n\n"
+        "[[color_path]]\nname = 'color_path'\n\n"
+        "[calibration.mass]\nembedding = 'color_path'\n"
+    )
 
     folder = suggested_workflow_results_folder(
         "calibration", config, ["default mass", "show"]
     )
-    assert folder == results / "calibration"
+    assert folder == (
+        results / "color" / "color_path" / "color_path" / "interpolation" / "mass"
+    )
+
+
+def test_suggested_workflow_results_folder_calibration_mass_no_embedding(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_workflow_results_folder("calibration", config, ["mass"])
+    assert folder is None
+
+
+def test_suggested_workflow_results_folder_calibration_color_embedding(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(
+        f"[data]\nresults = '{results}'\n\n"
+        "[[color_path]]\nname = 'color_path'\n\n"
+        "[calibration.color]\nembedding = 'color_path'\n"
+    )
+
+    folder = suggested_workflow_results_folder(
+        "calibration", config, ["color embedding"]
+    )
+    assert folder == results / "color" / "color_path" / "color_path"
 
 
 def test_suggested_workflow_results_folder_comparison_events_default(
