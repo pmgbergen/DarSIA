@@ -96,18 +96,18 @@ class MenuBuilder:
             theme_group.addAction(action)
 
         # Logging dock's built-in toggle action (checkable, tracks the dock's
-        # shown/hidden state automatically) — same pattern as Streaming Preview.
+        # shown/hidden state automatically) — same pattern as the View dock.
         self.show_logging_action = self.main_window.log_dock.toggleViewAction()
         self.show_logging_action.setText("Show &Logging")
         self.show_logging_action.setShortcut(QKeySequence("Ctrl+L"))
         view_menu.addAction(self.show_logging_action)
 
-        # Streaming Preview dock's built-in toggle action (checkable, tracks
-        # the dock's shown/hidden state automatically).
+        # View dock's built-in toggle action (checkable, tracks the dock's
+        # shown/hidden state automatically).
         self.streaming_toggle_action = (
             self.main_window.streaming_dock.toggleViewAction()
         )
-        self.streaming_toggle_action.setText("Show &Streaming Preview")
+        self.streaming_toggle_action.setText("Show &View")
         self.streaming_toggle_action.setShortcut(QKeySequence("Ctrl+P"))
         view_menu.addAction(self.streaming_toggle_action)
 
