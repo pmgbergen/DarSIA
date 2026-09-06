@@ -608,7 +608,7 @@ class TestFaciesConfigMetadata:
     """Regression test: ensure FaciesConfig has correct metadata applied."""
 
     def test_facies_config_facies_to_labels_map_metadata(self):
-        """FaciesConfig.facies_to_labels_map should have int_list_map widget."""
+        """FaciesConfig.facies_to_labels_map should have the int_rows (pair) widget."""
         from darsia.gui.ui.schema.dataclass_introspection import (
             get_section_fields,
         )
@@ -622,7 +622,8 @@ class TestFaciesConfigMetadata:
         )
         assert facies_map is not None
         # The schema uses "type" field to hold the widget type, not "widget"
-        assert facies_map.get("type") == "int_list_map"
+        assert facies_map.get("type") == "int_rows"
+        assert facies_map.get("pair") is True
         assert facies_map.get("name") == "Facies groups"
         assert facies_map.get("help") is not None
         assert len(facies_map["help"]) > 0
