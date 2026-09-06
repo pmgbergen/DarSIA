@@ -11,6 +11,12 @@ from warnings import warn
 import darsia
 from darsia.presets.workflows.mode_resolution import validate_mode_syntax
 
+from ._key_list_sources import (
+    COLOR_EMBEDDING_SOURCES,
+    FORMAT_SOURCES,
+    REGISTRY_SOURCES,
+    ROI_SOURCES,
+)
 from .contour_smoother import ContourSmootherSelection
 from .fingers import FingersConfig
 from .roi_registry import _load_roi_key_list
@@ -260,7 +266,8 @@ class AnalysisThresholdingConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is used for thresholding.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     """Name(s) of data registry entries to use for thresholding."""
@@ -272,7 +279,8 @@ class AnalysisThresholdingConfig:
                 "Image/mask formats to save for thresholding. Registry entries of any type "
                 "are offered."
             ),
-            "widget": "format_key_list",
+            "widget": "key_list",
+            "key_list_sources": FORMAT_SOURCES,
             "format_types": {"jpg", "png", "npz", "npy", "csv"},
         },
     )
@@ -361,7 +369,8 @@ class AnalysisSegmentationConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is used for segmentation.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     """Name(s) of data registry entries to use for segmentation."""
@@ -370,7 +379,8 @@ class AnalysisSegmentationConfig:
         metadata={
             "name": "Export formats",
             "help": "Image formats to save for segmentation.",
-            "widget": "format_key_list",
+            "widget": "key_list",
+            "key_list_sources": FORMAT_SOURCES,
             "format_types": {"jpg", "png", "npz", "npy"},
         },
     )
@@ -474,7 +484,8 @@ class AnalysisMassConfig:
         default=None,
         metadata={
             "name": "Color embedding",
-            "widget": "color_key_list",
+            "widget": "key_list",
+            "key_list_sources": COLOR_EMBEDDING_SOURCES,
             "max_rows": 1,
         },
     )
@@ -488,7 +499,8 @@ class AnalysisMassConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is used for mass analysis.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     """Name(s) of data registry entries to use for mass analysis."""
@@ -497,7 +509,8 @@ class AnalysisMassConfig:
         metadata={
             "name": "Export formats",
             "help": "Image formats to save for mass analysis.",
-            "widget": "format_key_list",
+            "widget": "key_list",
+            "key_list_sources": FORMAT_SOURCES,
             "format_types": {"jpg", "png", "npz", "npy"},
         },
     )
@@ -507,7 +520,8 @@ class AnalysisMassConfig:
         metadata={
             "name": "ROIs",
             "help": "ROI definitions for mass analysis.",
-            "widget": "roi_key_list",
+            "widget": "key_list",
+            "key_list_sources": ROI_SOURCES,
         },
     )
     """ROI names for mass analysis."""
@@ -634,7 +648,8 @@ class AnalysisVolumeConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is used for volume analysis.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     """Name(s) of data registry entries to use for volume analysis."""
@@ -643,7 +658,8 @@ class AnalysisVolumeConfig:
         metadata={
             "name": "Export formats",
             "help": "Image formats to save for volume analysis.",
-            "widget": "format_key_list",
+            "widget": "key_list",
+            "key_list_sources": FORMAT_SOURCES,
             "format_types": {"jpg", "png", "npz", "npy"},
         },
     )
@@ -653,7 +669,8 @@ class AnalysisVolumeConfig:
         metadata={
             "name": "ROIs",
             "help": "ROI definitions for volume analysis.",
-            "widget": "roi_key_list",
+            "widget": "key_list",
+            "key_list_sources": ROI_SOURCES,
         },
     )
     """ROI names for volume analysis."""
@@ -720,7 +737,8 @@ class AnalysisExpertKnowledgeConfig:
         metadata={
             "name": "Saturation ROIs",
             "help": "ROI keys where saturation_g constraints apply.",
-            "widget": "roi_key_list",
+            "widget": "key_list",
+            "key_list_sources": ROI_SOURCES,
         },
     )
     """ROI registry keys constraining where saturation_g may be non-zero."""
@@ -729,7 +747,8 @@ class AnalysisExpertKnowledgeConfig:
         metadata={
             "name": "Concentration ROIs",
             "help": "ROI keys where concentration_aq constraints apply.",
-            "widget": "roi_key_list",
+            "widget": "key_list",
+            "key_list_sources": ROI_SOURCES,
         },
     )
     """ROI registry keys constraining where concentration_aq may be non-zero."""
@@ -783,7 +802,8 @@ class AnalysisFingersConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is used for fingers analysis.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     """Name(s) of data registry entries to use for fingers analysis."""
@@ -792,7 +812,8 @@ class AnalysisFingersConfig:
         metadata={
             "name": "Export formats",
             "help": "Image formats to save for fingers analysis.",
-            "widget": "format_key_list",
+            "widget": "key_list",
+            "key_list_sources": FORMAT_SOURCES,
             "format_types": {"jpg", "png", "npz", "npy"},
         },
     )
@@ -885,7 +906,8 @@ class AnalysisCroppingConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is used for cropping.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     """Name(s) of data registry entries to use for cropping."""
@@ -897,7 +919,8 @@ class AnalysisCroppingConfig:
                 "Image formats to save for cropping. Only registry entries of type "
                 "jpg, npz, png, or npy are offered."
             ),
-            "widget": "format_key_list",
+            "widget": "key_list",
+            "key_list_sources": FORMAT_SOURCES,
             "format_types": {"jpg", "npz", "png", "npy"},
         },
     )

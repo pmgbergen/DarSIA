@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ._key_list_sources import FORMAT_SOURCES, REGISTRY_SOURCES, ROI_SOURCES
 from .format_registry import FormatRegistry
 from .roi_registry import RoiRegistry, _load_roi_key_list
 from .utils import _convert_none, _get_key, _get_section, _get_section_from_toml
@@ -41,7 +42,8 @@ class HelperRoiConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is unioned for ROI helper.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     """Name(s) of data registry entries to use for ROI helper."""
@@ -84,7 +86,8 @@ class HelperRoiViewerConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is unioned for ROI viewer helper.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     """Name(s) of data registry entries to use for ROI viewer helper."""
@@ -113,7 +116,8 @@ class HelperResultsConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is unioned for results helper.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     """Name(s) of data registry entries to use for results helper."""
@@ -135,7 +139,8 @@ class HelperResultsConfig:
                 "Export format for the results helper. Must resolve to csv or "
                 "npz (required for read-back)."
             ),
-            "widget": "format_key_list",
+            "widget": "key_list",
+            "key_list_sources": FORMAT_SOURCES,
             "format_types": {"csv", "npz"},
             "max_rows": 1,
         },
@@ -154,7 +159,8 @@ class HelperResultsConfig:
         metadata={
             "name": "ROI",
             "help": "ROI name for result visualization.",
-            "widget": "roi_key_list",
+            "widget": "key_list",
+            "key_list_sources": ROI_SOURCES,
         },
     )
 
@@ -228,7 +234,8 @@ class HelperColorConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is unioned for color helper.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     """Name(s) of data registry entries to use for color helper."""
@@ -257,7 +264,8 @@ class HelperConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is unioned for helper.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     """Name(s) of data registry entries to use for helper."""

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ._key_list_sources import COLOR_EMBEDDING_SOURCES, REGISTRY_SOURCES, ROI_SOURCES
 from .roi_registry import _load_roi_key_list
 from .utils import _get_key, _get_section, _get_section_from_toml
 
@@ -90,7 +91,8 @@ class CalibrationColorConfig:
         default=None,
         metadata={
             "name": "Color embedding",
-            "widget": "color_key_list",
+            "widget": "key_list",
+            "key_list_sources": COLOR_EMBEDDING_SOURCES,
             "max_rows": 1,
         },
     )
@@ -99,7 +101,8 @@ class CalibrationColorConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) for calibration images.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     baseline: str | list[str] | None = field(
@@ -107,7 +110,8 @@ class CalibrationColorConfig:
         metadata={
             "name": "Baseline",
             "help": "Registry key name(s) for baseline images.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     rois: list[str] = field(
@@ -115,7 +119,8 @@ class CalibrationColorConfig:
         metadata={
             "name": "ROIs",
             "help": "ROI names for color-path calibration.",
-            "widget": "roi_key_list",
+            "widget": "key_list",
+            "key_list_sources": ROI_SOURCES,
         },
     )
     color_path: ColorPathCalibrationConfig | None = field(
@@ -272,7 +277,8 @@ class CalibrationMassConfig:
         default=None,
         metadata={
             "name": "Color embedding",
-            "widget": "color_key_list",
+            "widget": "key_list",
+            "key_list_sources": COLOR_EMBEDDING_SOURCES,
             "max_rows": 1,
         },
     )
@@ -281,7 +287,8 @@ class CalibrationMassConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is unioned for mass calibration.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     """Name(s) of data registry entries to use for mass calibration."""
@@ -298,7 +305,8 @@ class CalibrationMassConfig:
         metadata={
             "name": "ROIs",
             "help": "ROI names for mass calibration.",
-            "widget": "roi_key_list",
+            "widget": "key_list",
+            "key_list_sources": ROI_SOURCES,
         },
     )
 
