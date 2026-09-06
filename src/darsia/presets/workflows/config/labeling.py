@@ -54,7 +54,7 @@ class LabelingConfig:
                 """(e.g., "3, 5, 8" merges labels 3, 5, and 8 into one label). """
                 """Leave empty if not needed."""
             ),
-            "widget": "int_group_list",
+            "widget": "int_rows",
             "placeholder": "Comma/space-separated label IDs (e.g., 3, 5, 8)",
             "group": "Options",
         },

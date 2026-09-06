@@ -309,6 +309,7 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "value_is_directory": field.metadata.get("value_is_directory", None),
                 "key_source": field.metadata.get("key_source", None),
                 "flatten_in_section": field.metadata.get("flatten_in_section", None),
+                "pair": field.metadata.get("pair", None),
                 "group_name": field.metadata.get("group", None),
                 "depends_on": field.metadata.get("depends_on", None),
                 "format_types": field.metadata.get("format_types", None),

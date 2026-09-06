@@ -130,8 +130,7 @@ class SettingsFactory:
         "multi_file",
         "multi_folder",
         "path_map",
-        "int_group_list",
-        "int_list_map",
+        "int_rows",
         "dataclass_group_map",
         "key_list",
     }
@@ -164,18 +163,19 @@ class SettingsFactory:
                 "path_map": True,
                 "rows": field_or_result["rows"],
             }
-        elif "int_group_list" in field_or_result:
-            return {
-                "int_group_list": True,
+        elif "int_rows" in field_or_result:
+            result_dict = {
+                "int_rows": True,
                 "rows": field_or_result["rows"],
             }
-        elif "int_list_map" in field_or_result:
-            return {
-                "int_list_map": True,
-                "flatten_in_section": field_or_result.get("flatten_in_section", False),
-                "section": field_or_result.get("section"),
-                "rows": field_or_result["rows"],
-            }
+            if field_or_result.get("pair"):
+                result_dict["pair"] = True
+            if "flatten_in_section" in field_or_result:
+                result_dict["flatten_in_section"] = field_or_result[
+                    "flatten_in_section"
+                ]
+                result_dict["section"] = field_or_result.get("section")
+            return result_dict
         elif "dataclass_group_map" in field_or_result:
             entry = {
                 "dataclass_group_map": True,
@@ -648,14 +648,8 @@ class SettingsFactory:
                 key_source=key_source,
                 form_context=form_context,
             )
-        elif setting_type == "int_group_list":
-            return self.create_int_group_list_input(
-                setting_dict, form_context=form_context
-            )
-        elif setting_type == "int_list_map":
-            return self.create_int_list_map_input(
-                setting_dict, form_context=form_context
-            )
+        elif setting_type == "int_rows":
+            return self.create_int_rows_input(setting_dict, form_context=form_context)
         elif setting_type == "dataclass_group_map":
             entry_dataclass = setting_dict.get("entry_dataclass")
             assert entry_dataclass is not None
@@ -760,6 +754,12 @@ class SettingsFactory:
                 header_layout.setSpacing(4)
                 header_layout.addWidget(add_button, stretch=1)
                 header_layout.addWidget(build_help_column(setting_dict))
+                # NOTE: build_tab_form:~457 also addRow()s this widget for
+                # MULTI_ROW_TYPES fields, so the header ends up added twice (a
+                # harmless empty phantom row precedes it). Kept because this
+                # method's nested prefill runs synchronously and needs the header
+                # already positioned; deferring it (as create_key_list_input does)
+                # would be the clean fix.
                 form.addRow("", header_widget)
             except Exception as e:
                 self.main_window.print_log(f"Error building header widget: {e}")
@@ -1147,7 +1147,9 @@ class SettingsFactory:
         if max_rows != 1:
             header_layout.addWidget(add_button, stretch=1)
         header_layout.addWidget(build_help_column(setting_dict))
-        form.addRow("", header_widget)
+        # The header row is inserted into the form by the caller (build_tab_form /
+        # create_group_input / create_dataclass_group_map_input), so prefill is
+        # deferred until after that (see below).
 
         def add_row(selected_key=""):
             """Add a row with an entry-name dropdown."""
@@ -1205,12 +1207,18 @@ class SettingsFactory:
         if max_rows != 1:
             add_button.clicked.connect(lambda: add_row())
 
-        # Prefill existing selections (always at least one empty row)
-        if current_keys:
-            for key_name in current_keys:
-                add_row(key_name)
-        else:
-            add_row()
+        # Defer pre-fill until after the caller inserts the header row, so
+        # getWidgetPosition(header_widget) resolves.
+        from PySide6.QtCore import QTimer
+
+        def deferred_prefill():
+            if current_keys:
+                for key_name in current_keys:
+                    add_row(key_name)
+            else:
+                add_row()
+
+        QTimer.singleShot(0, deferred_prefill)
 
         result_dict = {
             "widget": header_widget,
@@ -1489,33 +1497,59 @@ class SettingsFactory:
 
         return display_name, field_widget
 
-    def create_int_group_list_input(self, setting_dict, form_context=None):
-        """Create a multi-row editor for list[list[int]] fields (groups of label IDs).
+    def create_int_rows_input(self, setting_dict, form_context=None):
+        """Create a multi-row editor for integer-list fields.
 
-        Each row is a single QLineEdit holding a comma/whitespace-separated list of ints,
-        e.g. "3, 5, 8". Mirrors create_multi_file_input's form_context row-management
-        pattern (add/remove via form.insertRow/removeRow). No fallback branch — form_context
-        is always provided by the live app (display_settings).
+        With ``pair`` unset each row is one ``QLineEdit`` holding a comma/space
+        separated int list, and the field serializes to ``list[list[int]]``
+        (e.g. label groups to merge).
 
-        Returns (display_name, enriched_dict) where enriched_dict has "widget" for form
-        insertion and "rows" (list of QLineEdit) for save_settings to parse.
+        With ``pair=True`` each row is a narrow int-key ``QLineEdit`` plus an
+        int-list ``QLineEdit``, serializing to ``dict[int, list[int]]``. If
+        ``flatten_in_section`` is also set, values are read from / written to the
+        parent section's ``<id>.labels`` sub-tables (e.g. ``[facies.0]``) instead
+        of a nested field key.
+
+        Returns ``(display_name, {"widget": header, "int_rows": True, "pair": bool,
+        "rows": [...], ["flatten_in_section": True, "section": <name>]})`` where each
+        row entry is a ``QLineEdit`` (non-pair) or a ``(key_edit, value_edit)`` tuple.
         """
         key = setting_dict["key"]
+        if form_context is None:
+            raise ValueError(
+                f"'int_rows' widget for '{key}' requires a form context; it cannot "
+                "be used as a nested dataclass_group_map sub-field."
+            )
         display_name = setting_dict.get("name", key)
-        values = self.main_window.settings_factory.get_value(
-            self.main_window.config_dict, key
-        )
-        if values is None:
-            values = setting_dict.get("default")
+        pair = bool(setting_dict.get("pair"))
+        flatten = setting_dict.get("flatten_in_section", False) if pair else False
 
-        row_edits = []  # List of QLineEdit widgets for each group
+        # Value source: flattened section sub-tables, or the field's own key.
+        section = None
+        if flatten:
+            section = key.rsplit(".", 1)[0]
+            section_dict = self.get_value(self.main_window.config_dict, section)
+            values = {}
+            if section_dict and isinstance(section_dict, dict):
+                for k, v in section_dict.items():
+                    if isinstance(v, dict) and "labels" in v:
+                        try:
+                            values[int(k)] = v["labels"]
+                        except (ValueError, TypeError):
+                            pass
+        else:
+            values = self.get_value(self.main_window.config_dict, key)
+            if values is None:
+                values = setting_dict.get("default")
+
+        row_handles = []  # QLineEdit (non-pair) or (key_edit, value_edit) tuples
         row_data_list = []  # Track row data (widget, remove_button)
 
         def refresh_remove_buttons():
             for row in row_data_list:
                 row["remove_button"].setVisible(True)
 
-        add_button = QPushButton("Add group")
+        add_button = QPushButton("Add row" if pair else "Add group")
 
         form = form_context["form"]
 
@@ -1528,18 +1562,29 @@ class SettingsFactory:
         header_layout.addWidget(add_button, stretch=1)
         header_layout.addWidget(build_help_column(setting_dict))
 
-        def add_row(initial_value=""):
+        placeholder = setting_dict.get("placeholder")
+
+        def add_row(initial_key="", initial_value=""):
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
             row_layout.setSpacing(4)
 
-            text_edit = QLineEdit()
-            placeholder = setting_dict.get("placeholder")
+            key_edit = None
+            if pair:
+                key_edit = QLineEdit()
+                key_edit.setPlaceholderText("Facies ID")
+                key_edit.setMaximumWidth(100)
+                if initial_key != "":
+                    key_edit.setText(str(initial_key))
+
+            value_edit = QLineEdit()
             if placeholder:
-                text_edit.setPlaceholderText(placeholder)
+                value_edit.setPlaceholderText(placeholder)
             if initial_value:
-                text_edit.setText(initial_value)
+                value_edit.setText(initial_value)
+
+            handle = (key_edit, value_edit) if pair else value_edit
 
             def remove():
                 self.file_dialog._remove_form_row(
@@ -1547,15 +1592,17 @@ class SettingsFactory:
                     row_widget,
                     row_data,
                     row_data_list,
-                    text_edit,
-                    row_edits,
+                    handle,
+                    row_handles,
                     refresh_remove_buttons,
                 )
 
             remove_button = make_remove_button(remove)
             remove_button.setMaximumWidth(80)
 
-            row_layout.addWidget(text_edit, stretch=1)
+            if pair:
+                row_layout.addWidget(key_edit)
+            row_layout.addWidget(value_edit, stretch=1)
             row_layout.addWidget(remove_button)
 
             # Find the correct insertion index: after the header_widget header row
@@ -1574,7 +1621,7 @@ class SettingsFactory:
                 "remove_button": remove_button,
             }
             row_data_list.append(row_data)
-            row_edits.append(text_edit)
+            row_handles.append(handle)
             refresh_remove_buttons()
 
         # Connect add_button to add_row closure
@@ -1584,167 +1631,32 @@ class SettingsFactory:
         from PySide6.QtCore import QTimer
 
         def deferred_prefill():
-            if isinstance(values, list) and values:
-                for group in values:
-                    # Join list of ints with ", "
-                    group_str = ", ".join(str(x) for x in group)
-                    add_row(group_str)
+            if pair:
+                if isinstance(values, dict) and values:
+                    for k, v in values.items():
+                        add_row(k, ", ".join(str(x) for x in v))
+                else:
+                    add_row("", "")
             else:
-                add_row("")
+                if isinstance(values, list) and values:
+                    for group in values:
+                        add_row("", ", ".join(str(x) for x in group))
+                else:
+                    add_row("", "")
 
         QTimer.singleShot(0, deferred_prefill)
 
         # Return enriched dict: widget for form insertion, rows for save_settings
-        return display_name, {
+        result = {
             "widget": header_widget,
-            "int_group_list": True,
-            "rows": row_edits,
+            "int_rows": True,
+            "pair": pair,
+            "rows": row_handles,
         }
-
-    def create_int_list_map_input(self, setting_dict, form_context=None):
-        """Create a multi-row editor for dict[int, list[int]] fields
-        (int key → int-list value).
-
-        Each row has two QLineEdits: a narrow key edit (facies ID, int) and a value edit
-        (comma/whitespace-separated int labels, e.g. "3, 5, 8"). If flatten_in_section=True,
-        reads from and writes to the parent section's sub-tables (e.g., [facies.0], [facies.1])
-        rather than a nested field key (to maintain compatibility with existing TOML layouts).
-        Mirrors create_int_group_list_input's form_context row-management pattern (add/remove
-        via form.insertRow/removeRow).
-
-        Returns (display_name, enriched_dict) where enriched_dict has "widget" for form
-        insertion and "rows" (list of (key_edit, value_edit) tuples) for save_settings
-        to parse.
-        """
-        key = setting_dict["key"]
-        display_name = setting_dict.get("name", key)
-        flatten = setting_dict.get("flatten_in_section", False)
-
-        # Fetch values: either from the field's own key (plain dict[int, list[int]])
-        # or from the flattened section root (if flatten_in_section=True).
         if flatten:
-            section = key.rsplit(".", 1)[0]
-            section_dict = self.get_value(self.main_window.config_dict, section)
-            values = {}
-            if section_dict and isinstance(section_dict, dict):
-                for k, v in section_dict.items():
-                    if isinstance(v, dict) and "labels" in v:
-                        try:
-                            values[int(k)] = v["labels"]
-                        except (ValueError, TypeError):
-                            pass
-        else:
-            values = self.main_window.settings_factory.get_value(
-                self.main_window.config_dict, key
-            )
-            if values is None:
-                values = setting_dict.get("default")
-
-        row_pairs = []  # List of (key_edit, value_edit) tuples
-        row_data_list = []  # Track row data (widget, remove_button)
-
-        def refresh_remove_buttons():
-            for row in row_data_list:
-                row["remove_button"].setVisible(True)
-
-        add_button = QPushButton("Add row")
-
-        if form_context:
-            form = form_context["form"]
-
-            # Build composite header widget:
-            # [add_button (stretch=1)][help_button_or_spacer (fixed 40px)]
-            header_widget = QWidget()
-            header_layout = QHBoxLayout(header_widget)
-            header_layout.setContentsMargins(0, 0, 0, 0)
-            header_layout.setSpacing(4)
-            header_layout.addWidget(add_button, stretch=1)
-            header_layout.addWidget(build_help_column(setting_dict))
-
-            def add_row(initial_key="", initial_value=""):
-                row_widget = QWidget()
-                row_layout = QHBoxLayout(row_widget)
-                row_layout.setContentsMargins(0, 0, 0, 0)
-                row_layout.setSpacing(4)
-
-                # Key column (facies ID)
-                key_edit = QLineEdit()
-                key_edit.setPlaceholderText("Facies ID")
-                key_edit.setMaximumWidth(100)
-                if initial_key != "":
-                    key_edit.setText(str(initial_key))
-
-                # Value column (comma/space-separated labels)
-                value_edit = QLineEdit()
-                placeholder = setting_dict.get("placeholder")
-                if placeholder:
-                    value_edit.setPlaceholderText(placeholder)
-                if initial_value:
-                    value_edit.setText(initial_value)
-
-                # Remove button
-                def remove():
-                    self.file_dialog._remove_form_row(
-                        form,
-                        row_widget,
-                        row_data,
-                        row_data_list,
-                        (key_edit, value_edit),
-                        row_pairs,
-                        refresh_remove_buttons,
-                    )
-
-                remove_button = make_remove_button(remove)
-                remove_button.setMaximumWidth(80)
-
-                row_layout.addWidget(key_edit)
-                row_layout.addWidget(value_edit, stretch=1)
-                row_layout.addWidget(remove_button)
-
-                # Find the correct insertion index: after the header_widget header row
-                header_idx, _ = form.getWidgetPosition(header_widget)
-                if row_data_list:
-                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
-                    insert_idx = last_idx + 1
-                else:
-                    # Insert right after header row
-                    insert_idx = header_idx + 1
-
-                form.insertRow(insert_idx, "", row_widget)
-
-                row_data = {
-                    "widget": row_widget,
-                    "remove_button": remove_button,
-                }
-                row_data_list.append(row_data)
-                row_pairs.append((key_edit, value_edit))
-                refresh_remove_buttons()
-
-            # Connect add_button to add_row closure
-            add_button.clicked.connect(lambda: add_row())
-
-            # Defer pre-fill until after header row is added to form
-            from PySide6.QtCore import QTimer
-
-            def deferred_prefill():
-                if isinstance(values, dict) and values:
-                    for k, v in values.items():
-                        # Join list of ints with ", "
-                        value_str = ", ".join(str(x) for x in v)
-                        add_row(k, value_str)
-                else:
-                    add_row("", "")
-
-            QTimer.singleShot(0, deferred_prefill)
-
-            # Return enriched dict: widget for form insertion, rows for save_settings
-            return display_name, {
-                "widget": header_widget,
-                "int_list_map": True,
-                "flatten_in_section": flatten,
-                "section": section if flatten else None,
-                "rows": row_pairs,
-            }
+            result["flatten_in_section"] = True
+            result["section"] = section
+        return display_name, result
 
     def _create_load_button(self, setting_dict, on_apply):
         """Create a 'Load' menu button for a loadable registry (e.g., curvature or formats).
@@ -2295,12 +2207,11 @@ class SettingsFactory:
             # Skip group dicts with checkboxes (already handled above)
             if isinstance(value, dict) and "checkbox" in value:
                 continue
-            # Skip path_map, int_group_list, int_list_map, key_list,
-            # dataclass_group_map dicts (handled below)
+            # Skip path_map, int_rows, key_list, dataclass_group_map dicts
+            # (handled below)
             if isinstance(value, dict) and (
                 "path_map" in value
-                or "int_group_list" in value
-                or "int_list_map" in value
+                or "int_rows" in value
                 or "key_list" in value
                 or "dataclass_group_map" in value
             ):
@@ -2370,9 +2281,12 @@ class SettingsFactory:
                 }
                 self.set_value(self.main_window.config_dict, key, result)
 
-        # Fourth pass: parse int_group_list rows into list[list[int]]
+        # Fourth pass: parse int_rows editors. Non-pair → list[list[int]];
+        # pair → dict[int, list[int]] (or flattened [section].<id>.labels sub-tables).
         for key, value in self.main_window.settings_inputs.items():
-            if isinstance(value, dict) and "int_group_list" in value:
+            if not (isinstance(value, dict) and "int_rows" in value):
+                continue
+            if not value.get("pair"):
                 groups = []
                 for edit in value["rows"]:
                     text = edit.text().strip()
@@ -2386,41 +2300,39 @@ class SettingsFactory:
                             f"Skipping invalid group '{text}' for {key}: not all-integer."
                         )
                 self.set_value(self.main_window.config_dict, key, groups)
+                continue
 
-        # Fifth pass: parse int_list_map rows into dict[int, list[int]]
-        for key, value in self.main_window.settings_inputs.items():
-            if isinstance(value, dict) and "int_list_map" in value:
-                result = {}
-                for key_edit, value_edit in value["rows"]:
-                    key_text = key_edit.text().strip()
-                    value_text = value_edit.text().strip()
-                    if not key_text or not value_text:
-                        continue
-                    tokens = [t for t in re.split(r"[,\s]+", value_text) if t]
-                    try:
-                        result[int(key_text)] = [int(t) for t in tokens]
-                    except ValueError:
-                        self.main_window.print_log(
-                            f"Skipping invalid row '{key_text}: {value_text}' for {key}: "
-                            "key and values must all be integers."
-                        )
-                if value.get("flatten_in_section"):
-                    section = value["section"]
-                    section_dict = self.main_window.config_dict.setdefault(section, {})
-                    # Drop id sub-tables removed in the GUI (has "labels", not in new result)
-                    stale_ids = [
-                        k
-                        for k, v in section_dict.items()
-                        if isinstance(v, dict)
-                        and "labels" in v
-                        and k not in {str(i) for i in result}
-                    ]
-                    for k in stale_ids:
-                        del section_dict[k]
-                    for facies_id, labels in result.items():
-                        section_dict[str(facies_id)] = {"labels": labels}
-                else:
-                    self.set_value(self.main_window.config_dict, key, result)
+            result = {}
+            for key_edit, value_edit in value["rows"]:
+                key_text = key_edit.text().strip()
+                value_text = value_edit.text().strip()
+                if not key_text or not value_text:
+                    continue
+                tokens = [t for t in re.split(r"[,\s]+", value_text) if t]
+                try:
+                    result[int(key_text)] = [int(t) for t in tokens]
+                except ValueError:
+                    self.main_window.print_log(
+                        f"Skipping invalid row '{key_text}: {value_text}' for {key}: "
+                        "key and values must all be integers."
+                    )
+            if value.get("flatten_in_section"):
+                section = value["section"]
+                section_dict = self.main_window.config_dict.setdefault(section, {})
+                # Drop id sub-tables removed in the GUI (has "labels", not in new result)
+                stale_ids = [
+                    k
+                    for k, v in section_dict.items()
+                    if isinstance(v, dict)
+                    and "labels" in v
+                    and k not in {str(i) for i in result}
+                ]
+                for k in stale_ids:
+                    del section_dict[k]
+                for facies_id, labels in result.items():
+                    section_dict[str(facies_id)] = {"labels": labels}
+            else:
+                self.set_value(self.main_window.config_dict, key, result)
 
         # Tenth pass: parse key_list rows into list[str] (or a single str / None
         # when the field is max_rows==1). Empty selection writes None.

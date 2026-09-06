@@ -36,7 +36,8 @@ class FaciesConfig:
                 "to it. Each row is one facies ID (integer) mapped to a "
                 "comma/space-separated list of label IDs (e.g. 3, 5, 8)."
             ),
-            "widget": "int_list_map",
+            "widget": "int_rows",
+            "pair": True,
             "placeholder": "Comma/space-separated label IDs (e.g., 3, 5, 8)",
             "flatten_in_section": True,
         },
