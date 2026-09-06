@@ -36,16 +36,20 @@ class _MockMainWindow:
         pass
 
 
-def _build(factory, setting, keepalive):
+def _build(factory, setting, keepalive, qapp):
     """Render a key_list field through the real dispatch; return its result dict.
 
     ``keepalive`` retains the parent QWidget/QFormLayout so Qt does not garbage
-    collect the form out from under the widget being built.
+    collect the form out from under the widget being built. ``qapp.processEvents()``
+    runs the widget's deferred (``QTimer.singleShot``) pre-fill before we inspect
+    ``rows``.
     """
     parent = QWidget()
     form = QFormLayout(parent)
     keepalive.append((parent, form))
-    return factory.create_setting_edit(setting, form_context={"form": form})
+    result = factory.create_setting_edit(setting, form_context={"form": form})
+    qapp.processEvents()
+    return result
 
 
 def _options(combo):
@@ -76,7 +80,7 @@ def test_key_list_widget_end_to_end(qapp):
         "type": "key_list",
         "key_list_sources": ("data_interval", "data_path"),
     }
-    _, reg = _build(factory, registry_setting, keepalive)
+    _, reg = _build(factory, registry_setting, keepalive, qapp)
 
     assert reg["key_list"] is True
     assert reg["source_type_map"] == {
@@ -95,7 +99,7 @@ def test_key_list_widget_end_to_end(qapp):
         "key_list_sources": ("format",),
         "format_types": {"png"},
     }
-    _, fmt = _build(factory, format_setting, keepalive)
+    _, fmt = _build(factory, format_setting, keepalive, qapp)
     assert list(fmt["source_type_map"]) == ["png_hi"]  # csv_out filtered out
     assert _options(fmt["rows"][0]) == ["png_hi"]
 
@@ -107,7 +111,7 @@ def test_key_list_widget_end_to_end(qapp):
         "key_list_sources": ("data_interval",),
         "max_rows": 1,
     }
-    _, mr = _build(factory, max_rows_setting, keepalive)
+    _, mr = _build(factory, max_rows_setting, keepalive, qapp)
     assert mr["max_rows"] == 1
     assert len(mr["rows"]) == 1
     assert mr["rows"][0].currentText() == "interval_a"
@@ -119,7 +123,7 @@ def test_key_list_widget_end_to_end(qapp):
         "type": "key_list",
         "key_list_sources": ("does_not_exist",),
     }
-    _, empty = _build(factory, empty_setting, keepalive)
+    _, empty = _build(factory, empty_setting, keepalive, qapp)
     assert empty["source_type_map"] == {}
     assert _options(empty["rows"][0]) == []
 
