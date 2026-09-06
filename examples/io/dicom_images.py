@@ -11,7 +11,7 @@ import darsia
 # ! ---- Read 4d DICOM images
 
 # Provide folder with dicom images
-folder = f"{os.path.dirname(__file__)}/images"
+folder = f"{os.path.dirname(__file__)}/../images"
 dicom_paths = folder + "/dicom"
 
 # Read dicom images as 4d space-time, or list of 3d images.

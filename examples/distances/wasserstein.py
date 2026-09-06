@@ -1,3 +1,12 @@
+"""
+Wasserstein distance: solver development script
+===============================================
+
+A large scratch script exercising many configurations of the DarSIA
+Wasserstein / Beckmann solvers. Shown as source only; it is not executed
+during the documentation build.
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.sparse as sps

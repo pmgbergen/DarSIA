@@ -30,9 +30,10 @@ simulation output (VTU and anything :mod:`meshio` can read).
       workflows and the graphical interface.
 
    .. grid-item-card:: :octicon:`image` Examples
-      :link: https://github.com/pmgbergen/darsia/tree/dev/examples
+      :link: auto_examples/index
+      :link-type: doc
 
-      Runnable, image-rich examples. *(Gallery integration in progress.)*
+      Runnable, image-rich examples grouped by topic.
 
    .. grid-item-card:: :octicon:`code` API reference
       :link: api/index
@@ -58,6 +59,7 @@ simulation output (VTU and anything :mod:`meshio` can read).
 
    getting_started/index
    user_guide/index
+   auto_examples/index
    api/index
    development/index
    release_notes/index

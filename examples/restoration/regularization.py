@@ -1,3 +1,12 @@
+"""
+Total-variation and H1 regularization
+=====================================
+
+Anisotropic TV denoising and H1 regularization of a 3D volume. Shown as
+source only: it needs a DICOM-derived ``dicom_3d.npy`` volume that is not
+bundled with the repository.
+"""
+
 import os
 
 import matplotlib.pyplot as plt
@@ -6,7 +15,7 @@ import numpy as np
 import darsia
 
 # Load 3D image
-image_folder = f"{os.path.dirname(__file__)}/images/"
+image_folder = f"{os.path.dirname(__file__)}/../images/"
 img_path = image_folder + "dicom_3d.npy"
 img = darsia.imread(img_path, dimensions=[0.1, 0.1, 0.1])
 
@@ -44,5 +53,5 @@ plt.imshow(img.img[100, :, :])
 plt.figure("regularized tvd slice")
 plt.imshow(img_regularized_tvd.img[100, :, :])
 plt.figure("regularized H1 slice")
-plt.imshow(img_regularized_H1.img[100, :, :])
+plt.imshow(img_regularized_h1.img[100, :, :])
 plt.show()
