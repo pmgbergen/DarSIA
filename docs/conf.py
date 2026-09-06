@@ -35,13 +35,27 @@ extensions = [
     "matplotlib.sphinxext.plot_directive",
     "sphinx_design",
     "sphinx_copybutton",
+    "sphinx_gallery.gen_gallery",
     "myst_nb",
-    # "sphinx_gallery.gen_gallery",  # TODO(step 3): enable once examples/ is reorganised
     # "numpydoc",                    # TODO(step 6): swap in for napoleon after migration
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "**.ipynb_checkpoints",
+    # Sphinx-Gallery writes .ipynb download companions next to its .rst pages;
+    # myst-nb would otherwise pick them up as duplicate source documents.
+    "auto_examples/**/*.ipynb",
+    # Sphinx-Gallery timing pages; they cross-reference labels that only exist
+    # for executed examples, so with source-only examples they emit dead links.
+    "**/sg_execution_times.rst",
+    "sg_execution_times.rst",
+]
+
+suppress_warnings = ["toc.no_title"]
 
 # Do not prefix every documented object with its (long) dotted module path.
 add_module_names = False
@@ -79,7 +93,35 @@ napoleon_use_ivar = True  # render Attributes as a field list, avoids autodoc du
 # -- MyST / notebooks -------------------------------------------------------
 
 myst_enable_extensions = ["colon_fence", "dollarmath", "deflist"]
-nb_execution_mode = "off"  # TODO(step 3): "auto" once bundled data paths are verified
+nb_execution_mode = "off"
+
+# -- sphinx-gallery -----------------------------------------------------
+
+sphinx_gallery_conf = {
+    "examples_dirs": ["../examples"],
+    "gallery_dirs": ["auto_examples"],
+    "filename_pattern": r"plot_",
+    "ignore_pattern": r"/notebooks/",
+    "within_subsection_order": "FileNameSortKey",
+    "subsection_order": [
+        "../examples/io",
+        "../examples/corrections",
+        "../examples/restoration",
+        "../examples/segmentation",
+        "../examples/registration",
+        "../examples/analysis",
+        "../examples/distances",
+        "../examples/paper",
+    ],
+    "image_scrapers": ("matplotlib",),
+    "doc_module": ("darsia",),
+    "default_thumb_file": os.path.join(
+        os.path.dirname(__file__), "_static", "darsia-logo.png"
+    ),
+    "remove_config_comments": True,
+    "matplotlib_animations": False,
+    "download_all_examples": False,
+}
 
 # -- Intersphinx ----------------------------------------------------------
 

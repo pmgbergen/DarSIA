@@ -12,7 +12,7 @@ import numpy as np
 import darsia
 
 # Define path to image folder
-image_folder = f"{os.path.dirname(__file__)}/images/"
+image_folder = f"{os.path.dirname(__file__)}/../images/"
 
 # Define curvature correction object, initiated with config file
 # (which can be created the workflow presented in the Jupyter notebook
