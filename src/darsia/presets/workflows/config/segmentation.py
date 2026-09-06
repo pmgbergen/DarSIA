@@ -208,7 +208,6 @@ class SegmentationConfig:
         metadata={
             "name": "Show labels",
             "help": "Optional contour value label configuration.",
-            "active_list_key": "active",
         },
     )
     """Contour value labels configuration."""
@@ -217,7 +216,6 @@ class SegmentationConfig:
         metadata={
             "name": "Contour smoother",
             "help": "Contour smoothing algorithm.",
-            "active_list_key": "active",
         },
     )
     """Contour smoother selection and options."""

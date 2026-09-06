@@ -539,7 +539,6 @@ class AnalysisMassConfig:
         metadata={
             "name": "Contour smoother",
             "help": "Contour smoothing algorithm.",
-            "active_list_key": "active",
         },
     )
     """Contour smoother selection and options."""
