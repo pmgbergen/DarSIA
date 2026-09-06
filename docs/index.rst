@@ -1,29 +1,64 @@
+:html_theme.sidebar_secondary.remove:
+
+######
 DarSIA
-======
+######
 
-DarSIA, short for Darcy Scale Image Analysis, is a research code aiming at quantitative image analysis for images of porous media applications. It provides a collection of algorithms and basic workflows for phyisical image processing. The Darcy scale is of particular interest, and thus physics upscaling lies at the heart of DarSIA.
+**DarSIA** -- *Darcy Scale Image Analysis* -- is an open-source Python toolbox for
+quantitative image analysis of dynamics in porous media. It provides physically
+meaningful image containers, correction and restoration algorithms, segmentation
+and registration tools, and ready-made workflows for extracting concentrations,
+phase distributions and displacements from laboratory and simulation images.
 
-Various image data types are supported, including optical images (png, jpg, tif, ...), DICOM images, and simulation data (vtk, and essentially any format readable by meshio). Preprocessing routines to transform and align images as well as routines for extracting physical information from images (e.g., concentrations) are provided.
+Supported data includes optical images (PNG, JPG, TIF, ...), DICOM stacks, and
+simulation output (VTU and anything :mod:`meshio` can read).
 
-News
-====
+.. grid:: 1 2 2 3
+   :gutter: 3
 
-The newest release is v.1.0
+   .. grid-item-card:: :octicon:`rocket` Getting started
+      :link: getting_started/index
+      :link-type: doc
 
-The DarSIA package
-==================
+      Install DarSIA and run your first analysis in five minutes.
 
-DarSIA is divided into subpackages and modules. To navigate through its components follow the link:
+   .. grid-item-card:: :octicon:`book` User guide
+      :link: user_guide/index
+      :link-type: doc
+
+      Narrative documentation of the image model, corrections, analysis
+      workflows and the graphical interface.
+
+   .. grid-item-card:: :octicon:`image` Examples
+      :link: https://github.com/pmgbergen/darsia/tree/dev/examples
+
+      Runnable, image-rich examples. *(Gallery integration in progress.)*
+
+   .. grid-item-card:: :octicon:`code` API reference
+      :link: api/index
+      :link-type: doc
+
+      Every public class and function, grouped by topic.
+
+   .. grid-item-card:: :octicon:`tools` Contributor guide
+      :link: development/index
+      :link-type: doc
+
+      Set up a development environment, run the tests, and build the docs.
+
+   .. grid-item-card:: :octicon:`mortar-board` About
+      :link: about/index
+      :link-type: doc
+
+      How to cite DarSIA, related publications, and the team behind it.
 
 .. toctree::
+   :hidden:
    :maxdepth: 1
-   :titlesonly:
 
-   source/darsia
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   getting_started/index
+   user_guide/index
+   api/index
+   development/index
+   release_notes/index
+   about/index

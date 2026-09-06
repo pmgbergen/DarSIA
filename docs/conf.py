@@ -1,112 +1,174 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# For the full list of built-in configuration values, see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
+"""Configuration file for the Sphinx documentation builder.
 
-# -- Path setup --------------------------------------------------------------
+Full list of options: https://www.sphinx-doc.org/en/master/usage/configuration.html
+"""
 
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
+from __future__ import annotations
+
+import inspect
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..'))
+from importlib.metadata import version as _get_version
 
-# -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
+# -- Project information ---------------------------------------------------------
 
-project = 'DarSIA'
-copyright = '2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik'
-author = 'Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik'
-release = '1.0'
+project = "DarSIA"
+copyright = "2023-2026, DarSIA developers"
+author = "DarSIA developers"
 
-# -- General configuration ---------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
+# Single source of truth: the installed package version.
+release = _get_version("darsia")
+version = ".".join(release.split(".")[:2])
 
-# Name of the root document or "homepage"
+# -- General configuration -----------------------------------------------------
+
 root_doc = "index"
 
-# Add any Sphinx extension module names here, as strings. They can be
-# extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
-# ones.
 extensions = [
-    'sphinx.ext.viewcode',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.napoleon'
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.napoleon",  # transitional: NumPy-style is the migration target
+    "sphinx.ext.linkcode",
+    "sphinx.ext.doctest",
+    "matplotlib.sphinxext.plot_directive",
+    "sphinx_design",
+    "sphinx_copybutton",
+    "myst_nb",
+    # "sphinx_gallery.gen_gallery",  # TODO(step 3): enable once examples/ is reorganised
+    # "numpydoc",                    # TODO(step 6): swap in for napoleon after migration
 ]
 
-# Removes the module name space in front of classes and functions
+templates_path = ["_templates"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "**.ipynb_checkpoints",
+    "source/**",  # TODO(step 2): delete the legacy docs/source tree, then drop this
+]
+
+# Do not prefix every documented object with its (long) dotted module path.
 add_module_names = False
 
-# Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+# -- Autodoc / autosummary ---------------------------------------------------
 
-# List of patterns, relative to source directory, that match files and
-# directories to ignore when looking for source files.
-# This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+autosummary_generate = True
+autoclass_content = "class"
+autodoc_class_signature = "mixed"
+autodoc_member_order = "groupwise"
+autodoc_typehints = "none"  # TODO(step 6): flip to "description"
+autodoc_typehints_format = "short"
+autodoc_inherit_docstrings = False
+autodoc_default_options = {
+    "members": True,
+    "show-inheritance": True,
+    "inherited-members": False,
+}
 
+# -- Napoleon (renders both Google- and NumPy-style during the migration) ----
 
+napoleon_google_docstring = True
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = False
+napoleon_use_rtype = False
 
-# -- Options for HTML output -------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
+# -- MyST / notebooks -------------------------------------------------------
+
+myst_enable_extensions = ["colon_fence", "dollarmath", "deflist"]
+nb_execution_mode = "off"  # TODO(step 3): "auto" once bundled data paths are verified
+
+# -- Intersphinx ----------------------------------------------------------
+
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy", None),
+    "matplotlib": ("https://matplotlib.org/stable", None),
+    "skimage": ("https://scikit-image.org/docs/stable", None),
+    "sklearn": ("https://scikit-learn.org/stable", None),
+    "pandas": ("https://pandas.pydata.org/docs", None),
+    "PIL": ("https://pillow.readthedocs.io/en/stable", None),
+}
+
+# -- HTML output ---------------------------------------------------------
 
 html_theme = "pydata_sphinx_theme"
-html_static_path = ['_static']
-
+html_static_path = ["_static"]
+html_css_files = ["custom.css"]
+html_logo = "_static/darsia-logo.png"
+html_favicon = "_static/darsia-logo.png"
 html_short_title = "DarSIA"
-html_split_index = True
+html_title = f"DarSIA {version}"
 html_copy_source = False
 html_show_sourcelink = False
 html_show_sphinx = False
+html_split_index = True
 
 html_theme_options = {
-  "show_toc_level": 4 # TODO
+    "show_toc_level": 2,
+    "navigation_with_keys": False,
+    "github_url": "https://github.com/pmgbergen/darsia",
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/pmgbergen/darsia",
+            "icon": "fa-brands fa-github",
+        },
+    ],
+    "navbar_align": "content",
+    "header_links_before_dropdown": 6,
 }
 
-# -- Autodoc Settings -------------------------------------------------------------------------
-
-# autoclass concatenates docs strings from init and class.
-autoclass_content = "class"  # class-both-init
-
-# Display the signature next to class name
-autodoc_class_signature = "mixed"  # mixed-separated
-
-# orders the members of an object group wise, e.g. private, special or public methods
-autodoc_member_order = "groupwise"  # alphabetical-groupwise-bysource
-
-# type hints will be shortened:
-autodoc_typehints_format = "short"
-
-# default configurations for all autodoc directives
-autodoc_default_options = {
-    "members": True,
-    "special-members": False,
-    "private-members": False,
-    "show-inheritance": True,
-    "inherited-members": True,
-    "no-value": False
+html_context = {
+    "github_user": "pmgbergen",
+    "github_repo": "darsia",
+    "github_version": "dev",
+    "doc_path": "docs",
 }
 
-# uses type hints in signatures for e.g. linking (default)
-autodoc_typehints = "none" #TODO "description"
+# -- linkcode: map documented objects back to GitHub source ------------------
 
-# Avoid double appearance of documentation if child member has no docs
-autodoc_inherit_docstrings = False
+_REVISION = os.environ.get("DARSIA_DOCS_REVISION", "dev")
 
-# Used to shorten the parsing of type hint aliases
-autodoc_type_aliases = {}
 
-# -- Intersphinx Settings ---------------------------------------------------------------------
+def linkcode_resolve(domain, info):
+    """Return the GitHub URL of the source for a documented Python object."""
+    if domain != "py" or not info["module"]:
+        return None
 
-intersphinx_mapping = {
-    'python3': ("https://docs.python.org/3", None),
-    'numpy': ('https://numpy.org/doc/stable', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy', None),
-    'matplotlib': ('https://matplotlib.org/stable', None),
-    'skimage': ('https://scikit-image.org/docs/stabe', None),
-    "sklearn": ("https://scikit-learn.org/stable/", None),
-}
+    module = sys.modules.get(info["module"])
+    if module is None:
+        return None
 
+    obj = module
+    for part in info["fullname"].split("."):
+        obj = getattr(obj, part, None)
+        if obj is None:
+            return None
+
+    obj = inspect.unwrap(obj)
+    try:
+        source_file = inspect.getsourcefile(obj)
+        lines, start = inspect.getsourcelines(obj)
+    except (TypeError, OSError):
+        return None
+    if not source_file:
+        return None
+
+    import darsia
+
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(darsia.__file__)))
+    try:
+        rel_path = os.path.relpath(source_file, repo_root).replace(os.sep, "/")
+    except ValueError:
+        return None
+    if rel_path.startswith(".."):
+        return None
+
+    end = start + len(lines) - 1
+    return (
+        f"https://github.com/pmgbergen/darsia/blob/{_REVISION}/"
+        f"{rel_path}#L{start}-L{end}"
+    )
