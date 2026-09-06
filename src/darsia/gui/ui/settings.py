@@ -2334,7 +2334,7 @@ class SettingsFactory:
             else:
                 self.set_value(self.main_window.config_dict, key, result)
 
-        # Tenth pass: parse key_list rows into list[str] (or a single str / None
+        # Fifth pass: parse key_list rows into list[str] (or a single str / None
         # when the field is max_rows==1). Empty selection writes None.
         for key, value in self.main_window.settings_inputs.items():
             if isinstance(value, dict) and "key_list" in value:
@@ -2347,8 +2347,8 @@ class SettingsFactory:
                     self.set_value(
                         self.main_window.config_dict, key, result if result else None
                     )
-        # Tenth-and-a-half pass (v2): parse dataclass_group_map entries into list[dict]
-        # This is the new generic handler for group-box-per-entry collections.
+        # Sixth pass: parse dataclass_group_map entries into list[dict]
+        # (generic handler for group-box-per-entry collections).
         for key, value in self.main_window.settings_inputs.items():
             if isinstance(value, dict) and "dataclass_group_map" in value:
                 result = []
@@ -2497,7 +2497,7 @@ class SettingsFactory:
                     # which require [[<key>]] entries with a "name" field.
                     self.set_value(self.main_window.config_dict, key, result)
 
-        # Fifteenth pass: write all active lists
+        # Seventh pass: write all active lists
         for active_list_key, names in group_active_names.items():
             self.set_value(self.main_window.config_dict, active_list_key, sorted(names))
 
