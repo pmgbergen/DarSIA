@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import darsia
 from darsia.presets.workflows.mode_resolution import validate_mode_syntax
 
+from ._key_list_sources import ROI_SOURCES
 from .contour_smoother import ContourSmootherSelection
 from .roi_registry import _load_roi_key_list
 from .utils import _get_key
@@ -60,7 +61,8 @@ class FingersConfig:
         metadata={
             "name": "ROI",
             "help": "ROI definition for finger analysis.",
-            "widget": "roi_key_list",
+            "widget": "key_list",
+            "key_list_sources": ROI_SOURCES,
             "max_rows": 1,
             "group": "Contour",
         },

@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from warnings import warn
 
+from ._key_list_sources import REGISTRY_SOURCES
 from .utils import _get_key, _get_section_from_toml
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,8 @@ class DownloadConfig:
         metadata={
             "name": "Data selection",
             "help": "Registry key name(s) whose data is unioned for download.",
-            "widget": "registry_key_list",
+            "widget": "key_list",
+            "key_list_sources": REGISTRY_SOURCES,
         },
     )
     """Name(s) of data registry entries to use for download."""

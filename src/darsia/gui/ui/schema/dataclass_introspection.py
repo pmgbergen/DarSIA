@@ -312,6 +312,7 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "group_name": field.metadata.get("group", None),
                 "depends_on": field.metadata.get("depends_on", None),
                 "format_types": field.metadata.get("format_types", None),
+                "key_list_sources": field.metadata.get("key_list_sources", None),
                 "max_rows": field.metadata.get("max_rows", None),
                 "array_key": field.metadata.get("array_key", None),
                 "checkable": field.metadata.get("checkable", None),

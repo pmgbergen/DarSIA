@@ -133,10 +133,7 @@ class SettingsFactory:
         "int_group_list",
         "int_list_map",
         "dataclass_group_map",
-        "format_key_list",
-        "registry_key_list",
-        "roi_key_list",
-        "color_key_list",
+        "key_list",
     }
 
     @staticmethod
@@ -187,34 +184,15 @@ class SettingsFactory:
             if "array_key" in field_or_result:
                 entry["array_key"] = field_or_result["array_key"]
             return entry
-        elif "registry_key_list" in field_or_result:
-            return {
-                "registry_key_list": True,
-                "rows": field_or_result["rows"],
-            }
-        elif "format_key_list" in field_or_result:
+        elif "key_list" in field_or_result:
             result_dict = {
-                "format_key_list": True,
+                "key_list": True,
                 "rows": field_or_result["rows"],
             }
             if "max_rows" in field_or_result:
                 result_dict["max_rows"] = field_or_result["max_rows"]
-            return result_dict
-        elif "roi_key_list" in field_or_result:
-            result_dict = {
-                "roi_key_list": True,
-                "rows": field_or_result["rows"],
-            }
-            if "max_rows" in field_or_result:
-                result_dict["max_rows"] = field_or_result["max_rows"]
-            return result_dict
-        elif "color_key_list" in field_or_result:
-            result_dict = {
-                "color_key_list": True,
-                "rows": field_or_result["rows"],
-            }
-            if "max_rows" in field_or_result:
-                result_dict["max_rows"] = field_or_result["max_rows"]
+            if "source_type_map" in field_or_result:
+                result_dict["source_type_map"] = field_or_result["source_type_map"]
             return result_dict
         else:
             return field_or_result["rows"]
@@ -223,9 +201,8 @@ class SettingsFactory:
     def _extract_key_list_rows(rows):
         """Extract deduplicated, stripped text values from a list of QComboBox rows.
 
-        Shared by all "key list" widget types (roi_key_list, registry_key_list,
-        format_key_list, color_key_list) at both the top-level save pass and inside
-        dataclass_group_map entries.
+        Shared by the ``key_list`` widget at both the top-level save pass and
+        inside dataclass_group_map entries.
         """
         result = []
         seen = set()
@@ -481,7 +458,7 @@ class SettingsFactory:
                 wrapped = self._wrap_multi_row_result(field_or_result)
                 self.main_window.settings_inputs[setting["key"]] = wrapped
                 # Track for depends_on wiring — lets other fields use this as a driver
-                # (store raw field_or_result to keep embedding_type_map/rows)
+                # (store raw field_or_result to keep source_type_map/rows)
                 unqualified_key = setting["key"].rsplit(".", 1)[-1]
                 row_index = target_form.rowCount() - 1
                 field_row_map[unqualified_key] = (
@@ -546,12 +523,12 @@ class SettingsFactory:
 
             # Extract the QComboBox and type_map, handling both scalar and multi-row drivers
             if isinstance(driver_field_or_result, dict) and driver_field_or_result.get(
-                "color_key_list"
+                "key_list"
             ):
-                # Multi-row color embedding selector
+                # Multi-row key-list selector
                 rows = driver_field_or_result.get("rows", [])
                 driver_combo = rows[0] if rows else None
-                type_map = driver_field_or_result.get("embedding_type_map", {})
+                type_map = driver_field_or_result.get("source_type_map", {})
             else:
                 # Scalar field: unwrap to get QComboBox
                 driver_combo = unwrap_composite_widget(driver_field_or_result)
@@ -687,22 +664,8 @@ class SettingsFactory:
                 entry_dataclass=entry_dataclass,
                 form_context=form_context,
             )
-        elif setting_type == "registry_key_list":
-            return self.create_registry_key_list_input(
-                setting_dict, form_context=form_context
-            )
-        elif setting_type == "format_key_list":
-            return self.create_format_key_list_input(
-                setting_dict, form_context=form_context
-            )
-        elif setting_type == "roi_key_list":
-            return self.create_roi_key_list_input(
-                setting_dict, form_context=form_context
-            )
-        elif setting_type == "color_key_list":
-            return self.create_color_key_list_input(
-                setting_dict, form_context=form_context
-            )
+        elif setting_type == "key_list":
+            return self.create_key_list_input(setting_dict, form_context=form_context)
         else:
             self.main_window.print_log(
                 f"Setting type {setting_type} not supported yet, using simple input"
@@ -847,14 +810,9 @@ class SettingsFactory:
                     if field_name == "name":
                         continue
 
-                    # Handle multi-row key-list fields (roi_key_list, registry_key_list,
-                    # etc.) — need form_context to render header/add-row UI
-                    if field_schema.get("type") in {
-                        "roi_key_list",
-                        "registry_key_list",
-                        "format_key_list",
-                        "color_key_list",
-                    }:
+                    # Handle multi-row key-list fields — need form_context to render
+                    # the header/add-row UI
+                    if field_schema.get("type") == "key_list":
                         own_name = field_schema.get("name", field_name)
                         target_form = self._get_or_create_group_form(
                             group_forms, group_layout, own_name, own_name
@@ -1121,34 +1079,39 @@ class SettingsFactory:
             result = {"dataclass_group_map": True, "entries": []}
             return display_name, result
 
-    def create_registry_key_list_input(self, setting_dict, form_context=None):
-        """Create a multi-row registry-key selector with dropdowns.
+    def create_key_list_input(self, setting_dict, form_context=None):
+        """Create a multi-row selector of registry entry names, backed by dropdowns.
 
-        Each row is a QComboBox (non-editable) populated with available registry keys.
-        On save, the union of all selected keys becomes data_selection as a list[str].
+        Each row is a non-editable QComboBox whose options are the ``name``s of the
+        entries found in the array-of-tables ``config_dict`` sections named by the
+        field's ``key_list_sources`` metadata (unioned, in order). When
+        ``format_types`` metadata is present, entries are additionally filtered by
+        their ``type``. On save the selected names become a ``list[str]`` (or a bare
+        ``str`` / ``None`` when ``max_rows == 1``).
 
-        Returns (display_name, enriched_dict) with "widget" and "rows" (list of
-        QComboBox widgets).
+        Returns ``(display_name, {"widget": header, "key_list": True,
+        "rows": [combo, ...], "source_type_map": {name: section}, ["max_rows": n]})``.
         """
         key = setting_dict["key"]
         display_name = setting_dict.get("name", key)
+        sources = setting_dict.get("key_list_sources") or ()
+        type_filter = setting_dict.get("format_types")
+        max_rows = setting_dict.get("max_rows")
 
-        # Gather available registry keys from top-level arrays
-        def extract_names(array):
-            if isinstance(array, list):
-                return {
-                    entry.get("name")
-                    for entry in array
-                    if isinstance(entry, dict) and entry.get("name")
-                }
-            return set()
-
-        available_keys = sorted(
-            extract_names(self.main_window.config_dict.get("data_interval", []))
-            | extract_names(self.main_window.config_dict.get("data_window", []))
-            | extract_names(self.main_window.config_dict.get("data_time", []))
-            | extract_names(self.main_window.config_dict.get("data_path", []))
-        )
+        # Gather available entry names from every source section, remembering which
+        # section each name came from (used by type-based depends_on visibility).
+        source_type_map = {}
+        for section in sources:
+            for entry in self.main_window.config_dict.get(section, []):
+                if not isinstance(entry, dict):
+                    continue
+                name = entry.get("name")
+                if not name:
+                    continue
+                if type_filter is not None and entry.get("type") not in type_filter:
+                    continue
+                source_type_map[name] = section
+        available_keys = sorted(source_type_map)
 
         # Get current value and normalize to list
         value = self.get_value(self.main_window.config_dict, key)
@@ -1161,549 +1124,103 @@ class SettingsFactory:
         else:
             current_keys = []
 
-        row_data_list = []  # Track (widget, combo, remove_button)
+        # For single-value fields (max_rows=1), cap the selection
+        if max_rows == 1:
+            current_keys = current_keys[:1]
+
+        row_data_list = []
         row_combos = []  # List of QComboBox widgets for save_settings
 
         def refresh_remove_buttons():
             for row_data in row_data_list:
                 row_data["remove_button"].setVisible(True)
 
-        add_button = QPushButton("Add key")
+        add_button = QPushButton("Add selection")
 
-        if form_context:
-            form = form_context["form"]
+        form = form_context["form"]
 
-            # Build header widget
-            header_widget = QWidget()
-            header_layout = QHBoxLayout(header_widget)
-            header_layout.setContentsMargins(0, 0, 0, 0)
-            header_layout.setSpacing(4)
+        # Build header widget
+        header_widget = QWidget()
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(4)
+        if max_rows != 1:
             header_layout.addWidget(add_button, stretch=1)
-            header_layout.addWidget(build_help_column(setting_dict))
-            form.addRow("", header_widget)
+        header_layout.addWidget(build_help_column(setting_dict))
+        form.addRow("", header_widget)
 
-            def add_row(selected_key=""):
-                """Add a row with a registry-key dropdown."""
-                row_widget = QWidget()
-                row_layout = QHBoxLayout(row_widget)
-                row_layout.setContentsMargins(4, 4, 4, 4)
-                row_layout.setSpacing(4)
-                row_widget.setMinimumHeight(28)
+        def add_row(selected_key=""):
+            """Add a row with an entry-name dropdown."""
+            row_widget = QWidget()
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(4, 4, 4, 4)
+            row_layout.setSpacing(4)
+            row_widget.setMinimumHeight(28)
 
-                # Dropdown with available keys + any stale current selection
-                combo = QComboBox()
-                combo.setEditable(False)
-                all_options = list(available_keys)
-                # Add selected_key if it's not already in the list (stale/deleted entry)
-                if selected_key and selected_key not in all_options:
-                    all_options.append(selected_key)
-                    all_options.sort()
-                combo.addItems(all_options)
-                if selected_key:
-                    combo.setCurrentText(selected_key)
-                elif all_options:
-                    combo.setCurrentIndex(0)
-                row_layout.addWidget(combo, 1)
+            # Dropdown with available keys + any stale current selection
+            combo = QComboBox()
+            combo.setEditable(False)
+            all_options = list(available_keys)
+            # Add selected_key if not already listed (stale/deleted/filtered-out entry)
+            if selected_key and selected_key not in all_options:
+                all_options.append(selected_key)
+                all_options.sort()
+            combo.addItems(all_options)
+            if selected_key:
+                combo.setCurrentText(selected_key)
+            elif all_options:
+                combo.setCurrentIndex(0)
+            row_layout.addWidget(combo, 1)
 
-                # Remove button
-                def remove():
-                    row_idx, _ = form.getWidgetPosition(row_widget)
-                    form.removeRow(row_idx)
-                    if row_data in row_data_list:
-                        row_data_list.remove(row_data)
-                    if combo in row_combos:
-                        row_combos.remove(combo)
-                    refresh_remove_buttons()
-
-                remove_button = make_remove_button(remove)
-                remove_button.setMaximumWidth(80)
-                row_layout.addWidget(remove_button, 0)
-
-                # Add row to form
-                header_idx, _ = form.getWidgetPosition(header_widget)
-                if row_data_list:
-                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
-                    insert_idx = last_idx + 1
-                else:
-                    insert_idx = header_idx + 1
-
-                form.insertRow(insert_idx, "", row_widget)
-
-                row_data = {
-                    "widget": row_widget,
-                    "remove_button": remove_button,
-                }
-                row_data_list.append(row_data)
-                row_combos.append(combo)
+            # Remove button
+            def remove():
+                row_idx, _ = form.getWidgetPosition(row_widget)
+                form.removeRow(row_idx)
+                if row_data in row_data_list:
+                    row_data_list.remove(row_data)
+                if combo in row_combos:
+                    row_combos.remove(combo)
                 refresh_remove_buttons()
 
-            # Connect add button
+            remove_button = make_remove_button(remove)
+            remove_button.setMaximumWidth(80)
+            row_layout.addWidget(remove_button, 0)
+
+            # Insert row into form
+            header_idx, _ = form.getWidgetPosition(header_widget)
+            if row_data_list:
+                last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
+                insert_idx = last_idx + 1
+            else:
+                insert_idx = header_idx + 1
+
+            form.insertRow(insert_idx, "", row_widget)
+
+            row_data = {"widget": row_widget, "remove_button": remove_button}
+            row_data_list.append(row_data)
+            row_combos.append(combo)
+            refresh_remove_buttons()
+
+        # Connect add button if not a single-value field
+        if max_rows != 1:
             add_button.clicked.connect(lambda: add_row())
 
-            # Prefill existing selections
-            if current_keys:
-                for key_name in current_keys:
-                    add_row(key_name)
-            else:
-                # Always at least one empty row
-                add_row()
-
-            # Return enriched dict
-            return display_name, {
-                "widget": header_widget,
-                "registry_key_list": True,
-                "rows": row_combos,
-            }
-
+        # Prefill existing selections (always at least one empty row)
+        if current_keys:
+            for key_name in current_keys:
+                add_row(key_name)
         else:
-            return display_name, {"registry_key_list": True, "rows": []}
-
-    def create_format_key_list_input(self, setting_dict, form_context=None):
-        """Create a multi-row format-registry-key selector with dropdowns.
-
-        Similar to create_registry_key_list_input but reads from the [[format]]
-        array-of-tables TOML shape and filters dropdown options by format type.
-        Each row is a QComboBox (non-editable) populated with available registry
-        entries whose type is in the allowed set (or all if unrestricted).
-
-        Returns (display_name, enriched_dict) with "widget" and "rows".
-        """
-        key = setting_dict["key"]
-        display_name = setting_dict.get("name", key)
-
-        # Gather available format-registry keys from the raw [[format]] array-of-tables,
-        # filtering by format type if restricted
-        format_list = self.main_window.config_dict.get("format", [])
-        supported_types = setting_dict.get("format_types")
-
-        if supported_types is None:
-            # Unrestricted: all registry names, any type
-            available_keys = sorted(
-                {entry.get("name", "") for entry in format_list if entry.get("name")}
-            )
-        else:
-            # Restricted: only names whose entry has a type in the allowed set
-            available_keys = sorted(
-                {
-                    entry.get("name", "")
-                    for entry in format_list
-                    if entry.get("name") and entry.get("type") in supported_types
-                }
-            )
-
-        # Get current value and normalize to list
-        value = self.get_value(self.main_window.config_dict, key)
-        if value is None:
-            current_keys = []
-        elif isinstance(value, str):
-            current_keys = [value]
-        elif isinstance(value, list):
-            current_keys = value
-        else:
-            current_keys = []
-
-        # For single-value fields (max_rows=1), cap the selection
-        max_rows = setting_dict.get("max_rows")
-        if max_rows == 1:
-            current_keys = current_keys[:1]
-
-        row_data_list = []
-        row_combos = []
-
-        def refresh_remove_buttons():
-            for row_data in row_data_list:
-                row_data["remove_button"].setVisible(True)
-
-        add_button = QPushButton("Add format")
-
-        if form_context:
-            form = form_context["form"]
-
-            # Build header widget
-            header_widget = QWidget()
-            header_layout = QHBoxLayout(header_widget)
-            header_layout.setContentsMargins(0, 0, 0, 0)
-            header_layout.setSpacing(4)
-
-            if max_rows != 1:
-                header_layout.addWidget(add_button, stretch=1)
-            header_layout.addWidget(build_help_column(setting_dict))
-            form.addRow("", header_widget)
-
-            def add_row(selected_key=""):
-                """Add a row with a format-key dropdown."""
-                row_widget = QWidget()
-                row_layout = QHBoxLayout(row_widget)
-                row_layout.setContentsMargins(4, 4, 4, 4)
-                row_layout.setSpacing(4)
-                row_widget.setMinimumHeight(28)
-
-                # Dropdown with available keys + stale/appended values
-                combo = QComboBox()
-                combo.setEditable(False)
-                all_options = list(available_keys)
-
-                # Add selected_key if not already in options
-                # (stale/filtered-out/raw-type-string)
-                if selected_key and selected_key not in all_options:
-                    all_options.append(selected_key)
-                    all_options.sort()
-
-                combo.addItems(all_options)
-                if selected_key:
-                    combo.setCurrentText(selected_key)
-                elif all_options:
-                    combo.setCurrentIndex(0)
-                row_layout.addWidget(combo, 1)
-
-                # Remove button
-                def remove():
-                    row_idx, _ = form.getWidgetPosition(row_widget)
-                    form.removeRow(row_idx)
-                    if row_data in row_data_list:
-                        row_data_list.remove(row_data)
-                    if combo in row_combos:
-                        row_combos.remove(combo)
-                    refresh_remove_buttons()
-
-                remove_button = make_remove_button(remove)
-                remove_button.setMaximumWidth(80)
-                row_layout.addWidget(remove_button, 0)
-
-                # Insert row into form
-                header_idx, _ = form.getWidgetPosition(header_widget)
-                if row_data_list:
-                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
-                    insert_idx = last_idx + 1
-                else:
-                    insert_idx = header_idx + 1
-
-                form.insertRow(insert_idx, "", row_widget)
-
-                # Store row data
-                row_data = {"widget": row_widget, "remove_button": remove_button}
-                row_data_list.append(row_data)
-                row_combos.append(combo)
-                refresh_remove_buttons()
-
-            # Connect add button if not single-value field
-            if max_rows != 1:
-                add_button.clicked.connect(lambda: add_row())
-
-            # Prefill existing selections
-            if current_keys:
-                for key_name in current_keys:
-                    add_row(key_name)
-            else:
-                # Always at least one empty row
-                add_row()
-
-            # Return enriched dict with format_key_list marker and max_rows if set
-            result_dict = {
-                "widget": header_widget,
-                "format_key_list": True,
-                "rows": row_combos,
-            }
-            if max_rows is not None:
-                result_dict["max_rows"] = max_rows
-
-            return display_name, result_dict
-
-        else:
-            return display_name, {"format_key_list": True, "rows": []}
-
-    def create_roi_key_list_input(self, setting_dict, form_context=None):
-        """Create a multi-row ROI-registry-key selector with dropdowns.
-
-        Reads from the [[roi]] array-of-tables TOML shape.
-        Each row is a QComboBox populated with available ROI registry entry names.
-
-        Returns (display_name, enriched_dict) with "widget" and "rows".
-        """
-        key = setting_dict["key"]
-        display_name = setting_dict.get("name", key)
-
-        # Gather available ROI-registry keys from the raw [[roi]] array-of-tables
-        roi_list = self.main_window.config_dict.get("roi", [])
-        available_keys = sorted(
-            {entry.get("name", "") for entry in roi_list if entry.get("name")}
-        )
-
-        # Get current value and normalize to list
-        value = self.get_value(self.main_window.config_dict, key)
-        if value is None:
-            current_keys = []
-        elif isinstance(value, str):
-            current_keys = [value]
-        elif isinstance(value, list):
-            current_keys = value
-        else:
-            current_keys = []
-
-        # For single-value fields (max_rows=1), cap the selection
-        max_rows = setting_dict.get("max_rows")
-        if max_rows == 1:
-            current_keys = current_keys[:1]
-
-        row_data_list = []
-        row_combos = []
-
-        def refresh_remove_buttons():
-            for row_data in row_data_list:
-                row_data["remove_button"].setVisible(True)
-
-        add_button = QPushButton("Add ROI")
-
-        if form_context:
-            form = form_context["form"]
-
-            # Build header widget
-            header_widget = QWidget()
-            header_layout = QHBoxLayout(header_widget)
-            header_layout.setContentsMargins(0, 0, 0, 0)
-            header_layout.setSpacing(4)
-
-            if max_rows != 1:
-                header_layout.addWidget(add_button, stretch=1)
-            header_layout.addWidget(build_help_column(setting_dict))
-            form.addRow("", header_widget)
-
-            def add_row(selected_key=""):
-                """Add a row with a ROI-key dropdown."""
-                row_widget = QWidget()
-                row_layout = QHBoxLayout(row_widget)
-                row_layout.setContentsMargins(4, 4, 4, 4)
-                row_layout.setSpacing(4)
-                row_widget.setMinimumHeight(28)
-
-                # Dropdown with available keys + stale/appended values
-                combo = QComboBox()
-                combo.setEditable(False)
-                all_options = list(available_keys)
-
-                # Add selected_key if not already in options (stale/filtered-out value)
-                if selected_key and selected_key not in all_options:
-                    all_options.append(selected_key)
-                    all_options.sort()
-
-                combo.addItems(all_options)
-                if selected_key:
-                    combo.setCurrentText(selected_key)
-                elif all_options:
-                    combo.setCurrentIndex(0)
-                row_layout.addWidget(combo, 1)
-
-                # Remove button
-                def remove():
-                    row_idx, _ = form.getWidgetPosition(row_widget)
-                    form.removeRow(row_idx)
-                    if row_data in row_data_list:
-                        row_data_list.remove(row_data)
-                    if combo in row_combos:
-                        row_combos.remove(combo)
-                    refresh_remove_buttons()
-
-                remove_button = make_remove_button(remove)
-                remove_button.setMaximumWidth(80)
-                row_layout.addWidget(remove_button, 0)
-
-                # Insert row into form
-                header_idx, _ = form.getWidgetPosition(header_widget)
-                if row_data_list:
-                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
-                    insert_idx = last_idx + 1
-                else:
-                    insert_idx = header_idx + 1
-
-                form.insertRow(insert_idx, "", row_widget)
-
-                # Store row data
-                row_data = {"widget": row_widget, "remove_button": remove_button}
-                row_data_list.append(row_data)
-                row_combos.append(combo)
-                refresh_remove_buttons()
-
-            # Connect add button if not single-value field
-            if max_rows != 1:
-                add_button.clicked.connect(lambda: add_row())
-
-            # Prefill existing selections
-            if current_keys:
-                for key_name in current_keys:
-                    add_row(key_name)
-            else:
-                # Always at least one empty row
-                add_row()
-
-            # Return enriched dict with roi_key_list marker and max_rows if set
-            result_dict = {
-                "widget": header_widget,
-                "roi_key_list": True,
-                "rows": row_combos,
-            }
-            if max_rows is not None:
-                result_dict["max_rows"] = max_rows
-
-            return display_name, result_dict
-
-        else:
-            return display_name, {"roi_key_list": True, "rows": []}
-
-    def create_color_key_list_input(self, setting_dict, form_context=None):
-        """Create a multi-row color-embedding-key selector with dropdowns.
-
-        Reads from the [[color_path]], [[color_range]], and [[color_channel]]
-        array-of-tables TOML shapes. Each row is a QComboBox populated with
-        available color embedding names, tagged by type.
-
-        Returns (display_name, enriched_dict) with "widget", "rows", and "embedding_type_map".
-        """
-        key = setting_dict["key"]
-        display_name = setting_dict.get("name", key)
-
-        # Gather available color-embedding keys from all three arrays with type tags
-        embedding_type_map = (
-            {}
-        )  # name -> type ("color_path", "color_range", "color_channel")
-
-        # Aggregate embeddings from all three arrays
-        for array_key, type_name in [
-            ("color_path", "color_path"),
-            ("color_range", "color_range"),
-            ("color_channel", "color_channel"),
-        ]:
-            array = self.main_window.config_dict.get(array_key, [])
-            for entry in array:
-                name = entry.get("name", "")
-                if name:
-                    embedding_type_map[name] = type_name
-
-        available_keys = sorted(embedding_type_map.keys())
-
-        # Get current value and normalize to list
-        value = self.get_value(self.main_window.config_dict, key)
-        if value is None:
-            current_keys = []
-        elif isinstance(value, str):
-            current_keys = [value]
-        elif isinstance(value, list):
-            current_keys = value
-        else:
-            current_keys = []
-
-        # For single-value fields (max_rows=1), cap the selection
-        max_rows = setting_dict.get("max_rows")
-        if max_rows == 1:
-            current_keys = current_keys[:1]
-
-        row_data_list = []
-        row_combos = []
-
-        def refresh_remove_buttons():
-            for row_data in row_data_list:
-                row_data["remove_button"].setVisible(True)
-
-        add_button = QPushButton("Add Color")
-
-        if form_context:
-            form = form_context["form"]
-
-            # Build header widget
-            header_widget = QWidget()
-            header_layout = QHBoxLayout(header_widget)
-            header_layout.setContentsMargins(0, 0, 0, 0)
-            header_layout.setSpacing(4)
-
-            if max_rows != 1:
-                header_layout.addWidget(add_button, stretch=1)
-            header_layout.addWidget(build_help_column(setting_dict))
-            form.addRow("", header_widget)
-
-            def add_row(selected_key=""):
-                """Add a row with a color-embedding-key dropdown."""
-                row_widget = QWidget()
-                row_layout = QHBoxLayout(row_widget)
-                row_layout.setContentsMargins(4, 4, 4, 4)
-                row_layout.setSpacing(4)
-                row_widget.setMinimumHeight(28)
-
-                # Dropdown with available keys + stale/appended values
-                combo = QComboBox()
-                combo.setEditable(False)
-                all_options = list(available_keys)
-
-                # Add selected_key if not already in options (stale/filtered-out value)
-                if selected_key and selected_key not in all_options:
-                    all_options.append(selected_key)
-                    all_options.sort()
-
-                combo.addItems(all_options)
-                if selected_key:
-                    combo.setCurrentText(selected_key)
-                elif all_options:
-                    combo.setCurrentIndex(0)
-                row_layout.addWidget(combo, 1)
-
-                # Remove button
-                def remove():
-                    row_idx, _ = form.getWidgetPosition(row_widget)
-                    form.removeRow(row_idx)
-                    if row_data in row_data_list:
-                        row_data_list.remove(row_data)
-                    if combo in row_combos:
-                        row_combos.remove(combo)
-                    refresh_remove_buttons()
-
-                remove_button = make_remove_button(remove)
-                remove_button.setMaximumWidth(80)
-                row_layout.addWidget(remove_button, 0)
-
-                # Insert row into form
-                header_idx, _ = form.getWidgetPosition(header_widget)
-                if row_data_list:
-                    last_idx, _ = form.getWidgetPosition(row_data_list[-1]["widget"])
-                    insert_idx = last_idx + 1
-                else:
-                    insert_idx = header_idx + 1
-
-                form.insertRow(insert_idx, "", row_widget)
-
-                # Store row data
-                row_data = {"widget": row_widget, "remove_button": remove_button}
-                row_data_list.append(row_data)
-                row_combos.append(combo)
-                refresh_remove_buttons()
-
-            # Connect add button if not single-value field
-            if max_rows != 1:
-                add_button.clicked.connect(lambda: add_row())
-
-            # Prefill existing selections
-            if current_keys:
-                for key_name in current_keys:
-                    add_row(key_name)
-            else:
-                # Always at least one empty row
-                add_row()
-
-            # Return enriched dict with color_key_list marker, max_rows if set, and type map
-            result_dict = {
-                "widget": header_widget,
-                "color_key_list": True,
-                "rows": row_combos,
-                "embedding_type_map": embedding_type_map,
-            }
-            if max_rows is not None:
-                result_dict["max_rows"] = max_rows
-
-            return display_name, result_dict
-
-        else:
-            return display_name, {
-                "color_key_list": True,
-                "rows": [],
-                "embedding_type_map": embedding_type_map,
-            }
+            add_row()
+
+        result_dict = {
+            "widget": header_widget,
+            "key_list": True,
+            "rows": row_combos,
+            "source_type_map": source_type_map,
+        }
+        if max_rows is not None:
+            result_dict["max_rows"] = max_rows
+        return display_name, result_dict
 
     def create_simple_input(self, setting_dict):
         """Create a line edit input for numeric or string values.
@@ -2554,7 +2071,7 @@ class SettingsFactory:
                     )
                     # Track for depends_on wiring — lets other fields use this as a driver
                     # (store raw result_or_field, not the stripped _wrap_multi_row_result,
-                    # so embedding_type_map and rows stay accessible)
+                    # so source_type_map and rows stay accessible)
                     unqualified_key = sub_setting["key"].rsplit(".", 1)[-1]
                     row_index = multi_row_form.rowCount() - 1
                     field_row_map[unqualified_key] = (
@@ -2621,11 +2138,11 @@ class SettingsFactory:
             _, driver_widget, _ = field_row_map[driver_field_key]
 
             # Extract the QComboBox and type_map, handling both scalar and multi-row drivers
-            if isinstance(driver_widget, dict) and driver_widget.get("color_key_list"):
-                # Multi-row color embedding selector: extract first combo and its type map
+            if isinstance(driver_widget, dict) and driver_widget.get("key_list"):
+                # Multi-row key-list selector: extract first combo and its type map
                 rows = driver_widget.get("rows", [])
                 driver_combo = rows[0] if rows else None
-                type_map = driver_widget.get("embedding_type_map", {})
+                type_map = driver_widget.get("source_type_map", {})
             else:
                 # Scalar field: extract QComboBox via property
                 driver_combo = driver_widget.property("value_widget")
@@ -2778,18 +2295,14 @@ class SettingsFactory:
             # Skip group dicts with checkboxes (already handled above)
             if isinstance(value, dict) and "checkbox" in value:
                 continue
-            # Skip path_map, int_group_list, int_list_map, registry_key_list,
-            # dataclass_group_map, roi_map, roi_key_list, color_key_list dicts
-            # (handled below)
+            # Skip path_map, int_group_list, int_list_map, key_list,
+            # dataclass_group_map dicts (handled below)
             if isinstance(value, dict) and (
                 "path_map" in value
                 or "int_group_list" in value
                 or "int_list_map" in value
-                or "registry_key_list" in value
+                or "key_list" in value
                 or "dataclass_group_map" in value
-                or "format_key_list" in value
-                or "roi_key_list" in value
-                or "color_key_list" in value
             ):
                 continue
             # Skip sub-inputs of unchecked groups
@@ -2909,17 +2422,19 @@ class SettingsFactory:
                 else:
                     self.set_value(self.main_window.config_dict, key, result)
 
-        # Tenth pass: parse registry_key_list rows into list[str]
+        # Tenth pass: parse key_list rows into list[str] (or a single str / None
+        # when the field is max_rows==1). Empty selection writes None.
         for key, value in self.main_window.settings_inputs.items():
-            if isinstance(value, dict) and "registry_key_list" in value:
+            if isinstance(value, dict) and "key_list" in value:
                 result = self._extract_key_list_rows(value["rows"])
-                # Write as list[str] (empty list if no selections, never None)
-                if result:
-                    self.set_value(self.main_window.config_dict, key, result)
+                if value.get("max_rows") == 1:
+                    self.set_value(
+                        self.main_window.config_dict, key, result[0] if result else None
+                    )
                 else:
-                    # Empty selection: delete the key (or set to empty list)
-                    # For now, set to empty list to match the field's Optional nature
-                    self.set_value(self.main_window.config_dict, key, None)
+                    self.set_value(
+                        self.main_window.config_dict, key, result if result else None
+                    )
         # Tenth-and-a-half pass (v2): parse dataclass_group_map entries into list[dict]
         # This is the new generic handler for group-box-per-entry collections.
         for key, value in self.main_window.settings_inputs.items():
@@ -2978,15 +2493,10 @@ class SettingsFactory:
                                 entry_dict[field_name] = nested_dict
                             continue
 
-                        # Handle multi-row key-list fields (roi_key_list, etc.)
-                        if isinstance(field_widget, dict) and any(
-                            tag in field_widget
-                            for tag in (
-                                "roi_key_list",
-                                "registry_key_list",
-                                "format_key_list",
-                                "color_key_list",
-                            )
+                        # Handle multi-row key-list fields
+                        if (
+                            isinstance(field_widget, dict)
+                            and "key_list" in field_widget
                         ):
                             result_list = self._extract_key_list_rows(
                                 field_widget.get("rows", [])
@@ -3074,45 +2584,6 @@ class SettingsFactory:
                     # loaders (e.g. AnalysisSegmentationConfig, AnalysisFingersConfig)
                     # which require [[<key>]] entries with a "name" field.
                     self.set_value(self.main_window.config_dict, key, result)
-
-        # Twelfth pass: parse format_key_list rows into list[str] (or single str)
-        for key, value in self.main_window.settings_inputs.items():
-            if isinstance(value, dict) and "format_key_list" in value:
-                result = self._extract_key_list_rows(value["rows"])
-                if value.get("max_rows") == 1:
-                    self.set_value(
-                        self.main_window.config_dict, key, result[0] if result else None
-                    )
-                else:
-                    self.set_value(
-                        self.main_window.config_dict, key, result if result else None
-                    )
-
-        # Fourteenth pass: parse roi_key_list rows into list[str] (or single str)
-        for key, value in self.main_window.settings_inputs.items():
-            if isinstance(value, dict) and "roi_key_list" in value:
-                result = self._extract_key_list_rows(value["rows"])
-                if value.get("max_rows") == 1:
-                    self.set_value(
-                        self.main_window.config_dict, key, result[0] if result else None
-                    )
-                else:
-                    self.set_value(
-                        self.main_window.config_dict, key, result if result else None
-                    )
-
-        # Fourteenth-and-a-half pass: parse color_key_list rows into list[str] (or single str)
-        for key, value in self.main_window.settings_inputs.items():
-            if isinstance(value, dict) and "color_key_list" in value:
-                result = self._extract_key_list_rows(value["rows"])
-                if value.get("max_rows") == 1:
-                    self.set_value(
-                        self.main_window.config_dict, key, result[0] if result else None
-                    )
-                else:
-                    self.set_value(
-                        self.main_window.config_dict, key, result if result else None
-                    )
 
         # Fifteenth pass: write all active lists
         for active_list_key, names in group_active_names.items():
