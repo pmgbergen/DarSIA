@@ -853,7 +853,29 @@ class SettingsFactory:
 
                     # Use create_setting_edit for all other fields (returns composite
                     # wrapper or group result)
-                    label_text, field_widget = self.create_setting_edit(field_schema)
+                    # Nested-group fields (e.g. Segmentation's "values"/
+                    # "contour_smoother_selection") need the entry's real saved data
+                    # injected first, same as the key_list branch above, so the group's
+                    # self-toggle checkbox and its own sub-fields prefill correctly
+                    # instead of always reading as unset/False.
+                    injected_group = (
+                        field_schema.get("type") == "group"
+                        and field_name in entry_data
+                        and entry_data[field_name] is not None
+                    )
+                    if injected_group:
+                        self.set_value(
+                            self.main_window.config_dict,
+                            field_schema["key"],
+                            entry_data[field_name],
+                        )
+                    try:
+                        label_text, field_widget = self.create_setting_edit(
+                            field_schema
+                        )
+                    finally:
+                        if injected_group:
+                            self.main_window.config_dict.pop("entry", None)
 
                     # Handle nested groups: label_text is None, field_widget is dict with
                     # "widget"
@@ -2369,8 +2391,22 @@ class SettingsFactory:
                         if isinstance(field_widget, dict) and field_widget.get(
                             "is_group_result"
                         ):
-                            # Recursively extract nested group's sub_inputs
                             nested_dict = {}
+                            # Self-toggle checkbox (active_bool_key mechanism): the bool
+                            # field driving the group's checkable title is hidden from
+                            # sub_inputs by design (see dataclass_introspection.py's
+                            # "hidden" skip), so it must be read directly off the
+                            # checkbox, same as the top-level pass does for
+                            # active_bool_key groups. Without this, checking/unchecking
+                            # such a box (e.g. Segmentation's "Activate value labels")
+                            # is silently discarded on every save.
+                            bool_key = field_widget.get("bool_key")
+                            checkbox = field_widget.get("checkbox")
+                            if bool_key and checkbox is not None:
+                                nested_dict[bool_key.rsplit(".", 1)[-1]] = (
+                                    checkbox.isChecked()
+                                )
+                            # Recursively extract nested group's sub_inputs
                             for sub_key, sub_widget in field_widget.get(
                                 "sub_inputs", {}
                             ).items():
@@ -2391,7 +2427,11 @@ class SettingsFactory:
 
                                 if isinstance(sub_unwrapped, QCheckBox):
                                     val = sub_unwrapped.isChecked()
-                                    if val is True:
+                                    # Omit only if equal to default (matches
+                                    # QComboBox/QLineEdit handling below); "only if
+                                    # True" would silently revert a default-True field
+                                    # to True whenever unchecked.
+                                    if val != bool(sub_default):
                                         nested_dict[sub_key.split(".", 1)[-1]] = val
                                 elif isinstance(sub_unwrapped, QComboBox):
                                     val = sub_unwrapped.currentText().strip()
@@ -2426,8 +2466,10 @@ class SettingsFactory:
 
                         if isinstance(unwrapped_widget, QCheckBox):
                             extracted_value = unwrapped_widget.isChecked()
-                            # Only include if True (checkbox default is usually False)
-                            should_include = extracted_value is True
+                            # Omit if equals default (matches QComboBox/QLineEdit
+                            # below); "only if True" would silently revert a
+                            # default-True field to True whenever unchecked.
+                            should_include = extracted_value != bool(field_default)
                         elif isinstance(unwrapped_widget, QComboBox):
                             text_value = unwrapped_widget.currentText().strip()
                             if text_value:
