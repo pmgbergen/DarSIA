@@ -45,4 +45,5 @@ Building the documentation
    uv run sphinx-build -b html docs docs/_build/html
 
 Open ``docs/_build/html/index.html`` in a browser. Add ``-W --keep-going`` to
-reproduce the CI build, which treats warnings as errors.
+run the strict build; it currently reports outstanding docstring reST warnings
+that are being cleared as docstrings migrate to NumPy style.

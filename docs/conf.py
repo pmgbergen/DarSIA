@@ -41,13 +41,7 @@ extensions = [
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = [
-    "_build",
-    "Thumbs.db",
-    ".DS_Store",
-    "**.ipynb_checkpoints",
-    "source/**",  # TODO(step 2): delete the legacy docs/source tree, then drop this
-]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 
 # Do not prefix every documented object with its (long) dotted module path.
 add_module_names = False
@@ -55,7 +49,14 @@ add_module_names = False
 # -- Autodoc / autosummary ---------------------------------------------------
 
 autosummary_generate = True
-autoclass_content = "class"
+autoclass_content = "both"  # DarSIA documents constructor args in __init__
+
+# Case-insensitive filesystems (Windows/macOS) collapse e.g. ``darsia.TVD`` and
+# ``darsia.tvd`` onto one stub file. Give the lowercase callables a distinct name.
+autosummary_filename_map = {
+    "darsia.tvd": "darsia-tvd-function",
+    "darsia.resize": "darsia-resize-function",
+}
 autodoc_class_signature = "mixed"
 autodoc_member_order = "groupwise"
 autodoc_typehints = "none"  # TODO(step 6): flip to "description"
@@ -73,6 +74,7 @@ napoleon_google_docstring = True
 napoleon_numpy_docstring = True
 napoleon_include_init_with_doc = False
 napoleon_use_rtype = False
+napoleon_use_ivar = True  # render Attributes as a field list, avoids autodoc dupes
 
 # -- MyST / notebooks -------------------------------------------------------
 
