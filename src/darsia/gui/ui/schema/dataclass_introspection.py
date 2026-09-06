@@ -282,6 +282,19 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                     f"metadata['group']. Nested QGroupBoxes are not supported. "
                     f"Remove the 'group' metadata."
                 )
+
+            # Auto-wire a self-toggle checkbox: if the nested dataclass has its own
+            # field tagged section_active=True, compute active_bool_key relative to
+            # this field's storage key. Mirrors get_section_fields()'s top-level-only
+            # logic so the same pattern works at any nesting depth.
+            active_bool_key = None
+            active_bool_default = None
+            for inner_field in fields(inner_type):
+                if inner_field.metadata.get("section_active"):
+                    active_bool_key = f"{storage_key}.{inner_field.name}"
+                    active_bool_default = _field_default(inner_field)
+                    break
+
             setting_dict = {
                 "key": own_key,
                 "type": "group",
@@ -289,6 +302,8 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "help": field.metadata.get("help", None),
                 "link": field.metadata.get("link", None),
                 "active_list_key": field.metadata.get("active_list_key", None),
+                "active_bool_key": active_bool_key,
+                "active_bool_default": active_bool_default,
                 "loadable": field.metadata.get("loadable", None),
                 "depends_on": field.metadata.get("depends_on", None),
                 "fields": _build_fields(inner_type, storage_key),
