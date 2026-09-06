@@ -164,6 +164,7 @@ class ContourSmootherSelection:
         metadata={
             "name": "Activate contour smoothing",
             "help": "Enable contour smoothing for extracted contours.",
+            "section_active": True,
             "hidden": True,
         },
     )
