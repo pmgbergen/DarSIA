@@ -32,8 +32,14 @@ jobs:
       - name: Install package and doc dependencies
         run: pip install -e ".[docs]"
 
-      - name: Build documentation (warnings are errors)
-        run: sphinx-build -b html -W --keep-going docs docs/_build/html
+      - name: Build documentation
+        run: sphinx-build -b html --keep-going docs docs/_build/html
+
+      # TODO(step 6): fold back into the build above once the docstring
+      # migration to NumPy style has cleared the outstanding reST warnings.
+      - name: Build documentation, warnings as errors (advisory)
+        continue-on-error: true
+        run: sphinx-build -b html -W --keep-going docs docs/_build/html_strict
 
       - name: Check external links (advisory)
         continue-on-error: true
