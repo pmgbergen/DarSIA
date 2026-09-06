@@ -1,0 +1,26 @@
+/* DarSIA documentation - small tweaks on top of the pydata-sphinx-theme. */
+
+/* Keep the logo legible on the dark navbar variant. */
+.bd-header .navbar-brand img {
+    max-height: 2.2rem;
+}
+
+/* Landing-page card grid: even heights, subtle hover. */
+.sd-card {
+    border: 1px solid var(--pst-color-border);
+    transition: border-color 0.15s ease-in-out, transform 0.15s ease-in-out;
+}
+.sd-card:hover {
+    border-color: var(--pst-color-primary);
+    transform: translateY(-2px);
+}
+
+/* Give autosummary tables room to breathe. */
+table.autosummary td:first-child {
+    white-space: nowrap;
+}
+
+/* Sphinx-gallery thumbnails align to a tidy grid. */
+.sphx-glr-thumbcontainer {
+    min-height: 250px;
+}

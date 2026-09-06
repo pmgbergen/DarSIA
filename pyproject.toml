@@ -87,6 +87,16 @@ dev = [
   "deepdiff",
   "pyamg",
 ]
+docs = [
+  "sphinx>=7.2",
+  "pydata-sphinx-theme>=0.15",
+  "numpydoc",
+  "sphinx-gallery",
+  "sphinx-design",
+  "sphinx-copybutton",
+  "myst-nb",
+  "pillow",
+]
 # petsc = ["petsc4py"]
 
 # ── Setuptools package discovery (replaces find_packages in setup.py) ─────────
