@@ -93,7 +93,11 @@ napoleon_use_ivar = True  # render Attributes as a field list, avoids autodoc du
 # -- MyST / notebooks -------------------------------------------------------
 
 myst_enable_extensions = ["colon_fence", "dollarmath", "deflist"]
+myst_heading_anchors = 3  # so cross-file `file.md#heading-slug` links resolve
 nb_execution_mode = "off"
+# NOTE: examples/notebooks/ is NOT wired into any toctree yet. The only remaining
+# notebook, correction_walkthrough.ipynb, is currently invalid JSON and needs
+# repair before it can be rendered (or folded into the gallery).
 
 # -- sphinx-gallery -----------------------------------------------------
 
