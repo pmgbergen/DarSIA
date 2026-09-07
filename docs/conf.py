@@ -37,7 +37,8 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_gallery.gen_gallery",
     "myst_nb",
-    # "numpydoc",                    # TODO(step 6): swap in for napoleon after migration
+    # "numpydoc",                    # swap in for napoleon once the whole codebase
+    #                                # is NumPy-style (currently mixed Google/NumPy)
 ]
 
 templates_path = ["_templates"]
@@ -73,7 +74,7 @@ autosummary_filename_map = {
 }
 autodoc_class_signature = "mixed"
 autodoc_member_order = "groupwise"
-autodoc_typehints = "none"  # TODO(step 6): flip to "description"
+autodoc_typehints = "none"  # signatures carry the hints; consider "description"
 autodoc_typehints_format = "short"
 autodoc_inherit_docstrings = False
 autodoc_default_options = {

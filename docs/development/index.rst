@@ -78,7 +78,6 @@ Building the documentation
 
    uv run sphinx-build -b html docs docs/_build/html
 
-Open ``docs/_build/html/index.html``. Add ``-W --keep-going`` for the strict
-build (it currently reports docstring reST warnings that are being cleared as
-docstrings migrate to NumPy style). See :doc:`writing_docs` for how the docs are
-organised and how to add an example or a page.
+Open ``docs/_build/html/index.html``. CI builds with ``-W --keep-going``
+(warnings are errors), so run it that way locally too. See :doc:`writing_docs`
+for how the docs are organised and how to add an example or a page.
