@@ -1,14 +1,49 @@
 ![build](https://github.com/pmgbergen/DarSIA/workflows/Build%20test/badge.svg)
+[![docs](https://github.com/pmgbergen/DarSIA/workflows/Documentation/badge.svg)](https://pmgbergen.github.io/DarSIA)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License: Apache v2](https://img.shields.io/hexpm/l/apa)](https://opensource.org/licenses/Apache-2.0)
 
 # DarSIA
-Darcy scale image analysis toolbox
 
-# Documentation
-Visit pmgbergen.github.io/DarSIA
+**Darcy scale image analysis toolbox** — an open-source Python library for
+turning images of porous-media experiments into quantitative physical data.
 
-# Citing
+DarSIA represents an image as an array that also knows its physical extent,
+acquisition time and coordinate system, and provides:
+
+- **I/O** for optical photographs, DICOM stacks and simulation output (vtu);
+- **corrections** — colour, illumination, curvature, perspective, drift,
+  deformation;
+- **restoration** — total-variation and H1 denoising;
+- **segmentation and registration** of multi-layered media;
+- **concentration analysis** — tracer / CO2 / mass maps, with pluggable signal
+  models and calibration;
+- **transport-based distances** (Earth Mover's / Wasserstein);
+- a **configuration-driven workflow system** and a **Qt GUI** that runs it
+  without scripting.
+
+## Documentation
+
+<https://pmgbergen.github.io/DarSIA> — user guide, runnable example gallery, and full API reference.
+
+## Quickstart
+
+```python
+import darsia
+
+# read a photograph with path 'baseline.jpg' with its real-world size in metres
+image = darsia.imread("baseline.jpg", width=2.8, height=1.5)
+image.show()
+
+# work in physical coordinates
+roi = image.subregion(darsia.make_coordinate([[1.5, 0.0], [2.8, 0.7]]))
+roi.show()
+```
+
+See the [example gallery](https://pmgbergen.github.io/DarSIA/auto_examples/) for
+more, including CO2 concentration analysis and Wasserstein distances.
+
+## Citing
 
 If you use DarSIA in your research, we ask you to cite the following publication:
 
@@ -21,80 +56,36 @@ The first release can be also found on Zenodo:
 
 ## Installation
 
-DarSIA is developed under Python 3.12+. Clone the repository from GitHub and enter the DarSIA folder.
-
-### Using uv (recommended)
-
-[uv](https://github.com/astral-sh/uv) is a fast Python package manager. Install it once, then use it for all DarSIA installs:
-
-```bash
-# Install uv if you don't have it
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Clone & install (editable, with dev dependencies)
-git clone https://github.com/pmgbergen/DarSIA.git
-cd DarSIA
-uv sync --extra dev
-```
-
-### Using pip
+DarSIA needs **Python 3.12+** and is installed from a clone (not on PyPI yet, and here using the recommended package manager [uv](https://docs.astral.sh/uv/getting-started/installation/)).
 
 ```bash
 git clone https://github.com/pmgbergen/DarSIA.git
 cd DarSIA
-pip install -e .[dev]
+uv python install 3.12         # installs Python 3.12
+uv sync --extra dev            # or: pip install -e ".[dev]"
 ```
 
-### Optional: `petsc4py` (recommended for performance-critical solvers)
-
-`petsc4py` is an optional but recommended dependency for performance-critical solvers such as Wasserstein distance computation. It is not installed by default.
-
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt-get install -y libhypre-dev libmumps-seq-dev build-essential gcc gfortran mpich cmake
-pip install numpy mpi4py
-PETSC_CONFIGURE_OPTIONS="--download-hypre --download-mumps --download-parmetis --download-ml --download-metis --download-scalapack" pip install petsc petsc4py
-
-# Then install DarSIA:
-# E.g. with uv (editable environment):
-uv sync --extra dev
-```
-
-**macOS / conda:**
-```bash
-conda install -c conda-forge petsc petsc4py
-```
-See also `conda_env.yaml` for a complete conda environment.
-
+The [installation guide](https://pmgbergen.github.io/DarSIA/getting_started/installation.html)
+covers the optional `petsc4py` solvers, a conda environment, the GUI, and
+building the documentation.
 
 ## GUI
 
-The DarSIA GUI provides an interactive interface for image analysis workflows.
-
-### Running the GUI
-
-```bash
-uv run darsia
-```
-
-### Desktop Integration (Optional)
-
-To make DarSIA appear in your Linux application menu or Windows Start Menu:
+A Qt desktop application that runs the configuration-driven analysis workflow
+from a TOML file — set up, calibrate, and batch-process an experiment without
+writing a driver script.
 
 ```bash
-uv run darsia-install-desktop
+uv run darsia-install-desktop   # optional: adds a desktop / Start-menu launcher
+uv run darsia                   # launch the GUI after desktop installation
 ```
 
-To remove the desktop entry:
-
-```bash
-uv run darsia-install-desktop --uninstall
-```
-
-**Note:** On Windows, this feature requires `pywin32`, which is automatically installed when syncing the `darsia` package on Windows systems.
-
+See the [GUI guide](https://pmgbergen.github.io/DarSIA/user_guide/gui/index.html)
+for a full walkthrough.
 
 ## Developing DarSIA
 
-Use black (version 22.3.0), flake8 and isort formatting.
-See [DEVELOPER_NOTES.md](./DEVELOPER_NOTES.md) for workflow documentation maintenance guidance, including risks, acceptance criteria, and update conventions.
+Code under `src/` must pass `black` (24.10.0), `isort` and `flake8`; run the
+tests with `uv run pytest`. See the
+[contributor guide](https://pmgbergen.github.io/DarSIA/development/index.html)
+and [DEVELOPER_NOTES.md](./DEVELOPER_NOTES.md).
