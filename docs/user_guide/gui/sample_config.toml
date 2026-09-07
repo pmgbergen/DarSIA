@@ -1,0 +1,331 @@
+# Sample DarSIA workflow configuration.
+#
+# This file is the running example for the GUI guide. It is a complete,
+# realistic FluidFlower configuration; only the file-system paths are
+# placeholders. To use it on your own experiment, edit the paths in [data],
+# [protocols], [labeling], [facies] and [depth], and re-run Setup and
+# Calibration from scratch (the crop corners and calibration below are
+# specific to one particular rig, camera and lighting).
+
+data_interval = []
+data_window = []
+data_time = []
+color_channel = []
+color_range = []
+
+[[data_path]]
+name = "baseline"
+paths = ["baseline.JPG"]
+
+[[data_path]]
+name = "all"
+paths = ["*"]
+
+[[data_path]]
+name = "calibration"
+paths = ["calib_0.JPG", "calib_1.JPG"]
+
+[[format]]
+name = "jpg"
+type = "jpg"
+filename_pattern = "spatial_map_HH:MM"
+resolution = [1080, 4]
+cmap = "color_path.from_facies.7"
+keep_ratio = true
+quality = 100
+
+[[format]]
+name = "csv"
+type = "csv"
+filename_pattern = "spatial_map_HH:MM"
+resolution = [220, 368]
+float_format = "{:.3e}"
+
+[[format]]
+name = "npz"
+type = "npz"
+filename_pattern = "spatial_map_HH:MM"
+
+[[roi]]
+name = "full"
+corner_1 = [0.0, 0.0]
+corner_2 = [0.92, 0.55]
+
+[[roi]]
+name = "calibration"
+corner_1 = [0.01, 0.45]
+corner_2 = [0.9, 0.0]
+
+[[roi]]
+name = "fingers"
+corner_1 = [0.05, 0.15]
+corner_2 = [0.3, 0.0]
+
+[[roi]]
+name = "storage"
+corner_1 = [0.0, 0.39]
+corner_2 = [0.65, 0.0]
+
+[[color_path]]
+name = "color_path"
+basis = "facies"
+reference_label = 2
+
+[image_porosity]
+active = false
+mode = "from_image"
+tol = 0.9
+patches = [10, 10]
+num_clusters = 5
+sample_width = 50
+tol_color_distance = 0.1
+tol_color_gradient = 0.02
+
+[data]
+folders = ["/path/to/experiment/images"]
+format = "JPG"
+baseline = "/path/to/experiment/images/baseline.JPG"
+results = "/path/to/experiment/results"
+use_cache = false
+
+[rig]
+width = 0.92
+height = 0.55
+dim = "2"
+
+[corrections]
+active = ["curvature", "drift", "patchwise_illumination", "resize", "type"]
+
+[restoration]
+method = "volume_average"
+active = false
+
+[labeling]
+colored_image = "/path/to/experiment/segmented_reference.png"
+rtol = 0.001
+ensure_connectivity = true
+unite_labels = []
+
+[facies]
+props = "/path/to/experiment/facies.csv"
+
+[depth]
+measurements = "/path/to/experiment/depth_measurements.csv"
+target_resolution = [500, 1000]
+
+[protocols]
+imaging_mode = "exif"
+injection = "/path/to/experiment/protocols/injection_protocol.csv"
+pressure_temperature = "/path/to/experiment/protocols/pressure_temperature_protocol.csv"
+
+[analysis]
+random_traverse = false
+
+[helper]
+data_selection = ["baseline"]
+
+[download]
+skip_existing = true
+data_selection = ["baseline"]
+
+[corrections.type]
+target_type = "float32"
+
+[corrections.drift]
+colorchecker = "upper_right"
+
+[corrections.curvature]
+active = ["crop"]
+
+[corrections.patchwise_illumination]
+baseline_paths = [
+  "/path/to/experiment/images/baseline.JPG",
+  "/path/to/experiment/images/baseline_late.JPG",
+]
+nw = 100
+eps = 1e-6
+
+[corrections.resize]
+mode = "scale"
+scale = 0.25
+
+[facies.0]
+labels = [1, 2]
+
+[facies.1]
+labels = [3]
+
+[facies.2]
+labels = [0]
+
+[protocols.imaging]
+"/path/to/experiment/images" = "/path/to/experiment/protocols/imaging_protocol.csv"
+
+[analysis.mass]
+data_selection = ["calibration"]
+formats = ["jpg"]
+export = [
+  "concentration_aq", "mass", "rescaled_concentration_aq",
+  "rescaled_saturation_g", "saturation_g",
+]
+roi = ["full"]
+embedding = "color_path"
+color = "color_path"
+active = ["contour_smoother_selection"]
+
+[analysis.thresholding]
+data_selection = ["baseline"]
+formats = ["csv"]
+
+[analysis.cropping]
+data_selection = ["all"]
+formats = ["jpg"]
+
+[analysis.volume]
+data_selection = ["baseline"]
+formats = ["jpg", "npz"]
+roi = ["calibration"]
+
+[analysis.segmentation]
+data_selection = ["all"]
+formats = ["jpg", "npz"]
+
+[[analysis.segmentation.config]]
+name = "aqueous"
+label = "CO2(aq)"
+mode = "concentration_aq"
+thresholds = [0.1, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+color = [120, 210, 255]
+alpha = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+linewidth = 16
+
+[analysis.segmentation.config.values]
+"values.value_color" = "0, 0, 0"
+"values.value_size" = "0.5"
+"values.value_alpha" = "1.0"
+"values.value_density" = "0.35"
+"values.value_min_distance_px" = "40.0"
+"values.value_max_per_contour" = "3"
+
+[analysis.segmentation.config.contour_smoother_selection]
+"contour_smoother_selection.contour_smoother_options.epsilon" = "0.01"
+"contour_smoother_selection.contour_smoother_options.use_ratio" = true
+"contour_smoother_selection.contour_smoother_options.sigma" = "2.0"
+"contour_smoother_selection.contour_smoother_options.window_length" = "21"
+"contour_smoother_selection.contour_smoother_options.polyorder" = "3"
+
+[[analysis.segmentation.config]]
+name = "gas"
+label = "CO2(g)"
+mode = "rescaled_saturation_g"
+thresholds = [0.01, 0.3, 0.6, 0.9]
+color = [0, 0, 150]
+alpha = [0.25, 0.5, 0.75, 1.0]
+linewidth = 16
+
+[analysis.fingers]
+data_selection = ["all"]
+formats = ["jpg", "npz"]
+
+[[analysis.fingers.config]]
+name = "primary"
+mode = "mass"
+roi = ["calibration"]
+threshold = "0.5"
+reduce_to_main_contour = true
+fill_holes = true
+save_result_plots = true
+gradient_mode = "saturation_g"
+
+[analysis.expert_knowledge]
+saturation_g = ["storage"]
+concentration_aq = ["storage"]
+
+[helper.roi]
+mode = "none"
+data_selection = ["baseline"]
+
+[helper.results]
+mode = "mass"
+data_selection = ["baseline"]
+format = "npz"
+roi = ["calibration"]
+
+[helper.roi_viewer]
+data_selection = ["baseline"]
+
+[helper.color]
+data_selection = ["all"]
+
+[calibration.mass]
+mode = "manual"
+fluid = "co2"
+threshold = 0.2
+data_selection = ["all"]
+rois = ["calibration"]
+embedding = "color_path"
+
+[calibration.color]
+embedding = "color_path"
+data_selection = ["calibration"]
+baseline = ["baseline"]
+rois = ["calibration"]
+
+[options.setup]
+show_plots = false
+
+[options.calibration]
+show_plots = false
+
+[options.analysis]
+show_plots = false
+random_traverse = false
+stream_preview = true
+
+[options.helper]
+show_plots = false
+
+[video.source]
+folder = "cropping/jpg"
+extensions = [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"]
+recursive = false
+sorting = "name"
+
+[video.output]
+formats = ["mp4"]
+fps = 6.0
+codec = "mp4v"
+quality = 100
+
+[video.overlay]
+show_elapsed_time = false
+show_note = true
+note = "FluidFlower demo"
+font_scale = 0.5
+text_color = [255, 255, 255]
+box_enabled = true
+box_color = [0, 0, 0]
+box_alpha = 0.4
+
+[corrections.curvature.crop]
+top_left = ["2", "357"]
+bottom_left = ["4432", "341"]
+bottom_right = ["4400", "7694"]
+top_right = ["18", "7668"]
+width = 0.92
+height = 0.55
+in_meters = true
+
+[analysis.mass.contour_smoother_selection]
+active = false
+type = "savitzky_golay"
+
+[calibration.color.color_path]
+num_segments = 3
+resolution = 21
+calibration_mode = "auto"
+threshold_baseline = 0.0
+threshold_calibration = 1e-6
+ignore_baseline_spectrum = "none"
+histogram_weighting = "wls"
+ignore_labels = [0]
