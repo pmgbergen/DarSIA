@@ -26,33 +26,8 @@ acquisition time and coordinate system, and provides:
 
 <https://pmgbergen.github.io/DarSIA> — user guide, runnable example gallery, and full API reference.
 
-## Quickstart
-
-```python
-import darsia
-
-# read a photograph with path 'baseline.jpg' with its real-world size in metres
-image = darsia.imread("baseline.jpg", width=2.8, height=1.5)
-image.show()
-
-# work in physical coordinates
-roi = image.subregion(darsia.make_coordinate([[1.5, 0.0], [2.8, 0.7]]))
-roi.show()
-```
-
 See the [example gallery](https://pmgbergen.github.io/DarSIA/auto_examples/) for
 more, including CO2 concentration analysis and Wasserstein distances.
-
-## Citing
-
-If you use DarSIA in your research, we ask you to cite the following publication:
-
-Nordbotten, J. M., Benali, B., Both, J. W., Brattekås, B., Storvik, E., & Fernø, M. A. (2023).
-DarSIA: An open-source Python toolbox for two-scale image processing of dynamics in porous media.
-Transport in Porous Media, https://doi.org/10.1007/s11242-023-02000-9
-
-The first release can be also found on Zenodo:
-10.5281/zenodo.7515016
 
 ## Installation
 
@@ -83,9 +58,20 @@ uv run darsia                   # launch the GUI after desktop installation
 See the [GUI guide](https://pmgbergen.github.io/DarSIA/user_guide/gui/index.html)
 for a full walkthrough.
 
+## Citing
+
+If you use DarSIA in your research, we ask you to cite the following publication:
+
+Nordbotten, J. M., Benali, B., Both, J. W., Brattekås, B., Storvik, E., & Fernø, M. A. (2023).
+DarSIA: An open-source Python toolbox for two-scale image processing of dynamics in porous media.
+Transport in Porous Media, https://doi.org/10.1007/s11242-023-02000-9
+
+The first release can be also found on Zenodo:
+10.5281/zenodo.7515016
+
 ## Developing DarSIA
 
-Code under `src/` must pass `black` (24.10.0), `isort` and `flake8`; run the
+DarSIA is an open+source project, and contributions are most welcomed! Code under `src/` must pass `black` (24.10.0), `isort` and `flake8`; run the
 tests with `uv run pytest`. See the
 [contributor guide](https://pmgbergen.github.io/DarSIA/development/index.html)
 and [DEVELOPER_NOTES.md](./DEVELOPER_NOTES.md).
