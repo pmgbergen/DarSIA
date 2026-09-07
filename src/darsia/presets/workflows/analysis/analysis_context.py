@@ -272,24 +272,33 @@ def prepare_analysis_context(
     `require_color_to_mass` is True, the color_to_mass_analysis pipeline is
     also initialized and receives the restoration object.
 
-    Args:
-        cls: Rig class.
-        path: Path or list of paths to config files.
-        all: Whether to use all images.
-        require_color_to_mass: Whether to initialize the color-to-mass pipeline.
-        section: Config section name for validation and default image selection
-        ("analysis", "calibration", "helper"); when ``sub_config`` is provided,
-        section still controls the validation path, but the sub-config is not
-        selected from the section.
-        require_results: Whether the config must include results paths.
-        require_data: Whether the config must include data paths.
-        sub_config: Optional config object to pass to image selection directly
-            (for example ``config.analysis``, ``config.calibration``,
-            ``config.helper``, or ``config.helper.color``).
+    Parameters
+    ----------
+    cls : type[Rig]
+        Rig class.
+    path : Path or list of Path
+        Path(s) to config files.
+    all : bool, optional
+        Use all images. Default False.
+    require_color_to_mass : bool, optional
+        Initialise the colour-to-mass pipeline. Default False.
+    section : {"analysis", "calibration", "helper"}, optional
+        Config section used for validation and default image selection. When
+        ``sub_config`` is given, ``section`` still controls the validation path
+        but the sub-config is not taken from the section. Default ``"analysis"``.
+    require_results : bool, optional
+        Require results paths in the config. Default True.
+    require_data : bool, optional
+        Require data paths in the config. Default True.
+    sub_config : Any, optional
+        Config object passed to image selection directly (e.g.
+        ``config.analysis``, ``config.calibration``, ``config.helper``,
+        ``config.helper.color``).
 
-    Returns:
-        AnalysisContext with all common objects initialized.
-
+    Returns
+    -------
+    AnalysisContext
+        Context with all common objects initialised.
     """
     # ! ---- LOAD CONFIG ----
     config = FluidFlowerConfig(

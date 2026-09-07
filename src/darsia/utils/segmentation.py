@@ -25,37 +25,39 @@ def segment(
     verbosity: bool = False,
     **kwargs,
 ) -> Union[np.ndarray, darsia.Image]:
-    """Prededfined workflow for segmenting an image based on watershed segmentation.
+    """Segment an image using watershed segmentation, with denoising.
 
-    In addition, denoising is used.
+    Parameters
+    ----------
+    img : numpy.ndarray or darsia.Image
+        Input image in RGB colour space.
+    markers_method : str, optional
+        ``"gradient_based"`` (less input required) or ``"supervised"`` (lets you
+        address regions of interest explicitly). Default ``"gradient_based"``.
+    edges_method : str, optional
+        ``"gradient_based"`` (gradient filtering) or ``"scharr"`` (Scharr
+        algorithm). Default ``"gradient_based"``.
+    mask : numpy.ndarray, optional
+        Binary array; segmentation is performed only where it is true.
+    verbosity : bool, optional
+        Plot intermediate quantities, useful when tuning parameters. Default False.
+    **kwargs
+        Tuning parameters for the watershed:
 
-    Args:
-        img (np.ndarray, or darsia.Image): input image in RGB color space
-        markers_method (str): "gradient_based" or "supervised", deciding which algorithm
-            is used for detecting markers; the former allows for less input, while the
-            latter allows to explicitly address regions of interest.
-        edges_method (str): "gradient_based" or "scharr", deciding which algorithm
-            is used for determining edges; the former uses gradient filtering while
-            the latter uses the Scharr algorithm.
-        mask (np.ndarray, optional): binary array, only where true, segmentation is
-            performed
-        verbosity (bool): flag controlling whether relevant quantities are plotted
-            which is useful in the tuning of the parameters; the default is False.
-        keyword arguments (optional): tuning parameters for the watershed algorithm
-            "method" (str): 'median' or 'tvd', while the latter uses a anisotropic
-                TVD with fixed settings.
-            "median disk radius" (int): disk radius to be considered to smooth
-                the image using rank based median, before the analysis.
-            "rescaling factor" (float): factor how the image is scaled before
-                the actual watershed segmentation.
-            "monochromatic_color" (str): "gray", "red", "green", "blue", or "value",
-                identifying the monochromatic color space to be used in the analysis;
-                default is gray.
-            "boundaries" (list of str): containing elements among "top", "bottom",
-                "right", "left". These will be omitted in the cleaning routine.
+        - ``"method"`` (str) -- ``"median"`` or ``"tvd"`` (anisotropic TVD with
+          fixed settings).
+        - ``"median disk radius"`` (int) -- rank-median smoothing radius applied
+          before analysis.
+        - ``"rescaling factor"`` (float) -- image scaling before the watershed.
+        - ``"monochromatic_color"`` (str) -- ``"gray"``, ``"red"``, ``"green"``,
+          ``"blue"`` or ``"value"``; default ``"gray"``.
+        - ``"boundaries"`` (list of str) -- any of ``"top"``, ``"bottom"``,
+          ``"right"``, ``"left"``; omitted in the cleaning routine.
 
-    Returns:
-        np.ndarray or darsia.Image: labeled regions in the same format as img.
+    Returns
+    -------
+    numpy.ndarray or darsia.Image
+        Labelled regions, in the same format as ``img``.
     """
 
     # ! ---- Preprocessing of input image
@@ -521,41 +523,33 @@ def label_image(
     expand_labels: bool = True,
     significance: float | None = None,
 ) -> Union[np.ndarray, darsia.Image]:
-    """
-    Segment an image based on colors.
+    """Segment an image by matching pixel colours to a reference map.
 
-    Args:
-        img (np.ndarray or darsia.Image): input image in RGB color space
-        map (dict, optional): dictionary mapping color names to labels and RGB values;
-            default is None, in which case a predefined map is used:
-            map = {
-                "white": (0, (1, 1, 1)),
-                "black": (1, (0, 0, 0)),
-                "red": (2, (1, 0, 0)),
-                "green": (3, (0, 1, 0)),
-                "blue": (4, (0, 0, 1)),
-                "cyan": (5, (0, 1, 1)),
-                "magenta": (6, (1, 0, 1)),
-                "yellow": (7, (1, 1, 0)),
-            }
-            the keys are the color names (currently not used), the values are tuples
-            containing the label (int) and the RGB value (tuple of floats in [0, 1]).
-        ctol (float): tolerance for color matching in float format; default is 0.1.
-        ensure_connectivity (bool): whether to ensure that labels are connected regions
-            (default: True).
-        expand_labels (bool): whether to expand labels to fill unlabeled pixels
-            (default: True).
-        significance (float, optional): minimum significance of labels to be kept.
+    Each pixel whose RGB value is within ``ctol`` of an entry in ``map`` is
+    assigned that entry's label; connected components are then relabelled with
+    :func:`skimage.measure.label`.
 
-    The labeling is done by comparing the RGB values of the input image
-    with the RGB values in the map. If the absolute difference is less than
-    the tolerance, the corresponding label is assigned to the pixel. After the
-    labeling is complete, the connected components are identified and labeled
-    using skimage.measure.label.
+    Parameters
+    ----------
+    img : numpy.ndarray or darsia.Image
+        Input image in RGB colour space.
+    map : dict, optional
+        Maps colour names to ``(label, rgb)`` pairs, where ``label`` is an int
+        and ``rgb`` a tuple of floats in ``[0, 1]``. Defaults to a predefined
+        map for white/black/red/green/blue/cyan/magenta/yellow (labels 0-7).
+    ctol : float, optional
+        Tolerance for colour matching. Default 0.01.
+    ensure_connectivity : bool, optional
+        Ensure labels are connected regions. Default True.
+    expand_labels : bool, optional
+        Expand labels to fill unlabelled pixels. Default True.
+    significance : float, optional
+        Minimum significance of a label for it to be kept.
 
-    Returns:
-        np.ndarray or darsia.Image: labeled regions in the same format as img.
-
+    Returns
+    -------
+    numpy.ndarray or darsia.Image
+        Labelled regions, in the same format as ``img``.
     """
     # Work for now only with numpy arrays
     if isinstance(img, darsia.Image):

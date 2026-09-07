@@ -27,25 +27,24 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         weight: Optional[darsia.Image] = None,
         options: dict = {},
     ) -> None:
-        """Initialize the Bregman method.
+        """Initialise the Bregman solver.
 
-        Args:
-            grid (darsia.Grid): grid
-            weight (darsia.Image, optional): weight for the heterogeneous case.
-            options (dict, optional): options for the Bregman solver. Defaults to {}.
-                - L (float): penalty parameter for the Bregman iteration, associated to
-                  face mobility. Defaults to 1.0.
-                - bregman_update (lambda iter: bool): function to determine whether/when
-                    to update the Bregman regularization. Defaults to a function that
-                    never updates.
-                - num_iter (int): maximum number of iterations. Defaults to 100.
-                - tol_residual (float): tolerance for the relative mass conservation residual.
-                    Defaults to np.finfo(float).max.
-                - tol_increment (float): tolerance for the relative aux/force increment.
-                    Defaults to np.finfo(float).max.
-                - tol_distance (float): tolerance for the relative distance increment.
-                    Defaults to np.finfo(float).max.
+        Parameters
+        ----------
+        grid : darsia.Grid
+            Tensor grid associated with the images.
+        weight : darsia.Image, optional
+            Weight for the heterogeneous case.
+        options : dict, optional
+            Solver options. Recognised keys, with defaults::
 
+                L (float)              1.0    penalty parameter (face mobility)
+                bregman_update         never  callable(iter) -> bool deciding
+                                              when to update the regularisation
+                num_iter (int)         100    max iterations
+                tol_residual (float)   inf    relative mass-conservation residual
+                tol_increment (float)  inf    relative aux/force increment
+                tol_distance (float)   inf    relative distance increment
         """
 
         super().__init__(grid, weight, options)

@@ -7,11 +7,14 @@ import numpy as np
 
 
 class SignalReduction:
+    """Base class reducing a (possibly multi-channel) signal to a scalar array.
+
+    The default ``__call__`` is the identity, assuming a scalar input; subclasses
+    override it.
+    """
+
     def __call__(self, img: np.ndarray) -> np.ndarray:
-        """
-        Method defining the conversion to a scalar signal.
-        By default it is assumed, that the input is scalar.
-        If not, overwritting the method is needed.
+        """Reduce the input to a scalar signal.
 
         Args:
             img (np.ndarray): (here scalar) signal

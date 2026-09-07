@@ -171,27 +171,29 @@ class GeneralizedPerspectiveTransformation(darsia.BaseTransformation):
         ],
         fit_options: dict = {},
     ):
-        """
-        Fit inverse generalized perspective transformation to given src and dst points.
+        """Fit the inverse generalised perspective transformation.
 
-        NOTE: Currently, the forward evaluation is not implemented.
+        Also fixes the types of the input and output points; later evaluations
+        of the transformation must use the same types. The forward evaluation is
+        currently not implemented.
 
-        Also fixes types of input and output. Later evaluation of the transformation
-        will require the same type of input and output.
+        Parameters
+        ----------
+        pts_src : CoordinateArray, VoxelArray or VoxelCenterArray
+            Source points.
+        pts_dst : CoordinateArray, VoxelArray or VoxelCenterArray
+            Target points.
+        fit_options : dict, optional
+            ``"coordinatesystem_dst"`` (darsia.CoordinateSystem) -- coordinate
+            system of the target points.
+            ``"maxiter"`` (int) -- maximum optimisation iterations.
+            ``"tol"`` (float) -- optimisation tolerance.
+            ``"strategy"`` (list) -- optimisation strategies to apply.
 
-        Args:
-            pts_src (CoordinateArray, VoxelArray, VoxelCenterArray): source points
-            pts_dst (CoordinateArray, VoxelArray, VoxelCenterArray): target points
-            fit_options (dict): options for fitting
-                coordinatesystem_dst (darsia.CoordinateSystem): coordinate system of
-                    target points
-                maxiter (int): maximum number of iterations
-                tol (float): tolerance for optimization
-                strategy (list): list of strategies to use for optimization
-
-        Returns:
-            scipy.optimize.OptimizeResult: optimization result
-
+        Returns
+        -------
+        scipy.optimize.OptimizeResult
+            The optimisation result.
         """
         coordinatesystem_dst = fit_options.get("coordinatesystem_dst")
         assert coordinatesystem_dst is not None, "Need coordinatesystem_dst"

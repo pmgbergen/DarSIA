@@ -452,6 +452,8 @@ class CO2MassAnalysis:
 
 
 class AdvancedCO2MassAnalysis:
+    """CO2 mass analysis combining gas/aqueous concentration analyses and a flash."""
+
     def __init__(
         self,
         concentration_analysis_g,

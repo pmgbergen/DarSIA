@@ -252,6 +252,8 @@ class FVTangentialFaceReconstruction:
 
 
 class FVFullFaceReconstruction:
+    """Reconstruct full face fluxes from their normal and tangential components."""
+
     def __init__(self, grid: darsia.Grid) -> None:
         self.grid = grid
         self.tangential_reconstruction = FVTangentialFaceReconstruction(grid)

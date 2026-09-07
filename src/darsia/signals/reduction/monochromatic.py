@@ -11,6 +11,8 @@ import darsia
 
 
 class MonochromaticReduction(darsia.SignalReduction):
+    """Reduce a colour image to one channel (``"gray"``, ``"red"``, ``"hsv"``, ...)."""
+
     def __init__(self, **kwargs) -> None:
         self.color = kwargs.get("color", "gray")
         self.verbosity = kwargs.get("verbosity", 0)

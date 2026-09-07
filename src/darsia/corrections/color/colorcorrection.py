@@ -219,20 +219,23 @@ class ColorCorrection(darsia.BaseCorrection):
         base: Optional[Union[darsia.Image, ColorChecker]] = None,
         config: Optional[dict] = None,
     ):
-        """
-        Constructor of converter, setting up a priori all data needed for fast conversion.
+        """Set up all data needed for fast colour conversion.
 
-        Args:
-            base (Image or ColorChecker, optional): reference defining a color checker; if
-                None provided, use CustomColorChecker.
-            config (dict, str, Path): config file for initialization of images; keys:
-                "roi" (tuple of slices, np.ndarray, or None): ROI containing a colour
-                    checker, provided either as intervals, corner points, or nothing. The
-                    recommended choice is to provide an array of coordinates.
-                "whitebalancing" (bool): apply white balancing based on the third bottom left
-                    swatch if True, default is True
-                "verbosity" (bool): flag controlling whether extracted ROIs of the colorchecker
-                    as well as the extracted swatch colors are displayed. Useful for debugging.
+        Parameters
+        ----------
+        base : darsia.Image or ColorChecker, optional
+            Reference defining a colour checker; if None, a
+            :class:`~darsia.CustomColorChecker` is used.
+        config : dict, optional
+            Configuration. Recognised keys::
+
+                roi (tuple of slices | ndarray | None)
+                    ROI containing the colour checker, as intervals or corner
+                    points; an array of coordinates is recommended.
+                whitebalancing (bool)   default True; white-balance on the
+                                        third bottom-left swatch
+                verbosity (bool)        display the extracted ROIs and swatch
+                                        colours (debugging)
         """
 
         # Define config

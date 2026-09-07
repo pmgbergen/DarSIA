@@ -9,39 +9,37 @@ import darsia
 
 
 class Patches:
-    """
-    Class for patched image.
+    """A full image tiled into a regular array of patches.
 
-    Contains an array of patches of a prescribed full image.
+    Patches are addressed with standard matrix indexing: the upper-left (front)
+    patch has coordinate ``(0, 0)`` (``(0, 0, 0)`` in 3d).
 
-    Attributes:
-        base (darsia.Image) = full darsia image
-        num_patches (list) = list with number of patches in each dimension
-        patches (np.ndarray)= array of patches of the original image
-
-    NOTE: A standard matrix indexing is used to refer to specific patches, i.e.,
-        The left, upper (front) patch will have the patch coordinate (0,0)
-        ((0,0,0) in 3d).
-
+    Attributes
+    ----------
+    base : darsia.Image
+        The full image.
+    num_patches : list
+        Number of patches along each dimension.
+    patches : numpy.ndarray
+        Array of sub-images of ``base``.
     """
 
     def __init__(self, img: darsia.Image, num_patches: list[int], **kwargs) -> None:
-        """
-        Constructor for Patches class.
+        """Tile ``img`` into ``num_patches`` patches per dimension.
 
-        Arguments:
-            img (darsia.Image): image to be patched.
-            num_patches (list of int): number of patches in each dimension, using the same
-                convention on the order of element access as for 'img', incl. time access.
-                If length of num_patches is equal to spatial dimension, the entire time slab
-                is kept as one.
-            **kwargs: optional keyword arguments:
-                "rel_overlap" (int): relative overlap of each patch in spatial dimensions
-                    (in relation to patch size) in each direction of a rectangular patch;
-                    default value is 0.
-                "abs_time_overlap" (int)" Absolute overlap of each patch in temporal dimension;
-                    default value is 0.
-
+        Parameters
+        ----------
+        img : darsia.Image
+            Image to be patched.
+        num_patches : list of int
+            Number of patches per dimension, in the same axis order as ``img``
+            (including the time axis). If its length equals the spatial
+            dimension, the whole time slab is kept as one.
+        **kwargs
+            ``"rel_overlap"`` (int) -- spatial overlap of each patch relative to
+            the patch size, per direction (default 0).
+            ``"abs_time_overlap"`` (int) -- absolute overlap of each patch along
+            the time axis (default 0).
         """
 
         # ! ---- Instance of base image, incl. relevant meta information

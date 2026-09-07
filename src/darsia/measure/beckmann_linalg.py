@@ -17,6 +17,8 @@ import darsia
 
 # Define BeckmannLinearSolverType
 class BeckmannLinearSolverType(StrEnum):
+    """Enumeration of the linear-solver backends for the Beckmann problem."""
+
     DIRECT = "direct"
     AMG = "amg"
     CG = "cg"
@@ -409,6 +411,8 @@ class BeckmannKSPFieldSplitSolver(BeckmannKSPSolver):
 
 
 class BeckmannLinearSolverFactory:
+    """Factory constructing a :class:`BeckmannLinearSolver` from a type and options."""
+
     @staticmethod
     def create(
         solver_type: BeckmannLinearSolverType,

@@ -131,6 +131,8 @@ class ImagingProtocolOld:
 
 
 class ImagingProtocol:
+    """Imaging protocol mapping image file names to acquisition times."""
+
     def __init__(
         self,
         path: Path | tuple[Path, str],
@@ -417,6 +419,8 @@ class ImagingProtocol:
 
 
 class InjectionProtocol:
+    """Injection protocol: the sequence of injection events and their masses."""
+
     def __init__(self, path: Path | tuple[Path, str]) -> None:
         self.df = self._load_protocol(path)
         """DataFrame containing the protocol."""
@@ -586,6 +590,8 @@ class ThermodynamicState:
 
 
 class PressureTemperatureProtocol:
+    """Pressure/temperature protocol, queried for a :class:`ThermodynamicState`."""
+
     def __init__(self, path: Path | tuple[Path, str]) -> None:
         self.df = self._load_protocol(path)
         """DataFrame containing the protocol."""

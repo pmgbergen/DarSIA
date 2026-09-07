@@ -76,6 +76,8 @@ class Flash:
 
 
 class AdvancedFlash(Flash):
+    """Flash with a saturation cutoff and optional restoration of the result."""
+
     def __init__(
         self,
         s_g_max: float = 1.0,
@@ -116,6 +118,8 @@ class AdvancedFlash(Flash):
 
 
 class SimpleFlash:
+    """Flash splitting a signal into aqueous and gas fractions by fixed bounds."""
+
     def __init__(
         self,
         min_value_aq: float,

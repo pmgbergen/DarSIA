@@ -472,12 +472,14 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         return pressure
 
     def compute_dual(self, p, gradient_poisson):
-        """
-        Compute the value of the dual functional
-        $ int_{Domain} pot (f^+ - f^-)$
-        $= int_{Domain} pot -div(poisson)$
-        $ int_{Domain} \nabla pot dot \nabla poisson$
-        $ int_{Domain} p dot \nabla poisson$
+        r"""Compute the value of the dual functional.
+
+        .. math::
+
+            \int_\Omega \mathrm{pot}\,(f^+ - f^-)
+            = \int_\Omega \mathrm{pot}\,(-\operatorname{div} \mathrm{poisson})
+            = \int_\Omega \nabla \mathrm{pot} \cdot \nabla \mathrm{poisson}
+            = \int_\Omega p \cdot \nabla \mathrm{poisson}
         """
         return np.dot(p, gradient_poisson) * np.prod(self.grid.voxel_size)
 

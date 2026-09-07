@@ -8,6 +8,8 @@ logger = logging.getLogger(__name__)
 
 
 class LabelColorMap:
+    """Mapping from integer labels to representative RGB colours."""
+
     def __init__(self, colors: dict[int, np.ndarray] | None = None) -> None:
         self.colors = colors if colors is not None else {}
 

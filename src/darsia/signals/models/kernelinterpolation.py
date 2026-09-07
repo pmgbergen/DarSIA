@@ -189,6 +189,7 @@ class KernelInterpolation(darsia.Model):
 
 
 class AdvancedKernelInterpolation(KernelInterpolation):
+    """Kernel interpolation with support for fixed (non-calibrated) support points."""
 
     def __init__(self, kernel: darsia.BaseKernel) -> None:
         super().__init__(kernel=kernel)

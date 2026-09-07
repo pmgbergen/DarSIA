@@ -8,6 +8,8 @@ import darsia
 
 
 class BoxSelectionAssistant(darsia.PointSelectionAssistant):
+    """Interactive assistant for drawing one or more rectangular boxes on an image."""
+
     def __init__(self, img: darsia.Image, **kwargs) -> None:
         super().__init__(img, **kwargs)
 

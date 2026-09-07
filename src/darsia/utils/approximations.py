@@ -82,9 +82,8 @@ class PolynomialApproximationSpace(ApproximationSpace):
 class RadialPolynomialApproximationSpace(ApproximationSpace):
     """Global radial polynomial approximation space in 2d.
 
-    Class that provides a polynomial approximation space in 2d
-    for given center with basis functions |x-center|^i, i <= degree.
-
+    For a given centre, the basis functions are ``|x - center| ** i`` for
+    ``i <= degree``.
     """
 
     def __init__(self, degree: int, center: Optional[np.ndarray] = None) -> None:

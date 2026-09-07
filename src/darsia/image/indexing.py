@@ -92,20 +92,28 @@ def to_cartesian_indexing(axis: Union[str, int], indexing: str) -> str:
 
 
 def interpret_indexing(axis: str, indexing: str) -> tuple[int, bool]:
-    """Interpretation of axes and their indexing.
+    """Interpret an axis and the indexing convention of an image.
 
-    Args:
-        axis (str): target axis, e.g., "x"
-        indexing (str): indexing of an image, e.g., "ijk"
+    Parameters
+    ----------
+    axis : str
+        Target axis, e.g. ``"x"``.
+    indexing : str
+        Indexing of the image, e.g. ``"ijk"``.
 
-    Returns:
-        int: component corresponding to the axis. Covered: "x", "y", "z", "i", "j", "k".
-        bool: flag controlling whether the axis has to be reverted when converting.
-            Covered: "xyz", "ijk", and reduced cases in 1d and 2d.
+    Returns
+    -------
+    component : int
+        Component corresponding to the axis (for ``"x"``, ``"y"``, ``"z"``,
+        ``"i"``, ``"j"``, ``"k"``).
+    revert : bool
+        Whether the axis must be reverted when converting (for ``"xyz"``,
+        ``"ijk"`` and their reduced 1d/2d cases).
 
-    Raises:
-        ValueError: if not supported combination used as input.
-
+    Raises
+    ------
+    ValueError
+        If an unsupported combination is given.
     """
 
     # Consider all possible combinations.

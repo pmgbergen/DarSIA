@@ -13,17 +13,18 @@ class RotationCorrectionAssistant(darsia.BaseAssistant):
     """Class defining an assistant to set up :mod:`darsia.RotationCorrection`."""
 
     def __init__(self, img: darsia.Image, **kwargs) -> None:
-        """Constructor.
+        """Set up the assistant.
 
-        Args:
-            img (Image): image to be corrected
-            kwargs (keyword arguments): optional arguments
-                threshold (float): threshold for active voxels
-                relative (bool): flag controlling whether the threshold is relative
-                    or absolute
-                scaling (float): scaling of the signal strength
-                verbosity (bool): flag controlling verbosity, default is False
-
+        Parameters
+        ----------
+        img : darsia.Image
+            Image to be corrected.
+        **kwargs
+            ``"threshold"`` (float) -- threshold for active voxels.
+            ``"relative"`` (bool) -- whether the threshold is relative or
+            absolute.
+            ``"scaling"`` (float) -- scaling of the signal strength.
+            ``"verbosity"`` (bool) -- verbose output (default False).
         """
         # Set name for titles in plots
         self.name = "Rotation correction assistant"

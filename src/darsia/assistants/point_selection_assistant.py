@@ -11,6 +11,8 @@ import darsia
 
 
 class PointSelectionAssistant(darsia.BaseAssistant):
+    """Interactive assistant for picking a set of points on a 2d image."""
+
     def __init__(self, img: darsia.Image, **kwargs) -> None:
         if img is None:
             img = kwargs.get("background")

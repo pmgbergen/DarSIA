@@ -271,22 +271,22 @@ class SegmentationComparison:
     def compare_segmentations_binary_array(
         self, *segmentations: tuple[np.ndarray, ...], **kwargs
     ) -> np.ndarray:
-        """
-        Compares segmentations and returns an an array
-        with pixels that containing an array of 1s and 0s depending on
-        which segmentations are present there. At the current state it
-        does not distinguish between the different kind of components,
+        """Compare segmentations pixel-wise.
 
-        Args:
-            *segmentations (tuple[np.ndarray, ...]): The segmentations to be compared.
-            **kwargs: Optional keyword arguments.
-                roi (Union[tuple, np.ndarray]): roi where the segmentations should be
-                    compared, default is the maximal roi that fits in all segmentations.
-                    Should be provided in pixel coordinates using matrix indexing, either
-                    as a tuple of slices, or an array of corner points.
-                components (tuple[int, ...]): The components that should be recognized in
-                    the segmentations, default is [1,2].
+        Returns an array whose per-pixel value encodes which segmentations are
+        present at that pixel (as a pattern of 1s and 0s). Different kinds of
+        component are not currently distinguished.
 
+        Parameters
+        ----------
+        *segmentations : numpy.ndarray
+            The segmentations to compare.
+        **kwargs
+            ``"roi"`` (tuple of slices | ndarray of corner points) -- region to
+            compare, in pixel/matrix coordinates; defaults to the largest ROI
+            fitting all segmentations.
+            ``"components"`` (tuple of int) -- components to recognise; default
+            ``[1, 2]``.
         """
         # NOTE: At the moment both components are counted as the same.
 

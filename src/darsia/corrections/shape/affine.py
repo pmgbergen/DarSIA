@@ -147,25 +147,25 @@ class AffineTransformation(darsia.BaseTransformation):
         pts_dst: Union[darsia.VoxelArray, darsia.CoordinateArray],
         fit_options: dict = {},
     ) -> bool:
-        """Least-squares parameter fit based on source and target coordinates.
+        """Least-squares fit of the forward and inverse map.
 
-        Fits both forward and inverse map.
+        Parameters
+        ----------
+        pts_src : VoxelArray or CoordinateArray
+            Source points.
+        pts_dst : VoxelArray or CoordinateArray
+            Target points.
+        fit_options : dict, optional
+            ``"preconditioning"`` (bool) -- precondition the optimisation with a
+            better initial translation guess.
+            ``"tol"`` (float) -- optimisation tolerance.
+            ``"maxiter"`` (int) -- maximum optimisation iterations.
+            ``"isometry"`` (bool) -- whether the transformation is an isometry.
 
-        Args:
-            pts_src (VoxelArray or CoordinateArray): source points
-            pts_dst (VoxelArray or CoordinateArray): target points
-            fit_options (dict): options for the fit routine
-                preconditioning (bool): Flag controlling whether the optimization
-                    problem is preconditioned by estimating a better initial guess for
-                    the translation.
-                tol (float): tolerance for optimization
-                maxiter (int): maximum number of iterations for optimization
-                isometry (bool): Flag controlling whether the underlying transformation
-                    is an isometry.
-
-        Returns:
-            bool: success of parameter fit
-
+        Returns
+        -------
+        bool
+            Whether the fit succeeded.
         """
         # Check input
         assert pts_src.shape == pts_dst.shape, "Shape mismatch."
@@ -306,10 +306,7 @@ class AffineTransformation(darsia.BaseTransformation):
 
 
 class AffineCorrection(darsia.TransformationCorrection):
-    """Affine correction based on affine transformation (translation, scaling,
-    rotation).
-
-    """
+    """Affine correction (translation, scaling, rotation)."""
 
     def __init__(
         self,
@@ -323,20 +320,21 @@ class AffineCorrection(darsia.TransformationCorrection):
         ],
         fit_options: dict = {},
     ) -> None:
-        """Constructor.
+        """Set up the affine correction.
 
-        Args:
-            coordinatesystem_src (CoordinateSystem): coordinate system corresponding
-                to voxels_src
-            coordinatesystem_dst (CoordinateSystem): coordinate system corresponding
-                to voxels_dst
-            pts_src (CoordinateArray, VoxelArray, or VoxelCenterArray): source points
-            pts_dst (CoordinateArray, VoxelArray, or VoxelCenterArray): target points
-            fit_options (dict): options for the fit routine
-                isometry (bool): Flag controlling whether the underlying transformation
-                    is an isometry - in this case, the underlying transformation will
-                    operate in the Coordinate space.
-
+        Parameters
+        ----------
+        coordinatesystem_src : darsia.CoordinateSystem
+            Coordinate system of ``pts_src``.
+        coordinatesystem_dst : darsia.CoordinateSystem
+            Coordinate system of ``pts_dst``.
+        pts_src : CoordinateArray, VoxelArray or VoxelCenterArray
+            Source points.
+        pts_dst : CoordinateArray, VoxelArray or VoxelCenterArray
+            Target points.
+        fit_options : dict, optional
+            ``"isometry"`` (bool) -- whether the transformation is an isometry;
+            if so it operates in Coordinate space.
         """
         # Cache coordinate systems
         self.coordinatesystem_src = coordinatesystem_src

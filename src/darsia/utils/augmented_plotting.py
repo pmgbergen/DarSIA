@@ -20,6 +20,34 @@ def plot_contour_on_image(
     show_plot: bool = False,
     return_image: bool = False,
 ) -> Optional[darsia.Image]:
+    """Overlay one or more contour masks on an image, with optional smoothing.
+
+    Parameters
+    ----------
+    img : darsia.Image or numpy.ndarray
+        Background image.
+    mask : list of darsia.Image
+        Masks whose contours are drawn.
+    contour_smoother : darsia.ContourSmoother, optional
+        Smoother applied to each contour before drawing.
+    color : list of tuple, optional
+        Per-mask RGB colours.
+    alpha : list of float, optional
+        Per-mask opacities.
+    thickness : int, optional
+        Contour line thickness in pixels. Default 5.
+    path : Path, optional
+        If given, save the figure there.
+    show_plot : bool, optional
+        Display the figure. Default False.
+    return_image : bool, optional
+        Return the composited image instead of None. Default False.
+
+    Returns
+    -------
+    darsia.Image or None
+        The composited image when ``return_image`` is True.
+    """
     # Start with the original image
     if isinstance(img, darsia.Image):
         if img.img.dtype == np.uint8:

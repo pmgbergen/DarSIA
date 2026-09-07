@@ -33,7 +33,13 @@ logger = logging.getLogger(__name__)
 
 
 class Image:
-    """General image class."""
+    """An image with physical meaning.
+
+    Wraps a NumPy array together with its physical extent, acquisition time and
+    coordinate system, so that regions, patches and measurements can be
+    addressed in metres and seconds. :class:`ScalarImage` and
+    :class:`OpticalImage` are convenience specialisations.
+    """
 
     # ! ---- Constructors
 
@@ -43,41 +49,46 @@ class Image:
         transformations: Optional[list] = None,
         **kwargs,
     ) -> None:
-        """Initalization of a physical space-time image.
+        """Initialise a physical space-time image.
 
-        Allows for scalar and vector-values  2d, 3d, 4d, images, including
-        time-slices as well as time-series. The boolean flag 'scalar' stores
-        whether the data is stored in an additional dimension of the Image or not
-        (note scalar data can be in general also encoded as multichromatic image
-        with 1d data). Furthermore, 'series' holds this information, while
+        Supports scalar and vector-valued 2d/3d/4d images, including single time
+        slices and time series. The ``scalar`` flag records whether the range is
+        stored in an extra axis; ``series`` records whether a time axis is
+        present.
 
-        Args:
-            img (array): space_dim+time_dim+range_dim space-time data array
-            transformations (list of callable): transformations as reduction
-                and correction routines. Called in order.
-            kwargs:
-                keyword arguments controlling many of the attributes, mostly
-                having default values targeting conventional optical images.
+        Parameters
+        ----------
+        img : numpy.ndarray
+            Data array with ``space_dim + time_dim + range_dim`` axes.
+        transformations : list of callable, optional
+            Reduction and correction routines, applied in order.
+        **kwargs
+            Options controlling the attributes below; the defaults target
+            conventional optical images.
 
-        Attributes:
-            dim (int): dimensionality of the physical space
-            scalar (boolean): flag storing whether data is scalar-valued and does
-                effectivley does not use any extra axis.
-            series (boolean): flag storing whether the array is a space-time array
-            indexing (str): axis indexing of the first dim entries
-            img (array): (space-time) image array
-            date (list): absolute times for all slices
-            time (list): relative times for all slices
+        Attributes
+        ----------
+        dim : int
+            Dimensionality of the physical space.
+        scalar : bool
+            Whether the data is scalar-valued (no extra range axis).
+        series : bool
+            Whether the array carries a time axis.
+        indexing : str
+            Axis indexing of the first ``dim`` entries.
+        img : numpy.ndarray
+            The (space-time) image array.
+        date : list
+            Absolute time of each slice.
+        time : list
+            Relative time of each slice.
 
-        Example:
-            multichromatic_3d_image_series = np.array((Nx, Ny, Nz, Nt, Nd), dtype=float)
-            image = darsia.Image(
-                multichromatic_3d_image_series,
-                scalar = False,
-                series = True,
-                dim = 3
-            )
+        Examples
+        --------
+        .. code-block:: python
 
+            data = np.zeros((Nx, Ny, Nz, Nt, Nd), dtype=float)
+            image = darsia.Image(data, scalar=False, series=True, dim=3)
         """
 
         # ! ---- Cache data
@@ -1091,24 +1102,27 @@ class Image:
         duration: Optional[int] = None,
         **kwargs,
     ) -> None:
-        """Show routine using matplotlib.pyplot built-in methods.
+        """Show the image using ``matplotlib.pyplot``.
 
-        Args:
-            title: title in the displayed window.
-            duration: display duration in seconds.
-            **kwargs: additional arguments passed to matplotlib.pyplot.
-                threshold (float): threshold for displaying 3d images.
-                relative (bool): flag controlling whether the threshold is relative.
-                view (str): view type; either "scatter" or "voxel"; only for 3d images.
-                    NOTE: "voxel" plots are more time consuming for 3d.
-                side_view (str): side view type of 3d image; only for 3d images;
-                    either "scatter" or "voxel".
-                surpress_2d (bool): flag controlling whether 2d images are displayed.
-                surpress_3d (bool): flag controlling whether 3d images are displayed.
-                    By default true as time consuming.
-                delay (bool): flag controlling whether the display is delayed; can be
-                    used to display multiple images at the same time.
+        Parameters
+        ----------
+        title : str
+            Title in the displayed window.
+        duration : int, optional
+            Display duration in seconds.
+        **kwargs
+            Additional display options::
 
+                threshold (float)     threshold for displaying 3d images
+                relative (bool)       whether the threshold is relative
+                view (str)            "scatter" or "voxel" (3d only; "voxel"
+                                      is slower)
+                side_view (str)       "scatter" or "voxel" (3d only)
+                surpress_2d (bool)    whether 2d images are displayed
+                surpress_3d (bool)    whether 3d images are displayed
+                                      (default True, since slow)
+                delay (bool)          delay the display, to show several
+                                      images at once
         """
 
         # Use different plotting styles for different spatial dimensions. In 1d, time
@@ -1446,21 +1460,24 @@ class Image:
         duration: Optional[int] = None,
         **kwargs,
     ) -> None:
-        """Show routine using plotly built-in methods.
+        """Show the image using ``plotly`` (often faster than matplotlib).
 
-        Args:
-            title (str): title in the displayed window.
-            duration (int, optional): display duration in seconds.
-            **kwargs: additional arguments passed to matplotlib.pyplot.
-                threshold (float): threshold for displaying 3d images.
-                relative (bool): flag controlling whether the threshold is relative.
-                view (str): view type; either "scatter" or "voxel"; only for 3d images.
-                    NOTE: "voxel" plots are more time consuming.
-                side_view (str): side view type of 3d image; only for 3d images;
-                    either "scatter" or "voxel".
-                surpress_2d (bool): flag controlling whether 2d images are displayed.
-                surpress_3d (bool): flag controlling whether 3d images are displayed.
+        Parameters
+        ----------
+        title : str
+            Title in the displayed window.
+        duration : int, optional
+            Display duration in seconds.
+        **kwargs
+            Additional display options::
 
+                threshold (float)     threshold for displaying 3d images
+                relative (bool)       whether the threshold is relative
+                view (str)            "scatter" or "voxel" (3d only; "voxel"
+                                      is slower)
+                side_view (str)       "scatter" or "voxel" (3d only)
+                surpress_2d (bool)    whether 2d images are displayed
+                surpress_3d (bool)    whether 3d images are displayed
         """
         for time_index in range(self.time_num):
             if self.series:
@@ -1901,18 +1918,18 @@ class ScalarImage(Image):
     # ! ---- I/O
 
     def write(self, path: Path, **kwargs) -> None:
-        """Write image to file.
+        """Write the image to file.
 
-        Arguments:
-            path (Path): full path to image.
-            keyword arguments:
-                quality (int): number between 0 and 100, indicating
-                    the resolution used to store a jpg image
-                compression (int): number between 0 and 9, indicating
-                    the level of compression used for storing in
-                    png format.
-                cmap (str): color map used for storing the image.
+        Parameters
+        ----------
+        path : Path
+            Full path to the output image.
+        **kwargs
+            Format options::
 
+                quality (int)      0-100, resolution for a jpg image
+                compression (int)  0-9, compression level for a png image
+                cmap (str)         colour map used when storing the image
         """
         # Make sure the parent directory exists
         path.parents[0].mkdir(parents=True, exist_ok=True)
@@ -2154,17 +2171,15 @@ class OpticalImage(Image):
     # ! ---- I/O
 
     def write(self, path: Path, **kwargs) -> None:
-        """Write image to file.
+        """Write the image to file.
 
-        Arguments:
-            path (Path): full path to image.
-            keyword arguments:
-                quality (int): number between 0 and 100, indicating
-                    the resolution used to store a jpg image
-                compression (int): number between 0 and 9, indicating
-                    the level of compression used for storing in
-                    png format.
-
+        Parameters
+        ----------
+        path : Path
+            Full path to the output image.
+        **kwargs
+            ``quality`` (int) -- 0-100, resolution for a jpg image.
+            ``compression`` (int) -- 0-9, compression level for a png image.
         """
         Path(path).parents[0].mkdir(parents=True, exist_ok=True)
 
