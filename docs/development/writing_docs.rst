@@ -54,9 +54,9 @@ data as ``../images/<file>``.
 Docstrings
 ==========
 
-Docstrings feed the API reference. They are being migrated to **NumPy style**;
-new and edited docstrings should follow it. Run ``numpydoc lint`` on a file to
-check.
+Docstrings feed the API reference. ``sphinx.ext.napoleon`` renders both
+Google- and NumPy-style, and the codebase uses a mix; NumPy style is preferred
+for new and substantially edited docstrings.
 
 Maintaining the workflow docs
 =============================
