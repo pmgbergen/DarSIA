@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class ColorPathFunction(darsia.Model):
+    """Model projecting a colour signal onto a :class:`~darsia.ColorPath`."""
+
     def __init__(
         self,
         color_path: darsia.ColorPath,
@@ -47,6 +49,8 @@ class ColorPathFunction(darsia.Model):
 
 
 class ColorPathInterpolation(ColorPathFunction):
+    """Interpolate concentrations along a colour path from labelled reference values."""
+
     def __init__(
         self,
         color_path: darsia.ColorPath,

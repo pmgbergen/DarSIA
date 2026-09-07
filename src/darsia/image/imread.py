@@ -540,23 +540,26 @@ def imread_from_vtu(
     shape: tuple[int],
     **kwargs,
 ) -> darsia.Image:
-    """Reading routine for data readible with meshio.
+    """Read data with ``meshio`` and map it onto a pixel grid.
 
-    NOTE: Only for 1d and 2d vtu images. Actually since meshio is used here, any format
-    should work, but it is only tested for vtu images.
+    Only 1d and 2d vtu images are supported. Any format ``meshio`` can read
+    should work in principle, but only vtu is tested.
 
-    Includes mapping onto a pixelated grid.
+    Parameters
+    ----------
+    path : Path or list of Path
+        Path(s) to the file(s).
+    key : str
+        Identifier addressing the data field in the vtu file.
+    shape : tuple of int
+        Shape of the target 2d pixel array, in matrix indexing.
+    **kwargs
+        ``series`` (bool) -- create a time series of images.
 
-    Args:
-        path (Path or list of such): path(s) to file(s).
-        key (str): identifier to address the data in the vtu file.
-        shape (tuple of int): shape of target 2d pixelated array, in matrix indexing.
-            series (bool): flag controlling whether a time series of images
-                is created.
-
-    Returns:
-        darsia.Image: scalar image (space-time if list provided)
-
+    Returns
+    -------
+    darsia.Image
+        Scalar image (space-time if a list of paths is given).
     """
     if isinstance(path, Path):
         # Read from file

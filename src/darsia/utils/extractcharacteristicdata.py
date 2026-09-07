@@ -24,28 +24,38 @@ def extract_characteristic_data(
     mode: Literal["most_common", "least_common", "all"] = "most_common",
     show_plot: bool = False,
 ) -> np.ndarray | tuple[np.ndarray]:
-    """Assistant to extract representative colors from input image for given patches.
+    """Extract representative colours from an image for given patches.
 
-    Args:
-        signal (np.ndarray | Image): input signal, assumed to have the structure of a 2d,
-            colored image.
-        mask (np.ndarray | Image): boolean array flagging pixels of interest; by default all
-            pixels considered.
-        samples (list of slices): list of 2d regions of interest; if None, full region
-            considered
-        filter (callable): function to preprocess the signal before analysis, e.g.,
-            Gaussian filter.
-        num_clusters (int): number of clusters to be extracted from data.
-        num_attempts (int): number of attempts to be performed to find the best clusters.
-        num_iterations (int): max number of iterations in iterative procedure.
-        eps (float): tolerance for stopping the iterative procedure.
-        show_plot (boolean): flag controlling whether plots are displayed.
+    Parameters
+    ----------
+    signal : numpy.ndarray or darsia.Image
+        Input signal, assumed to be a 2d colour image.
+    mask : numpy.ndarray or darsia.Image, optional
+        Boolean array flagging pixels of interest; by default all pixels.
+    samples : list of slices, optional
+        2d regions of interest; None means the full region.
+    filter : callable, optional
+        Preprocessing applied to the signal before analysis (e.g. a Gaussian
+        filter). Default: identity.
+    num_clusters : int, optional
+        Number of clusters to extract. Default 5.
+    num_attempts : int, optional
+        Number of attempts to find the best clusters. Default 100.
+    num_iterations : int, optional
+        Maximum iterations of the iterative procedure. Default 200.
+    eps : float, optional
+        Stopping tolerance for the iterative procedure. Default 0.1.
+    mode : {"most_common", "least_common", "all"}, optional
+        What to return. Default ``"most_common"``.
+    show_plot : bool, optional
+        Display plots. Default False.
 
-    Returns:
-        np.ndarray: characteristic colors for chosen samples, if mode is "most_common" or
-            "least_common".
-        Tuple[np.ndarray]: labels and palettes for chosen samples, if mode is "all".
-
+    Returns
+    -------
+    numpy.ndarray or tuple of numpy.ndarray
+        Characteristic colours for the chosen samples when ``mode`` is
+        ``"most_common"`` / ``"least_common"``; a ``(labels, palettes)`` tuple
+        when ``mode`` is ``"all"``.
     """
     # Define default inputs if not provided
     if samples is None:

@@ -6,6 +6,8 @@ logger = logging.getLogger(__name__)
 
 
 def timing_decorator(func):
+    """Decorator logging the wall-clock execution time of ``func``."""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         start = time()

@@ -105,6 +105,12 @@ class EOTF:
 
 
 class ExperimentalColorCorrection(darsia.BaseCorrection):
+    """Colour correction that locates the colour checker automatically.
+
+    Convenient when the chart position is only approximately known, but less
+    robust than :class:`ColorCorrection` on high-resolution images.
+    """
+
     def __init__(
         self,
         config: Optional[dict] = None,

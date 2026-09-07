@@ -15,6 +15,8 @@ from darsia.presets.workflows.config.time_data import TimeWindow
 
 # TODO rm.
 class Experiment(ABC):
+    """Abstract base for an experiment exposing thermodynamic state."""
+
     @property
     @abstractmethod
     def atmospheric_pressure(self): ...
@@ -37,6 +39,8 @@ class Experiment(ABC):
 
 
 class ProtocolledExperiment:
+    """An experiment described by its imaging, injection and PT protocol files."""
+
     def __init__(
         self,
         data: list[Path],

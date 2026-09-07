@@ -42,33 +42,34 @@ class ConcentrationAnalysis:
         labels: Optional[darsia.Image] = None,  # TODO rm. not used?
         **kwargs,
     ) -> None:
-        """Constructor of ConcentrationAnalysis.
+        """Set up a concentration analysis.
 
-        Args:
-            base (Image or list of such): baseline image(s); if multiple provided,
-                these are used to define a cleaning filter.
-            signal_reduction (darsia.SignalReduction): reduction from multi-dimensional
-                to 1-dimensional data; default value (None) denotes an identity
-                operation.
-            balancing (darsia.Model, optional): operator balancing the signal, e.g., in
-                different facies; the default value (None) denotes an identity
-                operation.
-            restoration (darsia.TVD, optional): regularizer; the default value (`None`)
-                denotes an identity.
-            model (darsia.Model, optional): Conversion of signals to actual physical
-                data; default value (None) denotes an identity operation.
-            labels (Image, optional): labeled image of domain; the default value (None)
-                denotes the presence of a homogeneous medium.
-            kwargs (keyword arguments): interface to all tuning parameters.
-                - 'diff option': option for defining differences of images
-                    (options: 'positive', 'negative', 'absolute', 'plain')
-                - 'restoration -> model': option for defining order of routines;
-                    if True, restoration is applied before model conversion.
-                - 'verbosity':
-                    - 0: no intermediate results are displayed
-                    - 1: only final result is displayed
-                    - 2: intermediate results are displayed
+        Each processing stage defaults to the identity when its argument is None.
 
+        Parameters
+        ----------
+        base : darsia.Image or list of darsia.Image, optional
+            Baseline image(s); several images define a cleaning filter.
+        signal_reduction : darsia.SignalReduction, optional
+            Reduction from multi-channel to scalar data.
+        balancing : darsia.Model, optional
+            Operator balancing the signal, e.g. across facies.
+        restoration : darsia.TVD, optional
+            Regulariser applied to the scalar signal.
+        model : darsia.Model, optional
+            Conversion of the signal to a physical quantity.
+        labels : darsia.Image, optional
+            Labelled image of the domain; None means a homogeneous medium.
+        **kwargs
+            Tuning parameters::
+
+                "diff option"          "positive" | "negative" | "absolute"
+                                       | "plain"   (how image differences are
+                                       formed)
+                "restoration -> model" if True, restoration runs before the
+                                       model conversion
+                "verbosity"            0 (none) | 1 (final only) | 2 (all
+                                       intermediate results)
         """
         self.base: Optional[darsia.Image] = None
         """Baseline image."""

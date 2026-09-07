@@ -18,17 +18,19 @@ import darsia
 class Resize:
     """Object for resizing 2d arrays.
 
-    Example:
+    Examples
+    --------
+    .. code-block:: python
 
-    import darsia
-    options = {
-        "example resize x": 0.2,
-        "example resize y": 0.5,
-        "example interpolation": "inter_nearest",
-    }
-    resizer = darsia.Resize(key = "example ", **options)
-    img_small = resizer(img_large)
+        import darsia
 
+        options = {
+            "example resize x": 0.2,
+            "example resize y": 0.5,
+            "example interpolation": "inter_nearest",
+        }
+        resizer = darsia.Resize(key="example ", **options)
+        img_small = resizer(img_large)
     """
 
     def __init__(

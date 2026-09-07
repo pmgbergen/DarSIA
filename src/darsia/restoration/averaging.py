@@ -35,10 +35,12 @@ class REV:
 
 
 class VolumeAveraging:
+    """Average a field over representative elementary volumes (:class:`REV`)."""
+
     def __init__(
         self, rev: REV, mask: darsia.Image, labels: Optional[darsia.Image] = None
     ) -> None:
-        """Constructor.
+        """Set up the volume averaging.
 
         Args:
             rev (REV): representative elementary volume

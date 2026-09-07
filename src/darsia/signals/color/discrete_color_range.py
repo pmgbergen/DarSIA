@@ -11,6 +11,8 @@ except ImportError:
 
 
 class DiscreteColorRange(darsia.ColorRange):
+    """A :class:`~darsia.ColorRange` discretised into a fixed number of bins."""
+
     def __init__(self, color_range: darsia.ColorRange, resolution: int = 32):
         self.resolution = resolution
         super().__init__(

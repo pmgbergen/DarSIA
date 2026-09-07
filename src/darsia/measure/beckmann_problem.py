@@ -35,20 +35,24 @@ class MobilityMode(StrEnum):
 class BeckmannProblem(darsia.EMD):
     """Base class for setting up the Beckmann problem.
 
-    The Beckmann problem is defined as the solution to the following
-    optimization problem:
+    The Beckmann problem is the optimisation problem
 
-        inf ||u||_{L^1} s.t. div u = m_2 - m_1, u in H(div).
+    .. math::
 
-    u is the flux, m_1 and m_2 are the mass distributions which are transported by u
-    from m_1 to m_2. The problem is solved approximately, employing an iterative
-    TPFA-type finite volume method. A close connection to the lowest Raviart-Thomas
-    mixed finite element method is exploited.
+        \\inf \\|u\\|_{L^1} \\quad \\text{s.t.} \\quad
+        \\operatorname{div} u = m_2 - m_1, \\; u \\in H(\\operatorname{div}),
 
-    There are two main solution strategies implemented in specialized classes:
-    - Finite Volume Quasi-Newton's method (:class:`WassersteinDistanceNewton`)
-    - Finite Volume Split Bregman method (:class:`WassersteinDistanceBregman`)
+    where :math:`u` is the flux and :math:`m_1`, :math:`m_2` are the mass
+    distributions transported from :math:`m_1` to :math:`m_2`. It is solved
+    approximately with an iterative TPFA-type finite-volume method, exploiting
+    the connection to the lowest-order Raviart-Thomas mixed finite element.
 
+    Two solution strategies are implemented in specialised subclasses:
+
+    - a finite-volume quasi-Newton method
+      (:class:`~darsia.BeckmannNewtonSolver`);
+    - a finite-volume split-Bregman method
+      (:class:`~darsia.BeckmannBregmanSolver`).
     """
 
     # ! ---- Setup routines ----
@@ -59,70 +63,39 @@ class BeckmannProblem(darsia.EMD):
         weight: Optional[darsia.Image] = None,
         options: dict = {},
     ) -> None:
-        """Initialization of the variational Wasserstein distance.
+        """Initialise the variational Wasserstein distance.
 
-        Args:
+        Parameters
+        ----------
+        grid : darsia.Grid
+            Tensor grid associated with the images.
+        weight : darsia.Image, optional
+            Per-pixel weight.
+        options : dict, optional
+            Options for the nonlinear and linear solver. Recognised keys, with
+            their defaults::
 
-            grid (darsia.Grid): tensor grid associated with the images
-            options (dict): options for the nonlinear and linear solver. The following
-                options are supported:
-                - l1_mode (darsia.L1Mode): mode for computing the l1 dissipation. Defaults to
-                    "RAVIART_THOMAS". Supported modes are:
-                    - "RAVIART_THOMAS": Apply exact integration of RT0 extensions into
-                        cells. Underlying functional for mixed finite element method
-                        (MFEM).
-                    - "CONSTANT_SUBCELL_PROJECTION": Apply subcell_based projection onto
-                        constant vectors and sum up. Equivalent to a mixed finite volume
-                        method (FV).
-                    - "CONSTANT_CELL_PROJECTION": Apply cell-based L2 projection onto
-                        constant vectors and sum up. Simpler calculation than
-                        subcell-projection, but not directly connected to any
-                        discretization.
-                - mobility_mode (MobilityMode): mode for computing the mobility. Defaults to
-                    MobilityMode.CELL_BASED. Supported modes are:
-                    - CELL_BASED: Cell-based mode determines the norm of the fluxes on
-                        the faces via averaging of neighboring cells.
-                    - CELL_BASED_ARITHMETIC: Cell-based mode determines the norm of
-                        the fluxes on the faces via arithmetic averaging of neighboring
-                        cells.
-                    - CELL_BASED_HARMONIC: Cell-based mode determines the norm of the
-                        fluxes on the faces via harmonic averaging of neighboring cells.
-                    - SUBCELL_BASED: Subcell-based mode determines the norm of the
-                        fluxes on the faces via averaging of neighboring subcells.
-                    - FACE_BASED: Face-based mode determines the norm of the fluxes on
-                        the faces via direct computation on the faces.
-                - num_iter (int): maximum number of iterations. Defaults to 100.
-                - tol_residual (float): tolerance for the residual. Defaults to
-                    np.finfo(float).max.
-                - tol_increment (float): tolerance for the increment. Defaults to
-                    np.finfo(float).max.
-                - tol_distance (float): tolerance for the distance. Defaults to
-                    np.finfo(float).max.
-                - L (float): regularization parameter for the Newton and Bregman method.
-                    Represents an approximate flux norm (scalar or vector). Defaults to
-                    1.0.
-                - linear_solver (str): type of linear solver. Defaults to "direct".
-                    Supported solvers are:
-                    - "direct": direct solver
-                    - "amg": algebraic multigrid solver
-                    - "cg": conjugate gradient solver preconditioned with AMG
-                    - "ksp": PETSc KSP solver
-                - formulation (str): formulation of the linear system. Defaults to
-                    "pressure". Supported formulations are:
-                    - "full": full system
-                    - "flux_reduced": reduced system with fluxes eliminated
-                    - "pressure": reduced system with fluxes and lagrange multiplier
-                        eliminated
-                - linear_solver_options (dict): options for the linear solver. Defaults
-                    to {}.
-                - amg_options (dict): options for the AMG solver. Defaults to {}.
-                - aa_depth (int): depth of the Anderson acceleration. Defaults to 0.
-                - aa_restart (int): restart of the Anderson acceleration. Defaults to
-                    None.
-                - regularization (float): regularization parameter for avoiding division
-                    by zero. Defaults to np.finfo(float).eps.
-                - lumping (bool): lump the mass matrix. Defaults to True.
-
+                l1_mode (darsia.L1Mode)      "RAVIART_THOMAS"
+                    "RAVIART_THOMAS"              exact RT0 integration (MFEM)
+                    "CONSTANT_SUBCELL_PROJECTION" subcell L2 projection (mixed FV)
+                    "CONSTANT_CELL_PROJECTION"    cell-based L2 projection
+                mobility_mode (MobilityMode) MobilityMode.CELL_BASED
+                    CELL_BASED / CELL_BASED_ARITHMETIC / CELL_BASED_HARMONIC /
+                    SUBCELL_BASED / FACE_BASED    face flux-norm averaging scheme
+                num_iter (int)               100     max iterations
+                tol_residual (float)         inf     residual tolerance
+                tol_increment (float)        inf     increment tolerance
+                tol_distance (float)         inf     distance tolerance
+                L (float)                    1.0     regularisation / approx flux norm
+                linear_solver (str)          "direct"  ("direct"|"amg"|"cg"|"ksp")
+                formulation (str)            "pressure"
+                    ("full"|"flux_reduced"|"pressure")   what is eliminated
+                linear_solver_options (dict) {}
+                amg_options (dict)           {}
+                aa_depth (int)               0       Anderson acceleration depth
+                aa_restart (int)             None    Anderson acceleration restart
+                regularization (float)       eps     avoid division by zero
+                lumping (bool)               True    lump the mass matrix
         """
         # Cache geometrical infos
         self.grid = grid

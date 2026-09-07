@@ -41,27 +41,27 @@ class TranslationEstimator:
         mask_dst: Optional[np.ndarray] = None,
         plot_matches: bool = False,
     ) -> tuple:
-        """Find translation to align two images through feature matching.
+        """Find a translation aligning two images through feature matching.
 
-        All lengths are measured in number of pixels.
+        All lengths are in pixels.
 
-        Args:
-            img_src (np.ndarray): source image
-            img_dst (np.ndarray): destination image
-            roi_src (tuple of slices): region of interested associated to the source image
-            roi_dst (tuple of slices): region of interested associated to the destination image
-            mask_src (np.ndarray, optional): boolean mask detecting considered pixels in
-                the analysis; if None, all pixels are considered.
-            mask_dst (np.ndarray, optional): boolean mask detecting considered pixels in
-                the analysis; if None, all pixels are considered.
-            plot_matches (bool): flag controlling whether the matching features are plotted;
-                useful for debugging; default value is False
+        Parameters
+        ----------
+        img_src, img_dst : numpy.ndarray
+            Source and destination images.
+        roi_src, roi_dst : tuple of slices, optional
+            Regions of interest in the source and destination images.
+        mask_src, mask_dst : numpy.ndarray, optional
+            Boolean masks of the pixels considered; None means all pixels.
+        plot_matches : bool, optional
+            Plot the matched features (debugging). Default False.
 
-        Returns:
-            np.ndarray: transformation matrix operating on pixel coordinates using reverse
-                matrix indexing
-            bool: flag indicating whether the procedure was successful
-
+        Returns
+        -------
+        matrix : numpy.ndarray
+            Transformation matrix on pixel coordinates (reverse matrix indexing).
+        success : bool
+            Whether the procedure succeeded.
         """
         # Make several attempts to find a matching transformation.
         # First attempt to match both images, using a homography.

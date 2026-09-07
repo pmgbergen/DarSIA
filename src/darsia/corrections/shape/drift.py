@@ -22,21 +22,19 @@ class DriftCorrection(darsia.BaseCorrection):
         base: Optional[Union[np.ndarray, darsia.Image]] = None,
         config: Optional[dict] = None,
     ) -> None:
-        """Constructor.
+        """Set up the drift correction.
 
-        Args:
-            base (array or Image): baseline.
-            config (dict): config file for initialization of images. Main
-                attributes:
-                - roi (2-tuple  or array): region of interest defining
-                    the considered area for detecting features and aligning
-                    images. Either as tuple of ranges, or array of points.
-                    Can also be provided in config; roi in config is
-                    prioritized.
-                - padding (float): relative factor for padding.
-                - active (bool): flag whether drift correction should be
-                    applied or not, default is True.
+        Parameters
+        ----------
+        base : numpy.ndarray or darsia.Image
+            Baseline image.
+        config : dict, optional
+            Configuration. Recognised keys::
 
+                roi (2-tuple of ranges | ndarray of points)
+                    area used for feature detection and alignment
+                padding (float)   relative padding factor
+                active (bool)     apply the correction (default True)
         """
         # Read baseline image
         if isinstance(base, darsia.Image):

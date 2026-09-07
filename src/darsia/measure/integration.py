@@ -16,17 +16,15 @@ import darsia
 
 
 class Geometry:
-    """
-    Class containing information of the geometry.
+    """Geometry of a physical domain, supporting geometric integration.
 
-    Also allows for geometrical integration.
+    Examples
+    --------
+    .. code-block:: python
 
-    Example:
-
-    dimensions = {"width": 1., "height": 2., "depth": 0.1}
-    shape = (20,10)
-    geometry = darsia.Geometry(shape, **dimensions)
-
+        dimensions = {"width": 1.0, "height": 2.0, "depth": 0.1}
+        shape = (20, 10)
+        geometry = darsia.Geometry(shape, **dimensions)
     """
 
     def __init__(

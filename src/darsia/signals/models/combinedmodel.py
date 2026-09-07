@@ -15,6 +15,8 @@ import darsia
 
 
 class CombinedModel(darsia.Model):
+    """A :class:`~darsia.Model` that applies a list of models in sequence."""
+
     def __init__(self, models: list[darsia.Model]) -> None:
         # Cache models
         self.models = models

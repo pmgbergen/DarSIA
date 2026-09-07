@@ -285,7 +285,7 @@ class Grid:
 
 
 def generate_grid(image: darsia.Image) -> Grid:
-    """Get grid object."""
+    """Build a :class:`Grid` matching an image's voxel count and voxel size."""
     shape = image.num_voxels
     voxel_size = image.voxel_size
     return Grid(shape, voxel_size)

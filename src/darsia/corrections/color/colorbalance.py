@@ -197,6 +197,8 @@ class AffineBalance(BaseBalance):
 
 
 class AdaptiveBalance(AffineBalance):
+    """Affine colour balance whose scaling and translation adapt to the data."""
+
     def __init__(self) -> None:
         self.balance_scaling: np.ndarray = np.eye(3)
         """Balance scaling matrix."""

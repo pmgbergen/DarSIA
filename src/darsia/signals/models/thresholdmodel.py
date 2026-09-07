@@ -11,17 +11,18 @@ import darsia
 
 
 class ThresholdModel:
-    """
-    Manager of available thresholding models.
+    """Manager of the available thresholding models.
 
-    Example:
-    options = {
-        "example threshold dynamic": False,
-        "example threshold value": 0.2,
-    }
-    static_threshold_model = darsia.ThresholdModel(key = "example ", **options)
-    mask = static_threshold_model(img)
+    Examples
+    --------
+    .. code-block:: python
 
+        options = {
+            "example threshold dynamic": False,
+            "example threshold value": 0.2,
+        }
+        model = darsia.ThresholdModel(key="example ", **options)
+        mask = model(img)
     """
 
     def __init__(

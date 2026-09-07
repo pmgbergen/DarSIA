@@ -307,11 +307,7 @@ class DiffeomorphicImageRegistration:
 
 
 class MultiscaleDiffeomorphicImageRegistration:
-    """
-    Class for multiscale diffeomorphic image registration
-    being capable of tracking larger deformations.
-
-    """
+    """Multiscale diffeomorphic image registration, for larger deformations."""
 
     def __init__(
         self,
@@ -321,15 +317,18 @@ class MultiscaleDiffeomorphicImageRegistration:
         total_config: Optional[dict] = None,
         **kwargs,
     ) -> None:
-        """
-        Args:
-            img_dst (darsia.Image): reference image which is supposed to be
-                fixed in the analysis, serves as destination object.
-            config (list of config): hierrachy of config dictionaries.
-            mask_dst (np.ndarray): active mask
-            total_config (dict): parameters for image registration for the
-                overall image registration.
+        """Set up the multiscale registration.
 
+        Parameters
+        ----------
+        img_dst : darsia.Image
+            Reference image, held fixed in the analysis (the destination).
+        config : dict or list of dict
+            Hierarchy of per-level configuration dictionaries.
+        mask_dst : numpy.ndarray, optional
+            Active mask.
+        total_config : dict, optional
+            Parameters for the final, overall registration.
         """
         # Cache inputs
         self.img_dst = img_dst
@@ -488,26 +487,35 @@ class MultiscaleDiffeomorphicImageRegistration:
 
 
 class ImageRegistration:
+    """Patch-wise registration of an image onto a fixed destination image.
+
+    Estimates a displacement field (e.g. from sand settling or compaction) that
+    can be evaluated at arbitrary points or applied to another image.
+    """
+
     def __init__(
         self,
         img_dst: darsia.Image,
         method: Optional[str] = None,
         **kwargs,
     ) -> None:
-        """Constructor for DiffeomorphicImageRegistration.
+        """Set up the image registration.
 
-        Args:
-            dst (darsia.Image): reference image which is supposed to be fixed in the analysis,
-                serves as destination object.
-            optional keyword arguments:
-                N_patches (list of two int, or lits of such): number of patches in x and
-                    y direction
-                rel_overlap (float, or list of such): relative overlap in each direction,
-                    related to the patch size
-                max_features (int, or list of such) maximal number of features in the
-                    feature detection
-                tol (float, or list of such): tolerance
-                mask (np.ndarray, optional): roi in which features are considered.
+        Parameters
+        ----------
+        img_dst : darsia.Image
+            Reference image, held fixed in the analysis (the destination).
+        method : str, optional
+            Registration method.
+        **kwargs
+            Multiscale parameters, each a value or a list (one entry per
+            level)::
+
+                N_patches      list of two int -- patches in x and y
+                rel_overlap    float -- relative patch overlap per direction
+                max_features   int -- max features in the feature detection
+                tol            float -- tolerance
+                mask           ndarray -- ROI in which features are considered
         """
         assert method in [None, "multilevel", "onelevel"]
 

@@ -16,6 +16,8 @@ import darsia
 
 
 class HistogrammBasedThresholding:
+    """Pick a threshold from a smoothed signal histogram."""
+
     def __init__(self) -> None:
         # Define tuning parameters for defining histograms,
         # and smooth them. NOTE: They should be in general chosen

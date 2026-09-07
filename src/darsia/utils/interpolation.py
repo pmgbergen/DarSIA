@@ -17,18 +17,20 @@ def interpolate_measurements_2d(
     measurements: tuple[np.ndarray, np.ndarray, np.ndarray],
     coordinate_system: darsia.CoordinateSystem,
 ) -> np.ndarray:
-    """Determine a voxeled spatial map from measurements through RBF interpolation.
+    """Build a voxelised spatial map from scattered measurements by RBF interpolation.
 
-    Arguments:
-         measurements (tuple[np.ndarray, np.ndarray, np.ndarray]): tuple of x, y, and data
-            measurements, providing the input for interpolation.
-        shape (tuple of int): target shape of the output map.
-        coordinate_system (darsia.CoordinateSystem): coordinate system of the
-            correspoinding physical image.
+    Parameters
+    ----------
+    measurements : tuple of numpy.ndarray
+        ``(x, y, data)`` arrays providing the interpolation input.
+    coordinate_system : darsia.CoordinateSystem
+        Coordinate system of the corresponding physical image; sets the output
+        shape.
 
-    Returns:
-        np.ndarray: map
-
+    Returns
+    -------
+    numpy.ndarray
+        The interpolated map.
     """
     assert len(measurements) == 3, "Measurements must be a tuple of (x, y, data)."
     # Create an interpolation object from data.

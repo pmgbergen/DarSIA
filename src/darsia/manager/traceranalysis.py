@@ -14,6 +14,12 @@ import darsia
 
 
 class TracerAnalysis(ABC, darsia.ConcentrationAnalysisBase):
+    """Manager wiring a baseline plus config into a tracer-concentration pipeline.
+
+    Subclass and implement ``define_tracer_analysis`` to specify the
+    signal-to-concentration conversion.
+    """
+
     def __init__(
         self,
         baseline: Union[str, Path, list[str], list[Path]],

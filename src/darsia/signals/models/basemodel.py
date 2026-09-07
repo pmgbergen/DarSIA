@@ -14,6 +14,13 @@ import darsia
 
 
 class Model:
+    """Base class for signal-to-quantity models.
+
+    A model is a callable mapping a scalar signal (array or :class:`~darsia.Image`)
+    to a physical quantity such as a concentration or saturation. Subclasses
+    implement ``__call__`` and, where calibratable, expose ``num_parameters``.
+    """
+
     @abc.abstractmethod
     @overload
     def __call__(self, signal: np.ndarray) -> np.ndarray: ...
@@ -49,6 +56,8 @@ class Model:
 
 
 class HeterogeneousModel(Model):
+    """Apply a different :class:`Model` per region of a labelled image."""
+
     def __init__(
         self,
         obj: Model | list[Model] | dict[int, Model],

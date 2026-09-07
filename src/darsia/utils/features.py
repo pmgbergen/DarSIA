@@ -25,23 +25,28 @@ class FeatureDetection:
         mask: Optional[np.ndarray] = None,
         max_features: int = 200,
     ) -> tuple:
-        """
-        Extract features from an image.
+        """Extract features from an image.
 
-        Args:
-            img (np.ndarray): image array
-            roi (tuple of two slices, optional): region of interest; by default the
-                entire image is considered
-            max_features (int): maximal number of features to be extracted
-            mask (np,ndarray, optional): region of interest for features to be considered
-                or ignored; default is None which identifies all features as relevant.
+        Parameters
+        ----------
+        img : numpy.ndarray
+            Image array.
+        roi : tuple of two slices, optional
+            Region of interest; by default the whole image.
+        mask : numpy.ndarray, optional
+            Region in which features are considered; None means all features.
+        max_features : int, optional
+            Maximum number of features to extract. Default 200.
 
-        Returns:
-            tuple: tuple of
-                kps: keypoints of the features; note keypoints come in (col, row),
-                    i.e., reversed matrix indexing
-                np.ndarray: descriptors of the features
-            bool: flag indicating whether features have been found
+        Returns
+        -------
+        keypoints : list
+            Feature keypoints, given as ``(col, row)`` (reversed matrix
+            indexing).
+        descriptors : numpy.ndarray
+            Feature descriptors.
+        success : bool
+            Whether any features were found.
         """
 
         # Restrict image and mask to ROI
