@@ -37,7 +37,7 @@ uv run python -m darsia.gui
 
 You should see an empty window like this:
 
-![Blank DarSIA window on first launch](images/00-blank-window.png)
+![Blank DarSIA window on first launch](images/placeholder.png)
 
 ## A tour of the main window
 

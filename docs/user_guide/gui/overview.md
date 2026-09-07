@@ -1,17 +1,20 @@
 # DarSIA GUI Guide
 
 A from-scratch, beginner-friendly tutorial for the DarSIA GUI, for people
-picking up DarSIA for the first time. Every screenshot here is a real capture of
-the app (not a mockup), and every TOML snippet is taken from `sample_config.toml`
-(next to this guide), the running example throughout.
+picking up DarSIA for the first time. Every TOML snippet is taken from
+`sample_config.toml` (next to this guide), the running example throughout.
+
+:::{warning}
+This guide is a work in progress. The screenshots are placeholders and will be
+replaced with real captures of the app.
+:::
 
 :::{note}
 `sample_config.toml` is a complete, realistic FluidFlower configuration; only the
-file-system paths (`/path/to/experiment/...`) are placeholders. The screenshots
-were taken with a real run of it. To use it on your own experiment, edit the
-paths in `[data]`, `[protocols]`, `[labeling]`, `[facies]` and `[depth]`, and
-re-run Setup and Calibration from scratch (the crop corners and calibration
-values are specific to one rig, camera and lighting).
+file-system paths (`/path/to/experiment/...`) are placeholders. To use it on your
+own experiment, edit the paths in `[data]`, `[protocols]`, `[labeling]`,
+`[facies]` and `[depth]`, and re-run Setup and Calibration from scratch (the crop
+corners and calibration values are specific to one rig, camera and lighting).
 :::
 
 ## Who this is for

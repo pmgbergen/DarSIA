@@ -2,8 +2,8 @@
 
 This chapter walks the whole pipeline once, top to bottom, using
 `sample_config.toml` — a real,
-complete config for a FluidFlower experiment. Every screenshot below
-is the actual GUI with this file loaded.
+complete config for a FluidFlower experiment. The screenshots below are
+placeholders for now (see the warning on the guide's overview page).
 
 ## Step 0 — Open the config
 
@@ -30,7 +30,7 @@ height = 0.55
 dim = "2"
 ```
 
-![Setup → Rig tab, width/height/dim fields](images/01-setup-rig.png)
+![Setup → Rig tab, width/height/dim fields](images/placeholder.png)
 
 **Protocols** (`[protocols]`) — because a protocol file is a per-folder
 mapping, selecting *Protocols* also surfaces the underlying **Data** section
@@ -53,7 +53,7 @@ pressure_temperature = "/path/to/experiment/protocols/pressure_temperature_proto
 "/path/to/experiment/images" = "/path/to/experiment/protocols/imaging_protocol.csv"
 ```
 
-![Setup → Protocols surfaces the Data section: folders, format, baseline image, results folder](images/02-setup-protocols.png)
+![Setup → Protocols surfaces the Data section: folders, format, baseline image, results folder](images/placeholder.png)
 
 Other Setup steps not screenshotted here but present in `sample_config.toml`:
 
@@ -106,7 +106,7 @@ histogram_weighting = "wls"
 ignore_labels = [0]
 ```
 
-![Calibration → Color Path settings](images/03-calibration-color.png)
+![Calibration → Color Path settings](images/placeholder.png)
 
 **Mass** (`[calibration.mass]`) — selecting *Mass* pulls in the same color
 embedding plus the mass-specific fields further down the form:
@@ -121,7 +121,7 @@ rois = ["calibration"]
 embedding = "color_path"
 ```
 
-![Calibration → Mass settings, with the referenced color embedding above it](images/04-calibration-mass.png)
+![Calibration → Mass settings, with the referenced color embedding above it](images/placeholder.png)
 
 `calibration_mode = "auto"` fits the color-path automatically from the
 calibration images; `mode = "manual"` for mass calibration means the
@@ -159,7 +159,7 @@ color = "color_path"
 active = ["contour_smoother_selection"]
 ```
 
-![Analysis → Mass settings: export fields, color embedding, data selection, formats, ROI](images/05-analysis-mass.png)
+![Analysis → Mass settings: export fields, color embedding, data selection, formats, ROI](images/placeholder.png)
 
 Each entry in `export` becomes its own output folder under
 `<results>/<mode>/<format>/`, e.g. `results/mass/jpg/`.
@@ -179,7 +179,7 @@ alpha = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 linewidth = 16
 ```
 
-![Analysis → Segmentation, aqueous layer config](images/06-analysis-segmentation.png)
+![Analysis → Segmentation, aqueous layer config](images/placeholder.png)
 
 **Fingers** (`[analysis.fingers]`) — detects viscous-fingering features:
 
@@ -194,7 +194,7 @@ fill_holes = true
 gradient_mode = "saturation_g"
 ```
 
-![Analysis → Fingers configuration](images/07-analysis-fingers.png)
+![Analysis → Fingers configuration](images/placeholder.png)
 
 Run everything configured for this run:
 
@@ -223,7 +223,7 @@ mode = "none"
 data_selection = ["baseline"]
 ```
 
-![Helper → ROI, mode + data selection](images/08-helper-roi.png)
+![Helper → ROI, mode + data selection](images/placeholder.png)
 
 **ROI Viewer** (`[helper.roi_viewer]`) — page through images with a chosen
 ROI mask overlaid, to sanity-check ROI definitions before using them in
@@ -234,7 +234,7 @@ Analysis:
 data_selection = ["baseline"]
 ```
 
-![Helper → ROI Viewer, data selection](images/09-helper-roi-viewer.png)
+![Helper → ROI Viewer, data selection](images/placeholder.png)
 
 `sample_config.toml` also configures `[helper.results]` (browse stored `npz`/`csv`
 analysis output with min/max/sum/integral stats) and `[helper.color]`
