@@ -29,7 +29,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
-    "sphinx.ext.napoleon",  # transitional: NumPy-style is the migration target
+    "numpydoc",
     "sphinx.ext.linkcode",
     "sphinx.ext.doctest",
     "matplotlib.sphinxext.plot_directive",
@@ -37,8 +37,6 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_gallery.gen_gallery",
     "myst_nb",
-    # "numpydoc",                    # swap in for napoleon once the whole codebase
-    #                                # is NumPy-style (currently mixed Google/NumPy)
 ]
 
 templates_path = ["_templates"]
@@ -83,13 +81,6 @@ autodoc_default_options = {
     "inherited-members": False,
 }
 
-# -- Napoleon (renders both Google- and NumPy-style during the migration) ----
-
-napoleon_google_docstring = True
-napoleon_numpy_docstring = True
-napoleon_include_init_with_doc = False
-napoleon_use_rtype = False
-napoleon_use_ivar = True  # render Attributes as a field list, avoids autodoc dupes
 
 # -- MyST / notebooks -------------------------------------------------------
 
@@ -221,3 +212,46 @@ def linkcode_resolve(domain, info):
         f"https://github.com/pmgbergen/darsia/blob/{_REVISION}/"
         f"{rel_path}#L{start}-L{end}"
     )
+
+
+# -- numpydoc ---------------------------------------------------------------
+
+numpydoc_show_class_members = False
+numpydoc_class_members_toctree = False
+numpydoc_xref_param_type = True
+
+
+def _skip_enum_str_members(app, what, name, obj, skip, options):
+    """Do not document ``str`` / ``Enum`` machinery inherited by StrEnum classes.
+
+    Their inherited ``str`` methods trip autodoc's signature formatter.
+    """
+    if skip:
+        return None
+    if name in (
+        "startswith",
+        "endswith",
+        "count",
+        "find",
+        "index",
+        "rfind",
+        "rindex",
+        "maketrans",
+        "encode",
+        "format",
+        "format_map",
+        "translate",
+        "removeprefix",
+        "removesuffix",
+    ):
+        return True
+    try:
+        if getattr(obj, "__objclass__", None) in (str, int):
+            return True
+    except Exception:
+        pass
+    return None
+
+
+def setup(app):
+    app.connect("autodoc-skip-member", _skip_enum_str_members)
