@@ -40,10 +40,9 @@ All code under ``src/`` must pass, and CI enforces:
 Type hints are expected on new public functions; ``mypy`` is available as a dev
 dependency (the CI ``mypy`` step is currently disabled).
 
-Docstrings feed the API reference. Both Google-style (``Args:`` / ``Returns:``)
-and NumPy-style (``Parameters`` / ``Returns`` with underlines) are accepted and
-render the same way via ``sphinx.ext.napoleon``; the codebase currently uses a
-mix. NumPy style is preferred for new and substantially edited docstrings.
+Docstrings feed the API reference and must be **NumPy style** (``Parameters`` /
+``Returns`` with underlines), rendered by ``numpydoc``. ``numpydoc validate``
+can lint a docstring against the NumPy conventions.
 
 Running the tests
 =================
