@@ -14,10 +14,10 @@
             "vertical_center_offset": 0
         },
         "crop": {
-            "top_left": [11, 8],
-            "bottom_left": [16, 1755],
-            "bottom_right": [3165, 1748],
-            "top_right": [3165, 5],
+            "top_left": [8, 11],
+            "bottom_left": [1755, 16],
+            "bottom_right": [1748, 3165],
+            "top_right": [5, 3165],
             "width": 2.8,
             "height": 1.5,
             "in meters": true
