@@ -34,12 +34,16 @@ class TranslationAnalysis:
         It allows to determine the translation of any image to a given baseline image
         in order to provide a best-possible match, based on feature detection.
 
-        Args:
-            base (image): baseline image; it serves as fixed point in the analysis,
-                which is relevant if a series of translations is analyzed. Furthermore, the
-                baseline image provides all reference values as the coordinate system, e.g.
-            N_patches (list of two int): number of patches in x and y direction
-            rel_overlap (float): relative overal related to patch size in each direction
+        Parameters
+        ----------
+        base : image
+            Baseline image; it serves as fixed point in the analysis,
+            which is relevant if a series of translations is analyzed. Furthermore, the
+            baseline image provides all reference values as the coordinate system, e.g.
+        N_patches : list of two int
+            Number of patches in x and y direction.
+        rel_overlap : float
+            Relative overal related to patch size in each direction.
         """
         if base.space_dim != 2:
             raise NotImplementedError
@@ -82,10 +86,12 @@ class TranslationAnalysis:
 
         If any of the parameters is changed, a new patch of the base image is created.
 
-        Args:
-            N_patches (list of two int): number of patches in x and y direction
-            rel_overlap (float): relative overal related to patch size in each direction
-
+        Parameters
+        ----------
+        N_patches : list of two int
+            Number of patches in x and y direction.
+        rel_overlap : float
+            Relative overal related to patch size in each direction.
         """
         # Check if any update is needed
         need_update_N_patches = N_patches is not None and N_patches != self.N_patches
@@ -107,9 +113,10 @@ class TranslationAnalysis:
     def update_base(self, base: darsia.Image) -> None:
         """Update baseline image.
 
-        Args:
-            base (darsia.Image): baseline image
-
+        Parameters
+        ----------
+        base : darsia.Image
+            Baseline image.
         """
         self.base = base
         self.update_base_patches()
@@ -128,10 +135,12 @@ class TranslationAnalysis:
     ) -> None:
         """Load an image to be inspected in futher analysis.
 
-        Args:
-            img (Image): test image.
-            mask (Image): mask to be considered in the analysis.
-
+        Parameters
+        ----------
+        img : Image
+            Test image.
+        mask : Image
+            Mask to be considered in the analysis.
         """
         self.img = img
 
@@ -155,16 +164,22 @@ class TranslationAnalysis:
         The final translation map will be stored as callable function. And it allows
         various input and output spaces (metric vs. pixel).
 
-        Args:
-            units (list of str): units for input (first entry) and output (second entry)
-                ranges of the resulting translation map; accepts either "metric"
-                or "pixel".
-            mask (np.ndarray, optional): boolean mask marking all pixels to be considered;
-                all if mask is None (default).
+        Parameters
+        ----------
+        units : list of str
+            Units for input (first entry) and output (second entry)
+            ranges of the resulting translation map; accepts either "metric"
+            or "pixel".
+        mask : np.ndarray, optional
+            Boolean mask marking all pixels to be considered;
+            all if mask is None (default).
 
-        Returns:
-            Callable: translation map defined as interpolator
-            bool: flag indicating on which patches the routine has been successful
+        Returns
+        -------
+        Callable
+            Translation map defined as interpolator.
+        bool
+            Flag indicating on which patches the routine has been successful.
         """
         # Assert correct units
         assert all([unit in ["metric", "pixel"] for unit in units])
@@ -315,12 +330,17 @@ class TranslationAnalysis:
         the displacement in x-direction at the vertical boundaries of the
         image.
 
-        Args:
-            units (list of str): "metric" or "pixel"
+        Parameters
+        ----------
+        units : list of str
+            "metric" or "pixel".
 
-        Returns:
-            list of np.ndarray: coordinates
-            list of float: translation in x direction
+        Returns
+        -------
+        list of np.ndarray
+            Coordinates.
+        list of float
+            Translation in x direction.
         """
         # The loop over the boundary will depend on whether the coordinates
         # are interpreted as pixels or in metric units. Define the respective
@@ -366,16 +386,23 @@ class TranslationAnalysis:
         """
         Prescribed (boundary) conditions for the displacement in y direction.
 
-        Args:
-            units (list of str): "metric" or "pixel"
+        Parameters
+        ----------
+        units : list of str
+            "metric" or "pixel".
+
+        Returns
+        -------
+        list of np.ndarray
+            Coordinates.
+        list of float
+            Translation in y direction.
 
         Can be overwritten. Here, tailored to FluidFlower scenarios, fix
-        the displacement in y-direction at the horizontal boundaries of the
-        image.
 
-        Returns:
-            list of np.ndarray: coordinates
-            list of float: translation in y direction
+        the displacement in y-direction at the horizontal boundaries of the
+
+        image.
         """
 
         # The loop over the boundary will depend on whether the coordinates
@@ -409,14 +436,19 @@ class TranslationAnalysis:
         """
         Translate patch centers of the test image.
 
-        Args:
-            reverse (bool): flag whether the translation is understood as from the
-                test image to the baseline image, or reversed. The default is the
-                former latter.
-            units (list of str): "metric" or "pixel"
+        Parameters
+        ----------
+        reverse : bool
+            Flag whether the translation is understood as from the
+            test image to the baseline image, or reversed. The default is the
+            former latter.
+        units : list of str
+            "metric" or "pixel".
 
-        Returns:
-            np.ndarray: deformation in patch centers
+        Returns
+        -------
+        np.ndarray
+            Deformation in patch centers.
         """
         # Only continue if a translation has been already found
         # assert self.have_translation.any()
@@ -455,13 +487,16 @@ class TranslationAnalysis:
         """
         Translate centers of the test image and plot in terms of displacement arrows.
 
-        Args:
-            reverse (bool): flag whether the translation is understood as from the
-                test image to the baseline image, or reversed. The default is the
-                former latter.
-            scaling (float): scaling factor for visual comfort.
-            mask (Image): mask of interest for arrows.
-
+        Parameters
+        ----------
+        reverse : bool
+            Flag whether the translation is understood as from the
+            test image to the baseline image, or reversed. The default is the
+            former latter.
+        scaling : float
+            Scaling factor for visual comfort.
+        mask : Image
+            Mask of interest for arrows.
         """
         # Fetch the patch centers in reverse matrix indexing format
         patch_centers = self.patches_base.global_centers_voxels.reshape((-1, 2))
@@ -620,14 +655,17 @@ class TranslationAnalysis:
         """
         Apply translation to an entire image by using piecwise perspective transformation.
 
-        Args:
-            reverse (bool): flag whether the translation is understood as from the
-                test image to the baseline image, or reversed. The default is the
-                latter.
+        Parameters
+        ----------
+        reverse : bool
+            Flag whether the translation is understood as from the
+            test image to the baseline image, or reversed. The default is the
+            latter.
 
-        Returns:
-            darsia.Image: translated image
-
+        Returns
+        -------
+        darsia.Image
+            Translated image.
         """
 
         # Segment the test image into cells by patching without overlap
@@ -656,12 +694,15 @@ class TranslationAnalysis:
         the translation required to match the baseline image,
         and then apply the translation.
 
-        Args:
-            img (darsia.Image): test image, to be matched with the baseline image
+        Parameters
+        ----------
+        img : darsia.Image
+            Test image, to be matched with the baseline image.
 
-        Returns:
-            darsia.Image: translated image
-
+        Returns
+        -------
+        darsia.Image
+            Translated image.
         """
         self.load_image(img, mask)
         import time
@@ -680,9 +721,11 @@ class TranslationAnalysis:
         Overwrite translation analysis by deducting from external one.
         (Re)defines the interpolation object.
 
-        Args:
-            translation_analysis (darsia.TranslationAnalysis): translation analysis
-                holding an interpolation object.
+        Parameters
+        ----------
+        translation_analysis : darsia.TranslationAnalysis
+            Translation analysis
+            holding an interpolation object.
         """
 
         # ! ---- Step 1. Patch analysis.
@@ -754,9 +797,11 @@ class TranslationAnalysis:
         Add another translation analysis to the existing one.
         Modifies the interpolation object by redefinition.
 
-        Args:
-            translation_analysis (darsia.TranslationAnalysis): Translation analysis holding
-                an interpolation object.
+        Parameters
+        ----------
+        translation_analysis : darsia.TranslationAnalysis
+            Translation analysis holding
+            an interpolation object.
         """
 
         # ! ---- Step 1. Patch analysis.

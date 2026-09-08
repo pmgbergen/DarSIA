@@ -62,10 +62,12 @@ class CombinedModel(darsia.Model):
         """
         Wrapper of update routines of single models.
 
-        Args:
-            parameters (np.ndarray): parameter array
-            pos_model (int): position index addressing a single model.
-
+        Parameters
+        ----------
+        parameters : np.ndarray
+            Parameter array.
+        pos_model : int
+            Position index addressing a single model.
         """
         # Cache a copy of the parameters
         parameters_cache = parameters.copy()
@@ -87,11 +89,14 @@ class CombinedModel(darsia.Model):
     def __getitem__(self, pos_model: int) -> darsia.Model:
         """Access single models.
 
-        Args:
-            pos_model (int): position index addressing a single model.
+        Parameters
+        ----------
+        pos_model : int
+            Position index addressing a single model.
 
-        Returns:
-            darsia.Model: single model
-
+        Returns
+        -------
+        darsia.Model
+            Single model.
         """
         return self.models[pos_model]

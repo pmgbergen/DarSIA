@@ -49,9 +49,10 @@ class ColorSpectrum:
     def colors(self) -> np.ndarray:
         """Compute the absolute color spectrum.
 
-        Returns:
-            np.ndarray: Absolute color spectrum.
-
+        Returns
+        -------
+        np.ndarray
+            Absolute color spectrum.
         """
         if len(self.relative_colors) == 0:
             return np.atleast_2d(self.base_color)
@@ -62,9 +63,10 @@ class ColorSpectrum:
     def relative_colors(self) -> np.ndarray:
         """Compute the effective color spectrum as colors within the color range.
 
-        Returns:
-            np.ndarray: Effective color spectrum.
-
+        Returns
+        -------
+        np.ndarray
+            Effective color spectrum.
         """
         # Convert discrete spectrum indices to colors
         points = np.where(self.spectrum)
@@ -85,12 +87,15 @@ class ColorSpectrum:
     def distance(self, color: np.ndarray) -> np.ndarray | float:
         """Compute the (minimum) distance between a color and the spectrum.
 
-        Args:
-            color (np.ndarray): The color to compare against the spectrum.
+        Parameters
+        ----------
+        color : np.ndarray
+            The color to compare against the spectrum.
 
-        Returns:
-            np.ndarray | float: The computed distance.
-
+        Returns
+        -------
+        np.ndarray | float
+            The computed distance.
         """
         # Compute the distance as the minimum distance to any color in the spectrum
         if len(self.colors) == 0:
@@ -105,9 +110,10 @@ class ColorSpectrum:
     def to_dict(self) -> dict:
         """Convert the color spectrum to a dictionary.
 
-        Returns:
-            dict: Dictionary representation of the color spectrum.
-
+        Returns
+        -------
+        dict
+            Dictionary representation of the color spectrum.
         """
         return {
             "base_color": self.base_color.tolist(),
@@ -120,12 +126,15 @@ class ColorSpectrum:
     def from_dict(cls, data: dict) -> "ColorSpectrum":
         """Create a ColorSpectrum from a dictionary.
 
-        Args:
-            data (dict): Dictionary representation of the color spectrum.
+        Parameters
+        ----------
+        data : dict
+            Dictionary representation of the color spectrum.
 
-        Returns:
-            ColorSpectrum: The created ColorSpectrum instance.
-
+        Returns
+        -------
+        ColorSpectrum
+            The created ColorSpectrum instance.
         """
         return cls(
             base_color=np.array(data["base_color"]),
@@ -137,9 +146,10 @@ class ColorSpectrum:
     def save(self, file_path: Path) -> None:
         """Save the color spectrum to a file.
 
-        Args:
-            file_path (Path): The path to the file where the color spectrum will be saved.
-
+        Parameters
+        ----------
+        file_path : Path
+            The path to the file where the color spectrum will be saved.
         """
         with open(file_path.with_suffix(".json"), "w") as f:
             json.dump(self.to_dict(), f)
@@ -149,13 +159,16 @@ class ColorSpectrum:
     def load(cls, file_path: Path) -> "ColorSpectrum":
         """Load the color spectrum from a file.
 
-        Args:
-            file_path (Path): The path to the file from which the color spectrum will be
-                loaded.
+        Parameters
+        ----------
+        file_path : Path
+            The path to the file from which the color spectrum will be
+            loaded.
 
-        Returns:
-            ColorSpectrum: The loaded color spectrum.
-
+        Returns
+        -------
+        ColorSpectrum
+            The loaded color spectrum.
         """
         with open(file_path.with_suffix(".json"), "r") as f:
             data = json.load(f)
@@ -167,12 +180,17 @@ class ColorSpectrum:
     ) -> np.ndarray:
         """Check if given colors are within the spectrum.
 
-        Args:
-            colors (np.ndarray): Colors to check.
-            color_mode (darsia.ColorMode): Color mode of the input colors.
+        Parameters
+        ----------
+        colors : np.ndarray
+            Colors to check.
+        color_mode : darsia.ColorMode
+            Color mode of the input colors.
 
-        Returns:
-            np.ndarray: Boolean array indicating if each color is in the spectrum.
+        Returns
+        -------
+        np.ndarray
+            Boolean array indicating if each color is in the spectrum.
         """
         if color_mode == darsia.ColorMode.RELATIVE:
             check_colors = colors

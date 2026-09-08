@@ -25,9 +25,10 @@ PathUnit = namedtuple("PathUnit", ["time", "id", "position"])
 class PathEvolutionAnalysis:
     def __init__(self, verbosity: bool = False) -> None:
         """
-        Args:
-            verbosity (bool): verbosity - mostly useful for debugging.
-
+        Parameters
+        ----------
+        verbosity : bool
+            Verbosity - mostly useful for debugging.
         """
 
         self.points: dict[int, np.ndarray] = {}
@@ -42,11 +43,13 @@ class PathEvolutionAnalysis:
     def add(self, points: np.ndarray, time: float | None = None) -> None:
         """Add points for a new time point.
 
-        Args:
-            points (np.ndarray): pixels of points at the new time point.
-            time (float, optional): time corresponding to the new time point;
-                if None, index is used as time.
-
+        Parameters
+        ----------
+        points : np.ndarray
+            Pixels of points at the new time point.
+        time : float, optional
+            Time corresponding to the new time point;
+            if None, index is used as time.
         """
         # Add time to self.times and sort
         if time is None:

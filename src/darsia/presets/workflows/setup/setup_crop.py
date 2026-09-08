@@ -32,9 +32,12 @@ def setup_crop_correction(path: Path | list[Path], show: bool = False) -> None:
     Width and height default to the rig configuration; if not available there,
     the user is prompted for them interactively.
 
-    Args:
-        path: Path(s) to the config file(s).
-        show: Whether to show intermediate results.
+    Parameters
+    ----------
+    path : Path | list[Path]
+        Path(s) to the config file(s).
+    show : bool
+        Whether to show intermediate results.
     """
     logger.info("\033[92mSetting up crop correction...\033[0m")
 

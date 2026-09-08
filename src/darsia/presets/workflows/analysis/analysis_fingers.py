@@ -49,11 +49,14 @@ def _extract_lower_arc(contour: np.ndarray) -> np.ndarray:
     connecting them via the bottom (higher row indices = lower y-values visually).
     Removes the upper arc.
 
-    Args:
-        contour: OpenCV contour format (N, 1, 2)
+    Parameters
+    ----------
+    contour : np.ndarray
+        OpenCV contour format (N, 1, 2).
 
-    Returns:
-        Lower arc contour in same format (N, 1, 2)
+    Returns
+    -------
+        Lower arc contour in same format (N, 1, 2).
     """
     # Convert from (N, 1, 2) to (N, 2) for easier indexing
     contour_2d = contour.squeeze()
@@ -116,10 +119,12 @@ def analysis_fingers_from_context(
 ) -> None:
     """Segmentation analysis using pre-prepared context.
 
-    Args:
-        ctx: Pre-prepared analysis context with color_to_mass_analysis initialized.
-        show: Whether to show the images.
-
+    Parameters
+    ----------
+    ctx : AnalysisContext
+        Pre-prepared analysis context with color_to_mass_analysis initialized.
+    show : bool
+        Whether to show the images.
     """
     assert ctx.config.analysis is not None
     assert ctx.config.analysis.fingers is not None
@@ -1118,12 +1123,16 @@ def analysis_fingers(
 ):
     """Fingers analysis (standalone entry point).
 
-    Args:
-        cls: Rig class.
-        path: Path or list of paths to config files.
-        show: Whether to show the images.
-        all: Whether to use all images.
-
+    Parameters
+    ----------
+    cls : type[Rig]
+        Rig class.
+    path : Path | list[Path]
+        Path or list of paths to config files.
+    show : bool
+        Whether to show the images.
+    all : bool
+        Whether to use all images.
     """
     ctx = prepare_analysis_context(
         cls=cls,

@@ -48,24 +48,30 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
     ) -> np.ndarray:
         """Compute the residual of the solution - the optimality conditions.
 
-        Args:
-            solution (np.ndarray): solution
+        Parameters
+        ----------
+        solution : np.ndarray
+            Solution.
 
-        Returns:
-            np.ndarray: residual
-
+        Returns
+        -------
+        np.ndarray
+            Residual.
         """
         return self.optimality_conditions(solution, beckmann_problem_rhs)
 
     def compute_jacobian(self, solution: np.ndarray) -> sps.linalg.LinearOperator:
         """Compute the Jacobian of the optimality conditions.
 
-        Args:
-            solution (np.ndarray): solution
+        Parameters
+        ----------
+        solution : np.ndarray
+            Solution.
 
-        Returns:
-            sps.linalg.splu: LU factorization of the jacobian
-
+        Returns
+        -------
+        sps.linalg.splu
+            LU factorization of the jacobian.
         """
         return self.exact_linearization(solution)
 
@@ -76,12 +82,17 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
 
         Use a rescaled version of the optimality conditions to avoid division by zero.
 
-        Args:
-            solution (np.ndarray): current solution
-            beckmann_problem_rhs (np.ndarray): rhs
+        Parameters
+        ----------
+        solution : np.ndarray
+            Current solution.
+        beckmann_problem_rhs : np.ndarray
+            Rhs.
 
-        Returns:
-            dict: contributions to the residual
+        Returns
+        -------
+        dict
+            Contributions to the residual.
         """
         # Split residuals into their contributions. Use a rescaled version of the
         # optimality conditions to avoid division by zero.
@@ -100,12 +111,15 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
     ) -> tuple[float, np.ndarray, dict]:
         """Solve the Beckmann problem using Newton's method.
 
-        Args:
-            mass_diff (np.ndarray): difference of mass distributions
+        Parameters
+        ----------
+        mass_diff : np.ndarray
+            Difference of mass distributions.
 
-        Returns:
-            tuple: distance, solution, info
-
+        Returns
+        -------
+        tuple
+            Distance, solution, info.
         """
         # Setup time and memory profiling
         tic = time.time()

@@ -26,17 +26,24 @@ def _H1_regularization_array(
 
     with ||u||_{2,omega}^2 = int omega |u|^2 dx, and similary for the second term.
 
-    Args:
-        img (np.ndarray): image to regularize
-        mu (float): regularization parameter
-        omega (float): weighting of the image term (Should account for denoising
-            effects).
-        dim (int): dimension of the image. Default is 2.
-        solver (da.Solver): solver to use. Default is da.Jacobi().
+    Parameters
+    ----------
+    img : np.ndarray
+        Image to regularize.
+    mu : float
+        Regularization parameter.
+    omega : float
+        Weighting of the image term (Should account for denoising
+        effects).
+    dim : int
+        Dimension of the image. Default is 2.
+    solver : da.Solver
+        Solver to use. Default is da.Jacobi().
 
-    Returns:
-        np.ndarray: regularized image
-
+    Returns
+    -------
+    np.ndarray
+        Regularized image.
     """
 
     # Keep track of input type and convert input image to float for further calculations
@@ -82,17 +89,24 @@ def _H1_regularization_image(
 ) -> da.Image:
     """H1 regularization of darsia.Image.
 
-    Args:
-        img (darsia.Image): image
-        mu (float): regularization parameter
-        omega (float): weighting of the image term (Should account for denoising
-            effects).
-        dim (int): dimension of the image. Default is 2.
-        solver (da.Solver): solver to use. Default is da.Jacobi().
+    Parameters
+    ----------
+    img : darsia.Image
+        Image.
+    mu : float
+        Regularization parameter.
+    omega : float
+        Weighting of the image term (Should account for denoising
+        effects).
+    dim : int
+        Dimension of the image. Default is 2.
+    solver : da.Solver
+        Solver to use. Default is da.Jacobi().
 
-    Returns:
-        darsia.Image: regularized image
-
+    Returns
+    -------
+    darsia.Image
+        Regularized image.
     """
     regularized_img = img.copy()
     regularized_img.img = _H1_regularization_array(
@@ -114,17 +128,24 @@ def H1_regularization(
 ) -> Union[np.ndarray, da.Image]:
     """Inline application of H1 regularization.
 
-    Args:
-        img (np.ndarray or Image): image
-        mu (float): regularization parameter
-        omega (float): weighting of the image term (Should account for denoising
-            effects).
-        dim (int): dimension of the image. Default is 2.
-        solver (da.Solver): solver to use. Default is da.Jacobi().
+    Parameters
+    ----------
+    img : np.ndarray or Image
+        Image.
+    mu : float
+        Regularization parameter.
+    omega : float
+        Weighting of the image term (Should account for denoising
+        effects).
+    dim : int
+        Dimension of the image. Default is 2.
+    solver : da.Solver
+        Solver to use. Default is da.Jacobi().
 
-    Returns:
-        np.ndarray or Image: regularized image (same type as input)
-
+    Returns
+    -------
+    np.ndarray or Image
+        Regularized image (same type as input).
     """
     if isinstance(img, np.ndarray):
         return _H1_regularization_array(

@@ -30,12 +30,15 @@ class Jacobi(da.Solver):
         same shape as the input array, but where each input has the value of the
         accumulation of its neighbors.
 
-        Args:
-            im (np.ndarray): image to accumulate
+        Parameters
+        ----------
+        im : np.ndarray
+            Image to accumulate.
 
-        Returns:
-            np.ndarray: averaged image
-
+        Returns
+        -------
+        np.ndarray
+            Averaged image.
         """
         im_av: np.ndarray = np.zeros_like(im)
         for ax in range(im.ndim):
@@ -62,12 +65,15 @@ class Jacobi(da.Solver):
         possibility to identify pixel sizes with phyiscal mesh sizes. This is a helper
         function for the main Jacobi solver.
 
-        Args:
-            h (float): mesh diameter
+        Parameters
+        ----------
+        h : float
+            Mesh diameter.
 
-        Returns:
-            Union[float, np.ndarray]: diagonal of the stiffness matrix
-
+        Returns
+        -------
+        Union[float, np.ndarray]
+            Diagonal of the stiffness matrix.
         """
         return self.mass_coeff + self.diffusion_coeff * 2 * self.dim / h**2
 
@@ -79,14 +85,19 @@ class Jacobi(da.Solver):
     ) -> np.ndarray:
         """One iteration of a Jacobi solver for linear systems.
 
-        Args:
-            x0 (np.ndarray): initial guess
-            rhs (np.ndarray): right hand side of the linear system
-            h (float): mesh diameter
+        Parameters
+        ----------
+        x0 : np.ndarray
+            Initial guess.
+        rhs : np.ndarray
+            Right hand side of the linear system.
+        h : float
+            Mesh diameter.
 
-        Returns:
-            np.ndarray: approximation to the linear system
-
+        Returns
+        -------
+        np.ndarray
+            Approximation to the linear system.
         """
         x: np.ndarray = x0
 

@@ -135,12 +135,15 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
     ) -> tuple[float, np.ndarray, dict]:
         """Solve the Beckmann problem using GproxPDHG.
 
-        Args:
-            flat_mass_diff (np.ndarray): difference of mass distributions
+        Parameters
+        ----------
+        flat_mass_diff : np.ndarray
+            Difference of mass distributions.
 
-        Returns:
-            tuple: distance, solution, info
-
+        Returns
+        -------
+        tuple
+            Distance, solution, info.
         """
         # Setup time and memory profiling
         tic = time.time()
@@ -382,15 +385,19 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
 
         NOTE: Images need to comply with the setup of the object.
 
-        Args:
-            img_1 (darsia.Image): image 1, source distribution
-            img_2 (darsia.Image): image 2, destination distribution
+        Parameters
+        ----------
+        img_1 : darsia.Image
+            Image 1, source distribution.
+        img_2 : darsia.Image
+            Image 2, destination distribution.
 
-        Returns:
-            float: distance between img_1 and img_2.
-            dict (optional): solution
-            dict (optional): info
-
+        Returns
+        -------
+        float
+            Distance between img_1 and img_2.
+            Dict (optional): solution.
+            Dict (optional): info.
         """
 
         # Compatibilty check
@@ -444,13 +451,17 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
     ) -> np.ndarray:
         """Compute the kantorovich potential from the normal flux
 
-        Args:
-            flat_mass_diff (np.ndarray): difference of mass distributions
-            flux (np.ndarray): flux on the faces
+        Parameters
+        ----------
+        flat_mass_diff : np.ndarray
+            Difference of mass distributions.
+        flux : np.ndarray
+            Flux on the faces.
 
-        Returns:
-            np.ndarray: kantorovich potential
-
+        Returns
+        -------
+        np.ndarray
+            Kantorovich potential.
         """
         full_flux = self.full_flux_reconstructor(flux)
         transport_density_faces = np.linalg.norm(full_flux, axis=1)
@@ -531,12 +542,15 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
     def setup_poisson_solver(self, solver_prefix, rtol=1e-6, permeability_faces=None):
         """Return the Poisson solver.
 
-        Args:
-            permeability_faces (np.ndarray, optional): permeability faces. Defaults to None.
+        Parameters
+        ----------
+        permeability_faces : np.ndarray, optional
+            Permeability faces. Defaults to None.
 
-        Returns:
-            darsia.linalg.KSP: Poisson solver
-
+        Returns
+        -------
+        darsia.linalg.KSP
+            Poisson solver.
         """
 
         self.linear_solver_type = self.options.get("linear_solver", "cg")
@@ -623,12 +637,15 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
     def leray_projection(self, p: np.ndarray) -> np.ndarray:
         """Leray projection of a vector fiels
 
-        Args:
-            p (np.ndarray): pressure
+        Parameters
+        ----------
+        p : np.ndarray
+            Pressure.
 
-        Returns:
-            np.ndarray: divergence free flux
-
+        Returns
+        -------
+        np.ndarray
+            Divergence free flux.
         """
         rhs = self.div.dot(p)
         poisson_solution = self.Poisson_solver.solve(rhs)
@@ -641,12 +658,15 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
 
         Utility function for self.solve_beckmann_problem().
 
-        Args:
-            timings (dict): timings
+        Parameters
+        ----------
+        timings : dict
+            Timings.
 
-        Returns:
-            dict: total time
-
+        Returns
+        -------
+        dict
+            Total time.
         """
         total_timings = {
             "poisson": sum([t["time_poisson"] for t in timings]),

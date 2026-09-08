@@ -43,9 +43,10 @@ class DiscreteColorRange(darsia.ColorRange):
     def color_to_index(self, color: np.ndarray) -> np.ndarray[int]:
         """Convert color array to the respective indices in the discrete color raster.
 
-        Args:
-            color (np.ndarray): Color array of shape (N,3).
-
+        Parameters
+        ----------
+        color : np.ndarray
+            Color array of shape (N,3).
         """
         if len(color.shape) == 1:
             shape = color.shape
@@ -93,9 +94,10 @@ class DiscreteColorRange(darsia.ColorRange):
     def flat_color_index(self, color: np.ndarray) -> np.ndarray:
         """Convert color array to the respective flat indices in the discrete color raster.
 
-        Args:
-            color (np.ndarray): Color array of shape (N,3).
-
+        Parameters
+        ----------
+        color : np.ndarray
+            Color array of shape (N,3).
         """
         indices = self.color_to_index(color)
         flat_indices = self.flatten_index(indices)
@@ -125,9 +127,10 @@ def color_to_index_numba(
 ) -> np.ndarray:
     """Convert color array to the respective indices in the discrete color raster.
 
-    Args:
-        color (np.ndarray): Color array of shape (N,3).
-
+    Parameters
+    ----------
+    color : np.ndarray
+        Color array of shape (N,3).
     """
     assert (
         len(color.shape) == 2 and color.shape[1] == 3

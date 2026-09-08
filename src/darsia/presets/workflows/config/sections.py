@@ -40,12 +40,17 @@ def required_sections(
     for a specific call. For the GUI (which can't know the runtime discriminant), use
     gui_display_sections(func) to get the union of all branches.
 
-    Args:
-        *sections: Unconditional sections (for flat form only).
-        default: Default sections for branching form.
-        when: Nested dict {arg_name: {arg_value: (sections,), ...}, ...}.
+    Parameters
+    ----------
+    *sections : str
+        Unconditional sections (for flat form only).
+    default : tuple[str, ...] | None
+        Default sections for branching form.
+    when : dict[str, dict[str, tuple[str, ...]]] | None
+        Nested dict {arg_name: {arg_value: (sections,), ...}, ...}.
 
-    Returns:
+    Returns
+    -------
         Decorator that stores metadata on func.__required_sections__.
     """
     if sections and (default is not None or when is not None):
@@ -78,15 +83,21 @@ def list_required_sections(
 
     For branching declarations, pass the discriminant argument by name.
 
-    Args:
-        func: A function decorated with @required_sections.
-        **discriminants: For branching declarations, {arg_name: arg_value, ...}.
+    Parameters
+    ----------
+    func : Callable[..., Any]
+        A function decorated with @required_sections.
+    **discriminants : Any
+        For branching declarations, {arg_name: arg_value, ...}.
 
-    Returns:
+    Returns
+    -------
         Tuple of required section names.
 
-    Raises:
-        ValueError: If the function is not decorated or if discriminants don't match.
+    Raises
+    ------
+    ValueError
+        If the function is not decorated or if discriminants don't match.
     """
     if not hasattr(func, "__required_sections__"):
         raise ValueError(f"{func.__name__} is not decorated with @required_sections.")
@@ -135,14 +146,19 @@ def gui_display_sections(func: Callable[..., Any]) -> tuple[str, ...]:
     deduplicated) — a safe superset since the GUI doesn't know the runtime
     discriminant ahead of time.
 
-    Args:
-        func: A function decorated with @required_sections.
+    Parameters
+    ----------
+    func : Callable[..., Any]
+        A function decorated with @required_sections.
 
-    Returns:
+    Returns
+    -------
         Tuple of all potentially required section names.
 
-    Raises:
-        ValueError: If the function is not decorated.
+    Raises
+    ------
+    ValueError
+        If the function is not decorated.
     """
     if not hasattr(func, "__required_sections__"):
         raise ValueError(f"{func.__name__} is not decorated with @required_sections.")

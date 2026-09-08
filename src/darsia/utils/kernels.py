@@ -19,13 +19,17 @@ class BaseKernel(ABC):
     def __call__(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         """Compute kernel between two arrays.
 
-        Args:
-            x (np.ndarray): first array
-            y (np.ndarray): second array
+        Parameters
+        ----------
+        x : np.ndarray
+            First array.
+        y : np.ndarray
+            Second array.
 
-        Returns:
-            np.ndarray: kernel between x and y
-
+        Returns
+        -------
+        np.ndarray
+            Kernel between x and y.
         """
         pass
 
@@ -55,13 +59,17 @@ class LinearKernel(BaseKernel):
     def __call__(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         """Compute kernel between two arrays.
 
-        Args:
-            x (np.ndarray): first array
-            y (np.ndarray): second array
+        Parameters
+        ----------
+        x : np.ndarray
+            First array.
+        y : np.ndarray
+            Second array.
 
-        Returns:
-            np.ndarray: kernel between x and y
-
+        Returns
+        -------
+        np.ndarray
+            Kernel between x and y.
         """
         return np.sum(np.multiply(x, y), axis=-1) + self.a
 
@@ -73,14 +81,19 @@ class LinearKernel(BaseKernel):
     ) -> np.ndarray:
         """Linear combination using a numba version of the Gaussian kernel.
 
-        Args:
-            signal (np.ndarray): signal to be interpolated
-            supports (np.ndarray): supports
-            interpolation_weights (np.ndarray): interpolation weights
+        Parameters
+        ----------
+        signal : np.ndarray
+            Signal to be interpolated.
+        supports : np.ndarray
+            Supports.
+        interpolation_weights : np.ndarray
+            Interpolation weights.
 
-        Returns:
-            np.ndarray: interpolated signal
-
+        Returns
+        -------
+        np.ndarray
+            Interpolated signal.
         """
 
         @numba.jit(
@@ -126,12 +139,17 @@ class GaussianKernel(BaseKernel):
     def __call__(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         """Compute kernel between two arrays.
 
-        Args:
-            x (np.ndarray): first array
-            y (np.ndarray): second array
+        Parameters
+        ----------
+        x : np.ndarray
+            First array.
+        y : np.ndarray
+            Second array.
 
-        Returns:
-            np.ndarray: kernel between x and y
+        Returns
+        -------
+        np.ndarray
+            Kernel between x and y.
         """
         return np.exp(-self.gamma * np.sum(np.multiply(x - y, x - y), axis=-1))
 
@@ -143,14 +161,19 @@ class GaussianKernel(BaseKernel):
     ) -> np.ndarray:
         """Linear combination using a numba version of the Gaussian kernel.
 
-        Args:
-            signal (np.ndarray): signal to be interpolated
-            supports (np.ndarray): supports
-            interpolation_weights (np.ndarray): interpolation weights
+        Parameters
+        ----------
+        signal : np.ndarray
+            Signal to be interpolated.
+        supports : np.ndarray
+            Supports.
+        interpolation_weights : np.ndarray
+            Interpolation weights.
 
-        Returns:
-            np.ndarray: interpolated signal
-
+        Returns
+        -------
+        np.ndarray
+            Interpolated signal.
         """
 
         @numba.jit(

@@ -15,16 +15,22 @@ def load_data(
 ) -> darsia.Image | None:
     """Load data from a given FluidFlowerConfig.
 
-    Args:
-        config (FluidFlowerConfig): Configuration of the experiment.
-        data (Literal["mass"]): Type of data to load. Currently only "mass" is supported.
-        time (float): Time point at which to load the data (in seconds).
-        tol (float | None): Tolerance for time matching (in hours). If None, exact match is
-            required.
+    Parameters
+    ----------
+    config : FluidFlowerConfig
+        Configuration of the experiment.
+    data : Literal["mass"]
+        Type of data to load. Currently only "mass" is supported.
+    time : float
+        Time point at which to load the data (in seconds).
+    tol : float | None
+        Tolerance for time matching (in hours). If None, exact match is
+        required.
 
-    Returns:
-        darsia.Image: Loaded data image.
-
+    Returns
+    -------
+    darsia.Image
+        Loaded data image.
     """
 
     # Fetch available analyzed mass files

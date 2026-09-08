@@ -34,12 +34,16 @@ class AnalysisBase:
 
         Sets up fixed config file required for preprocessing.
 
-        Args:
-            baseline (str, Path or list of such): baseline images, used to
-                set up analysis tools and cleaning tools
-            config (str or Path): path to config dict
-            update_setup (bool): flag controlling whether cache in setup
-                routines is emptied.
+        Parameters
+        ----------
+        baseline : str, Path or list of such
+            Baseline images, used to
+            set up analysis tools and cleaning tools.
+        config : str or Path
+            Path to config dict.
+        update_setup : bool
+            Flag controlling whether cache in setup
+            routines is emptied.
         """
 
         # ! ---- Config
@@ -149,12 +153,15 @@ class AnalysisBase:
         """
         Auxiliary reading methods for darsia Images.
 
-        Args:
-            path (str or Path): path to file.
+        Parameters
+        ----------
+        path : str or Path
+            Path to file.
 
-        Returns:
-            darsia.Image: image corrected for curvature and color.
-
+        Returns
+        -------
+        darsia.Image
+            Image corrected for curvature and color.
         """
         # Use general interface to read image from file and apply correction
         return darsia.imread(
@@ -176,12 +183,15 @@ class AnalysisBase:
         """
         Load image for further analysis. Do all corrections and processing needed.
 
-        Args:
-            path (str or Path): path to image
+        Parameters
+        ----------
+        path : str or Path
+            Path to image.
 
-        Returns:
-            darsia.Image: processed image
-
+        Returns
+        -------
+        darsia.Image
+            Processed image.
         """
 
         # Read and process
@@ -195,10 +205,12 @@ class AnalysisBase:
         """
         Standard workflow to analyze CO2 phases.
 
-        Args:
-            image (Path or Image): path to single image.
-            kwargs: optional keyword arguments
-
+        Parameters
+        ----------
+        image : Path or Image
+            Path to single image.
+        **kwargs
+            Optional keyword arguments.
         """
         raise NotImplementedError("Has to be implemented for each special case.")
 
@@ -206,10 +218,12 @@ class AnalysisBase:
         """
         Standard batch analysis.
 
-        Args:
-            images (list of Path): paths to batch of images.
-            kwargs: optional keyword arguments used in single_image_analysis.
-
+        Parameters
+        ----------
+        images : list of Path
+            Paths to batch of images.
+        **kwargs
+            Optional keyword arguments used in single_image_analysis.
         """
 
         if not isinstance(images, list):

@@ -29,12 +29,16 @@ class StaticThresholdModel(darsia.Model):
         """
         Constructor of StaticThresholdModel.
 
-        Args:
-            threshold_lower (float or list of float): lower threshold value(s)
-            threshold_upper (float or list of float): upper threshold value(s)
-            labels (array): labeled domain
-            return_float (bool): flag controlling whether the output is a float or boolean
-
+        Parameters
+        ----------
+        threshold_lower : float or list of float
+            Lower threshold value(s).
+        threshold_upper : float or list of float
+            Upper threshold value(s).
+        labels : array
+            Labeled domain.
+        return_float : bool
+            Flag controlling whether the output is a float or boolean.
         """
         self.return_float = return_float
 
@@ -95,12 +99,17 @@ class StaticThresholdModel(darsia.Model):
         """
         Convert signal to binary data through thresholding.
 
-        Args:
-            img (np.ndarray): signal
-            mask (np.ndarray, optional): mask
+        Parameters
+        ----------
+        img : np.ndarray
+            Signal.
+        mask : np.ndarray, optional
+            Mask.
 
-        Returns:
-            np.ndarray: boolean mask
+        Returns
+        -------
+        np.ndarray
+            Boolean mask.
         """
         # Apply thresholding directly to the signal
         if self._is_homogeneous:
@@ -121,11 +130,15 @@ class StaticThresholdModel(darsia.Model):
         """
         Convert signal to binary data through thresholding, tailored for the homogeneous case.
 
-        Args:
-            img (np.ndarray): signal
+        Parameters
+        ----------
+        img : np.ndarray
+            Signal.
 
-        Returns:
-            np.ndarray: boolean mask
+        Returns
+        -------
+        np.ndarray
+            Boolean mask.
         """
         if self._threshold_upper is not None:
             return np.logical_and(
@@ -139,11 +152,15 @@ class StaticThresholdModel(darsia.Model):
         Convert signal to binary data through thresholding, tailored for the
         heterogeneous case.
 
-        Args:
-            img (np.ndarray): signal
+        Parameters
+        ----------
+        img : np.ndarray
+            Signal.
 
-        Returns:
-            np.ndarray: boolean mask
+        Returns
+        -------
+        np.ndarray
+            Boolean mask.
         """
         threshold_mask = np.zeros(self._labels.shape[:2], dtype=bool)
         for i, label in enumerate(np.unique(self._labels)):

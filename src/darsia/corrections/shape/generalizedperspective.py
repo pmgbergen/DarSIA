@@ -63,9 +63,10 @@ class GeneralizedPerspectiveTransformation(darsia.BaseTransformation):
     def set_parameters_as_vector(self, parameters: np.array) -> None:
         """Set parameters of generalized perspective transformation.
 
-        Args:
-            parameters (np.array): parameters of generalized perspective transformation
-
+        Parameters
+        ----------
+        parameters : np.array
+            Parameters of generalized perspective transformation.
         """
         assert len(parameters) <= len(self.default_parameters)
         self.A = parameters[:4].reshape((2, 2))
@@ -84,26 +85,30 @@ class GeneralizedPerspectiveTransformation(darsia.BaseTransformation):
     ) -> np.ndarray:
         """Application of generalized perspective to coordinate array.
 
-        Args:
-            x (np.ndarray, Coordinate, Voxel or corresponding Array of such):
-                point to be transformed, type must match predefined input type
+        Parameters
+        ----------
+        x : np.ndarray, Coordinate, Voxel or corresponding Array of such
+            Point to be transformed, type must match predefined input type.
 
-        Returns:
-            output_dtype or output_array_dtype: warped point in predefined output type
-
+        Returns
+        -------
+        output_dtype or output_array_dtype
+            Warped point in predefined output type.
         """
         raise NotImplementedError("Evaluation not implemented")
 
     def inverse_array(self, x: np.ndarray) -> np.ndarray:
         """Evaluation of inverse generalized perspective to coordinate array.
 
-        Args:
-            x (np.ndarray, Coordinate, Voxel or corresponding Array of such):
-                point to be transformed, type must match predefined input type
+        Parameters
+        ----------
+        x : np.ndarray, Coordinate, Voxel or corresponding Array of such
+            Point to be transformed, type must match predefined input type.
 
-        Returns:
-            output_dtype or output_array_dtype: warped point in predefined output type
-
+        Returns
+        -------
+        output_dtype or output_array_dtype
+            Warped point in predefined output type.
         """
         # Convert to transpose format
         x_arr = x.astype(float).T
@@ -293,12 +298,15 @@ class GeneralizedPerspectiveCorrection(darsia.TransformationCorrection):
     def correct_metadata(self, metadata: dict = {}) -> dict:
         """Extract metadata from the config file.
 
-        Args:
-            metadata (dict, optional): metadata dictionary to be updated. Defaults to {}.
+        Parameters
+        ----------
+        metadata : dict, optional
+            Metadata dictionary to be updated. Defaults to {}.
 
-        Returns:
-            dict: metadata
-
+        Returns
+        -------
+        dict
+            Metadata.
         """
         return {
             "dimensions": self.dst_dimensions,

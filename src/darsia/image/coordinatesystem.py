@@ -17,17 +17,15 @@ class CoordinateSystem:
     This implicitly concludes that the coordinate system is directly related
     to a certain fixed indexing, provided at initialization. Conversion maps
     from voxels to coordinates and vice-versa are provided.
-
-    Attributes:
-
     """
 
     def __init__(self, img: darsia.Image):
         """Generate a coordinate system based on the metadata of an existing image.
 
-        Args:
-            img (darsia.Image): image for which a coordinate system shall be constructed.
-
+        Parameters
+        ----------
+        img : darsia.Image
+            Image for which a coordinate system shall be constructed.
         """
 
         assert img.indexing in ["i", "ij", "ijk"], f"Indexing not supported."
@@ -90,9 +88,10 @@ class CoordinateSystem:
     def voxels(self) -> darsia.VoxelArray:
         """Voxel array of image, collecting all voxels.
 
-        Returns:
-            VoxelArray: voxel array of image
-
+        Returns
+        -------
+        VoxelArray
+            Voxel array of image.
         """
         if not hasattr(self, "_voxels"):
             self._voxels = darsia.make_voxel(
@@ -104,9 +103,10 @@ class CoordinateSystem:
     def coordinates(self) -> darsia.CoordinateArray:
         """Coordinate array of image, collecting all coordinates.
 
-        Returns:
-            CoordinateArray: coordinate array of image
-
+        Returns
+        -------
+        CoordinateArray
+            Coordinate array of image.
         """
         if not hasattr(self, "_coordinates"):
             self._coordinates = self.coordinate(self.voxels)
@@ -117,13 +117,17 @@ class CoordinateSystem:
         Convert number of voxels/voxels to metric units, when interpreting
         in some given axis.
 
-        Args:
-            num (int or array): number(s) of voxels/voxels
-            axis (str): axis "x", "y", or "z"
+        Parameters
+        ----------
+        num : int or array
+            Number(s) of voxels/voxels.
+        axis : str
+            Axis "x", "y", or "z".
 
-        Returns:
-            float or array: length in metric units
-
+        Returns
+        -------
+        float or array
+            Length in metric units.
         """
         assert axis in self.axes
         return num * self.voxel_size[axis]
@@ -135,13 +139,17 @@ class CoordinateSystem:
         Convert length in metric units to number of voxels, when interpreting
         the length in some given axis.
 
-        Args:
-            length (float or 1d array of floats): length(s) in metric units
-            axis (str): axis "x", "y", or "z"
+        Parameters
+        ----------
+        length : float or 1d array of floats
+            Length(s) in metric units.
+        axis : str
+            Axis "x", "y", or "z".
 
-        Returns:
-            int or array: number(s) of voxels
-
+        Returns
+        -------
+        int or array
+            Number(s) of voxels.
         """
         # Include all touched voxels; use therefore ceil.
         assert axis in self.axes
@@ -163,13 +171,17 @@ class CoordinateSystem:
 
         Handles both single and multiple voxels.
 
-        Arguments:
-            voxel (np.ndarray, list, tuple, Coordinate, or Voxel): voxel location in the
-                same format as the indexing of the underlying baseline image (see __init__);
-                one voxel per row.
+        Parameters
+        ----------
+        voxel : np.ndarray, list, tuple, Coordinate, or Voxel
+            Voxel location in the
+            same format as the indexing of the underlying baseline image (see __init__);
+            one voxel per row.
 
-        Returns:
-            np.ndarray: corresponding coordinate in (x,y) format
+        Returns
+        -------
+        np.ndarray
+            Corresponding coordinate in (x,y) format.
         """
         # Convert list to array
         if isinstance(voxel, tuple):
@@ -205,13 +217,16 @@ class CoordinateSystem:
 
         Handles both single and multiple coordinates.
 
-        Arguments:
-            coordinate (np.ndarray, list, Coordinate or Voxel): coordinate in Cartesian
-                format, i.e., [x,y,z]; one coordinate per row.
+        Parameters
+        ----------
+        coordinate : np.ndarray, list, Coordinate or Voxel
+            Coordinate in Cartesian
+            format, i.e., [x,y,z]; one coordinate per row.
 
-        Returns:
-            np.ndarray: corresponding pixels in "ij"/"ijk" format.
-
+        Returns
+        -------
+        np.ndarray
+            Corresponding pixels in "ij"/"ijk" format.
         """
         # Convert list to array
         if isinstance(coordinate, list):
@@ -241,12 +256,15 @@ class CoordinateSystem:
         """
         Conversion from vectors (relative distances) in terms of pixels to coordinates.
 
-        Arguments:
-            pixel_vector (np.ndarray): vector(s) in pixel plane (one vector per row)
+        Parameters
+        ----------
+        pixel_vector : np.ndarray
+            Vector(s) in pixel plane (one vector per row).
 
-        Returns:
-            np.ndarray: coordinate vector(s) in Cartesian format.
-
+        Returns
+        -------
+        np.ndarray
+            Coordinate vector(s) in Cartesian format.
         """
         # Aim at handling both single coordinates stored in a 1d array as well as
         # multiple coordinates stored in a 2d array. Convert to the more general
@@ -280,15 +298,21 @@ def check_equal_coordinatesystems(
     """Check whether two coordinate systems are equivalent, i.e., they share basic
     attributes.
 
-    Args:
-        coordinatesystem1 (CoordinateSystem): first coordinate system
-        coordinatesystem2 (CoordinateSystem): second coordinate system
-        exclude_size (bool): flag controlling whether the size quantities are exluded.
+    Parameters
+    ----------
+    coordinatesystem1 : CoordinateSystem
+        First coordinate system.
+    coordinatesystem2 : CoordinateSystem
+        Second coordinate system.
+    exclude_size : bool
+        Flag controlling whether the size quantities are exluded.
 
-    Returns:
-        bool: True iff the two coordinate systems are equivalent.
-        dict: log of the failed checks.
-
+    Returns
+    -------
+    bool
+        True iff the two coordinate systems are equivalent.
+    dict
+        Log of the failed checks.
     """
     success = True
     failure_log = []

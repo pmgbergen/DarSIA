@@ -48,14 +48,22 @@ class MultiphaseTimeSeriesData(TimeSeriesData):
     ) -> None:
         """Append a new data point to the multiphase data.
 
-        Args:
-            time (float): Time at which the data was recorded.
-            name (str): Name for the data point, e.g. name of raw image.
-            mass_g (float): Mass of the gaseous phase at this time point.
-            mass_aq (float): Mass of the aqueous phase at this time point.
-            exact_mass_tot (Optional[float]): Exact/expected total mass.
-            volume_g (float): Volume of the gaseous phase at this time point.
-            volume_aq (float): Volume of the aqueous phase at this time point.
+        Parameters
+        ----------
+        time : float
+            Time at which the data was recorded.
+        name : str
+            Name for the data point, e.g. name of raw image.
+        mass_g : float
+            Mass of the gaseous phase at this time point.
+        mass_aq : float
+            Mass of the aqueous phase at this time point.
+        exact_mass_tot : Optional[float]
+            Exact/expected total mass.
+        volume_g : float
+            Volume of the gaseous phase at this time point.
+        volume_aq : float
+            Volume of the aqueous phase at this time point.
         """
         self.time.append(time)
         self.name.append(name)
@@ -87,10 +95,11 @@ class MultiphaseTimeSeriesData(TimeSeriesData):
 
         The comparison is drawn based on the total and exact mass (reference).
 
-        Args:
-            tol (float): Absolute or relative threshold for the mass difference.
-                Default is np.inf, which means no cleaning.
-
+        Parameters
+        ----------
+        tol : float
+            Absolute or relative threshold for the mass difference.
+            Default is np.inf, which means no cleaning.
         """
         # Determine indices where the relative error is below the threshold (to be kept)
         error = np.abs(

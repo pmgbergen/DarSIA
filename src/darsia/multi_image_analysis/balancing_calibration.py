@@ -37,9 +37,10 @@ class AbstractBalancingCalibration:
         """
         Abstract method to define an objective function.
 
-        Returns:
-            callable: objective function.
-
+        Returns
+        -------
+        callable
+            Objective function.
         """
         pass
 
@@ -50,10 +51,12 @@ class AbstractBalancingCalibration:
         Wrapper for updating the balancing (provided as a model),
         depending on whether it is a single model or a combined model.
 
-        Args:
-            parameters (np.ndarray): model parameters,
-            options (dict): further tuning parameters and extra info.
-
+        Parameters
+        ----------
+        parameters : np.ndarray
+            Model parameters,
+        options : dict
+            Further tuning parameters and extra info.
         """
         # Check whether the balancing is part of a combined model,
         # and possibly determine position of the model
@@ -74,14 +77,18 @@ class AbstractBalancingCalibration:
         NOTE: Require to combine darsia.ConcentrationAnalysis with a calibration
         model mixin via multiple inheritance.
 
-        Args:
-            images (list of darsia.Image): calibration images
-            options (dict): container holding tuning information for the numerical
-                calibration routine
+        Parameters
+        ----------
+        images : list of darsia.Image
+            Calibration images.
+        options : dict
+            Container holding tuning information for the numerical
+            calibration routine.
 
-        Returns:
-            bool: success of the calibration study.
-
+        Returns
+        -------
+        bool
+            Success of the calibration study.
         """
         # Apply the same steps as in __call__ to all images, until before balancing is applied.
 
@@ -136,16 +143,23 @@ class ContinuityBasedBalancingCalibrationMixin(AbstractBalancingCalibration):
         """
         Define objective function such that the root is the min.
 
-        Args:
-            input_images (list of np.ndarray): input for _convert_signal
-            images_diff (list of np.ndarray): plain differences wrt background image
-            relative_times (list of float): times
-            options (dict): dictionary with objective value, here the injection rate
+        Parameters
+        ----------
+        input_images : list of np.ndarray
+            Input for _convert_signal.
+        images_diff : list of np.ndarray
+            Plain differences wrt background image.
+        relative_times : list of float
+            Times.
+        options : dict
+            Dictionary with objective value, here the injection rate.
 
-        Returns:
-            np.ndarray: optimized model parameters
-            bool: success flag
-
+        Returns
+        -------
+        np.ndarray
+            Optimized model parameters.
+        bool
+            Success flag.
         """
 
         # ! ---- Safety check
@@ -179,10 +193,11 @@ class ContinuityBasedBalancingCalibrationMixin(AbstractBalancingCalibration):
         """
         Find thick contours of labeled image.
 
-        Args:
-            options (dict): dictionary with possibility to tune
-                the definition and detection of a thick contour.
-
+        Parameters
+        ----------
+        options : dict
+            Dictionary with possibility to tune
+            the definition and detection of a thick contour.
         """
 
         # Cache label info
@@ -297,13 +312,17 @@ class ContinuityBasedBalancingCalibrationMixin(AbstractBalancingCalibration):
         Starting from a boolean array identifying a region, find
         the contours with a user-defined bandwidth.
 
-        Args:
-            labeled_mask (np.ndarray): boolean array identifying a connected region.
-            thickness (int): contour thickness obtained through dilation
+        Parameters
+        ----------
+        labeled_mask : np.ndarray
+            Boolean array identifying a connected region.
+        thickness : int
+            Contour thickness obtained through dilation.
 
-        Returns:
-            np.ndarray: boolean array identifying a band width of the contours
-
+        Returns
+        -------
+        np.ndarray
+            Boolean array identifying a band width of the contours.
         """
         # Determine the contours of the labeled mask
         contours, _ = cv2.findContours(
@@ -332,15 +351,17 @@ class ContinuityBasedBalancingCalibrationMixin(AbstractBalancingCalibration):
         self, images: list[np.ndarray], options: dict
     ) -> np.ndarray:
         """
+        Parameters
+        ----------
+        images : list of np.ndarray
+            Signals which in principle went
+            through ConcentrationAnalysis.__call__() including
+            ConcentrationAnalysis._convert_signal().
 
-        Args:
-            images (list of np.ndarray): signals which in principle went
-                through ConcentrationAnalysis.__call__() including
-                ConcentrationAnalysis._convert_signal()
-
-        Returns:
-            np.ndarray: suggested heterogeneous scaling
-
+        Returns
+        -------
+        np.ndarray
+            Suggested heterogeneous scaling.
         """
         # Strategy: Quantify the discontinuity jump of the signal at
         # all boundaries between different segments. These are stored

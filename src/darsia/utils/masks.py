@@ -11,10 +11,12 @@ class Masks:
     def __init__(self, labels: darsia.Image, return_label: bool = False) -> None:
         """Constructor.
 
-        Args:
-            labels (Image): labeled image
-            return_label (bool): flag controlling whether iterator also returns labels
-
+        Parameters
+        ----------
+        labels : Image
+            Labeled image.
+        return_label : bool
+            Flag controlling whether iterator also returns labels.
         """
         self.labels: darsia.Image = labels
         """Label image."""
@@ -28,8 +30,10 @@ class Masks:
     def size(self) -> int:
         """Return routine for total number of labels.
 
-        Returns:
-            int: number of labels
+        Returns
+        -------
+        int
+            Number of labels.
         """
         return self.num_labels
 
@@ -41,8 +45,10 @@ class Masks:
     def __next__(self) -> darsia.Image:
         """Next iterations.
 
-        Returns:
-            Image: next mask
+        Returns
+        -------
+        Image
+            Next mask.
         """
         if self.counter < self.num_labels:
             mask = self[self.counter]
@@ -58,12 +64,15 @@ class Masks:
     def __getitem__(self, key) -> darsia.Image:
         """Access to specific mask.
 
-        Args:
-            key (int): counter (not the label!)
+        Parameters
+        ----------
+        key : int
+            Counter (not the label!).
 
-        Returns:
-            Image: mask associated to counter
-
+        Returns
+        -------
+        Image
+            Mask associated to counter.
         """
         mask = self.labels.img == self.unique_labels[key]
         return darsia.Image(img=mask, **self.labels.metadata())

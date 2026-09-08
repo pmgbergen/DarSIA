@@ -104,9 +104,12 @@ class ConfigController:
         'active' list within that sub-dict to match exactly the stages present
         in the preset. Preserves the currently-displayed tab/view and tab index.
 
-        Args:
-            key_path: Dot-separated config path (e.g. "corrections.curvature").
-            preset_dict: Normalized dict from a preset
+        Parameters
+        ----------
+        key_path : str
+            Dot-separated config path (e.g. "corrections.curvature").
+        preset_dict : dict
+            Normalized dict from a preset.
             (e.g. CurvatureCorrectionConfig.to_dict()).
         """
         # Flush any pending edits from other tabs/sections *before* mutating config_dict,

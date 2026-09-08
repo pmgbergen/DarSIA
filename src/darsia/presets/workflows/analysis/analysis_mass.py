@@ -72,10 +72,12 @@ def analysis_mass_from_context(
 ) -> None:
     """Mass analysis using pre-prepared context.
 
-    Args:
-        ctx: Pre-prepared analysis context with color_to_mass_analysis initialized.
-        show: Whether to show the images.
-
+    Parameters
+    ----------
+    ctx : AnalysisContext
+        Pre-prepared analysis context with color_to_mass_analysis initialized.
+    show : bool
+        Whether to show the images.
     """
     assert ctx.config.data is not None
     assert ctx.config.analysis is not None
@@ -364,12 +366,16 @@ def analysis_mass(
 ):
     """Mass analysis (standalone entry point).
 
-    Args:
-        cls: Rig class.
-        path: Path or list of paths to config files.
-        show: Whether to show the images.
-        all: Whether to use all images.
-
+    Parameters
+    ----------
+    cls : type[Rig]
+        Rig class.
+    path : Path | list[Path]
+        Path or list of paths to config files.
+    show : bool
+        Whether to show the images.
+    all : bool
+        Whether to use all images.
     """
     ctx = prepare_analysis_context(
         cls=cls,

@@ -220,12 +220,17 @@ class CategorySection(QWidget):
         self, action: str, category_label: str, category_icon: str, groups: list
     ):
         """
-        Args:
-            action: category identifier (e.g. "setup", "calibration")
-            category_label: display name (e.g. "Setup")
-            category_icon: qtawesome icon name (e.g. "fa5s.cogs")
-            groups: list of (group_label, items) tuples, where items is list of
-                    (label, checkbox_id, icon_name, help_text) tuples
+        Parameters
+        ----------
+        action : str
+            Category identifier (e.g. "setup", "calibration").
+        category_label : str
+            Display name (e.g. "Setup").
+        category_icon : str
+            Qtawesome icon name (e.g. "fa5s.cogs").
+        groups : list
+            List of (group_label, items) tuples, where items is list of
+            (label, checkbox_id, icon_name, help_text) tuples.
         """
         super().__init__()
         self.action = action
@@ -349,9 +354,11 @@ class Sidebar(QWidget):
 
     def __init__(self, categories_data: dict):
         """
-        Args:
-            categories_data: dict mapping action -> (category_label, category_icon, groups)
-                            where groups is list of (group_label, items) tuples
+        Parameters
+        ----------
+        categories_data : dict
+            Dict mapping action -> (category_label, category_icon, groups)
+            where groups is list of (group_label, items) tuples.
         """
         super().__init__()
         self.categories_data = categories_data

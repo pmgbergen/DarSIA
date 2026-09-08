@@ -29,11 +29,14 @@ class TracerAnalysis(ABC, darsia.ConcentrationAnalysisBase):
         """
         Constructor for TracerAnalysis.
 
-        Args:
-            baseline (str, Path or list of such): see darsia.AnalysisBase.
-            config_source (str or Path): see darsia.AnalysisBase.
-            update_setup (bool): see darsia.AnalysisBase.
-
+        Parameters
+        ----------
+        baseline : str, Path or list of such
+            See darsia.AnalysisBase.
+        config : str or Path
+            See darsia.AnalysisBase.
+        update_setup : bool
+            See darsia.AnalysisBase.
         """
         # Call constructor of AnalysisBase
         super().__init__(baseline, config, update_setup)
@@ -76,13 +79,18 @@ class TracerAnalysis(ABC, darsia.ConcentrationAnalysisBase):
     ) -> Union[darsia.Image, tuple[darsia.Image, float]]:
         """Extract tracer from currently loaded image, based on a reference image.
 
-        Args:
-            return_volume (bool): flag controlling whether the volume of the
-                fluid in the porous geometry is returned.
+        Parameters
+        ----------
+        return_volume : bool
+            Flag controlling whether the volume of the
+            fluid in the porous geometry is returned.
 
-        Returns:
-            darsia.Image: image array of spatial concentration map
-            float, optional: occupied volume by the fluid in porous geometry
+        Returns
+        -------
+        darsia.Image
+            Image array of spatial concentration map.
+        float, optional
+            Occupied volume by the fluid in porous geometry.
         """
         # Make a copy of the current image
         img = self.img.copy()

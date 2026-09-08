@@ -33,13 +33,17 @@ class AffineTransformation(darsia.BaseTransformation):
     ) -> None:
         """Constructor for identity encoded as affine transformation.
 
-        Args:
-            dim (int): dimension of the Euclidean space
+        Parameters
+        ----------
+        dim : int
+            Dimension of the Euclidean space.
 
-        Raises:
-            ValueError: if not sufficient input data is provided.
-            ValueError: if dimension not 2 or 3.
-
+        Raises
+        ------
+        ValueError
+            If not sufficient input data is provided.
+        ValueError
+            If dimension not 2 or 3.
         """
         # Pre-define management of input/output types
         super().__init__()
@@ -66,13 +70,16 @@ class AffineTransformation(darsia.BaseTransformation):
     ) -> None:
         """Set-access of parameters of map.
 
-        Args:
-            translation (array, optional): translation vector.
-            scaling (float, optional): scaling value.
-            rotation (array, optional): rotation angles in radians for the rotation
-                around the x, y, and z axis, respectively. In 2d, the length is 1. In
-                3d, the length is 3.
-
+        Parameters
+        ----------
+        translation : array, optional
+            Translation vector.
+        scaling : float, optional
+            Scaling value.
+        rotation : array, optional
+            Rotation angles in radians for the rotation
+            around the x, y, and z axis, respectively. In 2d, the length is 1. In
+            3d, the length is 3.
         """
         if translation is not None:
             self.translation = translation
@@ -123,12 +130,13 @@ class AffineTransformation(darsia.BaseTransformation):
     def set_parameters_as_vector(self, parameters: np.ndarray) -> None:
         """Wrapper for set_parameters.
 
-        Args:
-            parameters (array): all parameters concatenated as array. In 2d, the length
-                is either 3 (translation, rotation) or 4 (translation, scaling,
-                rotation). In 3d, the length is either 6 (translation, rotation) or 7
-                (translation, scaling, rotation).
-
+        Parameters
+        ----------
+        parameters : array
+            All parameters concatenated as array. In 2d, the length
+            is either 3 (translation, rotation) or 4 (translation, scaling,
+            rotation). In 3d, the length is either 6 (translation, rotation) or 7
+            (translation, scaling, rotation).
         """
         num_rotations_dofs: int = 1 if self.dim == 2 else self.dim
         if self.isometry:
@@ -265,12 +273,15 @@ class AffineTransformation(darsia.BaseTransformation):
     def call_array(self, x: np.ndarray) -> np.ndarray:
         """Application of map to arrays.
 
-        Args:
-            x (np.ndarray): (collection of) dim-dimensional Euclidean vector
+        Parameters
+        ----------
+        x : np.ndarray
+            (collection of) dim-dimensional Euclidean vector.
 
-        Returns:
-            np.ndarray: function values of affine map
-
+        Returns
+        -------
+        np.ndarray
+            Function values of affine map.
         """
         num, dim = x.shape
         assert dim == self.dim
@@ -283,12 +294,15 @@ class AffineTransformation(darsia.BaseTransformation):
     def inverse_array(self, x: np.ndarray) -> np.ndarray:
         """Application of inverse of the map to arrays.
 
-        Args:
-            x (np.ndarray): (collection of) dim-dimensional Euclidean vector,
+        Parameters
+        ----------
+        x : np.ndarray
+            (collection of) dim-dimensional Euclidean vector,
 
-        Returns:
-            np.ndarray: function values of affine inverse map
-
+        Returns
+        -------
+        np.ndarray
+            Function values of affine inverse map.
         """
         num, dim = x.shape
         assert dim == self.dim
@@ -367,17 +381,19 @@ class AffineCorrection(darsia.TransformationCorrection):
     def save(self, path: Path) -> None:
         """Save the correction to npz file.
 
-        Args:
-            path (Path): path to the file
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file.
         """
         raise NotImplementedError("Method not implemented yet.")
 
     def load(self, path: Path) -> None:
         """Load the correction from npz file.
 
-        Args:
-            path (Path): path to the file
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file.
         """
         raise NotImplementedError("Method not implemented yet.")

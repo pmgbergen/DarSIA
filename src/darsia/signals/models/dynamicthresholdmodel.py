@@ -32,13 +32,19 @@ class HistogrammBasedThresholding:
         """
         Dynamic thresholding of signal in provided roi.
 
-        Args:
-            signal (np.ndarray): signal
-            roi (np.ndarray): boolean array identifying the considered region
+        Parameters
+        ----------
+        signal : np.ndarray
+            Signal.
+        roi : np.ndarray
+            Boolean array identifying the considered region.
 
-        Returns:
-            float: new threshold value.
-            bool: identifier for success.
+        Returns
+        -------
+        float
+            New threshold value.
+        bool
+            Identifier for success.
         """
         # Reduce the signal to the effective mask
         active_signal_values = np.ravel(signal)[np.ravel(roi)]
@@ -62,14 +68,19 @@ class HistogrammBasedThresholding:
         """
         Abstract method for some histogram analysis.
 
-        Args:
-            active_signal_values (np.ndarray): 1d array with all signal values
-            hist (np.ndarray): 1d array, histogram
+        Parameters
+        ----------
+        active_signal_values : np.ndarray
+            1d array with all signal values.
+        hist : np.ndarray
+            1d array, histogram.
 
-        Returns:
-            float, optional: determined threshold value
-            bool: flag controlling whether the analysis has been successful.
-
+        Returns
+        -------
+        float, optional
+            Determined threshold value.
+        bool
+            Flag controlling whether the analysis has been successful.
         """
         pass
 
@@ -86,14 +97,19 @@ class StandardOtsu(HistogrammBasedThresholding):
         """
         Standard Otsu method for provided histogram.
 
-        Args:
-            active_signal_values (np.ndarray): 1d array with all signal values
-            hist (np.ndarray): 1d array, histogram
+        Parameters
+        ----------
+        active_signal_values : np.ndarray
+            1d array with all signal values.
+        hist : np.ndarray
+            1d array, histogram.
 
-        Returns:
-            float, optional: determined threshold value
-            bool: flag controlling whether the analysis has been successful.
-
+        Returns
+        -------
+        float, optional
+            Determined threshold value.
+        bool
+            Flag controlling whether the analysis has been successful.
         """
         otsu_index = skimage.filters.threshold_otsu(hist=hist)
         otsu_threshold = np.min(active_signal_values) + otsu_index / self._bins * (
@@ -128,13 +144,19 @@ class TwoPeakHistogrammAnalysis(HistogrammBasedThresholding):
                 determine something like a "first local min" based
                 on relative criteria.
 
-        Args:
-            active_signal_values (np.ndarray): 1d array with all signal values
-            hist (np.ndarray): 1d array, histogram
+        Parameters
+        ----------
+        active_signal_values : np.ndarray
+            1d array with all signal values.
+        hist : np.ndarray
+            1d array, histogram.
 
-        Returns:
-            float, optional: determined threshold value
-            bool: flag controlling whether the analysis has been successful.
+        Returns
+        -------
+        float, optional
+            Determined threshold value.
+        bool
+            Flag controlling whether the analysis has been successful.
         """
         # Initialize output
         new_threshold = None
@@ -346,10 +368,11 @@ class TwoPeakHistogrammAnalysis(HistogrammBasedThresholding):
         Abstract method for determining the index corresponding
         to the full histogramm, to define the threshold value.
 
-        Returns:
-            int: index in histogram self._hist corresponding
-                to considered threshold value.
-
+        Returns
+        -------
+        int
+            Index in histogram self._hist corresponding
+            to considered threshold value.
         """
         pass
 
@@ -368,10 +391,11 @@ class GlobalMinTwoPeakHistogrammAnalysis(TwoPeakHistogrammAnalysis):
         on the global minimum attained between two peaks,
         i.e., operating on the restricted histogram.
 
-        Returns:
-            int: index in histogram self._hist corresponding
-                to considered threshold value.
-
+        Returns
+        -------
+        int
+            Index in histogram self._hist corresponding
+            to considered threshold value.
         """
         # Identify the global minimum as separator of signals
         restricted_global_min_index = np.argmin(self._restricted_hist)
@@ -397,10 +421,11 @@ class OtsuTwoPeakHistogrammAnalysis(TwoPeakHistogrammAnalysis):
         on the global minimum attained between two peaks,
         i.e., operating on the restricted histogram.
 
-        Returns:
-            int: index in histogram self._hist corresponding
-                to considered threshold value.
-
+        Returns
+        -------
+        int
+            Index in histogram self._hist corresponding
+            to considered threshold value.
         """
         otsu_index = skimage.filters.threshold_otsu(hist=self._hist)
 
@@ -424,12 +449,18 @@ class DynamicThresholdModel(darsia.StaticThresholdModel):
         """
         Constructor of DynamicThresholdModel.
 
-        Args:
-            method (str): method name
-            threshold_lower (float or list of float): lower threshold value boundary
-            threshold_upper (float or list of float): upper threshold value boundary
-            labels (array): labeled domain
-            key (str): prefix for options
+        Parameters
+        ----------
+        method : str
+            Method name.
+        threshold_lower : float or list of float
+            Lower threshold value boundary.
+        threshold_upper : float or list of float
+            Upper threshold value boundary.
+        labels : array
+            Labeled domain.
+        key : str
+            Prefix for options.
         """
         # Determine threshold strategy and lower and upper bounds.
         threshold_method = (
@@ -484,12 +515,17 @@ class DynamicThresholdModel(darsia.StaticThresholdModel):
         """
         Main method. Adapt thresholds and apply thresholding.
 
-        Args:
-            img (np.ndarray): image
-            mask (np.ndarray, optional): boolean mask of interest
+        Parameters
+        ----------
+        img : np.ndarray
+            Image.
+        mask : np.ndarray, optional
+            Boolean mask of interest.
 
-        Returns:
-            np.ndarray: booelean mask identifying signal according to current threshold values.
+        Returns
+        -------
+        np.ndarray
+            Booelean mask identifying signal according to current threshold values.
         """
         self.calibrate([img], mask)
         return super().__call__(img, mask)
@@ -509,8 +545,10 @@ class DynamicThresholdModel(darsia.StaticThresholdModel):
         """
         Adapt threshold values globally using a dynamic stratgey.
 
-        Args:
-            img (list of np.ndarray): image(s)
+        Parameters
+        ----------
+        img : list of np.ndarray
+            Image(s).
         """
         raise NotImplementedError(
             "Currently the dynamic thresholding is only implemented for heterogeneous media."
@@ -523,8 +561,10 @@ class DynamicThresholdModel(darsia.StaticThresholdModel):
         """
         Adapt threshold values for each label using a dynamic strategy.
 
-        Args:
-            img (list of np.ndarray): image(s)
+        Parameters
+        ----------
+        img : list of np.ndarray
+            Image(s).
         """
         # Extract main image for calibration
         assert len(img) == 1

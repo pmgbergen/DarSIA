@@ -19,22 +19,26 @@ class BaseBalance(ABC):
 
         This routine defines the color balance of an image by finding a linear transformation.
 
-        Args:
-            swatches_src (np.ndarray): Source swatches.
-            swatches_dst (np.ndarray): Destination swatches.
-
+        Parameters
+        ----------
+        swatches_src : np.ndarray
+            Source swatches.
+        swatches_dst : np.ndarray
+            Destination swatches.
         """
         ...
 
     def apply_balance(self, img: np.ndarray) -> np.ndarray:
         """Apply the color balance to an image.
 
-        Args:
-            img (np.ndarray): Image to apply the color balance to.
+        Parameters
+        ----------
+        img : np.ndarray
+            Image to apply the color balance to.
 
-        Returns:
-            balanced_img (np.ndarray): Balanced image.
-
+        Returns
+        -------
+            Balanced_img (np.ndarray): Balanced image.
         """
         balanced_img = img @ self.balance_scaling
         return balanced_img
@@ -42,14 +46,18 @@ class BaseBalance(ABC):
     def __call__(self, img, swatches_src, swatches_dst) -> np.ndarray:
         """Apply the color balance to an image.
 
-        Args:
-            img (np.ndarray): Image to apply the color balance to.
-            swatches_src (np.ndarray): Source swatches.
-            swatches_dst (np.ndarray): Destination swatches.
+        Parameters
+        ----------
+        img : np.ndarray
+            Image to apply the color balance to.
+        swatches_src : np.ndarray
+            Source swatches.
+        swatches_dst : np.ndarray
+            Destination swatches.
 
-        Returns:
-            balanced_img (np.ndarray): Balanced image.
-
+        Returns
+        -------
+            Balanced_img (np.ndarray): Balanced image.
         """
         self.find_balance(swatches_src, swatches_dst)
         balanced_img = self.apply_balance(img)
@@ -67,21 +75,26 @@ class ColorBalance(BaseBalance):
     def find_balance(self, swatches_src: np.ndarray, swatches_dst) -> None:
         """Find the color balance of an image.
 
-        Args:
-            swatches_src (np.ndarray): Source swatches.
-            swatches_dst (np.ndarray): Destination swatches.
-
+        Parameters
+        ----------
+        swatches_src : np.ndarray
+            Source swatches.
+        swatches_dst : np.ndarray
+            Destination swatches.
         """
 
         def objective_function(flat_balance: np.ndarray) -> float:
             """Objective function for the minimization.
 
-            Args:
-                flat_balance (np.ndarray): Flat color balance matrix.
+            Parameters
+            ----------
+            flat_balance : np.ndarray
+                Flat color balance matrix.
 
-            Returns:
-                float: Objective function value.
-
+            Returns
+            -------
+            float
+                Objective function value.
             """
             balance = flat_balance.reshape((3, 3))
             swatches_src_balanced = swatches_src @ balance
@@ -108,21 +121,26 @@ class WhiteBalance(BaseBalance):
     def find_balance(self, swatches_src: np.ndarray, swatches_dst) -> None:
         """Find the color balance of an image.
 
-        Args:
-            swatches_src (np.ndarray): Source swatches.
-            swatches_dst (np.ndarray): Destination swatches.
-
+        Parameters
+        ----------
+        swatches_src : np.ndarray
+            Source swatches.
+        swatches_dst : np.ndarray
+            Destination swatches.
         """
 
         def objective_function(flat_balance: np.ndarray) -> float:
             """Objective function for the minimization.
 
-            Args:
-                flat_balance (np.ndarray): Flat color balance matrix.
+            Parameters
+            ----------
+            flat_balance : np.ndarray
+                Flat color balance matrix.
 
-            Returns:
-                float: Objective function value.
-
+            Returns
+            -------
+            float
+                Objective function value.
             """
             balance = np.diag(flat_balance)
             swatches_src_balanced = swatches_src @ balance
@@ -151,21 +169,26 @@ class AffineBalance(BaseBalance):
     def find_balance(self, swatches_src: np.ndarray, swatches_dst) -> None:
         """Find the color balance of an image.
 
-        Args:
-            swatches_src (np.ndarray): Source swatches.
-            swatches_dst (np.ndarray): Destination swatches.
-
+        Parameters
+        ----------
+        swatches_src : np.ndarray
+            Source swatches.
+        swatches_dst : np.ndarray
+            Destination swatches.
         """
 
         def objective_function(flat_balance: np.ndarray) -> float:
             """Objective function for the minimization.
 
-            Args:
-                flat_balance (np.ndarray): Flat color balance matrix.
+            Parameters
+            ----------
+            flat_balance : np.ndarray
+                Flat color balance matrix.
 
-            Returns:
-                float: Objective function value.
-
+            Returns
+            -------
+            float
+                Objective function value.
             """
             balance_scaling = flat_balance[:9].reshape((3, 3))
             balance_translation = flat_balance[9:12]
@@ -186,12 +209,14 @@ class AffineBalance(BaseBalance):
     def apply_balance(self, img: np.ndarray) -> np.ndarray:
         """Apply the color balance to an image.
 
-        Args:
-            img (np.ndarray): Image to apply the color balance to.
+        Parameters
+        ----------
+        img : np.ndarray
+            Image to apply the color balance to.
 
-        Returns:
-            balanced_img (np.ndarray): Balanced image.
-
+        Returns
+        -------
+            Balanced_img (np.ndarray): Balanced image.
         """
         return img @ self.balance_scaling + self.balance_translation
 
@@ -218,10 +243,12 @@ class AdaptiveBalance(AffineBalance):
     ) -> None:
         """Find the color balance of an image.
 
-        Args:
-            swatches_src (np.ndarray): Source swatches.
-            swatches_dst (np.ndarray): Destination swatches.
-
+        Parameters
+        ----------
+        swatches_src : np.ndarray
+            Source swatches.
+        swatches_dst : np.ndarray
+            Destination swatches.
         """
         # Precondition swatched with current balance
         swatches_src_prebalanced = self.apply_balance(swatches_src)
@@ -251,14 +278,18 @@ def color_balance(
 ) -> np.ndarray:
     """Apply the color balance to an image.
 
-    Args:
-        img (np.ndarray): Image to apply the color balance to.
-        swatches_src (np.ndarray): Source swatches.
-        swatches_dst (np.ndarray): Destination swatches.
+    Parameters
+    ----------
+    img : np.ndarray
+        Image to apply the color balance to.
+    swatches_src : np.ndarray
+        Source swatches.
+    swatches_dst : np.ndarray
+        Destination swatches.
 
-    Returns:
-        balanced_img (np.ndarray): Balanced image.
-
+    Returns
+    -------
+        Balanced_img (np.ndarray): Balanced image.
     """
     cb = ColorBalance()
     return cb(img, swatches_src, swatches_dst)
@@ -269,14 +300,18 @@ def white_balance(
 ) -> np.ndarray:
     """Apply the color balance to an image.
 
-    Args:
-        img (np.ndarray): Image to apply the color balance to.
-        swatches_src (np.ndarray): Source swatches.
-        swatches_dst (np.ndarray): Destination swatches.
+    Parameters
+    ----------
+    img : np.ndarray
+        Image to apply the color balance to.
+    swatches_src : np.ndarray
+        Source swatches.
+    swatches_dst : np.ndarray
+        Destination swatches.
 
-    Returns:
-        balanced_img (np.ndarray): Balanced image.
-
+    Returns
+    -------
+        Balanced_img (np.ndarray): Balanced image.
     """
     wb = WhiteBalance()
     return wb(img, swatches_src, swatches_dst)
@@ -287,14 +322,18 @@ def affine_balance(
 ) -> np.ndarray:
     """Apply the color balance to an image.
 
-    Args:
-        img (np.ndarray): Image to apply the color balance to.
-        swatches_src (np.ndarray): Source swatches.
-        swatches_dst (np.ndarray): Destination swatches.
+    Parameters
+    ----------
+    img : np.ndarray
+        Image to apply the color balance to.
+    swatches_src : np.ndarray
+        Source swatches.
+    swatches_dst : np.ndarray
+        Destination swatches.
 
-    Returns:
-        balanced_img (np.ndarray): Balanced image.
-
+    Returns
+    -------
+        Balanced_img (np.ndarray): Balanced image.
     """
     ab = AffineBalance()
     return ab(img, swatches_src, swatches_dst)

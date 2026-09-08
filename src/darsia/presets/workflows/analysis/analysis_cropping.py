@@ -40,10 +40,12 @@ def analysis_cropping_from_context(
 ) -> None:
     """Cropping analysis using pre-prepared context.
 
-    Args:
-        ctx: Pre-prepared analysis context.
-        show: Whether to show the images.
-
+    Parameters
+    ----------
+    ctx : AnalysisContext
+        Pre-prepared analysis context.
+    show : bool
+        Whether to show the images.
     """
     # Sanity checks
     assert ctx.config.data is not None
@@ -132,12 +134,16 @@ def analysis_cropping(
 
     Note: Output is configured via `[analysis.cropping].formats`.
 
-    Args:
-        cls: Rig class.
-        path: Path or list of Paths to the images.
-        show: Whether to show the images.
-        all: Whether to use all images or only the ones specified in the config.
-
+    Parameters
+    ----------
+    cls : type[Rig]
+        Rig class.
+    path : Path | list[Path]
+        Path or list of Paths to the images.
+    show : bool
+        Whether to show the images.
+    all : bool
+        Whether to use all images or only the ones specified in the config.
     """
     ctx = prepare_analysis_context(
         cls=cls,

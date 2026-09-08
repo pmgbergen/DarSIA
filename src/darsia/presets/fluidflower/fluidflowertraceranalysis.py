@@ -33,15 +33,21 @@ class FluidFlowerTracerAnalysis(darsia.TracerAnalysis):
         """
         Setup of analysis.
 
-        Args:
-            baseline (str, Path or list of such): baseline images, used to
-                set up analysis tools and cleaning tools
-            config (str or Path): path to config dict
-            results (str or Path): path to results directory
-            update_setup (bool): flag controlling whether cache in setup
-                routines is emptied.
-            verbosity  (bool): flag controlling whether results of the post-analysis
-                are printed to screen; default is False.
+        Parameters
+        ----------
+        baseline : str, Path or list of such
+            Baseline images, used to
+            set up analysis tools and cleaning tools.
+        config : str or Path
+            Path to config dict.
+        results : str or Path
+            Path to results directory.
+        update_setup : bool
+            Flag controlling whether cache in setup
+            routines is emptied.
+        verbosity : bool
+            Flag controlling whether results of the post-analysis
+            are printed to screen; default is False.
         """
         # Assign tracer analysis
         darsia.TracerAnalysis.__init__(self, baseline, config, update_setup)
@@ -127,10 +133,12 @@ class FluidFlowerTracerAnalysis(darsia.TracerAnalysis):
         Calibration routine aiming at decreasing the discontinuity modulus
         across interfaces of the labeling.
 
-        Args:
-            calibration_images (list of Path): calibration images.
-            options (dict): parameters for calibration.
-
+        Parameters
+        ----------
+        calibration_images : list of Path
+            Calibration images.
+        options : dict
+            Parameters for calibration.
         """
 
         # Read and process the images
@@ -148,10 +156,12 @@ class FluidFlowerTracerAnalysis(darsia.TracerAnalysis):
         NOTE: Calling this routine will require the definition of
         a geometry for data integration.
 
-        Args:
-            calibration_images (list of Path): calibration images.
-            options (dict): parameters for calibration.
-
+        Parameters
+        ----------
+        calibration_images : list of Path
+            Calibration images.
+        options : dict
+            Parameters for calibration.
         """
         # Read and process the images
         print("Calibration: Processing images...")
@@ -170,13 +180,19 @@ class FluidFlowerTracerAnalysis(darsia.TracerAnalysis):
         """
         Standard workflow to analyze the tracer concentration.
 
-        Args:
-            image (Path): path to single image.
-            kwargs: optional keyword arguments, see batch_analysis.
+        Parameters
+        ----------
+        image : Path
+            Path to single image.
+        **kwargs
+            Optional keyword arguments, see batch_analysis.
 
-        Returns:
-            np.ndarray: tracer concentration map
-            dict: dictinary with all stored results from the post-analysis.
+        Returns
+        -------
+        np.ndarray
+            Tracer concentration map.
+        dict
+            Dictinary with all stored results from the post-analysis.
         """
 
         # ! ---- Extract concentration profile

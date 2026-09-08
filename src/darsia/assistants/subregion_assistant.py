@@ -14,9 +14,10 @@ class SubregionAssistant(darsia.BaseAssistant):
     def __init__(self, img: darsia.Image, **kwargs) -> None:
         """Constructor.
 
-        Args:
-            img (darsia.Image): input image
-
+        Parameters
+        ----------
+        img : darsia.Image
+            Input image.
         """
         # Set name for titles in plots
         self.name = "Subregion assistant"

@@ -36,16 +36,24 @@ class MG(da.Solver):
         """
         Initialize the solver.
 
-        Args:
-            depth (int): depth of the multigrid hierarchy
-            smoother_iterations (int): number of iterations for the smoother
-            maxiter (int): maximum number of iterations
-            tol (Optional[float]): tolerance
-            dim (int): dimension of the problem
-            mass_coeff (np.ndarray or float): mass coefficient
-            diffusion_coeff (np.ndarray or float): diffusion coefficient
-            verbose (bool): print information
-
+        Parameters
+        ----------
+        depth : int
+            Depth of the multigrid hierarchy.
+        smoother_iterations : int
+            Number of iterations for the smoother.
+        maxiter : int
+            Maximum number of iterations.
+        tol : Optional[float]
+            Tolerance.
+        dim : int
+            Dimension of the problem.
+        mass_coeff : np.ndarray or float
+            Mass coefficient.
+        diffusion_coeff : np.ndarray or float
+            Diffusion coefficient.
+        verbose : bool
+            Print information.
         """
         # Standard properties
         super().__init__(
@@ -82,11 +90,14 @@ class MG(da.Solver):
     ) -> None:
         """Update parameters of the solver.
 
-        Args:
-            dim (int, optional): spatial dimension of the problem
-            mass_coeff (float or array, optional): mass coefficient
-            diffusion_coeff (float or array, optional): diffusion coefficient
-
+        Parameters
+        ----------
+        dim : int, optional
+            Spatial dimension of the problem.
+        mass_coeff : float or array, optional
+            Mass coefficient.
+        diffusion_coeff : float or array, optional
+            Diffusion coefficient.
         """
         super().update_params(dim, mass_coeff, diffusion_coeff)
         self.smoother.update_params(dim, mass_coeff, diffusion_coeff)
@@ -94,13 +105,16 @@ class MG(da.Solver):
     def operator(self, x: np.ndarray, h: float) -> np.ndarray:
         """The solution operator for the problem
 
-        Args:
-            x (np.ndarray): input
-            h (float): grid spacing
+        Parameters
+        ----------
+        x : np.ndarray
+            Input.
+        h : float
+            Grid spacing.
 
-        Returns:
-            output (np.ndarray)
-
+        Returns
+        -------
+            Output (np.ndarray).
         """
 
         return self.mass_coeff * x - self.diffusion_coeff * da.laplace(
@@ -111,12 +125,14 @@ class MG(da.Solver):
         """Restrict x, i.e., coarsen it by a factor 2. Even and odd indices are averaged.
         Last index is dropped if odd.
 
-        Args:
-            x (np.ndarray): input
+        Parameters
+        ----------
+        x : np.ndarray
+            Input.
 
-        Returns:
-            output (np.ndarray)
-
+        Returns
+        -------
+            Output (np.ndarray).
         """
 
         for ax in range(self.dim):
@@ -152,13 +168,14 @@ class MG(da.Solver):
         NOTE: if odd number of indices are restricted then prolongated, the boundary
         information is lost. Should probably be imporved upon in the future.
 
+        Parameters
+        ----------
+        x : np.ndarray
+            Input.
 
-        Args:
-            x (np.ndarray): input
-
-        Returns:
-            output (np.ndarray)
-
+        Returns
+        -------
+            Output (np.ndarray).
         """
 
         for ax in range(self.dim):
@@ -171,10 +188,11 @@ class MG(da.Solver):
         In case of heterogeneous parameters the parameters are prolongated
         by averaging.
 
-        Args:
-            pad_tuple (tuple): tuple of tuples, each tuple contains the number of
-                elements to be padded before and after the corresponding axis.
-
+        Parameters
+        ----------
+        pad_tuple : tuple
+            Tuple of tuples, each tuple contains the number of
+            elements to be padded before and after the corresponding axis.
         """
         if isinstance(self.mass_coeff, np.ndarray):
             self.mass_coeff = self.prolongation(self.mass_coeff)
@@ -194,15 +212,20 @@ class MG(da.Solver):
     ) -> np.ndarray:
         """Base V-Cycle (recursive function)
 
-        Args:
-            x0 (np.ndarray): initial guess
-            rhs (np.ndarray): right hand side
-            depth (int): depth of the V-Cycle
-            h (float): grid spacing
+        Parameters
+        ----------
+        x0 : np.ndarray
+            Initial guess.
+        rhs : np.ndarray
+            Right hand side.
+        depth : int
+            Depth of the V-Cycle.
+        h : float
+            Grid spacing.
 
-        Returns:
-            x (np.ndarray): solution
-
+        Returns
+        -------
+            X (np.ndarray): solution.
         """
         # Presmooth
         x = self.smoother(x0, rhs, h=h)
@@ -246,13 +269,16 @@ class MG(da.Solver):
         V-Cycle multigrid solver for linear systems arising from discretizations
         of the minimization problem. Could be used as a preconditioner or a solver in itself.
 
-        Args:
-            x0 (np.ndarray): initial guess
-            rhs (np.ndarray): right hand side
+        Parameters
+        ----------
+        x0 : np.ndarray
+            Initial guess.
+        rhs : np.ndarray
+            Right hand side.
 
-        Returns:
-            x (np.ndarray): solution
-
+        Returns
+        -------
+            X (np.ndarray): solution.
         """
         x = x0
         if self.tol is None:

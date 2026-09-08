@@ -31,17 +31,22 @@ def load_images_with_cache(
     * If *use_cache* is ``False`` (or *cache_dir* is ``None``), the image is
       always read directly through *rig*.
 
-    Args:
-        rig: Object exposing a ``read_image(path: Path) -> darsia.Image`` method
-            (e.g. Rig).
-        paths: Ordered list of image paths to load.
-        use_cache: Whether to use on-disk caching.
-        cache_dir: Directory that holds (or will hold) the cached ``.npz`` files.
-            Ignored when *use_cache* is ``False``.
+    Parameters
+    ----------
+    rig : Rig
+        Object exposing a ``read_image(path: Path) -> darsia.Image`` method
+        (e.g. Rig).
+    paths : list[Path]
+        Ordered list of image paths to load.
+    use_cache : bool
+        Whether to use on-disk caching.
+    cache_dir : Path | None
+        Directory that holds (or will hold) the cached ``.npz`` files.
+        Ignored when *use_cache* is ``False``.
 
-    Returns:
+    Returns
+    -------
         Ordered list of loaded :class:`darsia.Image` objects.
-
     """
     images: list[darsia.Image] = []
     resolved_paths = [path.resolve() for path in paths]

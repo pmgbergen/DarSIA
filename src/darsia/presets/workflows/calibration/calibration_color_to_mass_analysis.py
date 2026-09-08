@@ -67,14 +67,20 @@ def calibration_color_to_mass_analysis_from_context(
 
     This function calibrates the color to mass analysis based on the provided configuration.
 
-    Args:
-        cls: The class of the rig to be calibrated.
-        path: The path to the configuration file.
-        ref_path: The path to the reference configuration file (if any).
-        reset: Whether to reset existing calibration data.
-        show: Whether to perform a final test run to demonstrate the calibration results.
-        default: Whether to perform default calibration without interactive steps.
-
+    Parameters
+    ----------
+    cls
+        The class of the rig to be calibrated.
+    path
+        The path to the configuration file.
+    ref_path : Path | None
+        The path to the reference configuration file (if any).
+    reset : bool
+        Whether to reset existing calibration data.
+    show : bool
+        Whether to perform a final test run to demonstrate the calibration results.
+    default : bool
+        Whether to perform default calibration without interactive steps.
     """
     # ! ---- LOAD FROM CONTEXT ----
 

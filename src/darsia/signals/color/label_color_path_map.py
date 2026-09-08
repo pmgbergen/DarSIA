@@ -18,10 +18,11 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
     def __init__(self, color_paths: dict[int, darsia.ColorPath] | None = None):
         """Initialize the LabelColorPathMap.
 
-        Args:
-            color_paths (dict[int, darsia.ColorPath], optional): Initial mapping of
-                labels to color paths.
-
+        Parameters
+        ----------
+        color_paths : dict[int, darsia.ColorPath], optional
+            Initial mapping of
+            labels to color paths.
         """
         super().__init__(color_paths or {})
 
@@ -53,8 +54,10 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
         One row per (label, segment_index) with columns:
         label, segment_index, r, g, b, rel_r, rel_g, rel_b, base_r, base_g, base_b
 
-        Args:
-            path (Path): The CSV file path to write.
+        Parameters
+        ----------
+        path : Path
+            The CSV file path to write.
         """
         path = Path(path)
         rows = []
@@ -93,10 +96,13 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
         Expects columns: label, segment_index, r, g, b, rel_r, rel_g, rel_b,
         base_r, base_g, base_b.
 
-        Args:
-            path (Path): The CSV file path to read.
+        Parameters
+        ----------
+        path : Path
+            The CSV file path to read.
 
-        Returns:
+        Returns
+        -------
             LabelColorPathMap with reconstructed color paths.
         """
         path = Path(path)
@@ -142,16 +148,22 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
     ) -> "LabelColorPathMap":
         """Refine each color path in the map by increasing the number of segments.
 
-        Args:
-            color_path_map (LabelColorPathMap): The original color path map.
-            num_segments (int): The number of segments to use for refinement.
-            distance_to_left (float, optional): Value to extend the color path to the left
-                (inter).
-            distance_to_right (float, optional): Value to extend the color path to the right.
+        Parameters
+        ----------
+        color_path_map : LabelColorPathMap
+            The original color path map.
+        num_segments : int
+            The number of segments to use for refinement.
+        distance_to_left : float, optional
+            Value to extend the color path to the left
+            (inter).
+        distance_to_right : float, optional
+            Value to extend the color path to the right.
 
-        Returns:
-            LabelColorPathMap: The refined color path map.
-
+        Returns
+        -------
+        LabelColorPathMap
+            The refined color path map.
         """
         refined_map = cls()
         for label, color_path in color_path_map.items():

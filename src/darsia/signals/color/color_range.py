@@ -22,10 +22,12 @@ class ColorRange:
     ) -> None:
         """Initialize ColorRange from min and max color values.
 
-        Args:
-            min_color (np.ndarray): Minimum color values (RGB).
-            max_color (np.ndarray): Maximum color values (RGB).
-
+        Parameters
+        ----------
+        min_color : np.ndarray
+            Minimum color values (RGB).
+        max_color : np.ndarray
+            Maximum color values (RGB).
         """
         self.min_color = np.asarray(min_color).flatten()
         """Minimum color observed."""
@@ -58,11 +60,14 @@ class ColorRange:
     ) -> "ColorRange":
         """Create a ColorRange from a list of images.
 
-        Args:
-            images (list[darsia.Image]): List of images to analyze.
-            baseline (darsia.Image, optional): Baseline image for relative color range.
-            mask (darsia.Image, optional): Mask image to restrict analysis area.
-
+        Parameters
+        ----------
+        images : list[darsia.Image]
+            List of images to analyze.
+        baseline : darsia.Image, optional
+            Baseline image for relative color range.
+        mask : darsia.Image, optional
+            Mask image to restrict analysis area.
         """
         # Initialize min and max color arrays
         min_color = np.array([[np.inf, np.inf, np.inf]])
@@ -113,9 +118,10 @@ class ColorRange:
     def to_dict(self) -> dict[str, object]:
         """Convert color range to a dictionary.
 
-        Returns:
-            dict: Dictionary representation of the color range.
-
+        Returns
+        -------
+        dict
+            Dictionary representation of the color range.
         """
         return {
             "min_color": self.min_color.tolist(),
@@ -126,9 +132,10 @@ class ColorRange:
     def save(self, path: Path) -> None:
         """Save color range to a json file.
 
-        Args:
-            path (Path): Path to the json file.
-
+        Parameters
+        ----------
+        path : Path
+            Path to the json file.
         """
         path.mkdir(parents=True, exist_ok=True)
         with open(path.with_suffix(".json"), "w") as f:
@@ -143,12 +150,15 @@ class ColorRange:
     def load_from_dict(cls, data: dict[str, object]) -> "ColorRange":
         """Load color range from a dictionary.
 
-        Args:
-            data (dict): Dictionary representation of the color range.
+        Parameters
+        ----------
+        data : dict
+            Dictionary representation of the color range.
 
-        Returns:
-            ColorRange: Loaded color range.
-
+        Returns
+        -------
+        ColorRange
+            Loaded color range.
         """
         min_color = np.array(data["min_color"])
         max_color = np.array(data["max_color"])
@@ -159,12 +169,15 @@ class ColorRange:
     def load(cls, path: Path) -> "ColorRange":
         """Load color range from a json file.
 
-        Args:
-            path (Path): Path to the json file.
+        Parameters
+        ----------
+        path : Path
+            Path to the json file.
 
-        Returns:
-            ColorRange: Loaded color range.
-
+        Returns
+        -------
+        ColorRange
+            Loaded color range.
         """
         with open(path.with_suffix(".json"), "r") as f:
             data = json.load(f)

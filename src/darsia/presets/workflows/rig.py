@@ -393,11 +393,13 @@ class Rig:
     ) -> None:
         """Setup depth map for the rig object.
 
-        Args:
-            path (Path | None): Path to the precomputed depth map file.
-                If provided, it will be loaded and used as the depth map.
-            log (Path | None): Path to the log folder where geometry images will be saved.
-
+        Parameters
+        ----------
+        path : Path | None
+            Path to the precomputed depth map file.
+            If provided, it will be loaded and used as the depth map.
+        log : Path | None
+            Path to the log folder where geometry images will be saved.
         """
         # Load depth map from file and reshape to baseline shape
         assert path.exists(), f"Path to depth map {path} does not exist."
@@ -435,12 +437,15 @@ class Rig:
 
         This method loads labels from a specified path and applies corrections if needed.
 
-        Args:
-            path (Path): Path to the labels file. If the file exists, it will be loaded.
-            apply_correction (bool): If True, applies corrections to the labels based on
-                the baseline image.
-            log (Path | None): Path to the log folder where label images will be saved.
-
+        Parameters
+        ----------
+        path : Path
+            Path to the labels file. If the file exists, it will be loaded.
+        apply_correction : bool
+            If True, applies corrections to the labels based on
+            the baseline image.
+        log : Path | None
+            Path to the log folder where label images will be saved.
         """
         assert path.exists(), f"Labels file {path} does not exist."
         if apply_corrections:
@@ -509,12 +514,15 @@ class Rig:
 
         This method loads facies from a specified path and applies corrections if needed.
 
-        Args:
-            path (Path): Path to the facies file. If the file exists, it will be loaded.
-            apply_correction (bool): If True, applies corrections to the facies based on
-                the baseline image.
-            log (Path | None): Path to the log folder where facies images will be saved.
-
+        Parameters
+        ----------
+        path : Path
+            Path to the facies file. If the file exists, it will be loaded.
+        apply_correction : bool
+            If True, applies corrections to the facies based on
+            the baseline image.
+        log : Path | None
+            Path to the log folder where facies images will be saved.
         """
         assert path.exists(), f"Facies file {path} does not exist."
         if apply_corrections:
@@ -565,12 +573,14 @@ class Rig:
     ) -> None:
         """Define facies properties like porosity.
 
-        Args:
-            props_path (Path | None): Path to the facies properties CSV file.
-                If provided, it will load the facies properties from this path.
-            porosity (Path | None): Path to the porosity image file. If provided,
-                it will load the porosity image from this path.
-
+        Parameters
+        ----------
+        props_path : Path | None
+            Path to the facies properties CSV file.
+            If provided, it will load the facies properties from this path.
+        porosity : Path | None
+            Path to the porosity image file. If provided,
+            it will load the porosity image from this path.
         """
         if props_path:
             facies_props = FaciesProps.load(facies=self.facies, path=props_path)
@@ -593,17 +603,21 @@ class Rig:
     ) -> darsia.IlluminationCorrection:
         """Setup and return illumination correction.
 
-        Args:
-            config (IlluminationCorrectionConfig | None): Configuration for the illumination
-                correction. If provided, it will set up the illumination correction based
-                on this configuration.
-            log (Path | None): Path to the log folder where diagnostic plots will be saved.
-            show_plot (bool): Whether to show diagnostic plots during setup (default: False).
+        Parameters
+        ----------
+        config : IlluminationCorrectionConfig | None
+            Configuration for the illumination
+            correction. If provided, it will set up the illumination correction based
+            on this configuration.
+        log : Path | None
+            Path to the log folder where diagnostic plots will be saved.
+        show_plot : bool
+            Whether to show diagnostic plots during setup (default: False).
 
-        Notes:
+        Notes
+        -----
             Illumination calibration in Rig intentionally uses the shape-corrected
             baseline as setup input.
-
         """
         illumination_correction = darsia.IlluminationCorrection()
 
@@ -652,16 +666,18 @@ class Rig:
     ) -> darsia.PatchwiseIlluminationCorrection:
         """Setup and return patchwise illumination correction.
 
-        Args:
-            config (PatchwiseIlluminationCorrectionConfig | None): Configuration for
-                the patchwise illumination correction. If provided, it will set up the
-                correction based on this configuration.
+        Parameters
+        ----------
+        config : PatchwiseIlluminationCorrectionConfig | None
+            Configuration for
+            the patchwise illumination correction. If provided, it will set up the
+            correction based on this configuration.
 
-        Notes:
+        Notes
+        -----
             Patchwise illumination calibration uses the labels image to enable
             per-label reference color computation within each patch, ensuring
             heterogeneous regions contribute equally by material.
-
         """
         baseline_images = [self.read_image(path) for path in config.baseline_paths]
 
@@ -696,16 +712,20 @@ class Rig:
         When *path* is provided the image is always loaded from disk regardless of
         *config*, which is useful for restoring a previously saved rig.
 
-        Args:
-            path (Path | None): Path to a previously saved porosity ``.npz`` file.
-                When given, the file is loaded and *config* is not used.
-            log (Path | None): Folder for diagnostic output.  When given, a JPG
-                illustration is stored to ``log/image_porosity/image_porosity.jpg``.
-            config (ImagePorosityConfig | None): Porosity configuration.  Defaults to
-                ``ImagePorosityConfig()`` (i.e. ``mode="full"``) when not provided.
-            show_plot (bool): When ``True`` the image porosity is displayed interactively.
-                Pass ``True`` when calling from a GUI or user-interface workflow.
-
+        Parameters
+        ----------
+        path : Path | None
+            Path to a previously saved porosity ``.npz`` file.
+            When given, the file is loaded and *config* is not used.
+        log : Path | None
+            Folder for diagnostic output.  When given, a JPG
+            illustration is stored to ``log/image_porosity/image_porosity.jpg``.
+        config : ImagePorosityConfig | None
+            Porosity configuration.  Defaults to
+            ``ImagePorosityConfig()`` (i.e. ``mode="full"``) when not provided.
+        show_plot : bool
+            When ``True`` the image porosity is displayed interactively.
+            Pass ``True`` when calling from a GUI or user-interface workflow.
         """
         if config is None:
             config = ImagePorosityConfig()
@@ -765,19 +785,23 @@ class Rig:
         3. ``self._image_porosity_config.tol`` (stored by :meth:`setup_image_porosity`).
         4. ``0.9`` (hard-coded default).
 
-        Args:
-            threshold (float | None): Override tolerance value.  Deprecated in favour of
-                ``config.tol``; kept for backward compatibility.
-            log (Path | None): Folder for diagnostic output.  When given, a JPG
-                illustration is stored to
-                ``log/image_porosity/boolean_porosity.jpg``.
-            config (ImagePorosityConfig | None): Porosity configuration.  Falls back to
-                the config stored by the last call to :meth:`setup_image_porosity`, and
-                finally to ``ImagePorosityConfig()`` (``mode="full"``).
-            show_plot (bool): When ``True`` the boolean porosity is displayed
-                interactively.  Pass ``True`` when calling from a GUI or
-                user-interface workflow.
-
+        Parameters
+        ----------
+        threshold : float | None
+            Override tolerance value.  Deprecated in favour of
+            ``config.tol``; kept for backward compatibility.
+        log : Path | None
+            Folder for diagnostic output.  When given, a JPG
+            illustration is stored to
+            ``log/image_porosity/boolean_porosity.jpg``.
+        config : ImagePorosityConfig | None
+            Porosity configuration.  Falls back to
+            the config stored by the last call to :meth:`setup_image_porosity`, and
+            finally to ``ImagePorosityConfig()`` (``mode="full"``).
+        show_plot : bool
+            When ``True`` the boolean porosity is displayed
+            interactively.  Pass ``True`` when calling from a GUI or
+            user-interface workflow.
         """
         if config is None:
             config = getattr(self, "_image_porosity_config", ImagePorosityConfig())
@@ -1042,9 +1066,10 @@ class Rig:
 
         Mimick the save method.
 
-        Args:
-            folder (Path): Path to the folder where the rig object is saved.
-
+        Parameters
+        ----------
+        folder : Path
+            Path to the folder where the rig object is saved.
         """
         # Create rig object
         rig = cls()
@@ -1188,12 +1213,15 @@ class Rig:
 
         The respective date is extracted from the path using the imaging protocol.
 
-        Args:
-            path (Path): Path to the image file.
+        Parameters
+        ----------
+        path : Path
+            Path to the image file.
 
-        Returns:
-            darsia.Image: Image object with applied corrections.
-
+        Returns
+        -------
+        darsia.Image
+            Image object with applied corrections.
         """
         assert hasattr(
             self, "experiment"
@@ -1219,10 +1247,11 @@ class Rig:
 
         This is required to read images and compute the injected mass correctly.
 
-        Args:
-            experiment (darsia.ProtocolledExperiment): Experiment object containing imaging,
-                injection, and pressure/temperature protocols.
-
+        Parameters
+        ----------
+        experiment : darsia.ProtocolledExperiment
+            Experiment object containing imaging,
+            injection, and pressure/temperature protocols.
         """
         self.experiment = experiment
         self.injection_protocol = experiment.injection_protocol
@@ -1236,9 +1265,10 @@ class Rig:
         This method updates the current date, time, pressure, and temperature
         of the rig object based on the provided image path.
 
-        Args:
-            path (Path): Path to the image file.
-
+        Parameters
+        ----------
+        path : Path
+            Path to the image file.
         """
         # Convert date from path
         date = self.experiment.get_datetime(path)

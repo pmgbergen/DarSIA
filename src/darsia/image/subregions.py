@@ -14,12 +14,14 @@ import darsia
 def _to_reverse_matrix_indexing(pixel: np.ndarray) -> np.ndarray:
     """Auxiliary routine: Convert pixel coordinates to reverse matrix indexing format.
 
-    Args:
-        pixel (np.ndarray): pixel coordinates
+    Parameters
+    ----------
+    pixel : np.ndarray
+        Pixel coordinates.
 
-    Returns:
-        pixel converted to 'reverse matrix' indexing
-
+    Returns
+    -------
+        Pixel converted to 'reverse matrix' indexing.
     """
     return np.fliplr(np.atleast_2d(pixel))
 
@@ -35,22 +37,28 @@ def extract_quadrilateral_ROI(
     interpolation: InterpolationOption = "inter_linear",
     **kwargs,
 ) -> np.ndarray:
-    """
-    Extract quadrilateral ROI using a perspective transform,
-    given known corner points of a square (default) object.
+    """Extract a quadrilateral ROI via a perspective transform.
 
-    Args:
-        img_src (np.ndarray): source image
-        pts_src (array, optional): N points with pixels, can be provided in different
-            indexing formats
-        indexing (IndexingOption): indexing of pixel (only relevant if pts_src is list
-            or np.ndarray)
-        interpolation (InterpolationOption): interpolation method; adopted from cv2.
-        kwargs (optional keyword arguments):
-            width (int or float): width of the physical object
-            height (int or float): height of the physical object
-            pts_src (array): N points with pixel coordinates in (col,row) format, N>=4
-            pts_dst (array, optional): N points with pixels in (col, row) format, N>=4
+    The corner points of a (by default square) object are assumed known.
+
+    Parameters
+    ----------
+    img_src : np.ndarray
+        Source image.
+    pts_src : array, optional
+        N points in pixels; several indexing formats are accepted.
+    indexing : {"matrix", "reverse matrix"}
+        Indexing of the pixels (only relevant when ``pts_src`` is a list or
+        ``np.ndarray``).
+    interpolation : InterpolationOption
+        Interpolation method, adopted from OpenCV.
+    **kwargs
+        Physical geometry of the target object::
+
+            width (int | float)      width of the physical object
+            height (int | float)     height of the physical object
+            pts_src (array)          N >= 4 points in (col, row) pixel format
+            pts_dst (array)          N >= 4 points in (col, row) pixel format
     """
 
     # FIXME: Implementation hardcoded for 2d.

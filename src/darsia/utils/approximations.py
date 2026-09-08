@@ -19,25 +19,32 @@ class ApproximationSpace(ABC):
     def basis(self, x: np.ndarray, i: int) -> np.ndarray:
         """Evaluation of the basis functions.
 
-        Args:
-            x (np.ndarray): Coordinates.
-            i (int): Index of the basis function.
+        Parameters
+        ----------
+        x : np.ndarray
+            Coordinates.
+        i : int
+            Index of the basis function.
 
-        Returns:
-            np.ndarray: Value of the basis function.
-
+        Returns
+        -------
+        np.ndarray
+            Value of the basis function.
         """
         ...
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
         """Evaluate the basis functions at a given point.
 
-        Args:
-            x (np.ndarray): Coordinates.
+        Parameters
+        ----------
+        x : np.ndarray
+            Coordinates.
 
-        Returns:
-            np.ndarray: Values of the basis functions.
-
+        Returns
+        -------
+        np.ndarray
+            Values of the basis functions.
         """
         return [self.basis(x, i) for i in range(self.size)]
 
@@ -53,9 +60,10 @@ class PolynomialApproximationSpace(ApproximationSpace):
     def __init__(self, degree: int) -> None:
         """Initialize the polynomial approximation space.
 
-        Args:
-            degree (int): Degree of the polynomial.
-
+        Parameters
+        ----------
+        degree : int
+            Degree of the polynomial.
         """
         self.degree = degree
 
@@ -67,13 +75,17 @@ class PolynomialApproximationSpace(ApproximationSpace):
     def basis(self, x: np.ndarray, k: int) -> np.ndarray:
         """Evaluation of the basis functions.
 
-        Args:
-            x (np.ndarray): Coordinates.
-            k (int): Index of the basis function.
+        Parameters
+        ----------
+        x : np.ndarray
+            Coordinates.
+        k : int
+            Index of the basis function.
 
-        Returns:
-            np.ndarray: Value of the basis function.
-
+        Returns
+        -------
+        np.ndarray
+            Value of the basis function.
         """
         i, j = divmod(k, self.degree + 1)
         return x[..., 0] ** i * x[..., 1] ** j
@@ -89,10 +101,12 @@ class RadialPolynomialApproximationSpace(ApproximationSpace):
     def __init__(self, degree: int, center: Optional[np.ndarray] = None) -> None:
         """Initialize the radial polynomial approximation space.
 
-        Args:
-            degree (int): Degree of the polynomial.
-            center (Optional[np.ndarray]): Center of the radial polynomial.
-
+        Parameters
+        ----------
+        degree : int
+            Degree of the polynomial.
+        center : Optional[np.ndarray]
+            Center of the radial polynomial.
         """
         self.degree = degree
         self.center = center if center is not None else np.zeros(2)
@@ -100,9 +114,10 @@ class RadialPolynomialApproximationSpace(ApproximationSpace):
     def set_center(self, center: np.ndarray) -> None:
         """Set the center of the radial polynomial.
 
-        Args:
-            center (np.ndarray): Center of the radial polynomial.
-
+        Parameters
+        ----------
+        center : np.ndarray
+            Center of the radial polynomial.
         """
         self.center = center
 
@@ -114,10 +129,12 @@ class RadialPolynomialApproximationSpace(ApproximationSpace):
     def basis(self, x: np.ndarray, i: int) -> np.ndarray:
         """Evaluation of the basis functions.
 
-        Args:
-            x (np.ndarray): Coordinates.
-            i (int): Index of the basis function.
-
+        Parameters
+        ----------
+        x : np.ndarray
+            Coordinates.
+        i : int
+            Index of the basis function.
         """
         return np.linalg.norm(x - self.center, axis=0) ** i
 
@@ -170,10 +187,12 @@ class LinearApproximation:
     ) -> None:
         """Initialize the linear approximation (with zero coefficients).
 
-        Args:
-            space (ApproximationSpace): Approximation space.
-            dim (Union[int, tuple[int, int]]): Dimension of the coefficients.
-
+        Parameters
+        ----------
+        space : ApproximationSpace
+            Approximation space.
+        dim : Union[int, tuple[int, int]]
+            Dimension of the coefficients.
         """
         self.space = space
         self.shape = (space.size, dim) if isinstance(dim, int) else (space.size, *dim)
@@ -186,13 +205,15 @@ class LinearApproximation:
     ) -> np.ndarray:
         """Evaluate the linear combination on a given coordinate system.
 
-        Args:
-            input (Union[darsia.VoxelArray, darsia.CoordinateArray]):
-                foundation for the evaluation.
+        Parameters
+        ----------
+        input : Union[darsia.VoxelArray, darsia.CoordinateArray]
+            Foundation for the evaluation.
 
-        Returns:
-            np.ndarray: Flat result.
-
+        Returns
+        -------
+        np.ndarray
+            Flat result.
         """
         # Evaluate the linear combination on a given coordinate system
         flat_result = np.zeros((len(input), 9))
@@ -213,13 +234,15 @@ class LinearApproximation:
     ) -> np.ndarray:
         """Evaluate the linear combination on a given input.
 
-        Args:
-            input (Union[darsia.CoordinateSystem, darsia.CoordinateArray, darsia.VoxelArray]):
-                foundation for the evaluation.
+        Parameters
+        ----------
+        input : Union[darsia.CoordinateSystem, darsia.CoordinateArray, darsia.VoxelArray]
+            Foundation for the evaluation.
 
-        Returns:
-            np.ndarray: Result.
-
+        Returns
+        -------
+        np.ndarray
+            Result.
         """
         if isinstance(input, darsia.CoordinateSystem):
             # Consider all accessible voxels, and anticipate that the result

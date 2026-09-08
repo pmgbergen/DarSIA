@@ -305,12 +305,15 @@ class BeckmannProblem(darsia.EMD):
     ) -> sps.csc_matrix:
         """Construct the broken Darcy operator with given flux-flux block.
 
-        Args:
-            flux_flux_block (sps.csc_matrix): flux-flux block
+        Parameters
+        ----------
+        flux_flux_block : sps.csc_matrix
+            Flux-flux block.
 
-        Returns:
-            sps.csc_matrix: broken Darcy operator with given flux-flux block
-
+        Returns
+        -------
+        sps.csc_matrix
+            Broken Darcy operator with given flux-flux block.
         """
         return sps.bmat(
             [
@@ -365,12 +368,15 @@ class BeckmannProblem(darsia.EMD):
     def solve_beckmann_problem(self, mass_diff: np.ndarray) -> tuple:
         """Solve for the Wasserstein distance.
 
-        Args:
-            mass_diff (np.ndarray): difference of the two distributions
+        Parameters
+        ----------
+        mass_diff : np.ndarray
+            Difference of the two distributions.
 
-        Returns:
-            tuple: distance, solution, info
-
+        Returns
+        -------
+        tuple
+            Distance, solution, info.
         """
         pass
 
@@ -383,15 +389,19 @@ class BeckmannProblem(darsia.EMD):
 
         NOTE: Images need to comply with the setup of the object.
 
-        Args:
-            img_1 (darsia.Image): image 1, source distribution
-            img_2 (darsia.Image): image 2, destination distribution
+        Parameters
+        ----------
+        img_1 : darsia.Image
+            Image 1, source distribution.
+        img_2 : darsia.Image
+            Image 2, destination distribution.
 
-        Returns:
-            float: distance between img_1 and img_2.
-            dict (optional): solution
-            dict (optional): info
-
+        Returns
+        -------
+        float
+            Distance between img_1 and img_2.
+            Dict (optional): solution.
+            Dict (optional): info.
         """
 
         # Compatibilty check
@@ -448,12 +458,15 @@ class BeckmannProblem(darsia.EMD):
     def exact_linearization(self, solution: np.ndarray) -> sps.csc_matrix:
         """Compute the exact linearization of the constrained minimization problem.
 
-        Args:
-            solution (np.ndarray): solution
+        Parameters
+        ----------
+        solution : np.ndarray
+            Solution.
 
-        Returns:
-            sps.csc_matrix: exact linearization
-
+        Returns
+        -------
+        sps.csc_matrix
+            Exact linearization.
         """
         flux = self.flux_view(solution)
         face_weights, face_weights_inv = self._compute_face_weight(flux)
@@ -467,14 +480,17 @@ class BeckmannProblem(darsia.EMD):
     ) -> np.ndarray:
         """Evaluate optimality conditions of the constrained minimization problem.
 
-        Args:
-            beckmann_problem_rhs (np.ndarray): right hand side of the Beckmann problem
-            solution (np.ndarray): solution
+        Parameters
+        ----------
+        solution : np.ndarray
+            Solution.
+        beckmann_problem_rhs : np.ndarray
+            Right hand side of the Beckmann problem.
 
-        Returns:
-
-            np.ndarray: residual
-
+        Returns
+        -------
+        np.ndarray
+            Residual.
         """
         return self.exact_linearization(solution).dot(solution) - beckmann_problem_rhs
 
@@ -499,12 +515,15 @@ class BeckmannProblem(darsia.EMD):
     def cell_weighted_flux(self, cell_flux: np.ndarray) -> np.ndarray:
         """Compute the cell-weighted flux.
 
-        Args:
-            cell_flux (np.ndarray): cell fluxes
+        Parameters
+        ----------
+        cell_flux : np.ndarray
+            Cell fluxes.
 
-        Returns:
-            np.ndarray: cell-weighted flux
-
+        Returns
+        -------
+        np.ndarray
+            Cell-weighted flux.
         """
         # Apply cell weights - depending on the dimensionality of the weight
         if self.weight is None:
@@ -542,14 +561,19 @@ class BeckmannProblem(darsia.EMD):
     ) -> np.ndarray:
         """Compute the transport density from the solution.
 
-        Args:
-            flat_flux (np.ndarray): face fluxes
-            weighted (bool): apply weighting. Defaults to True.
-            flatten (bool): flatten the result. Defaults to True.
+        Parameters
+        ----------
+        flat_flux : np.ndarray
+            Face fluxes.
+        weighted : bool
+            Apply weighting. Defaults to True.
+        flatten : bool
+            Flatten the result. Defaults to True.
 
-        Returns:
-            np.ndarray: transport density, flattened if requested
-
+        Returns
+        -------
+        np.ndarray
+            Transport density, flattened if requested.
         """
         # Integrate over reference cell (normalization not required)
         transport_density = np.zeros(self.grid.shape, dtype=float)
@@ -567,12 +591,15 @@ class BeckmannProblem(darsia.EMD):
     def transport_density_faces(self, flat_flux: np.ndarray) -> np.ndarray:
         """Compute the transport density from the solution.
 
-        Args:
-            flat_flux (np.ndarray): face fluxes
+        Parameters
+        ----------
+        flat_flux : np.ndarray
+            Face fluxes.
 
-        Returns:
-            np.ndarray: transport density
-
+        Returns
+        -------
+        np.ndarray
+            Transport density.
         """
         # The L1 dissipation corresponds to the integral over the transport density
         if not hasattr(self, "face_reconstruction"):
@@ -583,12 +610,15 @@ class BeckmannProblem(darsia.EMD):
     def l1_dissipation(self, flat_flux: np.ndarray) -> float:
         """Compute the l1 dissipation of the solution.
 
-        Args:
-            flat_flux (np.ndarray): flat fluxes
+        Parameters
+        ----------
+        flat_flux : np.ndarray
+            Flat fluxes.
 
-        Returns:
-            float: l1 dissipation
-
+        Returns
+        -------
+        float
+            L1 dissipation.
         """
         # The L1 dissipation corresponds to the integral over the transport density
         transport_density = self.transport_density(flat_flux)
@@ -773,15 +803,21 @@ class BeckmannProblem(darsia.EMD):
         selected. For reusing the setup, the resulting solver is cached as
         self.linear_solver.
 
-        Args:
-            matrix (sps.csc_matrix): matrix
-            rhs (np.ndarray): right hand side
-            previous_solution (np.ndarray): previous solution. Defaults to None.
-            reuse_solver (bool): reuse the solver. Defaults to False.
+        Parameters
+        ----------
+        matrix : sps.csc_matrix
+            Matrix.
+        rhs : np.ndarray
+            Right hand side.
+        previous_solution : np.ndarray
+            Previous solution. Defaults to None.
+        reuse_solver : bool
+            Reuse the solver. Defaults to False.
 
-        Returns:
-            tuple: solution, stats
-
+        Returns
+        -------
+        tuple
+            Solution, stats.
         """
 
         setup_linear_solver = not (reuse_solver) or not (hasattr(self, "linear_solver"))
@@ -920,13 +956,17 @@ class BeckmannProblem(darsia.EMD):
 
         Employ a Schur complement/block Gauss elimination approach.
 
-        Args:
-            jacobian (sps.csc_matrix): jacobian
-            residual (np.ndarray): residual
+        Parameters
+        ----------
+        jacobian : sps.csc_matrix
+            Jacobian.
+        residual : np.ndarray
+            Residual.
 
-        Returns:
-            tuple: reduced jacobian, reduced residual, inverse of flux block
-
+        Returns
+        -------
+        tuple
+            Reduced jacobian, reduced residual, inverse of flux block.
         """
         # Make sure the setup routine has been called
         if not hasattr(self, "jacobian_subblock"):
@@ -953,10 +993,11 @@ class BeckmannProblem(darsia.EMD):
         terms of pressures and Lagrange multiplier. Merely the flux is eliminated using
         a Schur complement approach.
 
-        Args:
-            matrix (sps.csc_matrix): system matrix with flux-flux block to be
-                eliminated - assume to have the same structure as self.darcy_init
-
+        Parameters
+        ----------
+        matrix : sps.csc_matrix
+            System matrix with flux-flux block to be
+            eliminated - assume to have the same structure as self.darcy_init.
         """
         #   ---- Preliminaries ----
 
@@ -995,13 +1036,17 @@ class BeckmannProblem(darsia.EMD):
 
         Employ a Schur complement/block Gauss elimination approach.
 
-        Args:
-            reduced_jacobian (sps.csc_matrix): reduced jacobian
-            reduced_residual (np.ndarray): reduced residual
+        Parameters
+        ----------
+        reduced_jacobian : sps.csc_matrix
+            Reduced jacobian.
+        reduced_residual : np.ndarray
+            Reduced residual.
 
-        Returns:
-            tuple: fully reduced jacobian, fully reduced residual
-
+        Returns
+        -------
+        tuple
+            Fully reduced jacobian, fully reduced residual.
         """
         # Make sure the setup routine has been called
         if not hasattr(self, "fully_reduced_jacobian"):
@@ -1141,13 +1186,17 @@ class BeckmannProblem(darsia.EMD):
     def _compute_flux_update(self, solution: np.ndarray, rhs: np.ndarray) -> np.ndarray:
         """Compute the flux update from the solution.
 
-        Args:
-            solution (np.ndarray): solution
-            rhs (np.ndarray): right hand side
+        Parameters
+        ----------
+        solution : np.ndarray
+            Solution.
+        rhs : np.ndarray
+            Right hand side.
 
-        Returns:
-            np.ndarray: flux update
-
+        Returns
+        -------
+        np.ndarray
+            Flux update.
         """
         rhs_flux = rhs[self.flux_slice]
         return self.matrix_flux_inv.dot(
@@ -1161,12 +1210,15 @@ class BeckmannProblem(darsia.EMD):
 
         Utility function for self.solve_beckmann_problem().
 
-        Args:
-            timings (dict): timings
+        Parameters
+        ----------
+        timings : dict
+            Timings.
 
-        Returns:
-            dict: total time
-
+        Returns
+        -------
+        dict
+            Total time.
         """
         total_timings = {
             "assemble": sum([t["time_assemble"] for t in timings]),
@@ -1188,33 +1240,40 @@ class BeckmannProblem(darsia.EMD):
     def ndofs(self) -> int:
         """Return the total number of degrees of freedom.
 
-        Returns:
-            int: total number of degrees of freedom
-
+        Returns
+        -------
+        int
+            Total number of degrees of freedom.
         """
         return self.grid.num_faces + self.grid.num_cells + 1
 
     def flat_view(self, img: np.ndarray) -> np.ndarray:
         """Flatten the image to a vector.
 
-        Args:
-            img (np.ndarray): image
+        Parameters
+        ----------
+        img : np.ndarray
+            Image.
 
-        Returns:
-            np.ndarray: flattened image
-
+        Returns
+        -------
+        np.ndarray
+            Flattened image.
         """
         return np.ravel(img, "F")
 
     def flux_view(self, vector: np.ndarray) -> np.ndarray:
         """Extract the flux from the vector.
 
-        Args:
-            vector (np.ndarray): vector
+        Parameters
+        ----------
+        vector : np.ndarray
+            Vector.
 
-        Returns:
-            np.ndarray: flux
-
+        Returns
+        -------
+        np.ndarray
+            Flux.
         """
         assert len(vector) in [
             self.grid.num_faces + self.grid.num_cells,
@@ -1229,12 +1288,15 @@ class BeckmannProblem(darsia.EMD):
     def pressure_view(self, vector: np.ndarray) -> np.ndarray:
         """Extract the pressure from the vector.
 
-        Args:
-            vector (np.ndarray): vector
+        Parameters
+        ----------
+        vector : np.ndarray
+            Vector.
 
-        Returns:
-            np.ndarray: pressure
-
+        Returns
+        -------
+        np.ndarray
+            Pressure.
         """
         assert len(vector) in [
             self.grid.num_faces + self.grid.num_cells,

@@ -88,11 +88,15 @@ class WassersteinDistanceResult:
     def save_to_dir(self, dir: Path) -> Path:
         """Save result to JSON file in results directory with auto-generated name.
 
-        Args:
-            dir: The directory where the results should be saved.
+        Parameters
+        ----------
+        dir : Path
+            The directory where the results should be saved.
 
-        Returns:
-            The path to the saved result file."""
+        Returns
+        -------
+            The path to the saved result file.
+        """
         filename = self.get_result_filename()
         full_path = dir / filename
         self.save(full_path)
@@ -143,17 +147,25 @@ def _load_and_process_mass(
 ) -> darsia.Image | None:
     """Load and resize mass data for a given run and time.
 
-    Args:
-        run_name: Name of the run.
-        config: Multi-run FluidFlower configuration.
-        time: Time at which to load mass data.
-        uncertainty: Uncertainty tolerance for time matching.
-        porosity_times_depth: Geometry weight (porosity × depth).
-        ref_image: Reference image for resizing (optional).
+    Parameters
+    ----------
+    run_name : str
+        Name of the run.
+    config : MultiFluidFlowerConfig
+        Multi-run FluidFlower configuration.
+    time : float
+        Time at which to load mass data.
+    uncertainty : float
+        Uncertainty tolerance for time matching.
+    porosity_times_depth : darsia.Image
+        Geometry weight (porosity × depth).
+    ref_image : darsia.Image | None
+        Reference image for resizing (optional).
 
-    Returns:
-        coarse_mass: The processed coarse mass image, or None if mass data is not found.
-
+    Returns
+    -------
+    coarse_mass
+        The processed coarse mass image, or None if mass data is not found.
     """
     # Load mass data
     mass = load_data(
@@ -648,9 +660,10 @@ def _assemble_all_wasserstein_results(config: MultiFluidFlowerConfig) -> None:
     For each result, the raw distance is stored with normalization=None, and
     each normalized distance is stored with its key as the normalization value.
 
-    Args:
-        config: Multi-run FluidFlower configuration.
-
+    Parameters
+    ----------
+    config : MultiFluidFlowerConfig
+        Multi-run FluidFlower configuration.
     """
     # Fetch configuration details
     times = config.wasserstein.times

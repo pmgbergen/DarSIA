@@ -18,10 +18,12 @@ class REV:
     def __init__(self, size: Union[float, tuple[float]], img: darsia.Image) -> None:
         """Initialization of a REV.
 
-        Args:
-            size (float or tuple of float): size of REV in length units
-            img (Image): image, used for determining the number of voxels
-
+        Parameters
+        ----------
+        size : float or tuple of float
+            Size of REV in length units.
+        img : Image
+            Image, used for determining the number of voxels.
         """
         if isinstance(size, (int, float)):
             size = [size] * img.coordinatesystem.dim
@@ -42,11 +44,14 @@ class VolumeAveraging:
     ) -> None:
         """Set up the volume averaging.
 
-        Args:
-            rev (REV): representative elementary volume
-            mask (Image): mask
-            labels (Image): labels; activating heterogeneous analysis, if not None
-
+        Parameters
+        ----------
+        rev : REV
+            Representative elementary volume.
+        mask : Image
+            Mask.
+        labels : Image
+            Labels; activating heterogeneous analysis, if not None.
         """
         self.rev_size = rev.size
         """Size of the REV."""
@@ -79,12 +84,15 @@ class VolumeAveraging:
     ) -> Union[np.ndarray, darsia.Image]:
         """Application of volume averaging.
 
-        Args:
-            img (np.ndarray or Image): image
+        Parameters
+        ----------
+        img : np.ndarray or Image
+            Image.
 
-        Returns:
-            np.ndarray or Image: volume averaged image (same type as input)
-
+        Returns
+        -------
+        np.ndarray or Image
+            Volume averaged image (same type as input).
         """
         if isinstance(img, np.ndarray):
             return self._average_array(img)
@@ -98,12 +106,15 @@ class VolumeAveraging:
 
         Apply averaging to each channel of a 3D array.
 
-        Args:
-            arr (np.ndarray): array
+        Parameters
+        ----------
+        arr : np.ndarray
+            Array.
 
-        Returns:
-            np.ndarray: volume averaged array
-
+        Returns
+        -------
+        np.ndarray
+            Volume averaged array.
         """
         if arr.ndim == 2:
             return self._average_array_single(arr)
@@ -118,12 +129,15 @@ class VolumeAveraging:
     def _average_array_single(self, arr: np.ndarray) -> np.ndarray:
         """Application of volume averaging to two-dimensional numpy array.
 
-        Args:
-            arr (np.ndarray): two-dimensional array
+        Parameters
+        ----------
+        arr : np.ndarray
+            Two-dimensional array.
 
-        Returns:
-            np.ndarray: two-dimensional volume averaged array
-
+        Returns
+        -------
+        np.ndarray
+            Two-dimensional volume averaged array.
         """
         masked_data = np.multiply(arr, self.mask.img)
         mean_masked_data = self._heterogeneous_uniform_filter(masked_data)
@@ -134,12 +148,15 @@ class VolumeAveraging:
     def _heterogeneous_uniform_filter(self, data: np.ndarray) -> np.ndarray:
         """Application of a uniform filter to heterogeneous data.
 
-        Args:
-            data (np.ndarray): data
+        Parameters
+        ----------
+        data : np.ndarray
+            Data.
 
-        Returns:
-            np.ndarray: filtered data
-
+        Returns
+        -------
+        np.ndarray
+            Filtered data.
         """
         if self.labels is None:
             return scipy.ndimage.uniform_filter(data, size=self.rev_size)
@@ -152,14 +169,19 @@ def volume_average(img: darsia.Image, mask: darsia.Image, size: float) -> darsia
 
     Note: For repeated calls, it is recommended to create a VolumeAveraging object.
 
-    Args:
-        img (Image): image
-        mask (Image): mask
-        size (float): size of the REV in length units
+    Parameters
+    ----------
+    img : Image
+        Image.
+    mask : Image
+        Mask.
+    size : float
+        Size of the REV in length units.
 
-    Returns:
-        Image: volume averaged image
-
+    Returns
+    -------
+    Image
+        Volume averaged image.
     """
     return VolumeAveraging(rev=REV(size=size, img=img), mask=mask)(img)
 
@@ -172,14 +194,19 @@ def porosity_based_averaging(
     Porosity values below 0.3 are not considered in the averaging process.
     Layer boundaries in the labels image are deactivated in the porosity image.
 
-    Args:
-        labels (darsia.Image): Labels image containing the segmentation of the geometry.
-        porosity (darsia.Image): Image containing porosity values.
-        ref_image (darsia.Image): Reference image for the REV.
+    Parameters
+    ----------
+    labels : darsia.Image
+        Labels image containing the segmentation of the geometry.
+    porosity : darsia.Image
+        Image containing porosity values.
+    ref_image : darsia.Image
+        Reference image for the REV.
 
-    Returns:
-        darsia.VolumeAveraging: Volume averaging object that uses the porosity image.
-
+    Returns
+    -------
+    darsia.VolumeAveraging
+        Volume averaging object that uses the porosity image.
     """
     # Identify layer boundaries in the labels image
     collective_residual_mask = darsia.zeros_like(labels, mode="voxels", dtype=bool)

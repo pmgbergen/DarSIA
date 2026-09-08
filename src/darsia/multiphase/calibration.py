@@ -37,17 +37,24 @@ def calibrate_transformations(
     - `mass_analysis_from_pre`: a function to perform mass analysis from the pre-mass analysis
         results.
 
-    Args:
-        transformation_g (darsia.PWTransformation): Transformation for gas phase.
-        transformation_aq (darsia.PWTransformation): Transformation for aqueous phase.
-        paths (list[Path]): List of paths to images to be analyzed.
-        multiphase_time_series_analysis (darsia.MultiphaseTimeSeriesAnalysis): Analysis object
-            to track results.
-        upper_time_limit (float): Upper time limit for the analysis in hours.
-        read_image (Callable[[Path], darsia.Image]): Function to read an image from a path.
-        pre_mass_analysis (Callable[[darsia.Image], dict]): Function to perform pre-mass
-            analysis on
-
+    Parameters
+    ----------
+    transformation_g : darsia.PWTransformation
+        Transformation for gas phase.
+    transformation_aq : darsia.PWTransformation
+        Transformation for aqueous phase.
+    paths : list[Path]
+        List of paths to images to be analyzed.
+    multiphase_time_series_analysis : darsia.MultiphaseTimeSeriesAnalysis
+        Analysis object
+        to track results.
+    upper_time_limit : float
+        Upper time limit for the analysis in hours.
+    read_image : Callable[[Path], darsia.Image]
+        Function to read an image from a path.
+    pre_mass_analysis : Callable[[darsia.Image], dict]
+        Function to perform pre-mass
+        analysis on.
     """
 
     # Cache the number of values in transformations

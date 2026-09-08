@@ -27,20 +27,30 @@ def _load_roi_key_list(
     list[str] unresolved (resolution to RoiConfig objects happens at point of use,
     not here).
 
-    Args:
-        sub_sec: Section dict to read from.
-        key: Key name within the section.
-        context: Human-readable context for error messages (e.g. "analysis.mass.roi").
-        roi_registry: ROI registry to validate keys against (required if keys are present).
-        allow_str: If True, accept a bare string and wrap as single-entry list.
-        none_if_absent: If True, return None when the key is absent. If False, return [].
+    Parameters
+    ----------
+    sub_sec : dict
+        Section dict to read from.
+    key : str
+        Key name within the section.
+    context : str
+        Human-readable context for error messages (e.g. "analysis.mass.roi").
+    roi_registry : 'RoiRegistry | None'
+        ROI registry to validate keys against (required if keys are present).
+    allow_str : bool
+        If True, accept a bare string and wrap as single-entry list.
+    none_if_absent : bool
+        If True, return None when the key is absent. If False, return [].
 
-    Returns:
+    Returns
+    -------
         Validated list[str] (or None if `none_if_absent=True` and key is absent).
 
-    Raises:
-        ValueError: If the value is not a valid list[str]/str, if the registry is
-            missing when keys are present, or if any key doesn't resolve.
+    Raises
+    ------
+    ValueError
+        If the value is not a valid list[str]/str, if the registry is
+        missing when keys are present, or if any key doesn't resolve.
     """
     raw_value = _convert_none(sub_sec.get(key))
 
@@ -105,16 +115,22 @@ class RoiRegistry:
         Hand-parses TOML (like FormatRegistry) since array-of-tables is not supported
         by the generic _get_section_from_toml helper.
 
-        Args:
-            path: Path or list of Paths to TOML config file(s).
+        Parameters
+        ----------
+        path : Path | list[Path]
+            Path or list of Paths to TOML config file(s).
 
-        Returns:
-            self
+        Returns
+        -------
+            Self.
 
-        Raises:
-            ValueError: If the [roi] section is not an array-of-tables (strict format
-                enforcement).
-            ValueError: If any ROI entry has a duplicate name (checked during load).
+        Raises
+        ------
+        ValueError
+            If the [roi] section is not an array-of-tables (strict format
+            enforcement).
+        ValueError
+            If any ROI entry has a duplicate name (checked during load).
         """
         paths = [path] if isinstance(path, Path) else path
         self.rois = {}
@@ -162,12 +178,17 @@ class RoiRegistry:
         ``[color.path.<id>.roi.*]`` TOML sub-section) need to be injected into the
         shared registry so that they can later be resolved by key name.
 
-        Args:
-            key: The name to register the entry under.
-            roi: The ROI config object to register.
+        Parameters
+        ----------
+        key : str
+            The name to register the entry under.
+        roi : RoiConfig
+            The ROI config object to register.
 
-        Raises:
-            KeyError: If *key* is already present in the registry.
+        Raises
+        ------
+        KeyError
+            If *key* is already present in the registry.
         """
         if key in self.rois:
             raise KeyError(
@@ -183,14 +204,19 @@ class RoiRegistry:
     def resolve(self, keys: str | list[str]) -> dict[str, RoiConfig]:
         """Return a dict of the requested entries keyed by their registry name.
 
-        Args:
-            keys: A single key string or a list of key strings.
+        Parameters
+        ----------
+        keys : str | list[str]
+            A single key string or a list of key strings.
 
-        Returns:
+        Returns
+        -------
             Dict mapping each requested key to its loaded ROI config object.
 
-        Raises:
-            KeyError: If any requested key is not present in the registry.
+        Raises
+        ------
+        KeyError
+            If any requested key is not present in the registry.
         """
         if isinstance(keys, str):
             keys = [keys]
@@ -207,12 +233,15 @@ class RoiRegistry:
     def resolve_rois(self, keys: str | list[str]) -> dict[str, RoiConfig]:
         """Return ROI entries with no label restriction for the given keys.
 
-        Args:
-            keys: A single key string or a list of key strings.
+        Parameters
+        ----------
+        keys : str | list[str]
+            A single key string or a list of key strings.
 
-        Returns:
-            Dict containing only the entries with ``label is None``, i.e. not
-            label-restricted entries.
+        Returns
+        -------
+            Dict containing only the entries with ``label is None``, i.e. not.
+            Label-restricted entries.
         """
         resolved = self.resolve(keys)
         return {

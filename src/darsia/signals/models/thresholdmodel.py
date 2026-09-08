@@ -71,11 +71,16 @@ class ThresholdModel:
         """
         Convert signal according to the considered model.
 
-        Args:
-            img (np.ndarray): signal
-            mask (np.ndarray, optional): mask (region of interest)
+        Parameters
+        ----------
+        img : np.ndarray
+            Signal.
+        mask : np.ndarray, optional
+            Mask (region of interest).
 
-        Returns:
-            np.ndarray: converted signal
+        Returns
+        -------
+        np.ndarray
+            Converted signal.
         """
         return self.model(img, mask)

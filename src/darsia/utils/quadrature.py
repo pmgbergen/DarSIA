@@ -10,13 +10,17 @@ def gauss(dim: int, order: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
 
     These are the Gauss points and weights for the reference element [-1, 1]^dim.
 
-    Args:
-        dim (int): Dimension of the Gauss points.
-        order (int): order of the Gauss points.
+    Parameters
+    ----------
+    dim : int
+        Dimension of the Gauss points.
+    order : int
+        Order of the Gauss points.
 
-    Returns:
-        tuple[np.ndarray, np.ndarray]: Gauss points and weights.
-
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Gauss points and weights.
     """
     if dim == 1:
         if order == "max":
@@ -470,13 +474,17 @@ def gauss(dim: int, order: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
 def gauss_reference_cell(dim: int, order: int) -> tuple[np.ndarray, np.ndarray]:
     """Convert Gauss points to a quadrature rule for the unit cube.
 
-    Args:
-        dim (int): Dimension of the Gauss points.
-        order (int): order of the Gauss points.
+    Parameters
+    ----------
+    dim : int
+        Dimension of the Gauss points.
+    order : int
+        Order of the Gauss points.
 
-    Returns:
-        tuple[np.ndarray, np.ndarray]: Quadrature points and weights.
-
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Quadrature points and weights.
     """
     pts, weights = gauss(dim, order)
     pts = (pts + 1.0) / 2.0
@@ -489,13 +497,17 @@ def reference_cell_corners(dim: int) -> tuple[np.ndarray, np.ndarray]:
 
     Adopted from darsia.Grid - but no guarantee for consistency.
 
-    Args:
-        dim (int): Dimension of the unit cube.
+    Parameters
+    ----------
+    dim : int
+        Dimension of the unit cube.
 
-    Returns:
-        np.ndarray: Corners of the unit cube.
-        np.ndarray: Weights of the corners of the unit cube.
-
+    Returns
+    -------
+    np.ndarray
+        Corners of the unit cube.
+    np.ndarray
+        Weights of the corners of the unit cube.
     """
     if dim == 1:
         corners = np.array([[0.0], [1.0]])

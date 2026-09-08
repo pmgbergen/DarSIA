@@ -195,16 +195,22 @@ def get_required_sections(action: str, checkbox_id: str) -> tuple[str, ...] | No
     Handles both leaf entries (decorated functions) and composite entries (recursively
     resolve a list of other checkbox IDs and union their sections).
 
-    Args:
-        action: Workflow action (setup, calibration, analysis)
-        checkbox_id: Checkbox ID (e.g., depth, color, fingers)
+    Parameters
+    ----------
+    action : str
+        Workflow action (setup, calibration, analysis).
+    checkbox_id : str
+        Checkbox ID (e.g., depth, color, fingers).
 
-    Returns:
+    Returns
+    -------
         Tuple of section names, or None if checkbox is not registered.
 
-    Raises:
-        ValueError: If a registered function is missing the @required_sections
-            decorator or if the decorator is misconfigured.
+    Raises
+    ------
+    ValueError
+        If a registered function is missing the @required_sections
+        decorator or if the decorator is misconfigured.
     """
     key = (action, checkbox_id)
 
@@ -250,11 +256,15 @@ def _is_section_satisfied(config_dict: dict, section: str) -> bool:
     """Check whether a section already has a non-empty value in the GUI's
     TOML-parsed config dict.
 
-    Args:
-        config_dict: The GUI's raw config dict (main_window.config_dict).
-        section: Section name (e.g., "rig", "calibration.color").
+    Parameters
+    ----------
+    config_dict : dict
+        The GUI's raw config dict (main_window.config_dict).
+    section : str
+        Section name (e.g., "rig", "calibration.color").
 
-    Returns:
+    Returns
+    -------
         True if the section key path resolves to a non-empty dict or value;
         False otherwise.
     """
@@ -286,14 +296,20 @@ def filter_visible_sections(
     order; only displays sections listed in TAB_VISIBILITY unless they are
     currently unsatisfied (missing/empty).
 
-    Args:
-        action: Workflow action (e.g., "calibration").
-        checkbox_id: Checkbox ID (e.g., "color").
-        required_sections: Tuple of required sections from the decorator.
-        config_dict: The GUI's raw TOML-parsed config dict
-            (main_window.config_dict).
+    Parameters
+    ----------
+    action : str
+        Workflow action (e.g., "calibration").
+    checkbox_id : str
+        Checkbox ID (e.g., "color").
+    required_sections : tuple[str, ...]
+        Tuple of required sections from the decorator.
+    config_dict : dict
+        The GUI's raw TOML-parsed config dict
+        (main_window.config_dict).
 
-    Returns:
+    Returns
+    -------
         Filtered tuple of section names to display (always includes unmet ones).
         Order follows TAB_VISIBILITY's declared sequence (if set).
     """

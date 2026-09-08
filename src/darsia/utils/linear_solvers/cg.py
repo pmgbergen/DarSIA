@@ -18,14 +18,19 @@ class CG(da.Solver):
     ) -> np.ndarray:
         """Solve the problem.
 
-        Args:
-            x0 (np.ndarray): initial guess
-            rhs (np.ndarray): right hand side
-            h (float, optional): grid spacing
+        Parameters
+        ----------
+        x0 : np.ndarray
+            Initial guess.
+        rhs : np.ndarray
+            Right hand side.
+        h : float, optional
+            Grid spacing.
 
-        Returns:
-            np.ndarray: solution
-
+        Returns
+        -------
+        np.ndarray
+            Solution.
         """
         # Safety check
         assert x0.shape == rhs.shape

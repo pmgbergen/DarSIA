@@ -21,9 +21,12 @@ class BaseCriterion:
         """
         Binding routine, allowing to fix and prepare.
 
-        Args:
-            signal (np.ndarray): processed signal
-            unprocessed_signal (np.ndarray): unprocessed signal
+        Parameters
+        ----------
+        signal : np.ndarray
+            Processed signal.
+        unprocessed_signal : np.ndarray
+            Unprocessed signal.
         """
         self.signal = signal
 
@@ -174,13 +177,19 @@ class BinaryDataSelector:
         """
         Select from data labeled regions which satisfy some criterion.
 
-        Args:
-            signal (np.ndarray): signal
-            mask (np.ndarray): mask
-            unprocessed_signal (np.ndarray): original signal
+        Parameters
+        ----------
+        signal : np.ndarray
+            Signal.
+        mask : np.ndarray
+            Mask.
+        unprocessed_signal : np.ndarray
+            Original signal.
 
-        Returns:
-            np.ndarray: boolean mask, reevaluated based on criteria.
+        Returns
+        -------
+        np.ndarray
+            Boolean mask, reevaluated based on criteria.
         """
         # Bind data
         self.criterion.bind(signal, unprocessed_signal)

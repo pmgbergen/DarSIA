@@ -9,13 +9,17 @@ import skimage
 def convert_dtype(img: np.ndarray, dtype: np.dtype) -> np.ndarray:
     """Convert image to the specified dtype.
 
-    Args:
-        img (np.ndarray): image
-        img_dtype (np.dtype): dtype to convert to
+    Parameters
+    ----------
+    img : np.ndarray
+        Image.
+    dtype : np.dtype
+        Dtype to convert to.
 
-    Returns:
-        np.ndarray: converted image
-
+    Returns
+    -------
+    np.ndarray
+        Converted image.
     """
     if dtype == np.uint8:
         return skimage.img_as_ubyte(img)  # type: ignore[attr-defined]

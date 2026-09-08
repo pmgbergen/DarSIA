@@ -13,10 +13,13 @@ def hsv_spectrum(img: np.ndarray, roi: list[tuple], bins: int = 100) -> None:
     """
     Plot histograms for all HSV components present in a ROI of an image.
 
-    Args:
-        img (np.ndarray): image array in RGB space with matrix indexing
-        roi (tuple of slices): slice for y-components, and slice for x-components,
-            defining a region of interest, to be cropped from img
+    Parameters
+    ----------
+    img : np.ndarray
+        Image array in RGB space with matrix indexing.
+    roi : tuple of slices
+        Slice for y-components, and slice for x-components,
+        defining a region of interest, to be cropped from img.
     """
     if isinstance(roi, tuple):
         roi = [roi]

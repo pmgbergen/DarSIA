@@ -74,13 +74,17 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         scalar. We still aim at following along the direction provided by the vectorial
         fluxes.
 
-        Args:
-            flux (np.ndarray): flux
-            shrink_factor (float or np.ndarray): shrink factor
+        Parameters
+        ----------
+        flux : np.ndarray
+            Flux.
+        shrink_factor : float or np.ndarray
+            Shrink factor.
 
-        Returns:
-            np.ndarray: shrunk fluxes
-
+        Returns
+        -------
+        np.ndarray
+            Shrunk fluxes.
         """
         _, face_weights_inv = self._compute_face_weight(flux)
         scaling = np.maximum(face_weights_inv - shrink_factor, 0) / (
@@ -91,12 +95,15 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
     def _compute_heterogeneous_bregman_regularization(self, flux: np.ndarray) -> tuple:
         """Update the regularization based on the current approximation of the flux.
 
-        Args:
-            flux (np.ndarray): flux
+        Parameters
+        ----------
+        flux : np.ndarray
+            Flux.
 
-        Returns:
-            tuple: l_scheme_mixed_darcy, weight, shrink_factor
-
+        Returns
+        -------
+        tuple
+            L_scheme_mixed_darcy, weight, shrink_factor.
         """
 
         # Assign the weight and shrink factor
@@ -122,12 +129,15 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
     ) -> tuple[float, np.ndarray, dict]:
         """Solve the Beckmann problem using the Bregman method.
 
-        Args:
-            flat_mass_diff (np.ndarray): difference of mass distributions
+        Parameters
+        ----------
+        flat_mass_diff : np.ndarray
+            Difference of mass distributions.
 
-        Returns:
-            tuple: distance, solution, info
-
+        Returns
+        -------
+        tuple
+            Distance, solution, info.
         """
         # Setup time and memory profiling
         tic = time.time()
