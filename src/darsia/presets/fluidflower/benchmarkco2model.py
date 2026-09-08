@@ -15,10 +15,12 @@ def benchmark_binary_cleaning_preset(
     """
     Cleaning methods also used in the benchmark_concentration_analysis_preset.
 
-    Args:
-        base (darsia.Image): baseline image
-        options (dict): options same as in benchmark_concentration_analysis_preset.
-
+    Parameters
+    ----------
+    base : darsia.Image
+        Baseline image.
+    options : dict
+        Options same as in benchmark_concentration_analysis_preset.
     """
     original_shape = base.img.shape[:2]
     binary_cleaning = darsia.CombinedModel(
@@ -54,14 +56,19 @@ def benchmark_concentration_analysis_preset(
         d. conversion to boolean data
     4. Posterior strategy reviewing the first three steps.
 
-    Args:
-        base (darsia.Image): baseline image
-        labels (np.ndarray): labeling of domain in facies
-        options (dict): dictionary holding all tuning parameters
+    Parameters
+    ----------
+    base : darsia.Image
+        Baseline image.
+    labels : np.ndarray
+        Labeling of domain in facies.
+    options : dict
+        Dictionary holding all tuning parameters.
 
-    Returns:
-        darsia.ConcentrationAnalysis: concentration analysis for detecting CO2.
-
+    Returns
+    -------
+    darsia.ConcentrationAnalysis
+        Concentration analysis for detecting CO2.
     """
 
     ########################################################################

@@ -35,14 +35,19 @@ class FormatCatalogue:
         Uses FormatRegistry's own parsing logic to avoid code duplication;
         merges across multiple files and enforces global name uniqueness.
 
-        Args:
-            path: Path or list of Paths to TOML catalogue file(s).
+        Parameters
+        ----------
+        path : Path | list[Path]
+            Path or list of Paths to TOML catalogue file(s).
 
-        Returns:
-            self
+        Returns
+        -------
+            Self.
 
-        Raises:
-            ValueError: If any format entry has a duplicate name (within or across files).
+        Raises
+        ------
+        ValueError
+            If any format entry has a duplicate name (within or across files).
         """
         if isinstance(path, list):
             paths = [Path(p) for p in path]
@@ -77,14 +82,19 @@ class FormatCatalogue:
     def get(self, name: str) -> ImageExportFormat:
         """Retrieve a preset by name.
 
-        Args:
-            name: The preset name.
+        Parameters
+        ----------
+        name : str
+            The preset name.
 
-        Returns:
+        Returns
+        -------
             The ImageExportFormat preset (already normalized via load()).
 
-        Raises:
-            KeyError: If the preset name is not found.
+        Raises
+        ------
+        KeyError
+            If the preset name is not found.
         """
         if name not in self.presets:
             raise KeyError(

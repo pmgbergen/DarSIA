@@ -56,17 +56,24 @@ def _parse_list_text(text, list_type=None):
     - Comma-separated: 1, 2, 3
     - Mixed: 1, 2 3 (commas take precedence)
 
-    Args:
-        text: User-entered text (e.g., "0.1, 0.2" or "0.1 0.2" or "[0.1, 0.2]").
-        list_type: Element type for coercion ("int", "float", "string", "file").
-                   If None, no coercion is applied.
+    Parameters
+    ----------
+    text
+        User-entered text (e.g., "0.1, 0.2" or "0.1 0.2" or "[0.1, 0.2]").
+    list_type
+        Element type for coercion ("int", "float", "string", "file").
+        If None, no coercion is applied.
 
-    Returns:
+    Returns
+    -------
         A Python list of parsed and (optionally) coerced values.
 
-    Raises:
-        ValueError: If parsing fails or coercion is impossible.
-        SyntaxError: If literal_eval encounters invalid syntax.
+    Raises
+    ------
+    ValueError
+        If parsing fails or coercion is impossible.
+    SyntaxError
+        If literal_eval encounters invalid syntax.
     """
     text = text.strip()
     if not text:
@@ -111,10 +118,13 @@ def _parse_list_text(text, list_type=None):
 def _format_list_text(value):
     """Format a list as bracket-free, comma-separated text for canonical display.
 
-    Args:
-        value: A list or tuple to format.
+    Parameters
+    ----------
+    value
+        A list or tuple to format.
 
-    Returns:
+    Returns
+    -------
         A string like "0.1, 0.2, 0.3" (no brackets).
     """
     if not value:
@@ -1687,12 +1697,16 @@ class SettingsFactory:
         - "From TOML..." → file picker, parse entries, call on_apply per entry
         - "From catalogue > <preset name>" → call on_apply with catalogue entry
 
-        Args:
-            setting_dict: The setting dict (must have "loadable" key).
-            on_apply: Callable(name: str, entry_dict: dict) -> None,
-                called once per loaded item (name as dict key, entry_dict as TOML dict).
+        Parameters
+        ----------
+        setting_dict
+            The setting dict (must have "loadable" key).
+        on_apply
+            Callable(name: str, entry_dict: dict) -> None,
+            called once per loaded item (name as dict key, entry_dict as TOML dict).
 
-        Returns:
+        Returns
+        -------
             A QToolButton with QMenu, or None if not loadable.
         """
         loadable_type = setting_dict.get("loadable")

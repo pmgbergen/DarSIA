@@ -84,16 +84,22 @@ class AnalysisContext:
     This context is shared across all analysis types (cropping, mass, volume,
     segmentation) to avoid redundant initialization of heavy objects.
 
-    Attributes:
-        config: The FluidFlower configuration.
-        experiment: The protocolled experiment.
-        fluidflower: The loaded rig instance.
-        image_paths: List of image paths to analyze.
-        restoration: Restoration model (e.g. VolumeAveraging or TVD), or None
-            if no restoration is configured.  Available to all analysis workflows.
-        color_to_mass_analysis: The color to mass analysis pipeline
-            (for mass/volume/segmentation).
-
+    Attributes
+    ----------
+    config
+        The FluidFlower configuration.
+    experiment
+        The protocolled experiment.
+    fluidflower
+        The loaded rig instance.
+    image_paths
+        List of image paths to analyze.
+    restoration
+        Restoration model (e.g. VolumeAveraging or TVD), or None
+        if no restoration is configured.  Available to all analysis workflows.
+    color_to_mass_analysis
+        The color to mass analysis pipeline
+        (for mass/volume/segmentation).
     """
 
     config: FluidFlowerConfig
@@ -120,16 +126,22 @@ def select_image_paths(
 ) -> list[Path]:
     """Select image paths based on configuration and flags.
 
-    Args:
-        config: The FluidFlower configuration.
-        experiment: The protocolled experiment.
-        all: Whether to use all images.
-        sub_config: Optional sub-configuration for the analysis.
-        source: Optional source path for time-based image lookup.
+    Parameters
+    ----------
+    config : FluidFlowerConfig
+        The FluidFlower configuration.
+    experiment : darsia.ProtocolledExperiment
+        The protocolled experiment.
+    all : bool
+        Whether to use all images.
+    sub_config
+        Optional sub-configuration for the analysis.
+    source : Path | None
+        Optional source path for time-based image lookup.
 
-    Returns:
+    Returns
+    -------
         List of image paths to analyze.
-
     """
     assert config.data is not None
 

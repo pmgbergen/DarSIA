@@ -116,12 +116,15 @@ class RelativeColorCorrection(darsia.BaseCorrection):
     def correct_array(self, img: np.ndarray) -> np.ndarray:
         """Rescale an array using heterogeneous color correction.
 
-        Args:
-            img (np.ndarray): input image
+        Parameters
+        ----------
+        img : np.ndarray
+            Input image.
 
-        Returns:
-            np.ndarray: corrected image
-
+        Returns
+        -------
+        np.ndarray
+            Corrected image.
         """
         # Pixel-by-pixel matrix-vector multiplication
         return np.einsum("ijkl,ijl->ijk", self.evaluated_correction, img)
@@ -131,9 +134,10 @@ class RelativeColorCorrection(darsia.BaseCorrection):
     def define_correction(self) -> darsia.LinearApproximation:
         """Set the correction method.
 
-        Returns:
-            darsia.LinearApproximation: Linear approximation for color correction.
-
+        Returns
+        -------
+        darsia.LinearApproximation
+            Linear approximation for color correction.
         """
         ansatz = self.config.get("method", "polynomial")
         if ansatz == "polynomial":

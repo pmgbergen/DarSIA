@@ -307,12 +307,15 @@ class Patches:
         """
         Return patch with index (i,j).
 
-        Args:
-            args (tuple of int): index of a patch
+        Parameters
+        ----------
+        *args : tuple of int
+            Index of a patch.
 
-        Returns:
-            darsia.Image: image of the indexed patch
-
+        Returns
+        -------
+        darsia.Image
+            Image of the indexed patch.
         """
         assert len(args) == self.base.space_dim
 
@@ -328,10 +331,12 @@ class Patches:
         """
         Update the image of a patch.
 
-        Args:
-            img (np.ndarray): image array
-            args (tuple of int): index of the patch
-
+        Parameters
+        ----------
+        img : np.ndarray
+            Image array.
+        *args : tuple of int
+            Index of the patch.
         """
         assert len(args) == self.num_active_spatial_axes
 
@@ -462,17 +467,23 @@ class Patches:
         Determine positioning of patch wrt. boundary or internal patches
         in both x- and y-direction.
 
-        Args:
-            i (int): patch coordinate in x-direction
-            j (int): patch coordinate in y-direction
+        Parameters
+        ----------
+        i : int
+            Patch coordinate in x-direction.
+        j : int
+            Patch coordinate in y-direction.
+
+        Returns
+        -------
+        str
+            "left" or "right" if the patch is touching the left or right boundary
+            of the image; otherwise "internal".
+        str
+            "top" or "bottom" if the patch is touching the top or bottom boundary
+            of the image; otherwise "internal".
 
         NOTE: The patch coordinates employ the Cartesian indexing, i.e., (x,y).
-
-        Returns:
-            str: "left" or "right" if the patch is touching the left or right boundary
-                of the image; otherwise "internal"
-            str: "top" or "bottom" if the patch is touching the top or bottom boundary
-                of the image; otherwise "internal"
         """
         # TODO is this used? rm?
         # Determine horizontal position (x-direction)
@@ -497,12 +508,16 @@ class Patches:
         """
         Reassembles without taking into account the overlap.
 
-        Args:
-            update_img (bool): flag controlling whether the base image will be updated
-                with the assembled image; default set to False
+        Parameters
+        ----------
+        update_img : bool
+            Flag controlling whether the base image will be updated
+            with the assembled image; default set to False.
 
-        Returns:
-            darsia.image: assembled image as darsia image
+        Returns
+        -------
+        darsia.image
+            Assembled image as darsia image.
         """
 
         # TODO naturally extends to 3d?
@@ -554,13 +569,16 @@ class Patches:
         On the overlap, a convex combination is used for
         smooth blending.
 
-        Args:
-            update_img (bool): flag controlling whether the base image will be updated
-                with the assembled image; default set to False
+        Parameters
+        ----------
+        update_img : bool
+            Flag controlling whether the base image will be updated
+            with the assembled image; default set to False.
 
-        Returns:
-            darsia.Image: assembled image as darsia image
-
+        Returns
+        -------
+        darsia.Image
+            Assembled image as darsia image.
         """
 
         # TODO naturally extends to 3d?

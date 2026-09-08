@@ -41,16 +41,21 @@ class ColorPath:
     ) -> None:
         """Color path.
 
-        Args:
-            colors: Absolute colors in RGB space, defining the color path. Defaults
-                to a simple grayscale path from black to white.
-            base_color: Base color in RGB space, used as the first color in the path.
-            relative_colors: Relative colors in RGB space wrt. the base color,
-                defining the color path. If provided, `colors` must be `None`.
-            mode: Color space to use for interpolation in between colors.
-                Defaults to "rgb".
-            name: Name of the color path.
-
+        Parameters
+        ----------
+        colors : list[np.ndarray] | None
+            Absolute colors in RGB space, defining the color path. Defaults
+            to a simple grayscale path from black to white.
+        base_color : np.ndarray | None
+            Base color in RGB space, used as the first color in the path.
+        relative_colors : list[np.ndarray] | None
+            Relative colors in RGB space wrt. the base color,
+            defining the color path. If provided, `colors` must be `None`.
+        mode : Literal['rgb', 'lab', 'hcl']
+            Color space to use for interpolation in between colors.
+            Defaults to "rgb".
+        name : str
+            Name of the color path.
         """
         # Sanity checks
         assert colors is not None or relative_colors is not None
@@ -125,9 +130,10 @@ class ColorPath:
     def _compute_relative_distances(self) -> list[float]:
         """Compute relative distances between the colors in the path.
 
-        Returns:
-            list[float]: Relative distances between the colors in the path.
-
+        Returns
+        -------
+        list[float]
+            Relative distances between the colors in the path.
         """
         distances = [
             np.linalg.norm(self.relative_colors[i] - self.relative_colors[i - 1])
@@ -141,8 +147,10 @@ class ColorPath:
     def _compute_equidistant_distances(self) -> list[float]:
         """Compute equidistant distances between the colors in the path.
 
-        Returns:
-            list[float]: Equidistant distances between the colors in the path.
+        Returns
+        -------
+        list[float]
+            Equidistant distances between the colors in the path.
         """
         return np.linspace(0.0, 1.0, len(self.colors)).tolist()
 
@@ -151,12 +159,15 @@ class ColorPath:
 
         The interpolation mode depends on the `mode` parameter of the constructor.
 
-        Args:
-            n_colors: Number of quantization levels in the colormap.
+        Parameters
+        ----------
+        n_colors : int
+            Number of quantization levels in the colormap.
 
-        Returns:
-            list[np.ndarray]: Sampled absolute color path.
-
+        Returns
+        -------
+        list[np.ndarray]
+            Sampled absolute color path.
         """
         if self.mode == "rgb":
             color_list = []
@@ -203,13 +214,17 @@ class ColorPath:
     ) -> LinearSegmentedColormap:
         """Create a colormap from the color path, ready for matplotlib.
 
-        Args:
-            n_colors: Number of quantization levels in the colormap.
-            name: Name of the colormap.
+        Parameters
+        ----------
+        n_colors : int
+            Number of quantization levels in the colormap.
+        name
+            Name of the colormap.
 
-        Returns:
-            LinearSegmentedColormap: Colormap created from the color path.
-
+        Returns
+        -------
+        LinearSegmentedColormap
+            Colormap created from the color path.
         """
         # Sample the absolute color path
         color_list = self.sample_absolute_color_path(n_colors=n_colors)
@@ -282,9 +297,10 @@ class ColorPath:
     def to_dict(self) -> dict:
         """Convert the color path to a dictionary representation.
 
-        Returns:
-            dict: Dictionary representation of the color path.
-
+        Returns
+        -------
+        dict
+            Dictionary representation of the color path.
         """
         return {
             "colors": [c.tolist() for c in self.colors],
@@ -300,9 +316,10 @@ class ColorPath:
     def from_dict(self, data: dict) -> "ColorPath":
         """Create a ColorPath instance from a dictionary representation.
 
-        Args:
-            data (dict): Dictionary representation of the color path.
-
+        Parameters
+        ----------
+        data : dict
+            Dictionary representation of the color path.
         """
         color_path = ColorPath(
             base_color=np.array(data["base_color"]),
@@ -316,9 +333,10 @@ class ColorPath:
     def save(self, path: Path) -> None:
         """Save the color path to a file.
 
-        Args:
-            path (Path): The path to the file where the color path should be saved.
-
+        Parameters
+        ----------
+        path : Path
+            The path to the file where the color path should be saved.
         """
         with open(path.with_suffix(".json"), "w") as f:
             json.dump(self.to_dict(), f)
@@ -328,9 +346,10 @@ class ColorPath:
     def load(cls, path: Path) -> "ColorPath":
         """Load the color path from a file.
 
-        Args:
-            path (Path): The path to the file from which the color path should be loaded.
-
+        Parameters
+        ----------
+        path : Path
+            The path to the file from which the color path should be loaded.
         """
         with open(path.with_suffix(".json"), "r") as f:
             data = json.load(f)
@@ -369,14 +388,19 @@ class ColorPath:
     ) -> "ColorPath":
         """Redefine the color path with a given number of segments.
 
-        Args:
-            num_segments: Number of segments for the refined color path.
-            distance_to_left: Value to extend the color path to the left (inter).
-            distance_to_right: Value to extend the color path to the right.
+        Parameters
+        ----------
+        num_segments : int
+            Number of segments for the refined color path.
+        distance_to_left : float | None
+            Value to extend the color path to the left (inter).
+        distance_to_right : float | None
+            Value to extend the color path to the right.
 
-        Returns:
-            ColorPath: Refined color path with the specified number of segments.
-
+        Returns
+        -------
+        ColorPath
+            Refined color path with the specified number of segments.
         """
 
         # Define new relative distances
@@ -416,12 +440,15 @@ class ColorPath:
         Apply brute-force minimization to find the closest color representation
         on the path for each pixel in the image.
 
-        Args:
-            colors: Colors to be interpreted.
+        Parameters
+        ----------
+        colors : np.ndarray
+            Colors to be interpreted.
 
-        Returns:
-            np.ndarray: Parametrization of the input image in terms of the color path.
-
+        Returns
+        -------
+        np.ndarray
+            Parametrization of the input image in terms of the color path.
         """
         # Fetch the right supports
         supports = (
@@ -519,14 +546,19 @@ class ColorPath:
     ) -> np.ndarray:
         """Interpret parameters in terms of the color path.
 
-        Args:
-            parameters: Parameters to be interpreted.
-            color_mode: Color mode to use for interpretation.
-            mode: Mode to use for interpretation.
+        Parameters
+        ----------
+        parameters : np.ndarray
+            Parameters to be interpreted.
+        color_mode : darsia.ColorMode
+            Color mode to use for interpretation.
+        mode : Literal['equidistant', 'relative']
+            Mode to use for interpretation.
 
-        Returns:
-            np.ndarray: Interpreted colors.
-
+        Returns
+        -------
+        np.ndarray
+            Interpreted colors.
         """
         # Fetch the right supports
         supports = (
@@ -572,13 +604,17 @@ class ColorPath:
 def define_color_path(image: darsia.Image, mask: darsia.Image) -> ColorPath:
     """Interactive setup of a color path based on an image.
 
-    Args:
-        image (darsia.Image): The image to define the color path from.
-        mask (darsia.Image): The mask to apply on the image.
+    Parameters
+    ----------
+    image : darsia.Image
+        The image to define the color path from.
+    mask : darsia.Image
+        The mask to apply on the image.
 
-    Returns:
-        darsia.ColorPath: The defined color path with selected colors.
-
+    Returns
+    -------
+    darsia.ColorPath
+        The defined color path with selected colors.
     """
     # Sanity checks
     assert mask.img.dtype == bool, "Mask must be a boolean mask."

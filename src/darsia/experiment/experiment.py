@@ -119,24 +119,30 @@ class ProtocolledExperiment:
     def time_since_start(self, date: datetime) -> float:
         """Hours since start of the experiment.
 
-        Args:
-            date (datetime): Date to compute the time since start for.
+        Parameters
+        ----------
+        date : datetime
+            Date to compute the time since start for.
 
-        Returns:
-            float: Time since start in hours.
-
+        Returns
+        -------
+        float
+            Time since start in hours.
         """
         return (date - self.experiment_start).total_seconds() / 3600
 
     def find_images_for_paths(self, paths: list[Path]) -> list[Path]:
         """Find image paths for given paths.
 
-        Args:
-            paths (list[Path]): Paths to search for.
+        Parameters
+        ----------
+        paths : list[Path]
+            Paths to search for.
 
-        Returns:
-            list[Path]: Image paths found for the given paths.
-
+        Returns
+        -------
+        list[Path]
+            Image paths found for the given paths.
         """
         available_paths: list[Path] = []
         for path in paths:
@@ -151,11 +157,13 @@ class ProtocolledExperiment:
     ) -> list[Path]:
         """Find image paths for given time windows since start of the experiment.
 
-        Args:
-            windows (list[TimeWindow]): Time windows to search for.
-            data (list[Path], optional): Pool of data paths to search in. If None,
-                uses the experiment's data pool.
-
+        Parameters
+        ----------
+        windows : list[TimeWindow]
+            Time windows to search for.
+        data : list[Path], optional
+            Pool of data paths to search in. If None,
+            uses the experiment's data pool.
         """
         source_paths = data or self.data
 
@@ -189,14 +197,17 @@ class ProtocolledExperiment:
     ) -> list[Path]:
         """Find image paths for given times since start of the experiment.
 
-        Args:
-            times (list[float]): Times since start in hours.
-            tol (float | None, optional): Maximum allowed absolute time distance in
-                seconds between requested and matched image times. Inclusive when
-                provided.
-            data (list[Path], optional): Pool of data paths to search in. If None,
-                uses the experiment's data pool.
-
+        Parameters
+        ----------
+        times : list[float]
+            Times since start in hours.
+        tol : float | None, optional
+            Maximum allowed absolute time distance in
+            seconds between requested and matched image times. Inclusive when
+            provided.
+        data : list[Path], optional
+            Pool of data paths to search in. If None,
+            uses the experiment's data pool.
         """
         times_is_list = isinstance(times, list)
         if not times_is_list:

@@ -19,10 +19,14 @@ class TableViewerDialog(QDialog):
     def __init__(self, parent=None, title="Data Viewer", dataframe=None):
         """Initialize the table viewer dialog.
 
-        Args:
-            parent: Parent widget.
-            title: Window title.
-            dataframe: pandas.DataFrame to display (or None for empty).
+        Parameters
+        ----------
+        parent
+            Parent widget.
+        title
+            Window title.
+        dataframe
+            Pandas.DataFrame to display (or None for empty).
         """
         super().__init__(parent)
         self.setWindowTitle(title)
@@ -54,11 +58,14 @@ class TableViewerDialog(QDialog):
 def load_csv_table(path: Path) -> pd.DataFrame:
     """Load a CSV file as a DataFrame.
 
-    Args:
-        path: Path to the CSV file.
+    Parameters
+    ----------
+    path : Path
+        Path to the CSV file.
 
-    Returns:
-        pandas.DataFrame with the CSV contents, or empty DataFrame if file doesn't exist.
+    Returns
+    -------
+        Pandas.DataFrame with the CSV contents, or empty DataFrame if file doesn't exist.
     """
     path = Path(path)
     if not path.exists():

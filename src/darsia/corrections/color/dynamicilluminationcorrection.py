@@ -26,18 +26,26 @@ class DynamicIlluminationCorrection(darsia.BaseCorrection):
         Only the L-component is used for RGB-based correction, while the full
         RGB-based correction is used further.
 
-        Args:
-            base (darsia.Image): base image
-            samples (list[tuple[slice,...]]): list of samples
-            ref_sample (int): index of reference sample
-            filter (callable): function to preprocess the signal before analysis, e.g.,
-                Gaussian filter.
-            colorspace (str): colorspace to use for analysis; defaults to "hsl-scalar".
-            interpolation (str): interpolation method to use for scaling; defaults to
-                "quartic".
-            show_plot (bool): flag controlling whether plots of calibration are displayed.
-            rescale (bool): flag controlling whether scaling ensures max value 1
-
+        Parameters
+        ----------
+        base : darsia.Image
+            Base image.
+        samples : list[tuple[slice,...]]
+            List of samples.
+        ref_sample : int
+            Index of reference sample.
+        filter : callable
+            Function to preprocess the signal before analysis, e.g.,
+            Gaussian filter.
+        colorspace : str
+            Colorspace to use for analysis; defaults to "hsl-scalar".
+        interpolation : str
+            Interpolation method to use for scaling; defaults to
+            "quartic".
+        show_plot : bool
+            Flag controlling whether plots of calibration are displayed.
+        rescale : bool
+            Flag controlling whether scaling ensures max value 1.
         """
         # Cache input parameters
         self.colorspace = colorspace.lower()
@@ -94,12 +102,15 @@ class DynamicIlluminationCorrection(darsia.BaseCorrection):
     def correct_array(self, img: np.ndarray) -> np.ndarray:
         """Rescale an array using local WB.
 
-        Args:
-            img (np.ndarray): input image
+        Parameters
+        ----------
+        img : np.ndarray
+            Input image.
 
-        Returns:
-            np.ndarray: corrected image
-
+        Returns
+        -------
+        np.ndarray
+            Corrected image.
         """
         img_wb = img.copy()
         if img.shape[-1] == 1:
@@ -146,9 +157,10 @@ class DynamicIlluminationCorrection(darsia.BaseCorrection):
     def save(self, path: Path) -> None:
         """Save the illumination correction to a file.
 
-        Args:
-            path (Path): path to the file
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file.
         """
         # Make sure the parent directory exists
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -168,9 +180,10 @@ class DynamicIlluminationCorrection(darsia.BaseCorrection):
     def load(self, path: Path) -> None:
         """Load the illumination correction from a file.
 
-        Args:
-            path (Path): path to the file
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file.
         """
         # Make sure the file exists
         if not path.is_file():

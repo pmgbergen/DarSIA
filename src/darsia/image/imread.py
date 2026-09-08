@@ -36,13 +36,17 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
     Provide interface for numpy arrays, standard optical image formats,
     dicom images, and vtu images.
 
-    Args:
-        path (str, Path or list of such): path(s) to file(s).
-        kwargs: keyword arguments tailored to the file format.
+    Parameters
+    ----------
+    path : str, Path or list of such
+        Path(s) to file(s).
+    **kwargs
+        Keyword arguments tailored to the file format.
 
-    Returns:
-        Image, or list of such: image of collection of images.
-
+    Returns
+    -------
+    Image, or list of such
+        Image of collection of images.
     """
     # Monitor time for performance analysis
     tic = time.time()
@@ -106,14 +110,19 @@ def imread_from_bytes(
 ) -> darsia.Image:
     """Initialization of Image by reading from byte string.
 
-    Args:
-        data (bytes): byte string of image.
-        transformations (list of callables): transformations.
-        kwargs: keyword arguments.
+    Parameters
+    ----------
+    data : bytes
+        Byte string of image.
+    transformations : list of callables
+        Transformations.
+    **kwargs
+        Keyword arguments.
 
-    Returns:
-        darsia.Image: image; scalar or optical, depending on the number of channels.
-
+    Returns
+    -------
+    darsia.Image
+        Image; scalar or optical, depending on the number of channels.
     """
     # Read image from byte string, convert to RGB
     array = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_UNCHANGED)
@@ -140,11 +149,11 @@ def imread_from_numpy(
 ) -> Union[darsia.Image, list[darsia.Image]]:
     """Converter from npy format to darsia.Image.
 
-    Args:
-        path (Path or list of Path): path(s) to npy files.
+    Parameters
+    ----------
+    path : Path or list of Path
+        Path(s) to npy files.
         keyword arguments:
-
-
     """
     if isinstance(path, list):
         raise NotImplementedError
@@ -159,9 +168,10 @@ def imread_from_npz(
 ) -> darsia.Image:
     """Converter from npz format to darsia.Image.
 
-    Args:
-        path (Path or list of Path): path(s) to npz files.
-
+    Parameters
+    ----------
+    path : Path or list of Path
+        Path(s) to npz files.
     """
     npzdata = np.load(path, allow_pickle=True)
     array = npzdata["array"]
@@ -190,20 +200,24 @@ def imread_from_optical(
 ) -> Union[darsia.OpticalImage, list[darsia.OpticalImage]]:
     """Reading functionality from jpg, png, tif format to optical images.
 
-    Args:
-        path (Path or list of such): path(s) to image(s).
-        time (scalar or list of such): user-specified physical times;
-            automatically detected from metadata if 'None'.
-        transformations (list of callables): transformations for 2d images.
+    Parameters
+    ----------
+    path : Path or list of such
+        Path(s) to image(s).
+    time : scalar or list of such
+        User-specified physical times;
+        automatically detected from metadata if 'None'.
+    transformations : list of callables
+        Transformations for 2d images.
         keyword arguments:
-            date (datetime): custom datetime; otherwise read from metadata
-            color_space (str): custom color space; RGB is assumed otherwise
-            any arguments accepted by Image
+        date (datetime): custom datetime; otherwise read from metadata
+        color_space (str): custom color space; RGB is assumed otherwise
+        any arguments accepted by Image
 
-    Returns:
+    Returns
+    -------
         OpticalImage (or list of such): converted image, list of such, or
-            space-time image, depending on the flag 'series'.
-
+        space-time image, depending on the flag 'series'.
     """
     # TODO check method for grayscale images. shape of array?
 
@@ -261,13 +275,16 @@ def imread_from_optical(
 def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetime]]:
     """Utility function for setting up a single optical image.
 
-    Args:
-        path (Path): path to single optical image.
+    Parameters
+    ----------
+    path : Path
+        Path to single optical image.
 
-    Returns:
-        np.ndarray: data array in RGB format
-        date (optional): date
-
+    Returns
+    -------
+    np.ndarray
+        Data array in RGB format.
+        Date (optional): date.
     """
     # Read image and convert to RGB and float ([0,1])
     try:
@@ -342,22 +359,28 @@ def imread_from_dicom(
     images is not consistent with the matrix indexing of darsia.Image. The
     transformation of coordinate axes is performed here.
 
-    Args:
-        path (Path, or list of such): path to dicom stacks
-        dim (int): spatial dimensionality of the images.
-        transformations (list of callables): transformations.
-        kwargs: keyword arguments.
+    Parameters
+    ----------
+    path : Path, or list of such
+        Path to dicom stacks.
+    dim : int
+        Spatial dimensionality of the images.
+    transformations : list of callables
+        Transformations.
+    **kwargs
+        Keyword arguments.
 
+    Returns
+    -------
+    darsia.Image
+        3d space-time image.
 
+    Raises
+    ------
+    ImportError
+        If pydicom is not installed.
 
     NOTE: Merely scalar data can be handled.
-
-    Returns:
-        darsia.Image: 3d space-time image
-
-    Raises:
-        ImportError: if pydicom is not installed
-
     """
     # ! ---- Image type
 
@@ -591,23 +614,32 @@ def imread_from_vtu(
 def _read_single_vtu_image(
     path: Path, key: str, shape: tuple[int], **kwargs
 ) -> tuple[np.ndarray, dict]:
-    """Utility function for setting up a single vtu image.
+    """Set up a single vtu image.
 
-    Args:
-        path (Path): path to single vtu file.
-        key (str): key to address data.
-        shape (tuple of int): shape of target 2d pixelated array, in matrix indexing.
-            series (bool): flag controlling whether a time series of images
-                is created.
+    Parameters
+    ----------
+    path : Path
+        Path to the single vtu file.
+    key : str
+        Key addressing the data field.
+    shape : tuple of int
+        Shape of the target 2d pixel array, in matrix indexing.
+    **kwargs
+        ``series`` (bool) -- create a time series of images.
 
-    Returns:
-        np.ndarray: data array
-        dict: meta
+    Returns
+    -------
+    numpy.ndarray
+        Data array.
+    dict
+        Metadata.
 
-    Raises:
-        ImportError: if meshio is not installed
-        NotImplementedError: if 3d VTU image is provided.
-
+    Raises
+    ------
+    ImportError
+        If meshio is not installed.
+    NotImplementedError
+        If a 3d VTU image is provided.
     """
     try:
         import meshio
@@ -683,13 +715,18 @@ def _resample_data(
 ) -> np.ndarray:
     """Sampling of data on arbitrary mesh to regular voxel grids (in 2d and 3d).
 
-    Args:
-        data (array): data array.
-        points (array): coordinates of triangulation.
-        cells (array): connectivity of triangulation.
-        shape (tuple of int): size of the target quad mesh in matrix indexing.
-        meta (dict): meta data dictionary associated to image.
-
+    Parameters
+    ----------
+    data : array
+        Data array.
+    points : array
+        Coordinates of triangulation.
+    cells : array
+        Connectivity of triangulation.
+    shape : tuple of int
+        Size of the target quad mesh in matrix indexing.
+    meta : dict
+        Meta data dictionary associated to image.
     """
     # Fetch meta data
     dim = meta["space_dim"]
@@ -795,22 +832,34 @@ def _embed_data(
         of the lower dimensional object. One can imagine, that a weighted
         interpolation approach is more accurate. TODO.
 
-    Args:
-        data (array): data array.
-        points (array): coordinates of triangulation.
-        cells (array): connectivity of triangulation.
-        shape (tuple of int): size of the target quad mesh in matrix indexing.
-        meta (dict): meta data dictionary associated to image.
-        width (float): width of the lower dimensional object.
+    Parameters
+    ----------
+    data : array
+        Data array.
+    points : array
+        Coordinates of triangulation.
+    cells : array
+        Connectivity of triangulation.
+    shape : tuple of int
+        Size of the target quad mesh in matrix indexing.
+    meta : dict
+        Meta data dictionary associated to image.
+    width : float
+        Width of the lower dimensional object.
 
-    Returns:
-        np.ndarray: embedded data array complying with embedded space.
-        list of float: dimenions of embedded data (Cartesian indexing)
-        list of float: Cartesian coordinates of the voxel origin of the embedded data.
+    Returns
+    -------
+    np.ndarray
+        Embedded data array complying with embedded space.
+    list of float
+        Dimenions of embedded data (Cartesian indexing).
+    list of float
+        Cartesian coordinates of the voxel origin of the embedded data.
 
-    Raises:
-        NotImplementedError: if ambient dimension is not 2d.
-
+    Raises
+    ------
+    NotImplementedError
+        If ambient dimension is not 2d.
     """
     # Fetch meta data
     dim = meta["space_dim"]

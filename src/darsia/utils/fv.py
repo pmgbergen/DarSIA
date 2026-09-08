@@ -174,9 +174,10 @@ class FVTangentialFaceReconstruction:
     def __init__(self, grid: darsia.Grid) -> None:
         """Initialize the average operator.
 
-        Args:
-            grid (darsia.Grid): grid
-
+        Parameters
+        ----------
+        grid : darsia.Grid
+            Grid.
         """
 
         # Operator for averaging fluxes on orthogonal, neighboring faces
@@ -233,13 +234,17 @@ class FVTangentialFaceReconstruction:
     ) -> list[np.ndarray] | np.ndarray:
         """Apply the operator to the normal fluxes.
 
-        Args:
-            normal_flux (np.ndarray): normal fluxes
-            concatenate (bool, optional): whether to concatenate the tangential fluxes
+        Parameters
+        ----------
+        normal_flux : np.ndarray
+            Normal fluxes.
+        concatenate : bool, optional
+            Whether to concatenate the tangential fluxes.
 
-        Returns:
-            np.ndarray or list of arrays: tangential fluxes
-
+        Returns
+        -------
+        np.ndarray or list of arrays
+            Tangential fluxes.
         """
         # Apply the operator to the normal fluxes
         tangential_flux = [
@@ -261,12 +266,15 @@ class FVFullFaceReconstruction:
     def __call__(self, normal_flux: np.ndarray) -> np.ndarray:
         """Reconstruct the full fluxes from the normal and tangential fluxes.
 
-        Args:
-            normal_flux (np.ndarray): normal fluxes
+        Parameters
+        ----------
+        normal_flux : np.ndarray
+            Normal fluxes.
 
-        Returns:
-            np.ndarray: full fluxes
-
+        Returns
+        -------
+        np.ndarray
+            Full fluxes.
         """
         # Apply the operator to the normal fluxes
         tangential_fluxes = self.tangential_reconstruction(normal_flux, False)
@@ -299,16 +307,21 @@ def face_to_cell(
 
     Matrix-free implementation.
 
-    Args:
-        grid (darsia.Grid): grid
-        flat_flux (np.ndarray): flat fluxes (normal fluxes on the faces)
-        pt (np.ndarray, optional): points at which to evaluate the fluxes, relative to
-            the reference cell [0,1]**dim, in matrix-indexing. Uses Defaults to None.
-            Then the center of the reference cell is used.
+    Parameters
+    ----------
+    grid : darsia.Grid
+        Grid.
+    flat_flux : np.ndarray
+        Flat fluxes (normal fluxes on the faces).
+    pt : np.ndarray, optional
+        Points at which to evaluate the fluxes, relative to
+        the reference cell [0,1]**dim, in matrix-indexing. Uses Defaults to None.
+        Then the center of the reference cell is used.
 
-    Returns:
-        np.ndarray: cell-based vectorial fluxes
-
+    Returns
+    -------
+    np.ndarray
+        Cell-based vectorial fluxes.
     """
     # Initialize the cell-based fluxes
     cell_flux = np.zeros((*grid.shape, grid.dim), dtype=float)
@@ -357,15 +370,20 @@ def cell_to_face_average(
     the harmonic case, the averaging is regularized to avoid division by zero.
     Matrix-free implementation.
 
-    Args:
-        grid (darsia.Grid): grid
-        cell_qty (np.ndarray): scalar-valued cell-based quantity
-        mode (str): mode of projection, either "arithmetic" or "harmonic"
-            (averaging)
+    Parameters
+    ----------
+    grid : darsia.Grid
+        Grid.
+    cell_qty : np.ndarray
+        Scalar-valued cell-based quantity.
+    mode : str
+        Mode of projection, either "arithmetic" or "harmonic"
+        (averaging).
 
-    Returns:
-        np.ndarray: face-based quantity
-
+    Returns
+    -------
+    np.ndarray
+        Face-based quantity.
     """
 
     # Prepare arrays

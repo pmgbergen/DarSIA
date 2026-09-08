@@ -21,15 +21,20 @@ def zeros_like(
 ) -> darsia.Image:
     """Analog of np.zeros_like but for darsia.Image objects.
 
-    Args:
-        image (darsia.Image): input image
-        mode (Literal["shape", "voxels"], optional): mode of the output image. Defaults to
-            "shape".
-        dtype (Optional[StandardDtype], optional): dtype of the output image. Defaults to None.
+    Parameters
+    ----------
+    image : darsia.Image
+        Input image.
+    mode : Literal["shape", "voxels"], optional
+        Mode of the output image. Defaults to
+        "shape".
+    dtype : Optional[StandardDtype], optional
+        Dtype of the output image. Defaults to None.
 
-    Returns:
-        darsia.Image: output image
-
+    Returns
+    -------
+    darsia.Image
+        Output image.
     """
     if dtype is None:
         dtype = image.dtype
@@ -49,15 +54,20 @@ def ones_like(
 ) -> darsia.Image:
     """Analog of np.ones_like but for darsia.Image objects.
 
-    Args:
-        image (darsia.Image): input image
-        mode (Literal["shape", "voxels"], optional): mode of the output image. Defaults to
-            "shape".
-        dtype (Optional[StandardDtype], optional): dtype of the output image. Defaults to None.
+    Parameters
+    ----------
+    image : darsia.Image
+        Input image.
+    mode : Literal["shape", "voxels"], optional
+        Mode of the output image. Defaults to
+        "shape".
+    dtype : Optional[StandardDtype], optional
+        Dtype of the output image. Defaults to None.
 
-    Returns:
-        darsia.Image: output image
-
+    Returns
+    -------
+    darsia.Image
+        Output image.
     """
     if dtype is None:
         dtype = image.dtype
@@ -85,24 +95,28 @@ def roi_to_mask(
     When *roi* is a **list**, the returned mask is the element-wise **union**
     (logical OR) of the individual bounding-box masks.
 
-    Args:
-        roi: A single :class:`~darsia.ROI`, :class:`~darsia.CoordinateArray`,
-            or :class:`~darsia.VoxelArray` defining the bounding-box corners,
-            **or** a list of such objects whose union is returned.  If a pair
-            of coordinates is provided, it must be in the form of a 2-D array
-            with shape ``(2, 2)``, where the first row is the minimum corner
-            and the second row is the maximum corner.
-        reference_image: A :class:`~darsia.Image` used to define the output
-            shape, metadata and coordinate system.
-        mode: Passed through to :func:`zeros_like`; controls whether the
-            output has the full image shape (``"shape"``) or only the voxel
-            dimensions (``"voxels"``).
+    Parameters
+    ----------
+    roi : _SingleRoi | list[_SingleRoi]
+        A single :class:`~darsia.ROI`, :class:`~darsia.CoordinateArray`,
+        or :class:`~darsia.VoxelArray` defining the bounding-box corners,
+        **or** a list of such objects whose union is returned.  If a pair
+        of coordinates is provided, it must be in the form of a 2-D array
+        with shape ``(2, 2)``, where the first row is the minimum corner
+        and the second row is the maximum corner.
+    reference_image : darsia.Image
+        A :class:`~darsia.Image` used to define the output
+        shape, metadata and coordinate system.
+    mode : Literal['shape', 'voxels']
+        Passed through to :func:`zeros_like`; controls whether the
+        output has the full image shape (``"shape"``) or only the voxel
+        dimensions (``"voxels"``).
 
-    Returns:
-        A boolean :class:`~darsia.Image` (same type/shape as
-        *reference_image*) with ``True`` inside the bounding box(es) and
+    Returns
+    -------
+        A boolean :class:`~darsia.Image` (same type/shape as.
+        *reference_image*) with ``True`` inside the bounding box(es) and.
         ``False`` everywhere else.
-
     """
     # Delegate to the single-ROI helper for every element and union the results.
     if isinstance(roi, list):
@@ -145,16 +159,22 @@ def full_like(
 ) -> darsia.Image:
     """Analog of np.full_like but for darsia.Image objects.
 
-    Args:
-        image (darsia.Image): input image
-        fill_value (np.ndarray | float | int): value to fill the output image with
-        mode (Literal["shape", "voxels"], optional): mode of the output image. Defaults to
-            "shape".
-        dtype (Optional[StandardDtype], optional): dtype of the output image. Defaults to None.
+    Parameters
+    ----------
+    image : darsia.Image
+        Input image.
+    fill_value : np.ndarray | float | int
+        Value to fill the output image with.
+    mode : Literal["shape", "voxels"], optional
+        Mode of the output image. Defaults to
+        "shape".
+    dtype : Optional[StandardDtype], optional
+        Dtype of the output image. Defaults to None.
 
-    Returns:
-        darsia.Image: output image
-
+    Returns
+    -------
+    darsia.Image
+        Output image.
     """
     if dtype is None:
         dtype = image.dtype

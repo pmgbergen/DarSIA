@@ -22,18 +22,23 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
     ):
         """Initialize the PatchwiseIlluminationCorrection class.
 
-        Args:
-            baseline_images (list[str] | list[darsia.Image]): List of baseline images for
-                correction.
-            labels (darsia.Image): Label image defining regions for per-label reference
-                color computation within each patch. All unique labels in this image are
-                used for calibration.
-            nw (int): Number of patches in width direction for patchwise illumination
-                correction. Default is 100.
-            eps (float): Small constant to avoid division by zero in patchwise illumination
-                correction. Default is 1e-6.
-            show_images (bool): Flag to control whether to display the calibrated image.
-
+        Parameters
+        ----------
+        baseline_images : list[str] | list[darsia.Image]
+            List of baseline images for
+            correction.
+        labels : darsia.Image
+            Label image defining regions for per-label reference
+            color computation within each patch. All unique labels in this image are
+            used for calibration.
+        nw : int
+            Number of patches in width direction for patchwise illumination
+            correction. Default is 100.
+        eps : float
+            Small constant to avoid division by zero in patchwise illumination
+            correction. Default is 1e-6.
+        show_images : bool
+            Flag to control whether to display the calibrated image.
         """
         if baseline_images is None or labels is None:
             self.r_diff = None
@@ -124,13 +129,17 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         patches (straddling multiple materials) contribute equally per material,
         regardless of pixel-count distribution.
 
-        Args:
-            image (np.ndarray): Input image (RGB, same shape as labels).
-            labels (darsia.Image): Label image defining regions for per-label reference
-                color computation within each patch. All unique labels in this image are
-                used for calibration.
+        Parameters
+        ----------
+        image : np.ndarray
+            Input image (RGB, same shape as labels).
+        labels : darsia.Image
+            Label image defining regions for per-label reference
+            color computation within each patch. All unique labels in this image are
+            used for calibration.
 
-        Returns:
+        Returns
+        -------
             Tuple containing R, G, B matrices (shape nh x nw).
         """
         nh = self.nh
@@ -171,15 +180,19 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
     ) -> np.ndarray:
         """Calculate correction coefficients based on baseline images.
 
-        Args:
-            coefficient_list (list[np.ndarray]): List of coefficient matrices for each
-                baseline image.
-            coefficient_mean_list (list[np.ndarray]): List of mean coefficient values for
-                each baseline image.
+        Parameters
+        ----------
+        coefficient_list : list[np.ndarray]
+            List of coefficient matrices for each
+            baseline image.
+        coefficient_mean_list : list[np.ndarray]
+            List of mean coefficient values for
+            each baseline image.
 
-        Returns:
-            np.ndarray: Array of correction coefficients.
-
+        Returns
+        -------
+        np.ndarray
+            Array of correction coefficients.
         """
 
         sum_sq = np.sum([r**2 for r in coefficient_list], axis=0)
@@ -195,12 +208,15 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
     def correct_array(self, img: np.ndarray) -> np.ndarray:
         """Apply patchwise illumination correction to the input image.
 
-        Args:
-            img (np.ndarray): Input image to be corrected.
+        Parameters
+        ----------
+        img : np.ndarray
+            Input image to be corrected.
 
-        Returns:
-            np.ndarray: Corrected image after applying patchwise illumination correction.
-
+        Returns
+        -------
+        np.ndarray
+            Corrected image after applying patchwise illumination correction.
         """
         if self.r_diff is None or self.g_diff is None or self.b_diff is None:
             raise ValueError(
@@ -223,9 +239,10 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
     def save(self, path: Path) -> None:
         """Save correction coefficients to a file.
 
-        Args:
-            path (Path): Path to the file where coefficients will be saved.
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file where coefficients will be saved.
         """
         # TODO: Find memory efficient way of saving coefficients (polynomials per label?)
         np.savez(
@@ -249,9 +266,10 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
     def load(self, path: Path) -> None:
         """Load correction coefficients from a file.
 
-        Args:
-            path (Path): Path to the file from which coefficients will be loaded.
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file from which coefficients will be loaded.
         """
         data = np.load(path, allow_pickle=True)["correction"].item()
         if "r_diff" not in data or "g_diff" not in data or "b_diff" not in data:

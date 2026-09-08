@@ -40,15 +40,21 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
         """
         Setup of analysis.
 
-        Args:
-            baseline (str, Path or list of such): baseline images, used to
-                set up analysis tools and cleaning tools
-            config (str or Path): path to config dict
-            results (str or Path): path to results directory
-            update_setup (bool): flag controlling whether cache in setup
-                routines is emptied.
-            verbosity  (bool): flag controlling whether results of the
-                post-analysis are printed to screen; default is False.
+        Parameters
+        ----------
+        baseline : str, Path or list of such
+            Baseline images, used to
+            set up analysis tools and cleaning tools.
+        config : str or Path
+            Path to config dict.
+        results : str or Path
+            Path to results directory.
+        update_setup : bool
+            Flag controlling whether cache in setup
+            routines is emptied.
+        verbosity : bool
+            Flag controlling whether results of the
+            post-analysis are printed to screen; default is False.
         """
         darsia.CO2Analysis.__init__(self, baseline, config, update_setup)
 
@@ -69,9 +75,10 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
         """
         FluidFlower Benchmark preset for detecting CO2.
 
-        Returns:
-            PriorPosteriorConcentrationAnalysis: detector for CO2
-
+        Returns
+        -------
+        PriorPosteriorConcentrationAnalysis
+            Detector for CO2.
         """
         # Extract/define the binary cleaning contribution of the co2 analysis.
         self.co2_binary_cleaning = benchmark_binary_cleaning_preset(
@@ -87,9 +94,10 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
         """
         FluidFlower Benchmark preset for detecting CO2 gas.
 
-        Returns:
-            PriorPosteriorConcentrationAnalysis: detector for CO2(g)
-
+        Returns
+        -------
+        PriorPosteriorConcentrationAnalysis
+            Detector for CO2(g).
         """
         # Extract/define the binary cleaning contribution of the co2(g) analysis.
         self.co2_gas_binary_cleaning = benchmark_binary_cleaning_preset(
@@ -105,9 +113,10 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
         """
         Retrieve expert knowledge, i.e., areas with possibility for CO2.
 
-        Returns:
-            np.ndarray: mask with possibility for CO2.
-
+        Returns
+        -------
+        np.ndarray
+            Mask with possibility for CO2.
         """
         return np.ones(self.base.img.shape[:2], dtype=bool)
 
@@ -115,20 +124,25 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
         """
         Retrieve expert knowledge, i.e., areas with possibility for CO2(g).
 
-        Args:
-            co2 (darsia.Image): mask of CO2.
+        Parameters
+        ----------
+        co2 : darsia.Image
+            Mask of CO2.
 
-        Returns:
-            np.ndarray: mask with possibility for CO2(g)
-
+        Returns
+        -------
+        np.ndarray
+            Mask with possibility for CO2(g).
         """
         return co2.img
 
     def determine_co2_mask(self) -> darsia.Image:
         """Determine CO2.
 
-        Returns:
-            darsia.Image: boolean image detecting CO2.
+        Returns
+        -------
+        darsia.Image
+            Boolean image detecting CO2.
         """
         # Apply expert knowledge
         expert_knowledge = self._expert_knowledge_co2()
@@ -147,11 +161,15 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
     def determine_co2_gas_mask(self, co2: darsia.Image) -> darsia.Image:
         """Determine CO2.
 
-        Args:
-            co2 (darsia.Image): boolean image detecting all co2.
+        Parameters
+        ----------
+        co2 : darsia.Image
+            Boolean image detecting all co2.
 
-        Returns:
-            darsia.Image: boolean image detecting CO2(g).
+        Returns
+        -------
+        darsia.Image
+            Boolean image detecting CO2(g).
         """
         # Apply expert knowledge.
         expert_knowledge = self._expert_knowledge_co2_gas(co2)
@@ -171,21 +189,22 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
 
     def single_image_analysis(self, img: Union[Path, darsia.Image], **kwargs) -> None:
         """
-        Standard workflow to analyze CO2 phases.
+        Standard workflow to analyse CO2 phases.
 
-        Args:
-            image (Path or Image): path to single image.
-            kwargs: optional keyword arguments:
-                plot_contours (bool): flag controlling whether the original image
-                    is plotted with contours of the two CO2 phases; default False.
-                write_contours_to_file (bool): flag controlling whether the plot from
-                    plot_contours is written to file; default False.
-                write_segmentation_to_file (bool): flag controlling whether the
-                    CO2 segmentation is written to file, where water, dissolved CO2
-                    and CO2(g) get decoded 0, 1, 2, respectively; default False.
-                write_coarse_segmentation_to_file (bool): flag controlling whether
-                    a coarse (280 x 150) representation of the CO2 segmentation from
-                    write_segmentation_to_file is written to file; default False.
+        Parameters
+        ----------
+        img : Path or darsia.Image
+            The single image (or a path to it) to analyse.
+        **kwargs
+            Output options, all default False::
+
+                plot_contours                      plot the image with contours
+                                                   of the two CO2 phases
+                write_contours_to_file             write that plot to file
+                write_segmentation_to_file         write the CO2 segmentation
+                                                   (water/aq/gas coded 0/1/2)
+                write_coarse_segmentation_to_file  write a coarse (280 x 150)
+                                                   version of that segmentation
         """
         # ! ----  Pre-processing
 

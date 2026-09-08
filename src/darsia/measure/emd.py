@@ -22,9 +22,10 @@ class EMD:
 
     def __init__(self, preprocess: Optional[callable] = None, **kwargs) -> None:
         """
-        Args:
-            preprocess (callable, optional): preprocessing routine
-
+        Parameters
+        ----------
+        preprocess : callable, optional
+            Preprocessing routine.
         """
         # Cache
         self.preprocess = preprocess
@@ -37,13 +38,17 @@ class EMD:
         """
         Earth mover's distance between images with same total sum.
 
-        Args:
-            img_1 (darsia.Image): image 1
-            img_2 (darsia.Image): image 2
+        Parameters
+        ----------
+        img_1 : darsia.Image
+            Image 1.
+        img_2 : darsia.Image
+            Image 2.
 
-        Returns:
-            float or array: distance between img_1 and img_2.
-
+        Returns
+        -------
+        float or array
+            Distance between img_1 and img_2.
         """
         # Two-dimensional
         if not (img_1.space_dim == 2 and img_2.space_dim == 2):
@@ -86,11 +91,15 @@ class EMD:
         """
         Preprocessing routine, incl. extraction of array.
 
-        Args:
-            img (Image): image
+        Parameters
+        ----------
+        img : Image
+            Image.
 
-        Returns:
-            Image: image array under provided preprocessing
+        Returns
+        -------
+        Image
+            Image array under provided preprocessing.
         """
         preprocessed_img = img.copy()
         if self.preprocess is not None:
@@ -103,13 +112,17 @@ class EMD:
         """
         Compatibility check.
 
-        Args:
-            img_1 (Image): image 1
-            img_2 (Image): image 2
+        Parameters
+        ----------
+        img_1 : Image
+            Image 1.
+        img_2 : Image
+            Image 2.
 
-        Returns:
-            bool: flag whether images 1 and 2 can be compared.
-
+        Returns
+        -------
+        bool
+            Flag whether images 1 and 2 can be compared.
         """
         # Scalar valued
         assert img_1.scalar and img_2.scalar
@@ -132,12 +145,15 @@ class EMD:
     def _sum(self, img: darsia.Image) -> Union[float, np.ndarray]:
         """Sum over spatial entries.
 
-        Args:
-            img (darsia.Image): image
+        Parameters
+        ----------
+        img : darsia.Image
+            Image.
 
-        Returns:
-            float or array: integration over the space
-
+        Returns
+        -------
+        float or array
+            Integration over the space.
         """
         sum_over_time = img.img.copy()
         for i in range(img.space_dim):
@@ -148,13 +164,17 @@ class EMD:
         """
         Normalization of images to images with sum 1.
 
-        Args:
-            img (Image): image
+        Parameters
+        ----------
+        img : Image
+            Image.
 
-        Returns:
-            float: original sum
-            np.ndarray: normalized image
-
+        Returns
+        -------
+        float
+            Original sum.
+        np.ndarray
+            Normalized image.
         """
         integral = self._sum(img)
         normalized_img = np.divide(img.img, integral)
@@ -168,14 +188,19 @@ class EMD:
     ) -> np.ndarray:
         """Convert a 2D array to a signature for cv2.EMD.
 
-        Args:
-            img (array): image
-            dx (float or tuple): distance from one pixel to another
-            time_num (int): number of time steps
+        Parameters
+        ----------
+        img : array
+            Image.
+        dx : float or tuple
+            Distance from one pixel to another.
+        time_num : int
+            Number of time steps.
 
-        Returns:
-            np.ndarray: signature
-
+        Returns
+        -------
+        np.ndarray
+            Signature.
         """
         if isinstance(dx, float):
             dx = (dx, dx)
@@ -207,12 +232,15 @@ class EMD:
         """
         Compute the distance between each iteam of a list.
 
-        Args:
-            images (list of images): N images
+        Parameters
+        ----------
+        images : list of images
+            N images.
 
-        Returns:
-            np.ndarray: N x N matrix with distances between images.
-
+        Returns
+        -------
+        np.ndarray
+            N x N matrix with distances between images.
         """
         num_images = len(images)
 

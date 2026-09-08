@@ -35,13 +35,17 @@ class FaciesProps:
 
         The CSV file must contain columns 'id', 'porosity', and 'permeability'.
 
-        Args:
-            facies (darsia.Image): Facies label image.
-            path (Path): Path to CSV file with facies properties.
+        Parameters
+        ----------
+        facies : darsia.Image
+            Facies label image.
+        path : Path
+            Path to CSV file with facies properties.
 
-        Returns:
-            FaciesProps: Instance of FaciesProps with loaded properties.
-
+        Returns
+        -------
+        FaciesProps
+            Instance of FaciesProps with loaded properties.
         """
         if path.suffix.lower() == ".xlsx":
             df = pd.read_excel(path)

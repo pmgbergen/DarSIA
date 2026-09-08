@@ -18,15 +18,21 @@ def backward_diff(
 ) -> np.ndarray:
     """Backward difference of image matrix in direction of axis.
 
-    Args:
-        img (np.ndarray): image array in single-color space
-        axis (int): axis along which the difference is taken
-        dim (int): dimension of image array
-        h (Optional[float]): grid spacing
+    Parameters
+    ----------
+    img : np.ndarray
+        Image array in single-color space.
+    axis : int
+        Axis along which the difference is taken.
+    dim : int
+        Dimension of image array.
+    h : Optional[float]
+        Grid spacing.
 
-    Returns:
-        np.ndarray: backward difference image matrix
-
+    Returns
+    -------
+    np.ndarray
+        Backward difference image matrix.
     """
     assert axis < dim, "axis must be smaller than dimension"
     if h is None:
@@ -42,15 +48,21 @@ def forward_diff(
 ) -> np.ndarray:
     """Forward difference of image matrix in direction of axis.
 
-    Args:
-        img (np.ndarray): image array
-        axis (int): axis along which the difference is taken
-        dim (int): dimension of image array
-        h (Optional[float]): grid spacing
+    Parameters
+    ----------
+    img : np.ndarray
+        Image array.
+    axis : int
+        Axis along which the difference is taken.
+    dim : int
+        Dimension of image array.
+    h : Optional[float]
+        Grid spacing.
 
-    Returns:
-        np.ndarray: forward difference image matrix
-
+    Returns
+    -------
+    np.ndarray
+        Forward difference image matrix.
     """
     assert axis < dim, "axis must be smaller than dimension"
     if h is None:
@@ -70,16 +82,23 @@ def laplace(
 
     Considers image matrix in direction of axis.
 
-    Args:
-        img (np.ndarray): image array
-        axis (int): axis along which the difference is taken
-        dim (int): dimension of image array
-        h (Optional[float]): grid spacing
-        diffision_coeff (Optional[np.ndarray]): diffusion coefficient
+    Parameters
+    ----------
+    img : np.ndarray
+        Image array.
+    axis : int
+        Axis along which the difference is taken.
+    dim : int
+        Dimension of image array.
+    h : Optional[float]
+        Grid spacing.
+    diffusion_coeff : np.ndarray or float
+        Diffusion coefficient.
 
-    Returns:
-        np.ndarray: horizontal Laplace image matrix
-
+    Returns
+    -------
+    np.ndarray
+        Horizontal Laplace image matrix.
     """
 
     if isinstance(diffusion_coeff, np.ndarray):

@@ -21,12 +21,16 @@ class RotationCorrection(darsia.BaseCorrection):
     basic rotation is sufficient. In 3d, although three are available, two are
     sufficient.
 
-    Attributes:
-        dim (int): ambient dimension
-        anchor (array or list): voxel coordinates of anchor
-        rotation (array): rotation matrix
-        rotation_inv (array): inverted rotation matrix
-
+    Attributes
+    ----------
+    dim : int
+        Ambient dimension.
+    anchor : array or list
+        Voxel coordinates of anchor.
+    rotation : array
+        Rotation matrix.
+    rotation_inv : array
+        Inverted rotation matrix.
     """
 
     def __init__(
@@ -90,12 +94,15 @@ class RotationCorrection(darsia.BaseCorrection):
     def correct_array(self, img: np.ndarray) -> np.ndarray:
         """Main routine: Application of inherent rotation to provided image.
 
-        Args:
-            img (array): image
+        Parameters
+        ----------
+        img : array
+            Image.
 
-        Returns:
-            array: rotated image
-
+        Returns
+        -------
+        array
+            Rotated image.
         """
         # Warp entire array by mapping target voxels to destination
         # voxels by applying the inverse rotations.

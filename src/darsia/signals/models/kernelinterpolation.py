@@ -31,15 +31,20 @@ class KernelInterpolation(darsia.Model):
     ):
         """Setup of the kernel-based interpolation.
 
-        Args:
-            kernel (darsia.BaseKernel): kernel
-            supports (np.ndarray): support points
-            values (np.ndarray): goal points
+        Parameters
+        ----------
+        kernel : darsia.BaseKernel
+            Kernel.
+        supports : np.ndarray
+            Support points.
+        values : np.ndarray
+            Goal points.
 
-        Raises:
-            AssertionError: if the input data is not compatible, i.e., the number of
-                supports and values does not match.
-
+        Raises
+        ------
+        AssertionError
+            If the input data is not compatible, i.e., the number of
+            supports and values does not match.
         """
         self.kernel = kernel
         """Kernel."""
@@ -62,12 +67,16 @@ class KernelInterpolation(darsia.Model):
     ) -> None:
         """Update kernel and interpolation weights.
 
-        Args:
-            kernel (darsia.BaseKernel, optional): kernel
-            supports (np.ndarray, optional): support points
-            values (np.ndarray, optional): goal points
-            append (bool): flag to append new data to existing data
-
+        Parameters
+        ----------
+        kernel : darsia.BaseKernel, optional
+            Kernel.
+        supports : np.ndarray, optional
+            Support points.
+        values : np.ndarray, optional
+            Goal points.
+        append : bool
+            Flag to append new data to existing data.
         """
         # Convert to arrays if necessary
         if isinstance(supports, list):
@@ -99,9 +108,10 @@ class KernelInterpolation(darsia.Model):
     def update_kernel(self, kernel: darsia.BaseKernel) -> None:
         """Update kernel.
 
-        Args:
-            kernel (darsia.BaseKernel): kernel
-
+        Parameters
+        ----------
+        kernel : darsia.BaseKernel
+            Kernel.
         """
         self.kernel = kernel
 
@@ -138,10 +148,11 @@ class KernelInterpolation(darsia.Model):
     def update_interpolation(self) -> None:
         """Update interpolation weights.
 
-        Raises:
-            AssertionError: if the input data is not compatible, i.e., the number of
-                supports and values does not match.
-
+        Raises
+        ------
+        AssertionError
+            If the input data is not compatible, i.e., the number of
+            supports and values does not match.
         """
         if not hasattr(self, "Xinv"):
             self.setup_kernel_problem()
@@ -170,12 +181,15 @@ class KernelInterpolation(darsia.Model):
     def __call__(self, signal: np.ndarray) -> np.ndarray:
         """Apply interpolation.
 
-        Args:
-            signal (np.ndarray): signal to be interpolated
+        Parameters
+        ----------
+        signal : np.ndarray
+            Signal to be interpolated.
 
-        Returns:
-            np.ndarray: interpolated signal
-
+        Returns
+        -------
+        np.ndarray
+            Interpolated signal.
         """
         if self.supports is None or self.interpolation_weights is None:
             # NOTE: Currently only scalar output supported - forced here.
@@ -215,12 +229,16 @@ class AdvancedKernelInterpolation(KernelInterpolation):
     ) -> None:
         """Update support points.
 
-        Args:
-            fixed_supports (np.ndarray, optional): fixed support points
-            fixed_values (np.ndarray, optional): fixed goal points
-            variable_supports (np.ndarray, optional): variable support points
-            variable_values (np.ndarray, optional): variable goal points
-
+        Parameters
+        ----------
+        fixed_supports : np.ndarray, optional
+            Fixed support points.
+        fixed_values : np.ndarray, optional
+            Fixed goal points.
+        variable_supports : np.ndarray, optional
+            Variable support points.
+        variable_values : np.ndarray, optional
+            Variable goal points.
         """
         # Convert to arrays if necessary
         if isinstance(fixed_supports, list):

@@ -32,15 +32,20 @@ class RigCatalogue:
         """Load all rig preset entries from the top-level [[rig_preset]]
         array-of-tables in TOML.
 
-        Args:
-            path: Path, str, or list of Paths/strs to TOML catalogue file(s).
+        Parameters
+        ----------
+        path : Path | list[Path] | str | list[str]
+            Path, str, or list of Paths/strs to TOML catalogue file(s).
 
-        Returns:
-            self
+        Returns
+        -------
+            Self.
 
-        Raises:
-            ValueError: If [rig_preset] section is not an array-of-tables
-                or if any preset entry has a duplicate name or missing fields.
+        Raises
+        ------
+        ValueError
+            If [rig_preset] section is not an array-of-tables
+            or if any preset entry has a duplicate name or missing fields.
         """
         if isinstance(path, (str, Path)):
             paths = [Path(path)]
@@ -97,14 +102,19 @@ class RigCatalogue:
     def get(self, name: str) -> RigConfig:
         """Retrieve a preset by name.
 
-        Args:
-            name: The preset name.
+        Parameters
+        ----------
+        name : str
+            The preset name.
 
-        Returns:
+        Returns
+        -------
             The RigConfig preset.
 
-        Raises:
-            KeyError: If the preset name is not found.
+        Raises
+        ------
+        KeyError
+            If the preset name is not found.
         """
         if name not in self.presets:
             raise KeyError(

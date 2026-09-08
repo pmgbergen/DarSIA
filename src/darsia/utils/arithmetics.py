@@ -6,13 +6,17 @@ import numpy as np
 def array_product(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Compute the product of two arrays.
 
-    Args:
-        a (np.ndarray): array a
-        b (np.ndarray): array b
+    Parameters
+    ----------
+    a : np.ndarray
+        Array a.
+    b : np.ndarray
+        Array b.
 
-    Returns:
-        np.ndarray: product
-
+    Returns
+    -------
+    np.ndarray
+        Product.
     """
     if len(a.shape) == len(b.shape) + 1 and a.shape[:-1] == b.shape:
         return a * b[..., np.newaxis]

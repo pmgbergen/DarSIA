@@ -31,11 +31,13 @@ class IlluminationCorrection(darsia.BaseCorrection):
     ) -> list[tuple[slice, ...]]:
         """Select random samples for illumination correction.
 
-        Args:
-            mask: Mask to restrict sampling to certain areas.
-            config: Configuration for the illumination correction, containing parameters
-                such as sample width and number of samples.
-
+        Parameters
+        ----------
+        mask : darsia.Image | np.ndarray
+            Mask to restrict sampling to certain areas.
+        config : IlluminationCorrectionConfig
+            Configuration for the illumination correction, containing parameters
+            such as sample width and number of samples.
         """
         # Fix random seed for reproducibility.
         np.random.seed(config.seed)
@@ -97,19 +99,31 @@ class IlluminationCorrection(darsia.BaseCorrection):
     ):
         """Initialize an illumination correction.
 
-        Args:
-            base: Image or list of images to use for correction.
-            sample_groups: List of groups of samples, where each group is a list of slices
-                defining the sample regions.
-            mask: Mask to restrict sampling to certain areas (optional).
-            outliers: Fraction of outliers to remove from samples (default: 0.0).
-            filter: Callable to apply to the sampled colors (default: identity).
-            colorspace: Colorspace to use for sampling and correction (default: "hsl-scalar").
-            interpolation: Interpolation method for correction (default: "quartic").
-            bounds: Bounds for the illumination correction factors (default: (0.5, 2.0)).
-            show_plot: Whether to show diagnostic plots during setup (default: False).
-            log: Path to save logs or diagnostic plots (optional).
-
+        Parameters
+        ----------
+        base : darsia.Image | list[darsia.Image]
+            Image or list of images to use for correction.
+        sample_groups : list[list[tuple[slice, ...]]]
+            List of groups of samples, where each group is a list of slices
+            defining the sample regions.
+        mask : darsia.Image | np.ndarray | None
+            Mask to restrict sampling to certain areas (optional).
+        outliers : float
+            Fraction of outliers to remove from samples (default: 0.0).
+        filter : callable
+            Callable to apply to the sampled colors (default: identity).
+        colorspace : str
+            Colour space for sampling and correction: one of ``"rgb"``,
+            ``"rgb-scalar"``, ``"lab"``, ``"lab-scalar"``, ``"hsl"``,
+            ``"hsl-scalar"``, ``"gray"`` (default: ``"hsl-scalar"``).
+        interpolation : Literal['rbf', 'quartic', 'illumination']
+            Interpolation method for correction (default: "quartic").
+        bounds : tuple[float, float]
+            Bounds for the illumination correction factors (default: (0.5, 2.0)).
+        show_plot : bool
+            Whether to show diagnostic plots during setup (default: False).
+        log : Path | None
+            Path to save logs or diagnostic plots (optional).
         """
         # Cache input parameters
         if isinstance(base, darsia.Image):
@@ -452,12 +466,15 @@ class IlluminationCorrection(darsia.BaseCorrection):
         Conversion is based on attributes:
             - colorspace: the target colorspace for the conversion
 
-        Args:
-            base_images (list[darsia.Image]): list of base images
+        Parameters
+        ----------
+        base_images : list[darsia.Image]
+            List of base images.
 
-        Returns:
-            list[np.ndarray]: list of converted images
-
+        Returns
+        -------
+        list[np.ndarray]
+            List of converted images.
         """
         if self.colorspace in ["rgb", "rgb-scalar"]:
             images = [skimage.img_as_float(base.img) for base in base_images]
@@ -499,12 +516,15 @@ class IlluminationCorrection(darsia.BaseCorrection):
     def correct_array(self, img: np.ndarray) -> np.ndarray:
         """Rescale an array using local WB.
 
-        Args:
-            img (np.ndarray): input image
+        Parameters
+        ----------
+        img : np.ndarray
+            Input image.
 
-        Returns:
-            np.ndarray: corrected image
-
+        Returns
+        -------
+        np.ndarray
+            Corrected image.
         """
         img_wb = img.copy()
         if img.shape[-1] == 1:
@@ -524,9 +544,10 @@ class IlluminationCorrection(darsia.BaseCorrection):
     def save(self, path: Path) -> None:
         """Save the illumination correction to a file.
 
-        Args:
-            path (Path): path to the file
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file.
         """
         # Make sure the parent directory exists
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -545,9 +566,10 @@ class IlluminationCorrection(darsia.BaseCorrection):
     def load(self, path: Path) -> None:
         """Load the illumination correction from a file.
 
-        Args:
-            path (Path): path to the file
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file.
         """
         # Make sure the file exists
         if not path.is_file():

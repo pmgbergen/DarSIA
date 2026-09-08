@@ -23,11 +23,14 @@ def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> 
     NOTE: This function stores the depth map in npz format according to the
     specifications in the config file.
 
-    Args:
-        path: Path to configuration file (needs to comply with FluidFlowerConfig).
-        key: Column identifier in the csv file to use for interpolation (default: "mean").
-        show: Whether to show the resulting depth map.
-
+    Parameters
+    ----------
+    path : Path | list[Path]
+        Path to configuration file (needs to comply with FluidFlowerConfig).
+    key
+        Column identifier in the csv file to use for interpolation (default: "mean").
+    show : bool
+        Whether to show the resulting depth map.
     """
     logger.info("\033[92mSetting up depth map from measurements...\033[0m")
 

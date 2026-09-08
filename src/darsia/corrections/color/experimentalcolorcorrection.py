@@ -78,11 +78,15 @@ class EOTF:
     def adjust(self, image: np.ndarray) -> np.ndarray:
         """Apply EOTF using the look up table.
 
-        Arguments:
-            image (np.ndarray): image in linear RGB (uint8) format.
+        Parameters
+        ----------
+        image : np.ndarray
+            Image in linear RGB (uint8) format.
 
-        Returns:
-            np.ndarray: image with tranformed color space, with values in [0,1].
+        Returns
+        -------
+        np.ndarray
+            Image with tranformed color space, with values in [0,1].
         """
         return cv2.LUT(image, self.table_eotf)
 
@@ -92,12 +96,15 @@ class EOTF:
         would have to be applied to all pixels (with values in [0,1]). By restricting the
         allowed input values to uint8 values, allows for faster LUT.
 
-        Arguments:
-            image (np.ndarray): image in gamma-corrected RGB format with values in [0,1].
+        Parameters
+        ----------
+        image : np.ndarray
+            Image in gamma-corrected RGB format with values in [0,1].
 
-        Returns:
-            np.ndarray: image in linear RGB (uint8) format.
-
+        Returns
+        -------
+        np.ndarray
+            Image in linear RGB (uint8) format.
         """
 
         # Need to transform values to uint8 first before applying the LUT.
@@ -120,15 +127,20 @@ class ExperimentalColorCorrection(darsia.BaseCorrection):
     ):
         """Constructor of converter, setting up a priori all data needed for fast conversion.
 
-        Attributes:
-            config (dict, str, Path): config file for initialization of images. Can be
-                used instead of roi, but roi is always prefered if it is present.
-            roi (tuple of slices, np.ndarray, or None): ROI containing a colour checker,
-                provided either as intervals, corner points, or nothing.
-            verbosity (bool): displays corrected color checker on top of the reference one if
-                True, default is False
-            whitebalancing (bool): apply white balancing based on the third bottom left swatch
-                if True, default is True
+        Attributes
+        ----------
+        config : dict, str, Path
+            Config file for initialization of images. Can be
+            used instead of roi, but roi is always prefered if it is present.
+        roi : tuple of slices, np.ndarray, or None
+            ROI containing a colour checker,
+            provided either as intervals, corner points, or nothing.
+        verbosity : bool
+            Displays corrected color checker on top of the reference one if
+            True, default is False.
+        whitebalancing : bool
+            Apply white balancing based on the third bottom left swatch
+            if True, default is True.
         """
 
         # Define config
@@ -177,12 +189,16 @@ class ExperimentalColorCorrection(darsia.BaseCorrection):
         corresponding color values, cf.
         https://github.com/colour-science/colour-checker-detection/blob/master/colour_checker_detection/examples/examples_detection.ipynb
 
-        Arguments:
-            image (np.ndarray): image with uint8 value in (linear) RGB color space
+        Parameters
+        ----------
+        image : np.ndarray
+            Image with uint8 value in (linear) RGB color space.
 
-        Returns:
-            np.ndarray: corrected image with uint8 values in (linear) RGB color space,
-                with colors matched based on the color checker within the roi
+        Returns
+        -------
+        np.ndarray
+            Corrected image with uint8 values in (linear) RGB color space,
+            with colors matched based on the color checker within the roi.
         """
         if not self.active:
             return skimage.img_as_float(image).astype(np.float32)
@@ -309,11 +325,15 @@ class ExperimentalColorCorrection(darsia.BaseCorrection):
         """
         Auxiliary function to extract roi from image.
 
-        Args:
-            img (np.ndarray): input image
+        Parameters
+        ----------
+        img : np.ndarray
+            Input image.
 
-        Returns:
-            np.ndarray: restricted image
+        Returns
+        -------
+        np.ndarray
+            Restricted image.
         """
         if self.roi is None:
             return_img: np.ndarray = img

@@ -17,16 +17,23 @@ def wasserstein_distance(
 ) -> float | tuple[float, dict]:
     """Unified access to Wasserstein distance computation between images with same mass.
 
-    Args:
-        mass_src (darsia.Image): source distribution
-        mass_dst (darsia.Image): destination distribution
-        method (Literal["newton", "bregman", "gprox", "cv2.emd"]): method to use
-        **kwargs: additional arguments (only for "newton", "bregman", "gprox")
-            - options (dict): options for the method.
+    Parameters
+    ----------
+    mass_src : darsia.Image
+        Source distribution.
+    mass_dst : darsia.Image
+        Destination distribution.
+    method : Literal["newton", "bregman", "gprox", "cv2.emd"]
+        Method to use.
+    **kwargs
+        Additional arguments (only for "newton", "bregman", "gprox").
 
-    Returns:
-        float | tuple[float, dict: Wasserstein distance or (distance, info)
+        - options (dict): options for the method.
 
+    Returns
+    -------
+    float | tuple[float, dict
+        Wasserstein distance or (distance, info).
     """
     # Define method for computing 1-Wasserstein distance
     method_name = method.lower()
@@ -68,12 +75,16 @@ def wasserstein_distance_to_vtk(
 ) -> None:
     """Write the output of the Wasserstein distance to a VTK file.
 
-    Args:
-        path (Path): path to the VTK file
-        info (dict): information dictionary output of darsia.wasserstein_distance
+    Parameters
+    ----------
+    path : Path
+        Path to the VTK file.
+    info : dict
+        Information dictionary output of :func:`wasserstein_distance`.
 
-    NOTE: Requires pyevtk to be installed.
-
+    Notes
+    -----
+    Requires ``pyevtk`` to be installed.
     """
     data = [
         (key, info[key], format)

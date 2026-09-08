@@ -20,7 +20,7 @@ def themed_icon(name: str, *, role=None, **kwargs) -> QIcon:
     Parameters
     ----------
     name : str
-        qtawesome icon name (e.g. "fa5s.play")
+        Qtawesome icon name (e.g. "fa5s.play")
     role : QPalette.ColorRole, optional
         Palette role to read the color from. Defaults to WindowText.
     **kwargs

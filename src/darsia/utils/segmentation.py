@@ -258,15 +258,18 @@ def _detect_markers_from_gradient(img, verbosity, **kwargs) -> np.ndarray:
     """
     Routine to detect markers as continous regions, based on thresholding gradients.
 
-    Args:
-        img (np.ndarray): input image, basis for gradient analysis.
-        verbosity (bool): flag controlling whether relevant quantities are plotted
-            which is useful in the tuning of the parameters; the default is False.
+    Parameters
+    ----------
+    img : np.ndarray
+        Input image, basis for gradient analysis.
+    verbosity : bool
+        Flag controlling whether relevant quantities are plotted
+        which is useful in the tuning of the parameters; the default is False.
         keyword arguments: tuning parameters for the watershed algorithm
-            "markers disk radius" (int): disk radius used to define continous
-                regions via gradients.
-            "threshold" (float): threshold value marking regions as either
-                continuous or edge.
+        "markers disk radius" (int): disk radius used to define continous
+        regions via gradients.
+        "threshold" (float): threshold value marking regions as either
+        continuous or edge.
     """
 
     # Find continuous region, i.e., areas with low local gradient
@@ -298,17 +301,21 @@ def _detect_markers_from_input(shape, **kwargs) -> np.ndarray:
     """
     Routine to transform user-defined points into markers.
 
-    Args:
-        shape (tuple): shape of the original image, for which the marker
-            coordinates are defined.
+    Parameters
+    ----------
+    shape : tuple
+        Shape of the original image, for which the marker
+        coordinates are defined.
         keyword arguments (optional): tuning parameters for the watershed algorithm
-            patch (int): size of regions in each dimension to be marked.
-            marker_points (np.ndarray): array of coordinates for top left corner of
-                each marked region. Each point thereby is a representative point for
-                a unique region.
+        patch (int): size of regions in each dimension to be marked.
+        marker_points (np.ndarray): array of coordinates for top left corner of
+        each marked region. Each point thereby is a representative point for
+        a unique region.
 
-    Returns:
-        np.ndarray: labeled markers corresponding to provided image shape.
+    Returns
+    -------
+    np.ndarray
+        Labeled markers corresponding to provided image shape.
     """
 
     # Fetch user-defined coordinates of markers
@@ -334,10 +341,12 @@ def _detect_edges_from_gradient(img, **kwargs) -> np.ndarray:
     """
     Routine determining edges via gradient filter from scikit-image.
 
-    Args:
-        img (np.ndarray): input image, basis for determining the gradient.
+    Parameters
+    ----------
+    img : np.ndarray
+        Input image, basis for determining the gradient.
         keyword arguments (optional): tuning parameters for the watershed algorithm
-            "gradient disk radius" (int): disk radius to define edges via gradients.
+        "gradient disk radius" (int): disk radius to define edges via gradients.
     """
     gradient_disk_radius = kwargs.get("gradient disk radius", 2)
 
@@ -353,13 +362,17 @@ def _detect_edges_from_scharr(img, **kwargs) -> np.ndarray:
     """
     Routine determining edges using the Scharr algorithm from scikit-image.
 
-    Args:
-        img (np.ndarray): input image, basis for Scharr.
+    Parameters
+    ----------
+    img : np.ndarray
+        Input image, basis for Scharr.
         keyword arguments (optional): tuning parameters for the watershed algorithm
-            mask (np.ndarray): active mask to be considered in the Scharr routine.
+        mask (np.ndarray): active mask to be considered in the Scharr routine.
 
-    Returns:
-            np.ndarray: edge array in terms of intensity.
+    Returns
+    -------
+    np.ndarray
+        Edge array in terms of intensity.
     """
     # Fetch mask from file
     mask = kwargs.get("scharr mask", np.ones(img.shape[:2], dtype=bool))
@@ -383,15 +396,19 @@ def _cleanup(labels: np.ndarray, **kwargs) -> np.ndarray:
     """
     Cleanup routine, taking care of small marked regions, boundary values etc.
 
-    Args:
-        labels (np.ndarray): input labels/segentation.
+    Parameters
+    ----------
+    labels : np.ndarray
+        Input labels/segentation.
         keyword arguments (optional): tuning parameters for the watershed algorithm
-            "dilation size" (int): amount of pixels, used for dilation in the postprocessing
-            "boundary size" (int): amount of pixels normal to the boundary, for which the
-                segmentation will be assigned as extension of the nearby interior values.
+        "dilation size" (int): amount of pixels, used for dilation in the postprocessing
+        "boundary size" (int): amount of pixels normal to the boundary, for which the
+        segmentation will be assigned as extension of the nearby interior values.
 
-    Returns:
-        np.ndarray: cleaned segmentation.
+    Returns
+    -------
+    np.ndarray
+        Cleaned segmentation.
     """
     # Monitor number of labels prior and after the cleanup.
     num_labels_prior = np.unique(labels).shape[0]
@@ -423,11 +440,15 @@ def _reset_labels(labels: np.ndarray) -> np.ndarray:
     Rename labels, such that these are consecutive with step size 1,
     starting from 0.
 
-    Args:
-        labels (np.ndarray): labeled image
+    Parameters
+    ----------
+    labels : np.ndarray
+        Labeled image.
 
-    Returns:
-        np.ndarray: new labeled regions
+    Returns
+    -------
+    np.ndarray
+        New labeled regions.
     """
     pre_labels = np.unique(labels)
     for i, label in enumerate(pre_labels):
@@ -440,11 +461,15 @@ def _fill_holes(labels: np.ndarray) -> np.ndarray:
     """
     Routine for filling holes in all labeled regions.
 
-    Args:
-        labels (np.ndarray): labeled image
+    Parameters
+    ----------
+    labels : np.ndarray
+        Labeled image.
 
-    Returns:
-        np.ndarray: labels without holes.
+    Returns
+    -------
+    np.ndarray
+        Labels without holes.
     """
     pre_labels = np.unique(labels)
     for label in pre_labels:
@@ -460,15 +485,21 @@ def _dilate_by_size(
     """
     Dilate objects by prescribed size.
 
-    Args:
-        labels (np.ndarray): labeled image
-        footprint (np.ndarray or int): foot print for dilation
-        descreasing_order (bool): flag controlling whether dilation
-            should be performed on objects with decreasing order
-            or not (increasing order then).
+    Parameters
+    ----------
+    labels : np.ndarray
+        Labeled image.
+    footprint : np.ndarray or int
+        Foot print for dilation.
+    decreasing_order : bool
+        Flag controlling whether dilation
+        should be performed on objects with decreasing order
+        or not (increasing order then).
 
-    Returns:
-        np.ndarray: labels after dilation
+    Returns
+    -------
+    np.ndarray
+        Labels after dilation.
     """
     if footprint != 0:
         # Determine sizes of all marked areas
@@ -492,12 +523,17 @@ def _boundary(labels: np.ndarray, thickness: int, boundary: list[str]) -> np.nda
     """
     Constant extenion in normal direction at the boundary of labeled image.
 
-    Args:
-        labels (np.ndarray): labeled image
-        thickness (int): thickness of boundary which should be overwritten
+    Parameters
+    ----------
+    labels : np.ndarray
+        Labeled image.
+    thickness : int
+        Thickness of boundary which should be overwritten.
 
-    Returns:
-        np.ndarray: updated labeled image
+    Returns
+    -------
+    np.ndarray
+        Updated labeled image.
     """
     if thickness > 0:
         if "top" in boundary:
@@ -660,11 +696,14 @@ def group_labels(
     """
     Unite labels in the given groups.
 
-    Args:
-        labels (darsia.Image): labeled image with integer labels.
-        group (list[list[int]]): list of groups, where each group is a list of labels
-            to be united. The first label in each group is the label to which all
-            other labels in the group will be united.
+    Parameters
+    ----------
+    labels : darsia.Image
+        Labeled image with integer labels.
+    group : list[list[int]]
+        List of groups, where each group is a list of labels
+        to be united. The first label in each group is the label to which all
+        other labels in the group will be united.
     """
     reduced_labels = labels.copy()
     for group_counter, group in enumerate(groups):
@@ -682,9 +721,12 @@ def reassign_labels(labels: darsia.Image, mapping: dict[int, int]) -> darsia.Ima
     """
     Reassign labels according to the provided mapping.
 
-    Args:
-        labels (darsia.Image): labeled image with integer labels.
-        mapping (dict[int, int]): dictionary mapping old labels to new labels.
+    Parameters
+    ----------
+    labels : darsia.Image
+        Labeled image with integer labels.
+    mapping : dict[int, int]
+        Dictionary mapping old labels to new labels.
     """
     reassigned_labels = labels.copy()
     for old_label, new_label in mapping.items():

@@ -68,13 +68,18 @@ _HELP_TEXT_BY_ACTION = {
 def get_help_text(action: str, checkbox_id: str, label: str = "") -> str:
     """Get help text for a checkbox_id within a category, with fallback to placeholder.
 
-    Args:
-        action: The category/action (e.g. "setup", "calibration", "analysis")
-        checkbox_id: The checkbox identifier key
-        label: Fallback label if no text found in registry
+    Parameters
+    ----------
+    action : str
+        The category/action (e.g. "setup", "calibration", "analysis").
+    checkbox_id : str
+        The checkbox identifier key.
+    label : str
+        Fallback label if no text found in registry.
 
-    Returns:
-        Help text string, or a placeholder if not found
+    Returns
+    -------
+        Help text string, or a placeholder if not found.
     """
     help_dict = _HELP_TEXT_BY_ACTION.get(action, {})
     return help_dict.get(checkbox_id, f"Help for {label}. TBC")

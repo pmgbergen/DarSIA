@@ -163,11 +163,14 @@ class MultiFluidFlowerConfig:
     ):
         """Initialize from a comparison config file like runs_comparison.toml.
 
-        Args:
-            path (Path): Path to the comparison config file.
-            require_data (bool): Whether to require data section in each run config.
-            require_results (bool): Whether to require results section in each run config.
-
+        Parameters
+        ----------
+        path : Path
+            Path to the comparison config file.
+        require_data : bool
+            Whether to require data section in each run config.
+        require_results : bool
+            Whether to require results section in each run config.
         """
         # Make sure that path is compatible
         if isinstance(path, list):

@@ -413,9 +413,10 @@ class MassComputation:
     def __call__(self, img: darsia.Image) -> SimpleMassAnalysisResults:
         """Compute mass based on concentration image.
 
-        Args:
-            img (darsia.Image): Untransformed signal [0, 2].
-
+        Parameters
+        ----------
+        img : darsia.Image
+            Untransformed signal [0, 2].
         """
         # Flash segmentation
         transformed_img = self.transformation(img)
@@ -441,11 +442,15 @@ class MassComputation:
     def compute_total_mass(self, img: darsia.Image) -> float:
         """Compute total mass in the image.
 
-        Args:
-            img (darsia.Image): Mass image.
+        Parameters
+        ----------
+        img : darsia.Image
+            Mass image.
 
-        Returns:
-            float: Total mass in the image.
+        Returns
+        -------
+        float
+            Total mass in the image.
         """
         mass = self(img)
         total_mass = self.geometry.integrate(mass)

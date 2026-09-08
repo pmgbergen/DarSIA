@@ -51,13 +51,17 @@ class SimpleSegmentation:
     ) -> list[darsia.ScalarImage]:
         """Extract phase based on thresholding.
 
-        Args:
-            img: Signal to segment.
-            label: Label to extract.
+        Parameters
+        ----------
+        img : darsia.ScalarImage
+            Signal to segment.
+        label
+            Label to extract.
 
-        Returns:
-            darsia.Image: Segmented phase (boolean) image.
-
+        Returns
+        -------
+        darsia.Image
+            Segmented phase (boolean) image.
         """
         masks = []
         for i in range(len(thresholds)):
@@ -149,13 +153,17 @@ class SegmentationContours:
     ) -> list[darsia.ScalarImage]:
         """Extract phase based on thresholding.
 
-        Args:
-            img: Signal to segment.
-            label: Label to extract.
+        Parameters
+        ----------
+        img : darsia.ScalarImage
+            Signal to segment.
+        label
+            Label to extract.
 
-        Returns:
-            darsia.Image: Segmented phase (boolean) image.
-
+        Returns
+        -------
+        darsia.Image
+            Segmented phase (boolean) image.
         """
         masks = []
         for i in range(len(thresholds)):
@@ -179,11 +187,15 @@ class SegmentationContours:
     ) -> darsia.Image:
         """Add contours to image based on segmentation of mass.
 
-        Args:
-            img: Image to add contours to.
-            masks: Mask as basis for contour extraction.
+        Parameters
+        ----------
+        img : darsia.Image
+            Image to add contours to.
+        masks : list[darsia.ScalarImage]
+            Mask as basis for contour extraction.
 
-        Returns:
+        Returns
+        -------
             Image with contours added.
         """
         contour_image = img.copy()

@@ -51,13 +51,17 @@ class ColorToMassConfig:
     ) -> "ColorToMassConfig":
         """Load color to mass config from a toml file from [section].
 
-        Args:
-            path: Path to the TOML file.
-            data: Path to the data folder.
-            results: Path to the results folder.
-            data_registry: Optional global :class:`DataRegistry` for resolving
-                ``data = "key"`` or ``data = ["key1", "key2"]`` references.
-
+        Parameters
+        ----------
+        path : Path
+            Path to the TOML file.
+        data : Path | None
+            Path to the data folder.
+        results : Path | None
+            Path to the results folder.
+        data_registry : DataRegistry | None
+            Optional global :class:`DataRegistry` for resolving
+            ``data = "key"`` or ``data = ["key1", "key2"]`` references.
         """
         # Get section
         sec = _get_section_from_toml(path, "color_to_mass")

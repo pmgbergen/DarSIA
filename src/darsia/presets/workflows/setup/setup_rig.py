@@ -36,11 +36,14 @@ logging.basicConfig(level=logging.INFO)
 def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> None:
     """Setup and store rig object.
 
-    Args:
-        cls: Class of the rig to be setup
-        path (Path): Path to the config file.
-        show (bool): Whether to show intermediate results.
-
+    Parameters
+    ----------
+    cls : Type[Rig]
+        Class of the rig to be setup.
+    path : Path
+        Path to the config file.
+    show : bool
+        Whether to show intermediate results.
     """
 
     logger.info("\033[92mSetting up rig...\033[0m")

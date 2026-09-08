@@ -10,9 +10,10 @@ class Median:
     def __init__(self, key: str = "", **kwargs) -> None:
         """Constructor.
 
-        Args:
-            key (str): Prefix for kwargs arguments.
-
+        Parameters
+        ----------
+        key : str
+            Prefix for kwargs arguments.
         """
         self.disk_radius: int = kwargs.get(key + "disk radius", 1)
 

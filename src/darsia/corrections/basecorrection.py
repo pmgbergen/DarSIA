@@ -19,15 +19,19 @@ class BaseCorrection(ABC):
     ) -> Union[np.ndarray, darsia.Image]:
         """Workflow for any correction routine.
 
-        Args:
-            image (array or Image): image
-            overwrite (bool): flag controlling whether the original image is overwritten
-                or the correction is applied to a copy. This option has to be used with
-                case.
+        Parameters
+        ----------
+        image : array or Image
+            Image.
+        overwrite : bool
+            Flag controlling whether the original image is overwritten
+            or the correction is applied to a copy. This option has to be used with
+            case.
 
-        Returns:
-            array or Image: corrected image, data type depends on input.
-
+        Returns
+        -------
+        array or Image
+            Corrected image, data type depends on input.
         """
         if isinstance(image, np.ndarray):
             if overwrite:
@@ -89,24 +93,30 @@ class BaseCorrection(ABC):
     ) -> np.ndarray:
         """Correction routine on array level, to be specified for tailored correction.
 
-        Args:
-            image (array): image array.
+        Parameters
+        ----------
+        image : array
+            Image array.
 
-        Returns:
-            array: corrected image array.
-
+        Returns
+        -------
+        array
+            Corrected image array.
         """
         pass
 
     def correct_metadata(self, metadata: dict = {}) -> dict:
         """Correction routine on metadata level.
 
-        Args:
-            metadata (dict): metadata dictionary.
+        Parameters
+        ----------
+        metadata : dict
+            Metadata dictionary.
 
-        Returns:
-            dict: corrected metadata dictionary.
-
+        Returns
+        -------
+        dict
+            Corrected metadata dictionary.
         """
         return {}
 
@@ -119,9 +129,10 @@ class BaseCorrection(ABC):
         The method should store a npz file, continaing the class name and
         required data for loading the correction from file.
 
-        Args:
-            path (str): path to the file
-
+        Parameters
+        ----------
+        path : str
+            Path to the file.
         """
         ...
 
@@ -132,8 +143,9 @@ class BaseCorrection(ABC):
         The method should load a npz file, containing the class name and
         required data for loading the correction from file.
 
-        Args:
-            path (str): path to the file
-
+        Parameters
+        ----------
+        path : str
+            Path to the file.
         """
         ...

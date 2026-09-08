@@ -28,9 +28,10 @@ class BeckmannLinearSolverType(StrEnum):
 class BeckmannLinearSolver:
     """Class providing linear solver options for Beckmann's problem.
 
-    Args:
-        grid (darsia.Grid): underlying grid
-
+    Parameters
+    ----------
+    grid : darsia.Grid
+        Underlying grid.
     """
 
     @abstractmethod
@@ -42,14 +43,19 @@ class BeckmannLinearSolver:
     ) -> tuple[np.ndarray, dict]:
         """Solve linear system Ax = b.
 
-        Args:
-            A (sps.csr_matrix): system matrix
-            b (np.ndarray): right hand side
-            x0 (Optional[np.ndarray]): initial guess
+        Parameters
+        ----------
+        A : sps.csr_matrix
+            System matrix.
+        b : np.ndarray
+            Right hand side.
+        x0 : Optional[np.ndarray]
+            Initial guess.
 
-        Returns:
-            tuple[np.ndarray, dict]: solution and info dictionary
-
+        Returns
+        -------
+        tuple[np.ndarray, dict]
+            Solution and info dictionary.
         """
         pass
 
@@ -57,9 +63,10 @@ class BeckmannLinearSolver:
 class BeckmannDirectSolver(BeckmannLinearSolver):
     """Direct solver for Beckmann's problem.
 
-    Args:
-        grid (darsia.Grid): underlying grid
-
+    Parameters
+    ----------
+    grid : darsia.Grid
+        Underlying grid.
     """
 
     def __init__(self, options: dict) -> None:
@@ -69,9 +76,10 @@ class BeckmannDirectSolver(BeckmannLinearSolver):
     def setup(self, matrix: sps.csc_matrix) -> None:
         """Setup direct solver.
 
-        Args:
-            matrix (sps.csr_matrix): system matrix
-
+        Parameters
+        ----------
+        matrix : sps.csr_matrix
+            System matrix.
         """
         self.linear_solver = sps.linalg.splu(matrix)
 
@@ -81,12 +89,15 @@ class BeckmannDirectSolver(BeckmannLinearSolver):
     ) -> np.ndarray:
         """Solve linear system Ax = b using a direct solver.
 
-        Args:
-            rhs (np.ndarray): right hand side
+        Parameters
+        ----------
+        rhs : np.ndarray
+            Right hand side.
 
-        Returns:
-            np.ndarray: solution
-
+        Returns
+        -------
+        np.ndarray
+            Solution.
         """
         return self.linear_solver.solve(rhs)
 
@@ -146,13 +157,17 @@ class BeckmannAMGSolver(BeckmannLinearSolver):
     ) -> np.ndarray:
         """Solve linear system Ax = b using an AMG solver.
 
-        Args:
-            rhs (np.ndarray): right hand side
-            x0 (Optional[np.ndarray]): initial guess
+        Parameters
+        ----------
+        rhs : np.ndarray
+            Right hand side.
+        x0 : Optional[np.ndarray]
+            Initial guess.
 
-        Returns:
-            np.ndarray: solution
-
+        Returns
+        -------
+        np.ndarray
+            Solution.
         """
         if x0 is None:
             x0 = np.zeros_like(rhs)
@@ -205,13 +220,14 @@ class BeckmannCGSolver(BeckmannLinearSolver):
     def setup(self, matrix: sps.csc_matrix) -> None:
         """Setup an CG solver with AMG preconditioner for the given matrix.
 
-        Args:
-            matrix (sps.csc_matrix): matrix
+        Parameters
+        ----------
+        matrix : sps.csc_matrix
+            Matrix.
 
-        Defines:
-            pyamg.amg_core.solve: AMG solver
-            dict: options for the AMG solver
-
+        Notes
+        -----
+        Sets up the AMG solver (``pyamg``) and a dict of AMG solver options.
         """
         # Define CG solver
         self.linear_solver = darsia.linalg.CG(matrix)
@@ -231,13 +247,17 @@ class BeckmannCGSolver(BeckmannLinearSolver):
     ) -> np.ndarray:
         """Solve linear system Ax = b using a CG solver with AMG preconditioner.
 
-        Args:
-            rhs (np.ndarray): right hand side
-            x0 (Optional[np.ndarray]): initial guess
+        Parameters
+        ----------
+        rhs : np.ndarray
+            Right hand side.
+        x0 : Optional[np.ndarray]
+            Initial guess.
 
-        Returns:
-            np.ndarray: solution
-
+        Returns
+        -------
+        np.ndarray
+            Solution.
         """
         if x0 is None:
             x0 = np.zeros_like(rhs)
@@ -288,12 +308,14 @@ class BeckmannKSPSolver(BeckmannLinearSolver):
     ) -> None:
         """Setup an KSP solver from PETSc for the given matrix.
 
-        Args:
-            matrix (sps.csc_matrix): matrix
+        Parameters
+        ----------
+        matrix : sps.csc_matrix
+            Matrix.
 
-        Defines:
-            PETSc.ksp: KSP solver
-            dict: options for the KSP solver
+        Notes
+        -----
+        Sets up the PETSc KSP solver and a dict of KSP solver options.
         """
         # Define CG solver
         self.linear_solver = darsia.linalg.KSP(
@@ -306,9 +328,10 @@ class BeckmannKSPSolver(BeckmannLinearSolver):
     def setup(self, matrix: sps.csc_matrix) -> None:
         """Setup KSP solver for the given matrix.
 
-        Args:
-            matrix (sps.csc_matrix): system matrix
-
+        Parameters
+        ----------
+        matrix : sps.csc_matrix
+            System matrix.
         """
         if not hasattr(self, "linear_solver"):
             self._setup(matrix)
@@ -331,13 +354,17 @@ class BeckmannKSPSolver(BeckmannLinearSolver):
     ) -> np.ndarray:
         """Solve linear system Ax = b using an AMG solver.
 
-        Args:
-            rhs (np.ndarray): right hand side
-            x0 (Optional[np.ndarray]): initial guess
+        Parameters
+        ----------
+        rhs : np.ndarray
+            Right hand side.
+        x0 : Optional[np.ndarray]
+            Initial guess.
 
-        Returns:
-            np.ndarray: solution
-
+        Returns
+        -------
+        np.ndarray
+            Solution.
         """
         if x0 is None:
             x0 = np.zeros_like(rhs)
@@ -420,13 +447,17 @@ class BeckmannLinearSolverFactory:
     ) -> BeckmannLinearSolver:
         """Factory method to create a linear solver for Beckmann's problem.
 
-        Args:
-            solver_type (BeckmannLinearSolverType): type of linear solver
-            options (dict): options for the linear solver
+        Parameters
+        ----------
+        solver_type : BeckmannLinearSolverType
+            Type of linear solver.
+        options : dict
+            Options for the linear solver.
 
-        Returns:
-            BeckmannLinearSolver: instance of the linear solver
-
+        Returns
+        -------
+        BeckmannLinearSolver
+            Instance of the linear solver.
         """
 
         if solver_type == darsia.BeckmannLinearSolverType.DIRECT:

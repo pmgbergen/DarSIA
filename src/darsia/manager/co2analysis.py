@@ -35,11 +35,14 @@ class CO2Analysis(ABC, darsia.ConcentrationAnalysisBase):
         are identified with CO2(g) and CO2 saturated water. Pure water will be treated
         as neutral (third) phase.
 
-        Args:
-            baseline (str, Path or list of such): see darsia.AnalysisBase.
-            config_source (str or Path): see darsia.AnalysisBase.
-            update_setup (bool): see darsia.AnalysisBase.
-
+        Parameters
+        ----------
+        baseline : str, Path or list of such
+            See darsia.AnalysisBase.
+        config : str or Path
+            See darsia.AnalysisBase.
+        update_setup : bool
+            See darsia.AnalysisBase.
         """
         # Call constructor of TracerAnalysis
         super().__init__(baseline, config, update_setup)
@@ -114,8 +117,10 @@ class CO2Analysis(ABC, darsia.ConcentrationAnalysisBase):
         """
         Extract CO2 from currently loaded image, based on a reference image.
 
-        Returns:
-            darsia.Image: binary image of spatial CO2 distribution.
+        Returns
+        -------
+        darsia.Image
+            Binary image of spatial CO2 distribution.
         """
         # Make a copy of the current image
         img = self.img.copy()
@@ -129,8 +134,10 @@ class CO2Analysis(ABC, darsia.ConcentrationAnalysisBase):
         """
         Extract CO2(g) from currently loaded image, based on a reference image.
 
-        Returns:
-            darsia.Image: binary image of spatial CO2(g) distribution.
+        Returns
+        -------
+        darsia.Image
+            Binary image of spatial CO2(g) distribution.
         """
         # Make a copy of the current image
         img = self.img.copy()

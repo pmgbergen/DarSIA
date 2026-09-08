@@ -26,17 +26,26 @@ class PorosityAnalysis(MultichromaticTracerAnalysis):
     ):
         """Constructor.
 
-        Args:
-            baseline (Image): baseline image
-            labels (Image, optional): labeled image
-            mode (str, optional): mode for the analysis
-            num_clusters (int, optional): number of clusters
-            num_attempts (int, optional): number of attempts
-            num_iterations (int, optional): number of iterations
-            eps (float, optional): epsilon
-            debug (bool, optional): debug flag
-            kwargs: other keyword arguments
-
+        Parameters
+        ----------
+        baseline : Image
+            Baseline image.
+        labels : Image, optional
+            Labeled image.
+        mode : str, optional
+            Mode for the analysis.
+        num_clusters : int, optional
+            Number of clusters.
+        num_attempts : int, optional
+            Number of attempts.
+        num_iterations : int, optional
+            Number of iterations.
+        eps : float, optional
+            Epsilon.
+        debug : bool, optional
+            Debug flag.
+        **kwargs
+            Other keyword arguments.
         """
 
         # If no segmentation is provided, create an empty one
@@ -308,12 +317,15 @@ class PorosityAnalysis(MultichromaticTracerAnalysis):
     def __call__(self, img: darsia.Image) -> darsia.Image:
         """Apply the analysis to an image.
 
-        Args:
-            img (darsia.Image): image
+        Parameters
+        ----------
+        img : darsia.Image
+            Image.
 
-        Returns:
-            darsia.Image: porosity image
-
+        Returns
+        -------
+        darsia.Image
+            Porosity image.
         """
         porosity = super().__call__(img)
         # plt.figure("porosity pre clip")
@@ -328,13 +340,17 @@ class PorosityAnalysis(MultichromaticTracerAnalysis):
     ) -> darsia.Image:
         """Cut off small values in the porosity image.
 
-        Args:
-            porosity (darsia.Image): porosity image
-            threshold (float): threshold value
+        Parameters
+        ----------
+        porosity : darsia.Image
+            Porosity image.
+        threshold : float
+            Threshold value.
 
-        Returns:
-            darsia.Image: porosity image
-
+        Returns
+        -------
+        darsia.Image
+            Porosity image.
         """
         porosity_copy = porosity.copy()
         porosity_copy.img = np.clip(porosity_copy.img, 0, 1)
@@ -356,13 +372,17 @@ def patched_porosity_analysis(
 ) -> darsia.Image:
     """Patched approach to porosity analysis.
 
-    Args:
-        patches (tuple[int, int]): number of patches
-        otherwise: see PorosityAnalysis
+    Parameters
+    ----------
+    patches : tuple[int, int]
+        Number of patches.
+    otherwise
+        See PorosityAnalysis.
 
-    Returns:
-        darsia.Image: porosity image based on baseline
-
+    Returns
+    -------
+    darsia.Image
+        Porosity image based on baseline.
     """
     porosity = darsia.zeros_like(baseline, mode="voxels", dtype=float)
     patch_size = (np.ceil(np.array(baseline.num_voxels) / np.array(patches))).astype(

@@ -37,9 +37,10 @@ class AbstractModelObjective:
         """
         Abstract method to define an objective function.
 
-        Returns:
-            callable: objective function.
-
+        Returns
+        -------
+        callable
+            Objective function.
         """
         pass
 
@@ -50,12 +51,14 @@ class AbstractModelObjective:
         Wrapper for updating the model, depending on
         whether it is a single model or a combined model.
 
-        Args:
-            parameters (np.ndarray): model parameters,
-            options (dict): further tuning parameters and extra info;
-                here, the key "dofs" is used to determine which dofs to
-                update.
-
+        Parameters
+        ----------
+        parameters : np.ndarray
+            Model parameters,
+        options : dict
+            Further tuning parameters and extra info;
+            here, the key "dofs" is used to determine which dofs to
+            update.
         """
         dofs = options.get("dofs", None)
         self.model.update_model_parameters(parameters, dofs)
@@ -72,16 +75,21 @@ class AbstractModelObjective:
         NOTE: Require to combine darsia.ConcentrationAnalysis with a calibration
         model mixin via multiple inheritance.
 
-        Args:
-            images (list of darsia.Image): calibration images
-            options (dict): container holding tuning information for the numerical
-                calibration routine
-            plot_result (bool): flag controlling whether the calibration is displayed
-                in a plot.
+        Parameters
+        ----------
+        images : list of darsia.Image
+            Calibration images.
+        options : dict
+            Container holding tuning information for the numerical
+            calibration routine.
+        plot_result : bool
+            Flag controlling whether the calibration is displayed
+            in a plot.
 
-        Returns:
-            bool: success of the calibration study.
-
+        Returns
+        -------
+        bool
+            Success of the calibration study.
         """
         # Convert to list of images, if space time image provided.
         if not isinstance(images, list):
@@ -205,15 +213,21 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
         """
         Define objective function such that the root is the min.
 
-        Args:
-            input_images (list of np.ndarray): input for _convert_signal
-            images_diff (list of np.ndarray): plain differences wrt background image
-            times (list of float): times (units assumed to be compatible)
-            options (dict): dictionary with objective value, here the injection rate
+        Parameters
+        ----------
+        input_images : list of np.ndarray
+            Input for _convert_signal.
+        images_diff : list of np.ndarray
+            Plain differences wrt background image.
+        times : list of float
+            Times (units assumed to be compatible).
+        options : dict
+            Dictionary with objective value, here the injection rate.
 
-        Returns:
-            callable: objective function
-
+        Returns
+        -------
+        callable
+            Objective function.
         """
 
         # Fetch the injection rate and geometry
@@ -227,10 +241,12 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
             """
             Compute the deviation between anticipated and expected injection rate.
 
-            Args:
-                params (np.ndarray): model parameters
-                args: concentration analysis based arguments.
-
+            Parameters
+            ----------
+            params : np.ndarray
+                Model parameters.
+            args
+                Concentration analysis based arguments.
             """
 
             # Set the stage
@@ -280,12 +296,16 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
         """
         Illustrate result of calibration.
 
-        Args:
-            input_images (list of np.ndarray): input for _convert_signal
-            images_diff (list of np.ndarray): plain differences wrt background image
-            times (list of float): times (unit assumed to be compatible)
-            options (dict): dictionary with objective value, here the injection rate
-
+        Parameters
+        ----------
+        input_images : list of np.ndarray
+            Input for _convert_signal.
+        images_diff : list of np.ndarray
+            Plain differences wrt background image.
+        times : list of float
+            Times (unit assumed to be compatible).
+        options : dict
+            Dictionary with objective value, here the injection rate.
         """
         # Fetch the injection rate and geometry
         geometry = options["geometry"]
@@ -323,9 +343,10 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
     def model_calibration_postanalysis(self) -> float:
         """Interpret calibration result.
 
-        Returns:
-            float: time (in seconds) at which the signal is zero (based on calibration)
-
+        Returns
+        -------
+        float
+            Time (in seconds) at which the signal is zero (based on calibration).
         """
 
         # Interpret the results of the regression
@@ -365,15 +386,21 @@ class AbsoluteVolumeModelObjectiveMixin(AbstractModelObjective):
         """
         Define objective function such that the root is the min.
 
-        Args:
-            input_images (list of np.ndarray): input for _convert_signal
-            images_diff (list of np.ndarray): plain differences wrt background image
-            times (list of float): times
-            options (dict): dictionary with objective value, here the injection rate
+        Parameters
+        ----------
+        input_images : list of np.ndarray
+            Input for _convert_signal.
+        images_diff : list of np.ndarray
+            Plain differences wrt background image.
+        times : list of float
+            Times.
+        options : dict
+            Dictionary with objective value, here the injection rate.
 
-        Returns:
-            callable: objetive function
-
+        Returns
+        -------
+        callable
+            Objetive function.
         """
 
         # Fetch the geometry for integration
@@ -398,10 +425,12 @@ class AbsoluteVolumeModelObjectiveMixin(AbstractModelObjective):
             Compute the deviation between anticipated and expected evolution
             of the volumes in the L2 sense.
 
-            Args:
-                params (np.ndarray): model parameters
-                args: concentration analysis based arguments.
-
+            Parameters
+            ----------
+            params : np.ndarray
+                Model parameters.
+            args
+                Concentration analysis based arguments.
             """
             # Set the stage
             self.update_model_for_calibration(params, options)

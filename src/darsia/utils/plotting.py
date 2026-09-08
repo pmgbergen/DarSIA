@@ -21,10 +21,11 @@ def plot_2d_wasserstein_distance(
 ) -> None:
     """Post-processing utility to plot the 2d Wasserstein distance.
 
-    Args:
-        info (dict): information about the Beckman solution, output of
-            darsia.wasserstein_distance.
-
+    Parameters
+    ----------
+    info : dict
+        Information about the Beckman solution, output of
+        darsia.wasserstein_distance.
     """
     # Fetch fields
     grid = info["grid"]
@@ -119,14 +120,17 @@ def to_vtk(
 ) -> None:
     """Write data to a VTK file.
 
-    Args:
-        path (Union[str, Path]): path to the VTK file
-        data (list[tuple[Union[darsia.Image, np.ndarray, darsia.Format], str]]): data to
-            write, includes the data and the name of the data. Require at least one data
-            point to be an image.
+    Parameters
+    ----------
+    path : Union[str, Path]
+        Path to the VTK file.
+    data : list[tuple[Union[darsia.Image, np.ndarray, darsia.Format], str]]
+        The data and the name of each entry to write. At least one entry must be
+        an image.
 
-    NOTE: Requires pyevtk to be installed.
-
+    Notes
+    -----
+    Requires ``pyevtk`` to be installed.
     """
     try:
         from pyevtk.hl import gridToVTK  # type: ignore [import-not-found]

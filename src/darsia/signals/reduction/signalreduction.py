@@ -16,11 +16,14 @@ class SignalReduction:
     def __call__(self, img: np.ndarray) -> np.ndarray:
         """Reduce the input to a scalar signal.
 
-        Args:
-            img (np.ndarray): (here scalar) signal
+        Parameters
+        ----------
+        img : np.ndarray
+            (here scalar) signal.
 
-        Returns:
-            np.ndarray: scalar signal
-
+        Returns
+        -------
+        np.ndarray
+            Scalar signal.
         """
         return img

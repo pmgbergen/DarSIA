@@ -35,10 +35,12 @@ def analysis_volume_from_context(
 ) -> None:
     """Volume analysis using pre-prepared context.
 
-    Args:
-        ctx: Pre-prepared analysis context with color_to_mass_analysis initialized.
-        show: Whether to show the images.
-
+    Parameters
+    ----------
+    ctx : AnalysisContext
+        Pre-prepared analysis context with color_to_mass_analysis initialized.
+    show : bool
+        Whether to show the images.
     """
     assert ctx.config.data is not None
     assert ctx.config.analysis is not None
@@ -228,12 +230,16 @@ def analysis_volume(
 ):
     """Volume analysis (standalone entry point).
 
-    Args:
-        cls: Rig class.
-        path: Path to config file.
-        all: Whether to use all images.
-        show: Whether to show the images.
-
+    Parameters
+    ----------
+    cls : type[Rig]
+        Rig class.
+    path : Path
+        Path to config file.
+    all : bool
+        Whether to use all images.
+    show : bool
+        Whether to show the images.
     """
     ctx = prepare_analysis_context(
         cls=cls,

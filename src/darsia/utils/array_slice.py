@@ -28,9 +28,10 @@ def array_slice_argument(
         end (int): end index
         step (int): step size
 
-    Returns:
-        slice: slice access
-
+    Returns
+    -------
+    slice
+        Slice access.
     """
     return (slice(None),) * (axis % a.ndim) + (slice(start, end, step),)
 

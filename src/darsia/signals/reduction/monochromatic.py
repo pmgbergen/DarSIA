@@ -31,11 +31,15 @@ class MonochromaticReduction(darsia.SignalReduction):
         """
         Make a mono-colored image from potentially multi-colored image.
 
-        Args:
-            img (np.ndarray): image
+        Parameters
+        ----------
+        img : np.ndarray
+            Image.
 
-        Returns:
-            np.ndarray: monochromatic reduction of the array
+        Returns
+        -------
+        np.ndarray
+            Monochromatic reduction of the array.
         """
         if self.color == "hsv":
 

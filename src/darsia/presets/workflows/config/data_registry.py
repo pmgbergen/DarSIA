@@ -73,11 +73,16 @@ class DataRegistry:
     homogeneous entry types. Fields carry metadata for both runtime use and GUI editing
     of named selections.
 
-    Attributes:
-        interval_registry: Mapping from name to TimeInterval.
-        window_registry: Mapping from name to TimeWindow.
-        time_registry: Mapping from name to ImageTimeData.
-        path_registry: Mapping from name to PathData.
+    Attributes
+    ----------
+    interval_registry
+        Mapping from name to TimeInterval.
+    window_registry
+        Mapping from name to TimeWindow.
+    time_registry
+        Mapping from name to ImageTimeData.
+    path_registry
+        Mapping from name to PathData.
     """
 
     interval_registry: dict[str, TimeInterval] = field(
@@ -131,18 +136,24 @@ class DataRegistry:
         Reads four separate top-level arrays: [[data_interval]], [[data_window]],
         [[data_time]], [[data_path]]. Each entry must have a 'name' field (the registry key).
 
-        Args:
-            paths: One or more TOML file paths, a single TOML file path, or a dict
-                containing the TOML data directly (for testing/programmatic use).
-            data_folder: Base folder used to resolve relative paths for
-                [[data_path]] entries.
+        Parameters
+        ----------
+        paths : Path | list[Path] | dict
+            One or more TOML file paths, a single TOML file path, or a dict
+            containing the TOML data directly (for testing/programmatic use).
+        data_folder : Path | list[Path] | None
+            Base folder used to resolve relative paths for
+            [[data_path]] entries.
 
-        Returns:
-            self
+        Returns
+        -------
+            Self.
 
-        Raises:
-            ValueError: If any key appears in more than one of the four
-                sub-registries, or if array format is incorrect.
+        Raises
+        ------
+        ValueError
+            If any key appears in more than one of the four
+            sub-registries, or if array format is incorrect.
         """
         # Handle dict input (for tests and programmatic use)
         if isinstance(paths, dict):
@@ -310,16 +321,21 @@ class DataRegistry:
     def resolve(self, keys: str | list[str] | None) -> TimeData:
         """Resolve one or more registry keys into a merged :class:`TimeData` object.
 
-        Args:
-            keys: A single key string, a list of key strings, or None (returns empty TimeData).
+        Parameters
+        ----------
+        keys : str | list[str] | None
+            A single key string, a list of key strings, or None (returns empty TimeData).
 
-        Returns:
+        Returns
+        -------
             A :class:`TimeData` object whose ``image_paths``, ``image_times``,
-            and sub-data attributes are the union of all matched entries, deduplicated
-            and sorted.
+            And sub-data attributes are the union of all matched entries, deduplicated.
+            And sorted.
 
-        Raises:
-            KeyError: If any requested key is not found in the registry.
+        Raises
+        ------
+        KeyError
+            If any requested key is not found in the registry.
         """
         if keys is None:
             return TimeData()
@@ -389,7 +405,8 @@ class DataRegistry:
     def keys(self) -> list[str]:
         """Return all registered entry names across all four sub-registries.
 
-        Returns:
+        Returns
+        -------
             Sorted list of key strings in the registry.
         """
         all_keys = (
@@ -403,9 +420,10 @@ class DataRegistry:
     def to_toml_dict(self) -> dict:
         """Serialize the registry back into TOML-compatible dict structure.
 
-        Returns:
-            A dict with keys 'data_interval', 'data_window', 'data_time', 'data_path', each
-            containing a list of dicts matching the array-of-tables TOML structure.
+        Returns
+        -------
+            A dict with keys 'data_interval', 'data_window', 'data_time', 'data_path', each.
+            Containing a list of dicts matching the array-of-tables TOML structure.
             Missing sub-registries are omitted from the output.
         """
         result = {}

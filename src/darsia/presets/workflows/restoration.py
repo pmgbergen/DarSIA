@@ -63,14 +63,17 @@ def build_restoration(
 ) -> darsia.VolumeAveraging | darsia.TVD | None:
     """Build a restoration object from configuration.
 
-    Args:
-        restoration_config: Parsed restoration configuration, or None if no
-            restoration section was present in the config file.
-        fluidflower: The loaded rig instance (provides baseline and porosity).
+    Parameters
+    ----------
+    restoration_config : RestorationConfig | None
+        Parsed restoration configuration, or None if no
+        restoration section was present in the config file.
+    fluidflower : 'Rig'
+        The loaded rig instance (provides baseline and porosity).
 
-    Returns:
+    Returns
+    -------
         A callable restoration object, or None if no restoration is configured.
-
     """
     if restoration_config is None:
         logger.info(

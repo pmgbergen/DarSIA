@@ -194,9 +194,10 @@ class HeterogeneousColorToMassAnalysis:
             - Define a new color path just for this label.
             - Tune the values for the color path.
 
-        Args:
-            image (darsia.Image): The image from which to define the local color path.
-
+        Parameters
+        ----------
+        image : darsia.Image
+            The image from which to define the local color path.
         """
 
         # Fill up rois with "entire frame"
@@ -943,8 +944,10 @@ class HeterogeneousColorToMassAnalysis:
             def slider_up_arrow(slider_index):
                 """Increment signal slider by one step.
 
-                Args:
-                    slider_index (int): Index of the signal slider
+                Parameters
+                ----------
+                slider_index : int
+                    Index of the signal slider.
                 """
                 # Get the slider object
                 slider = sliders_color_to_signal[slider_index]
@@ -1121,8 +1124,10 @@ class HeterogeneousColorToMassAnalysis:
             def slider_down_arrow(slider_index):
                 """Decrement signal slider by one step.
 
-                Args:
-                    slider_index (int): Index of the signal slider
+                Parameters
+                ----------
+                slider_index : int
+                    Index of the signal slider.
                 """
                 # Get the slider object
                 slider = sliders_color_to_signal[slider_index]
@@ -1605,9 +1610,10 @@ class HeterogeneousColorToMassAnalysis:
                 """Increment flash slider by one step. And all signal function sliders across
                 all labels.
 
-                Args:
-                    slider_index (int): Index of the flash slider (0=cut-off, 1=max)
-
+                Parameters
+                ----------
+                slider_index : int
+                    Index of the flash slider (0=cut-off, 1=max).
                 """
                 # Get the slider object
                 slider = sliders_flash[slider_index]
@@ -1624,8 +1630,10 @@ class HeterogeneousColorToMassAnalysis:
             def flash_slider_down_arrow(slider_index):
                 """Decrement flash slider by one step.
 
-                Args:
-                    slider_index (int): Index of the flash slider (0=cut-off, 1=max)
+                Parameters
+                ----------
+                slider_index : int
+                    Index of the flash slider (0=cut-off, 1=max).
                 """
                 # Get the slider object
                 slider = sliders_flash[slider_index]
@@ -1643,8 +1651,10 @@ class HeterogeneousColorToMassAnalysis:
             def threshold_slider_up_arrow(slider_index):
                 """Increment threshold slider by one step.
 
-                Args:
-                    slider_index (int): Index of the threshold slider (0=c_aq, 1=s_g)
+                Parameters
+                ----------
+                slider_index : int
+                    Index of the threshold slider (0=c_aq, 1=s_g).
                 """
                 # Get the slider object
                 slider = sliders_threshold[slider_index]
@@ -1661,8 +1671,10 @@ class HeterogeneousColorToMassAnalysis:
             def threshold_slider_down_arrow(slider_index):
                 """Decrement threshold slider by one step.
 
-                Args:
-                    slider_index (int): Index of the threshold slider (0=c_aq, 1=s_g)
+                Parameters
+                ----------
+                slider_index : int
+                    Index of the threshold slider (0=c_aq, 1=s_g).
                 """
                 # Get the slider object
                 slider = sliders_threshold[slider_index]
@@ -1680,8 +1692,10 @@ class HeterogeneousColorToMassAnalysis:
             def depth_slider_up_arrow(slider_index):
                 """Increment depth scaling slider by one step.
 
-                Args:
-                    slider_index (int): Index of the depth scaling slider (always 0)
+                Parameters
+                ----------
+                slider_index : int
+                    Index of the depth scaling slider (always 0).
                 """
                 pass
 
@@ -1740,8 +1754,10 @@ class HeterogeneousColorToMassAnalysis:
             def depth_slider_down_arrow(slider_index):
                 """Decrement depth scaling slider by one step.
 
-                Args:
-                    slider_index (int): Index of the depth scaling slider (always 0)
+                Parameters
+                ----------
+                slider_index : int
+                    Index of the depth scaling slider (always 0).
                 """
                 pass
 
@@ -2564,9 +2580,10 @@ class HeterogeneousColorToMassAnalysis:
             - Define a new color path just for this label.
             - Tune the values for the color path.
 
-        Args:
-            image (darsia.Image): The image from which to define the local color path.
-
+        Parameters
+        ----------
+        image : darsia.Image
+            The image from which to define the local color path.
         """
         # Fill up rois with "entire frame"
         rois = rois or {}
@@ -2787,9 +2804,10 @@ class HeterogeneousColorToMassAnalysis:
     def save(self, folder: Path) -> None:
         """Save the calibration data to json file.
 
-        Args:
-            path (Path): The path to save the calibration data.
-
+        Parameters
+        ----------
+        path : Path
+            The path to save the calibration data.
         """
         # Save the color path interpretation
         for label in np.unique(self.labels.img):
@@ -2848,9 +2866,10 @@ class HeterogeneousColorToMassAnalysis:
     ) -> "HeterogeneousColorToMassAnalysis":
         """Load the calibration data from json file.
 
-        Args:
-            path (Path): path to load the model
-
+        Parameters
+        ----------
+        path : Path
+            Path to load the model.
         """
         color_path_interpretation = {
             label: darsia.ColorPathInterpolation.load(

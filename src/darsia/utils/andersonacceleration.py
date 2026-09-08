@@ -17,13 +17,16 @@ class AndersonAcceleration:
     ) -> None:
         """Initialize Anderson acceleration.
 
-        Args:
-            dimension (int, tuple[int]): dimension of the problem. If a tuple is given,
-                the problem is assumed to be a tensor problem and the dimension is
-                calculated as the product of the tuple entries.
-            depth (int): depth of the acceleration. If 0, no acceleration is applied.
-            restart (int): restart of the acceleration. If None, no restart is applied.
-
+        Parameters
+        ----------
+        dimension : int, tuple[int]
+            Dimension of the problem. If a tuple is given,
+            the problem is assumed to be a tensor problem and the dimension is
+            calculated as the product of the tuple entries.
+        depth : int
+            Depth of the acceleration. If 0, no acceleration is applied.
+        restart : int
+            Restart of the acceleration. If None, no restart is applied.
         """
 
         if isinstance(dimension, int):
@@ -58,15 +61,20 @@ class AndersonAcceleration:
     def __call__(self, gk: np.ndarray, fk: np.ndarray, iteration: int) -> np.ndarray:
         """Apply Anderson acceleration.
 
-        Args:
-            gk (array): application of some fixed point iteration onto approximation xk,
-                i.e., g(xk).
-            fk (array): residual g(xk) - xk; in general some increment.
-            iteration (int): current iteration count.
+        Parameters
+        ----------
+        gk : array
+            Application of some fixed point iteration onto approximation xk,
+            i.e., g(xk).
+        fk : array
+            Residual g(xk) - xk; in general some increment.
+        iteration : int
+            Current iteration count.
 
-        Returns:
-            array: next approximation.
-
+        Returns
+        -------
+        array
+            Next approximation.
         """
 
         if self._tensor:

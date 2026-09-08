@@ -45,11 +45,14 @@ class Solver:
     ) -> None:
         """Update parameters of the solver.
 
-        Args:
-            dim (int, optional): spatial dimension of the problem
-            mass_coeff (float or array, optional): mass coefficient
-            diffusion_coeff (float or array, optional): diffusion coefficient
-
+        Parameters
+        ----------
+        dim : int, optional
+            Spatial dimension of the problem.
+        mass_coeff : float or array, optional
+            Mass coefficient.
+        diffusion_coeff : float or array, optional
+            Diffusion coefficient.
         """
         self.dim = dim if dim is not None else self.dim
         self.mass_coeff = mass_coeff if mass_coeff is not None else self.mass_coeff
@@ -61,12 +64,16 @@ class Solver:
     def __call__(self, x0: np.ndarray, rhs: np.ndarray) -> np.ndarray:
         """Main method of the solver - run the solver.
 
-        Args:
-            x0 (np.ndarray): initial guess
-            rhs (np.ndarray): right hand side
+        Parameters
+        ----------
+        x0 : np.ndarray
+            Initial guess.
+        rhs : np.ndarray
+            Right hand side.
 
-        Returns:
-            np.ndarray: solution
-
+        Returns
+        -------
+        np.ndarray
+            Solution.
         """
         pass

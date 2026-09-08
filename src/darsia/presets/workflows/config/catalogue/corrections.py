@@ -37,16 +37,21 @@ class CurvatureCatalogue:
         Hand-parses TOML (like RoiRegistry) since array-of-tables is not supported
         by the generic _get_section_from_toml helper.
 
-        Args:
-            path: Path or list of Paths to TOML catalogue file(s).
+        Parameters
+        ----------
+        path : Path | list[Path]
+            Path or list of Paths to TOML catalogue file(s).
 
-        Returns:
-            self
+        Returns
+        -------
+            Self.
 
-        Raises:
-            ValueError: If [curvature_preset] section is not an array-of-tables
-                (strict format enforcement) or if any preset entry has a duplicate
-                name.
+        Raises
+        ------
+        ValueError
+            If [curvature_preset] section is not an array-of-tables
+            (strict format enforcement) or if any preset entry has a duplicate
+            name.
         """
         if isinstance(path, list):
             paths = [Path(p) for p in path]
@@ -99,15 +104,20 @@ class CurvatureCatalogue:
     def get(self, name: str) -> CurvatureCorrectionConfig:
         """Retrieve a preset by name.
 
-        Args:
-            name: The preset name.
+        Parameters
+        ----------
+        name : str
+            The preset name.
 
-        Returns:
-            A copy-like reference to the CurvatureCorrectionConfig preset
+        Returns
+        -------
+            A copy-like reference to the CurvatureCorrectionConfig preset.
             (the dict is already normalized via load()).
 
-        Raises:
-            KeyError: If the preset name is not found.
+        Raises
+        ------
+        KeyError
+            If the preset name is not found.
         """
         if name not in self.presets:
             raise KeyError(

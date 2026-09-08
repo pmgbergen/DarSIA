@@ -23,9 +23,10 @@ class TVD:
     def __init__(self, key: str = "", **kwargs) -> None:
         """Constructor.
 
-        Args:
-            key (str): Prefix for kwargs arguments.
-
+        Parameters
+        ----------
+        key : str
+            Prefix for kwargs arguments.
         """
         # Determine method
         self.method = kwargs.pop(key + "method", "chambolle").lower()
@@ -47,12 +48,15 @@ class TVD:
     ) -> Union[np.ndarray, darsia.Image]:
         """Application of TV denoising.
 
-        Args:
-            img (np.ndarray or Image): image
+        Parameters
+        ----------
+        img : np.ndarray or Image
+            Image.
 
-        Returns:
-            np.ndarray or Image: upscaled image (same type as input)
-
+        Returns
+        -------
+        np.ndarray or Image
+            Upscaled image (same type as input).
         """
 
         if isinstance(img, np.ndarray):
@@ -65,12 +69,15 @@ class TVD:
     def _tvd_array(self, img: np.ndarray) -> np.ndarray:
         """Application of anisotropic resizing and tv denoising to numpy array.
 
-        Args:
-            img (np.ndarray): image
+        Parameters
+        ----------
+        img : np.ndarray
+            Image.
 
-        Returns:
-            np.ndarray: upscaled image
-
+        Returns
+        -------
+        np.ndarray
+            Upscaled image.
         """
 
         # Apply TVD
@@ -117,12 +124,15 @@ class TVD:
     def _tvd_image(self, img: darsia.Image) -> darsia.Image:
         """Application of anisotropic resizing and tv denoising to darsia.Image.
 
-        Args:
-            img (darsia.Image): image
+        Parameters
+        ----------
+        img : darsia.Image
+            Image.
 
-        Returns:
-            darsia.Image: upscaled image
-
+        Returns
+        -------
+        darsia.Image
+            Upscaled image.
         """
         img_copy = img.copy()
         img_copy.img = self._tvd_array(img.img)
@@ -139,19 +149,29 @@ def tvd(
 ) -> Union[np.ndarray, darsia.Image]:
     """Inline application of TVD.
 
-    Args:
-        img (np.ndarray or Image): image
-        method (str): TVD method
-        weight (float or np.ndarray): weight
-        max_num_iter (int): maximum number of iterations
-        eps (float): tolerance
-        **kwargs: additional arguments
-            - omega (array or float): data fidelity weight for heterogeneous bregman
-            - regularization (float): regularization parameter for heterogeneous bregman
+    Parameters
+    ----------
+    img : np.ndarray or Image
+        Image.
+    method : str
+        TVD method.
+    weight : float or np.ndarray
+        Weight.
+    max_num_iter : int
+        Maximum number of iterations.
+    eps : float
+        Tolerance.
+    **kwargs
+        Additional arguments.
 
-    Returns:
-        np.ndarray or Image: upscaled image (same type as input)
+        - omega (array or float): data fidelity weight for heterogeneous bregman
 
+        - regularization (float): regularization parameter for heterogeneous bregman
+
+    Returns
+    -------
+    np.ndarray or Image
+        Upscaled image (same type as input).
     """
     tvd = TVD(
         method=method,

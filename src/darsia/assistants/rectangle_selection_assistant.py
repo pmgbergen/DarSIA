@@ -20,14 +20,20 @@ class RectangleSelectionAssistant(darsia.BaseAssistant):
     def __init__(self, img: Optional[darsia.Image], **kwargs) -> None:
         """Initialize the assistant.
 
-        Args:
-            img (darsia.Image): Image to select a rectangle in.
-            **kwargs: Additional arguments.
-                - background (darsia.Image): Background image to display.
-                - name (str): Name of assistant / short version of instructions.
-                - coordinates (bool): Flag controlling whether to return coordinates or voxels.
-                - labels (darsia.Image): Labels for the image.
+        Parameters
+        ----------
+        img : darsia.Image
+            Image to select a rectangle in.
+        **kwargs
+            Additional arguments.
 
+            - background (darsia.Image): Background image to display.
+
+            - name (str): Name of assistant / short version of instructions.
+
+            - coordinates (bool): Flag controlling whether to return coordinates or voxels.
+
+            - labels (darsia.Image): Labels for the image.
         """
         if img is None:
             img = kwargs.get("background")
@@ -72,9 +78,10 @@ class RectangleSelectionAssistant(darsia.BaseAssistant):
     def __call__(self) -> tuple[slice, ...]:
         """Call the assistant.
 
-        Returns:
-            tuple[slice, ...]: Selected box in terms of slices.
-
+        Returns
+        -------
+        tuple[slice, ...]
+            Selected box in terms of slices.
         """
         if not self.finalized:
             # Select points

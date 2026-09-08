@@ -45,15 +45,21 @@ class Resize:
         **kwargs,
     ) -> None:
         """
-        Args:
-            ref_image (Image, optional): image whose shape is desired
-            shape (tuple of int, optional): desired shape (in matrix indexing)
-            fx (float, optional): resize factor in x-dimension.
-            fy (float, optional): resize factor in y-dimension.
-            interpolation (str, optional): interpolation method, default: None, invoking
-                the default option in cv2.resize.
-            dtype: conversion dtype before resizing; noting happens if None
-
+        Parameters
+        ----------
+        ref_image : Image, optional
+            Image whose shape is desired.
+        shape : tuple of int, optional
+            Desired shape (in matrix indexing).
+        fx : float, optional
+            Resize factor in x-dimension.
+        fy : float, optional
+            Resize factor in y-dimension.
+        interpolation : str, optional
+            Interpolation method, default: None, invoking
+            the default option in cv2.resize.
+        dtype
+            Conversion dtype before resizing; noting happens if None.
         """
 
         # Cache parameters
@@ -125,12 +131,15 @@ class Resize:
         """
         Wrapper to cv2.resize.
 
-        Args:
-            img (np.ndarray, or darsia.Image): image
+        Parameters
+        ----------
+        img : np.ndarray, or darsia.Image
+            Image.
 
-        Returns:
-            np.ndarray, or darsia.Image: resized image, same format as input
-
+        Returns
+        -------
+        np.ndarray, or darsia.Image
+            Resized image, same format as input.
         """
         input_is_image = isinstance(img, darsia.Image)
         if input_is_image:
@@ -170,13 +179,17 @@ class Resize:
     ) -> np.ndarray:
         """Core resize logic for arrays, shared with BaseCorrection subclasses.
 
-        Args:
-            img_array (np.ndarray): input image array (any shape).
-            is_extensive (bool): whether to apply conservative (extensive) rescaling.
+        Parameters
+        ----------
+        img_array : np.ndarray
+            Input image array (any shape).
+        is_extensive : bool
+            Whether to apply conservative (extensive) rescaling.
 
-        Returns:
-            np.ndarray: resized array.
-
+        Returns
+        -------
+        np.ndarray
+            Resized array.
         """
         # Free no-op when target shape already matches: skip cv2 entirely.
         # Safe for conservative/extensive rescaling too, since the conserve-sum
@@ -239,9 +252,10 @@ class Resize:
     def save(self, path: str) -> None:
         """Save parameters to npz file.
 
-        Args:
-            path (str): path to save the parameters to
-
+        Parameters
+        ----------
+        path : str
+            Path to save the parameters to.
         """
         np.savez(
             path,
@@ -259,9 +273,10 @@ class Resize:
     def load(self, path: str) -> None:
         """Load parameters from file.
 
-        Args:
-            path (str): path to load the parameters from
-
+        Parameters
+        ----------
+        path : str
+            Path to load the parameters from.
         """
         data = np.load(path, allow_pickle=True)
         self.shape = tuple(data["shape"]) if "shape" in data else None
@@ -293,16 +308,23 @@ def resize(
 ) -> darsia.Image:
     """Function wrapper to Resize object.
 
-    Args:
-        image (darsia.Image): image to be resized
-        ref_image (Image, optional): reference image whose shape is desired
-        shape (tuple of int, optional): desired shape (in matrix indexing)
-        fx (float, optional): resize factor in x-dimension.
-        fy (float, optional): resize factor in y-dimension.
-        interpolation (str, optional): interpolation method, default: None, invoking
-            the default option in cv2.resize.
-        dtype: conversion dtype before resizing; noting happens if None
-
+    Parameters
+    ----------
+    image : darsia.Image
+        Image to be resized.
+    ref_image : Image, optional
+        Reference image whose shape is desired.
+    shape : tuple of int, optional
+        Desired shape (in matrix indexing).
+    fx : float, optional
+        Resize factor in x-dimension.
+    fy : float, optional
+        Resize factor in y-dimension.
+    interpolation : str, optional
+        Interpolation method, default: None, invoking
+        the default option in cv2.resize.
+    dtype
+        Conversion dtype before resizing; noting happens if None.
     """
     # Define Resize object
     resizer = Resize(
@@ -323,16 +345,20 @@ def equalize_voxel_size(
 ) -> darsia.Image:
     """Resize routine which keeps physical dimensions, but unifies the voxel length.
 
-    Args:
-        image (darsia.Image): image to be resized
-        voxel_size (float, optional): side length, min of the voxel side of the image
-            if None.
+    Parameters
+    ----------
+    image : darsia.Image
+        Image to be resized.
+    voxel_size : float, optional
+        Side length, min of the voxel side of the image
+        if None.
         keyword arguments:
-            interpolation (str): interpolation type used for resize
+        interpolation (str): interpolation type used for resize
 
-    Returns:
-        darsia.Image: resized image
-
+    Returns
+    -------
+    darsia.Image
+        Resized image.
     """
     # Fetch dimensions to be kept
     dimensions = image.dimensions
@@ -351,13 +377,17 @@ def equalize_voxel_size(
 def uniform_refinement(image: darsia.Image, levels: int) -> darsia.Image:
     """Uniform refinement.
 
-    Args:
-        image (darsia.Image): image
-        levels (int): refinement levels, if positive, coarsing levels, if negative.
+    Parameters
+    ----------
+    image : darsia.Image
+        Image.
+    levels : int
+        Refinement levels, if positive, coarsing levels, if negative.
 
-    Returns:
-        darsia.Image: resized image
-
+    Returns
+    -------
+    darsia.Image
+        Resized image.
     """
     # Fetch original data array
     array = image.img.copy()

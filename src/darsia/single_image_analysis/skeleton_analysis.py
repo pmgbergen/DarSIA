@@ -31,9 +31,10 @@ class SkeletonAnalysis:
     ) -> None:
         """Constructor.
 
-        Args:
-            verbosity (bool): Verbosity flag.
-
+        Parameters
+        ----------
+        verbosity : bool
+            Verbosity flag.
         """
 
         self.verbosity = verbosity
@@ -53,13 +54,18 @@ class SkeletonAnalysis:
     ) -> None:
         """Read labeled image and restrict to values of interest.
 
-        Args:
-            img (Image): image to analyze.
-            mask (Image): labeled image.
-            roi (array, optional): set of points defining a box.
-            values_of_interest (int, list of int, optional): label values of interest.
-            fill_holes (bool): flag controlling whether holes in labels are filles.
-
+        Parameters
+        ----------
+        img : Image
+            Image to analyze.
+        mask : Image
+            Labeled image.
+        roi : array, optional
+            Set of points defining a box.
+        values_of_interest : int, list of int, optional
+            Label values of interest.
+        fill_holes : bool
+            Flag controlling whether holes in labels are filles.
         """
 
         # Make copy of image and restrict to region of interest
@@ -90,10 +96,11 @@ class SkeletonAnalysis:
     def skeleton(self, contours: list[np.ndarray] | None) -> list[np.ndarray]:
         """Determine skeleton of loaded labeled image.
 
-        Returns:
-            list[np.ndarray]: list of skeletons, where each skeleton is given as an
-                array of pixels.
-
+        Returns
+        -------
+        list[np.ndarray]
+            List of skeletons, where each skeleton is given as an
+            array of pixels.
         """
         if contours is None:
             # Extract contours.
@@ -137,16 +144,22 @@ class SkeletonAnalysis:
         """
         Determine leaves and junctions of the skeleton.
 
-        Args:
-            skeleton (np.ndarray): skeleton for which to determine leaves and junctions.
-            max_group_distance (float): maximum distance for grouping pixels in metric units;
-                default is 0.01.
+        Parameters
+        ----------
+        skeleton : np.ndarray
+            Skeleton for which to determine leaves and junctions.
+        max_group_distance : float
+            Maximum distance for grouping pixels in metric units;
+            default is 0.01.
 
-        Returns:
-            array: pixels of leaves.
-            array: pixels of junctions.
-            array: pixels of junctions that are part of the top line
-
+        Returns
+        -------
+        array
+            Pixels of leaves.
+        array
+            Pixels of junctions.
+        array
+            Pixels of junctions that are part of the top line.
         """
         # Convert Euclidean distances to pixel distance
         max_group_pixel_distance = self.coordinatesystem.num_voxels(
@@ -333,18 +346,27 @@ class SkeletonAnalysis:
     ) -> None:
         """Plot skeleton with leaves and junctions on top of the provided image.
 
-        Args:
-            img (darsia.Image): image to plot on.
-            skeleton (np.ndarray): pixels of the skeleton.
-            roi (darsia.CoordinateArray | None): region of interest. If provided, skeleton is
-                translated to the top left corner of the ROI; default is None.
-            path (Path, optional): path to save the plot; if None, no saving is performed.
-            show (bool): flag controlling whether the plot is shown; default is True.
-            dpi (int): dots per inch for the saved plot; default is 1000.
-            **kwargs: additional keyword arguments for plotting.
-                - color (str): color for the skeleton; default is "r".
-                - size (int): size for the skeleton; default is 20.
+        Parameters
+        ----------
+        img : darsia.Image
+            Image to plot on.
+        skeleton : np.ndarray
+            Pixels of the skeleton.
+        roi : darsia.CoordinateArray | None
+            Region of interest. If provided, skeleton is
+            translated to the top left corner of the ROI; default is None.
+        path : Path, optional
+            Path to save the plot; if None, no saving is performed.
+        show : bool
+            Flag controlling whether the plot is shown; default is True.
+        dpi : int
+            Dots per inch for the saved plot; default is 1000.
+        **kwargs
+            Additional keyword arguments for plotting.
 
+            - color (str): color for the skeleton; default is "r".
+
+            - size (int): size for the skeleton; default is 20.
         """
         # Extract the top left pixel of the roi. NOTE: Need to swap for matplotlib,
         # which uses (x, y) convention for pixels, while the image uses (row, column)

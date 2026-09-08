@@ -264,10 +264,12 @@ class FluidFlowerCO2Meta:
     def update(self, key: str, path: Path) -> None:
         """Update the folder path for a given key in the meta data.
 
-        Args:
-            key (str): Key to update. Currently only "fluidflower" is supported.
-            folder (Path): New folder path.
-
+        Parameters
+        ----------
+        key : str
+            Key to update. Currently only "fluidflower" is supported.
+        folder : Path
+            New folder path.
         """
         # Update the folder path
         if key == "fluidflower":

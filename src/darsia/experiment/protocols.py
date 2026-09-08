@@ -30,24 +30,30 @@ class ImagingInterval:
     def contains(self, image_id: int) -> bool:
         """Check if the image id is contained in the interval.
 
-        Args:
-            image_id (int): Image id to check.
+        Parameters
+        ----------
+        image_id : int
+            Image id to check.
 
-        Returns:
-            bool: True if the image id is contained in the interval, False otherwise.
-
+        Returns
+        -------
+        bool
+            True if the image id is contained in the interval, False otherwise.
         """
         return self.start_id <= image_id
 
     def get_datetime(self, image_id: int) -> datetime:
         """Get the datetime of the image based on its id.
 
-        Args:
-            image_id (int): Image id to get the datetime for.
+        Parameters
+        ----------
+        image_id : int
+            Image id to get the datetime for.
 
-        Returns:
-            datetime: The datetime of the image.
-
+        Returns
+        -------
+        datetime
+            The datetime of the image.
         """
         return self.start_date + (image_id - self.start_id) * self.time_interval
 
@@ -71,15 +77,18 @@ class ImagingProtocolOld:
     def get_datetime(self, file_name: Path) -> Optional[datetime]:
         """Get the datetime of the image based on the file name.
 
-        Args:
-            file_name (Path): Path to the image file. The file name should end
-                with a number. If contained in a considered imaging interval,
-                the id can be correlated to a datetime.
+        Parameters
+        ----------
+        file_name : Path
+            Path to the image file. The file name should end
+            with a number. If contained in a considered imaging interval,
+            the id can be correlated to a datetime.
 
-        Returns:
-            Optional[datetime]: The datetime of the image. None, if the file name
-                is not contained in any of the imaging intervals.
-
+        Returns
+        -------
+        Optional[datetime]
+            The datetime of the image. None, if the file name
+            is not contained in any of the imaging intervals.
         """
         # Fetch id from input file
         current_id = int(file_name.stem[-self.pad :])
@@ -178,13 +187,17 @@ class ImagingProtocol:
     def is_blacklisted(self, file_name: Path) -> bool:
         """Check if the image is blacklisted based on the file name.
 
-        Args:
-            file_name (Path): Path to the image file. The file name should end
-                with a number. If contained in a considered imaging interval,
-                the id can be correlated to a datetime.
-        Returns:
-            bool: True if the image is blacklisted, False otherwise.
+        Parameters
+        ----------
+        file_name : Path
+            Path to the image file. The file name should end
+            with a number. If contained in a considered imaging interval,
+            the id can be correlated to a datetime.
 
+        Returns
+        -------
+        bool
+            True if the image is blacklisted, False otherwise.
         """
         if not self.blacklist_ids:
             return False
@@ -197,15 +210,18 @@ class ImagingProtocol:
     def get_datetime(self, file_name: Path) -> Optional[datetime]:
         """Get the datetime of the image based on the file name.
 
-        Args:
-            file_name (Path): Path to the image file. The file name should end
-                with a number. If contained in a considered imaging interval,
-                the id can be correlated to a datetime.
+        Parameters
+        ----------
+        file_name : Path
+            Path to the image file. The file name should end
+            with a number. If contained in a considered imaging interval,
+            the id can be correlated to a datetime.
 
-        Returns:
-            Optional[datetime]: The datetime of the image. None, if the file name
-                is not contained in any of the imaging intervals.
-
+        Returns
+        -------
+        Optional[datetime]
+            The datetime of the image. None, if the file name
+            is not contained in any of the imaging intervals.
         """
         # Fetch id from input file
         current_id = self.image_id(file_name)
@@ -310,12 +326,15 @@ class ImagingProtocol:
     def find_images_for_paths(self, paths: list[Path]) -> list[Path]:
         """Find image paths for given paths.
 
-        Args:
-            paths (list[Path]): Paths to search for.
+        Parameters
+        ----------
+        paths : list[Path]
+            Paths to search for.
 
-        Returns:
-            list[Path]: Image paths found for the given paths skipping blacklisted.
-
+        Returns
+        -------
+        list[Path]
+            Image paths found for the given paths skipping blacklisted.
         """
         available_paths = [p for p in paths if not self.is_blacklisted(p)]
         num_skipped = len(paths) - len(available_paths)
@@ -331,14 +350,19 @@ class ImagingProtocol:
     ) -> list[Path]:
         """Find images in the folder that are closest to the specified times.
 
-        Args:
-            paths (Path | list[Path]): Path to the folder containing images.
-            times (list[float]): List of times (in seconds) to find corresponding images for.
-            tol (float | None): Tolerance (in seconds) for finding closest images.
+        Parameters
+        ----------
+        paths : Path | list[Path]
+            Path to the folder containing images.
+        times : list[float]
+            List of times (in seconds) to find corresponding images for.
+        tol : float | None
+            Tolerance (in seconds) for finding closest images.
 
-        Returns:
-            list[darsia.Image]: List of images corresponding to the specified times.
-
+        Returns
+        -------
+        list[darsia.Image]
+            List of images corresponding to the specified times.
         """
         # Restrict df from imaging_interval to available image ids
         if isinstance(paths, list):
@@ -395,12 +419,15 @@ class ImagingProtocol:
     ) -> list:
         """Find images in the folder that are closest to the specified times.
 
-        Args:
-            times (list[float]): List of times (in seconds) to find corresponding images for.
+        Parameters
+        ----------
+        times : list[float]
+            List of times (in seconds) to find corresponding images for.
 
-        Returns:
-            list: List of images (ids) corresponding to the specified times.
-
+        Returns
+        -------
+        list
+            List of images (ids) corresponding to the specified times.
         """
         # Collect the closest images
         image_ids = []
@@ -436,14 +463,19 @@ class InjectionProtocol:
     ) -> float:
         """Get the cumulative injected mass until the given date.
 
-        Args:
-            date (datetime): Date to get the cumulative injected mass for.
-            time (float): Time (in seconds) to get the cumulative injected mass for.
-            roi (Optional[darsia.Image]): Region of interest for the mass calculation.
+        Parameters
+        ----------
+        date : datetime
+            Date to get the cumulative injected mass for.
+        time : float
+            Time (in seconds) to get the cumulative injected mass for.
+        roi : Optional[darsia.Image]
+            Region of interest for the mass calculation.
 
-        Returns:
-            float: Cumulative injected mass [kg] until the given date.
-
+        Returns
+        -------
+        float
+            Cumulative injected mass [kg] until the given date.
         """
         if date is None and time is None:
             raise ValueError("Either date or time must be provided.")
@@ -599,12 +631,15 @@ class PressureTemperatureProtocol:
     def get_state(self, date: datetime) -> ThermodynamicState:
         """Get the pressure and temperature at the given date.
 
-        Args:
-            date (datetime): Date to get the pressure and temperature for.
+        Parameters
+        ----------
+        date : datetime
+            Date to get the pressure and temperature for.
 
-        Returns:
-            ThermodynamicState: Pressure [bar] and temperature [Celsius] at the given date.
-
+        Returns
+        -------
+        ThermodynamicState
+            Pressure [bar] and temperature [Celsius] at the given date.
         """
         # Find the two rows surrounding the date
         before = (
@@ -652,13 +687,16 @@ class PressureTemperatureProtocol:
     def get_gradient(self, date: datetime) -> ThermodynamicState:
         """Get the pressure and temperature gradient (upwards) at the given date.
 
-        Args:
-            date (datetime): Date to get the pressure and temperature gradient for.
+        Parameters
+        ----------
+        date : datetime
+            Date to get the pressure and temperature gradient for.
 
-        Returns:
-            ThermodynamicState: Pressure [bar] and temperature [Celsius] gradient at the given
-                date.
-
+        Returns
+        -------
+        ThermodynamicState
+            Pressure [bar] and temperature [Celsius] gradient at the given
+            date.
         """
         # Find the two rows surrounding the date
         before = (
