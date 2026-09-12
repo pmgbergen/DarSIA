@@ -58,9 +58,9 @@ def _parse_list_text(text, list_type=None):
 
     Parameters
     ----------
-    text
+    text : str
         User-entered text (e.g., "0.1, 0.2" or "0.1 0.2" or "[0.1, 0.2]").
-    list_type
+    list_type : str, optional
         Element type for coercion ("int", "float", "string", "file").
         If None, no coercion is applied.
 
@@ -120,7 +120,7 @@ def _format_list_text(value):
 
     Parameters
     ----------
-    value
+    value : list or tuple
         A list or tuple to format.
 
     Returns
@@ -1699,9 +1699,9 @@ class SettingsFactory:
 
         Parameters
         ----------
-        setting_dict
+        setting_dict : dict
             The setting dict (must have "loadable" key).
-        on_apply
+        on_apply : callable
             Callable(name: str, entry_dict: dict) -> None,
             called once per loaded item (name as dict key, entry_dict as TOML dict).
 

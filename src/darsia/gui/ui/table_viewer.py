@@ -21,12 +21,12 @@ class TableViewerDialog(QDialog):
 
         Parameters
         ----------
-        parent
+        parent : QWidget, optional
             Parent widget.
-        title
+        title : str
             Window title.
-        dataframe
-            Pandas.DataFrame to display (or None for empty).
+        dataframe : pandas.DataFrame, optional
+            DataFrame to display (or None for empty).
         """
         super().__init__(parent)
         self.setWindowTitle(title)
