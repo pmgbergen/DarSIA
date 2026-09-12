@@ -89,6 +89,7 @@ class DataConfig:
             "name": "Use cache",
             "help": "Whether to cache read/processed images under the results folder.",
             "group": "Output",
+            "hidden": True,
         },
     )
     """Whether to use the cache folder for reading/writing cached images."""
