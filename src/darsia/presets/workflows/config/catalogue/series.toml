@@ -1,0 +1,42 @@
+# Experiment-series presets: bundles of rig geometry, type/resize/curvature
+# corrections, and a depth-measurements path, all tied to one physical rig setup.
+# Corner coordinates reuse the mapping already established in corrections.toml's
+# "FF Bilbo (B049)" preset: pts_src[0]->top_left, [1]->bottom_left,
+# [2]->bottom_right, [3]->top_right.
+
+[[series_preset]]
+name = "BC0xx family"
+description = "Bilbo rig, BC0xx experiment series (and B033, same physical setup)."
+
+[series_preset.rig]
+width = 0.92
+height = 0.55
+dim = 2
+
+[series_preset.curvature.crop]
+top_left = [0, 343]
+bottom_left = [4437, 322]
+bottom_right = [4416, 7690]
+top_right = [0, 7669]
+width = 0.92
+height = 0.55
+in_meters = true
+
+
+[[series_preset]]
+name = "B049"
+description = "Bilbo rig, B049 experiment series."
+
+[series_preset.rig]
+width = 0.92
+height = 0.55
+dim = 2
+
+[series_preset.curvature.crop]
+top_left = [0, 355]
+bottom_left = [4435, 335]
+bottom_right = [4425, 7702]
+top_right = [0, 7660]
+width = 0.92
+height = 0.55
+in_meters = true
