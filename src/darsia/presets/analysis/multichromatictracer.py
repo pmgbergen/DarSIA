@@ -343,9 +343,6 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
             Boolean image-mask acting as mask for the calibration image.
         num_clusters : int
             Number of characteristic clusters extracted.
-        reset : bool
-            Flag controlling whether the calibration is reset. If False,
-            the calibration is appended, allowing multi-step calibration.
         """
         # TODO include possibility to deactivate untrustful support points
 

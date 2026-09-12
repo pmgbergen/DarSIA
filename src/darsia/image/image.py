@@ -489,7 +489,7 @@ class Image:
 
         Parameters
         ----------
-        data_type
+        data_type : type or np.dtype
             Target data type.
 
         Returns
@@ -519,7 +519,7 @@ class Image:
 
         Parameters
         ----------
-        data_type
+        data_type : type or np.dtype
             Target data type.
 
         Returns
@@ -961,7 +961,7 @@ class Image:
 
         Parameters
         ----------
-        key
+        key : int, slice, tuple, np.ndarray, or darsia.Image
             Index or mask for the image data.
 
         Returns
@@ -978,9 +978,9 @@ class Image:
 
         Parameters
         ----------
-        key
+        key : int, slice, tuple, np.ndarray, or darsia.Image
             Index or mask for the image data.
-        value
+        value : np.ndarray or scalar
             Value to assign to the indexed locations.
         """
         if isinstance(key, darsia.Image):

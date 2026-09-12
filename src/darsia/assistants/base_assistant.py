@@ -79,7 +79,7 @@ class BaseAssistant(ABC):
 
         Parameters
         ----------
-        event
+        event : matplotlib.backend_bases.KeyEvent
             Key press event.
         """
         if self.verbosity:

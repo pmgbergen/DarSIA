@@ -19,13 +19,13 @@ def find_images_for_datetimes(
         Path to the folder containing images.
     imaging_protocol : darsia.ImagingProtocol
         Imaging protocol with time information.
-    times : list[float]
-        List of times (in seconds) to find corresponding images for.
+    datetimes : list of datetime
+        List of datetimes to find corresponding images for.
 
     Returns
     -------
-    list[darsia.Image]
-        List of images corresponding to the specified times.
+    list[Path]
+        List of image paths corresponding to the specified datetimes.
     """
     # Restrict df from imagign_interval to available image ids
     available_paths = list(folder.glob("*"))

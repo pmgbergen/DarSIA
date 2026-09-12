@@ -268,7 +268,7 @@ class FluidFlowerCO2Meta:
         ----------
         key : str
             Key to update. Currently only "fluidflower" is supported.
-        folder : Path
+        path : Path
             New folder path.
         """
         # Update the folder path

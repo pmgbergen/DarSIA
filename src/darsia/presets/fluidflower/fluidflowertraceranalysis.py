@@ -182,7 +182,7 @@ class FluidFlowerTracerAnalysis(darsia.TracerAnalysis):
 
         Parameters
         ----------
-        image : Path
+        img : Path
             Path to single image.
         **kwargs
             Optional keyword arguments, see batch_analysis.

@@ -30,22 +30,8 @@ class DynamicIlluminationCorrection(darsia.BaseCorrection):
         ----------
         base : darsia.Image
             Base image.
-        samples : list[tuple[slice,...]]
-            List of samples.
-        ref_sample : int
-            Index of reference sample.
-        filter : callable
-            Function to preprocess the signal before analysis, e.g.,
-            Gaussian filter.
         colorspace : str
             Colorspace to use for analysis; defaults to "hsl-scalar".
-        interpolation : str
-            Interpolation method to use for scaling; defaults to
-            "quartic".
-        show_plot : bool
-            Flag controlling whether plots of calibration are displayed.
-        rescale : bool
-            Flag controlling whether scaling ensures max value 1.
         """
         # Cache input parameters
         self.colorspace = colorspace.lower()

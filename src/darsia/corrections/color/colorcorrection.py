@@ -115,7 +115,7 @@ class CustomColorChecker(ColorChecker):
 
         Parameters
         ----------
-        colors : np.ndarray, optional
+        reference_colors : np.ndarray, optional
             Reference RGB colors.
         image : np.ndarray, optional
             Image restricted to color checker.

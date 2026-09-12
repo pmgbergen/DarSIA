@@ -58,8 +58,8 @@ class Resize:
         interpolation : str, optional
             Interpolation method, default: None, invoking
             the default option in cv2.resize.
-        dtype
-            Conversion dtype before resizing; noting happens if None.
+        dtype : np.dtype or type, optional
+            Conversion dtype before resizing; nothing happens if None.
         """
 
         # Cache parameters
@@ -323,8 +323,8 @@ def resize(
     interpolation : str, optional
         Interpolation method, default: None, invoking
         the default option in cv2.resize.
-    dtype
-        Conversion dtype before resizing; noting happens if None.
+    dtype : np.dtype or type, optional
+        Conversion dtype before resizing; nothing happens if None.
     """
     # Define Resize object
     resizer = Resize(

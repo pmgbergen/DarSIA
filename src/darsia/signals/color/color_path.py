@@ -218,7 +218,7 @@ class ColorPath:
         ----------
         n_colors : int
             Number of quantization levels in the colormap.
-        name
+        name : str
             Name of the colormap.
 
         Returns

@@ -171,10 +171,10 @@ class ContourAnalysis:
         ----------
         img : Image
             Labeled image.
+        mask : Image
+            Boolean mask covering the values of interest.
         roi : array, optional
             Set of points defining a box.
-        values_of_interest : int, list of int, optional
-            Label values of interest.
         fill_holes : bool
             Flag controlling whether holes in labels are filles.
         """

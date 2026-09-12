@@ -700,10 +700,13 @@ def group_labels(
     ----------
     labels : darsia.Image
         Labeled image with integer labels.
-    group : list[list[int]]
+    groups : list[list[int]]
         List of groups, where each group is a list of labels
         to be united. The first label in each group is the label to which all
         other labels in the group will be united.
+    values : list[int], optional
+        Value to assign to each group instead of its first label; if None
+        (default), each group is united under its own first label.
     """
     reduced_labels = labels.copy()
     for group_counter, group in enumerate(groups):

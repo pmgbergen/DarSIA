@@ -26,13 +26,7 @@ class BeckmannLinearSolverType(StrEnum):
 
 
 class BeckmannLinearSolver:
-    """Class providing linear solver options for Beckmann's problem.
-
-    Parameters
-    ----------
-    grid : darsia.Grid
-        Underlying grid.
-    """
+    """Class providing linear solver options for Beckmann's problem."""
 
     @abstractmethod
     def __call__(
@@ -65,8 +59,8 @@ class BeckmannDirectSolver(BeckmannLinearSolver):
 
     Parameters
     ----------
-    grid : darsia.Grid
-        Underlying grid.
+    options : dict
+        Solver options (unused by the direct solver).
     """
 
     def __init__(self, options: dict) -> None:

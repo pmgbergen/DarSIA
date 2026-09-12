@@ -44,7 +44,7 @@ class ResizeCorrection(darsia.BaseCorrection):
             Resize factor in y-dimension.
         interpolation : str, optional
             Interpolation method.
-        dtype
+        dtype : np.dtype or type, optional
             Conversion dtype before resizing; nothing happens if None.
         key : str
             Prefix for kwargs-based configuration.

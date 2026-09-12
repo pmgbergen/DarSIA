@@ -376,13 +376,16 @@ def patched_porosity_analysis(
     ----------
     patches : tuple[int, int]
         Number of patches.
-    otherwise
-        See PorosityAnalysis.
 
     Returns
     -------
     darsia.Image
         Porosity image based on baseline.
+
+    Notes
+    -----
+    All other parameters are forwarded to :class:`PorosityAnalysis`, applied
+    independently on each patch.
     """
     porosity = darsia.zeros_like(baseline, mode="voxels", dtype=float)
     patch_size = (np.ceil(np.array(baseline.num_voxels) / np.array(patches))).astype(
