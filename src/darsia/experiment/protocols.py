@@ -212,10 +212,6 @@ class ImagingProtocol:
             The datetime of the image. None, if the file name
             is not contained in any of the imaging intervals.
         """
-        # Fetch id from input file
-        current_id = self.image_id(file_name)
-
-        """
         for key in self._candidate_protocol_paths(file_name):
             dt = self.datetime_by_path_key.get(key)
             if dt is not None:
