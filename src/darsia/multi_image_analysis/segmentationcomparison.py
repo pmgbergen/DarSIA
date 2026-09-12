@@ -151,9 +151,9 @@ class SegmentationComparison:
         if np.all(self.gray_colors[0] == self.gray_colors[1]) and np.all(
             self.gray_colors[1] == self.gray_colors[2]
         ):
-            self.color_dictionary[f"Segmentations overlap"] = self.gray_colors[0]
-            self.color_dictionary[f"Segmentations overlap"] = self.gray_colors[1]
-            self.color_dictionary[f"Segmentations overlap"] = self.gray_colors[2]
+            self.color_dictionary["Segmentations overlap"] = self.gray_colors[0]
+            self.color_dictionary["Segmentations overlap"] = self.gray_colors[1]
+            self.color_dictionary["Segmentations overlap"] = self.gray_colors[2]
         else:
             self.color_dictionary[
                 f"Overlapping segmentations in {self.component_names[0]}"
@@ -162,7 +162,7 @@ class SegmentationComparison:
                 f"Overlapping segmentations in {self.component_names[1]}"
             ] = self.gray_colors[1]
             self.color_dictionary[
-                f"Segmentations overlap with different components."
+                "Segmentations overlap with different components."
             ] = self.gray_colors[2]
 
     def __call__(
