@@ -22,12 +22,16 @@ class FluidFlowerRig(darsia.AnalysisBase):
         """
         Constructor.
 
-        Args:
-            base (str, Path or list of such): baseline images, used to
-                set up analysis tools and cleaning tools
-            config (str or Path): path to config dict
-            update_setup (bool): flag controlling whether cache in setup
-                routines is emptied.
+        Parameters
+        ----------
+        baseline : str, Path or list of such
+            Baseline images, used to
+            set up analysis tools and cleaning tools.
+        config : str or Path
+            Path to config dict.
+        update_setup : bool
+            Flag controlling whether cache in setup
+            routines is emptied.
         """
         darsia.AnalysisBase.__init__(self, baseline, config, update_setup)
 
@@ -42,9 +46,11 @@ class FluidFlowerRig(darsia.AnalysisBase):
         the geometry. Note that not all sand layers are detected
         by this approach.
 
-        Args:
-            update_setup (bool): flag controlling whether the segmentation
-                is performed even if a reference file exists; default is False.
+        Parameters
+        ----------
+        update_setup : bool
+            Flag controlling whether the segmentation
+            is performed even if a reference file exists; default is False.
         """
 
         # Fetch or generate and store labels
@@ -71,12 +77,15 @@ class FluidFlowerRig(darsia.AnalysisBase):
         """
         Helper routine to connect labels with facies.
 
-        Args:
-            ids (list of int): ids in self.labels
+        Parameters
+        ----------
+        ids : list of int
+            Ids in self.labels.
 
-        Returns:
-            np.ndarray: corresponding mask
-
+        Returns
+        -------
+        np.ndarray
+            Corresponding mask.
         """
         ids = ids if isinstance(ids, list) else [ids]
         mask = np.zeros(self.labels.shape[:2], dtype=bool)

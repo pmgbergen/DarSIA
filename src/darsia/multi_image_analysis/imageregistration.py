@@ -24,16 +24,18 @@ class DiffeomorphicImageRegistration:
     def __init__(self, img_dst: darsia.Image, **kwargs) -> None:
         """Constructor for DiffeomorphicImageRegistration.
 
-        Args:
-            dst (darsia.Image): reference image which is supposed to be fixed in the analysis,
-                serves as destination object.
-            optional keyword arguments:
-                N_patches (list of two int): number of patches in x and y direction
-                rel_overlap (float): relative overlap in each direction, related to the
-                patch size
-                max_features (int) maximal number of features in thefeature detection
-                tol (float): tolerance
-                mask (np.ndarray, optional): roi in which features are considered.
+        Parameters
+        ----------
+        img_dst : darsia.Image
+            Reference image, held fixed in the analysis (the destination).
+        **kwargs
+            Registration parameters::
+
+                N_patches      list of two int -- patches in x and y
+                rel_overlap    float -- relative patch overlap per direction
+                max_features   int -- max features in the feature detection
+                tol            float -- tolerance
+                mask           ndarray -- ROI in which features are considered
         """
         # Create translation estimator
         max_features = kwargs.get("max_features", 200)
@@ -56,9 +58,10 @@ class DiffeomorphicImageRegistration:
         """
         Update of dst image.
 
-        Args:
-            dst (np.ndarray): image array
-
+        Parameters
+        ----------
+        img_dst : np.ndarray
+            Image array.
         """
         self.translation_analysis.update_base(img_dst)
 
@@ -68,10 +71,10 @@ class DiffeomorphicImageRegistration:
         """
         Effectviely copy from external DiffeomorphicImageRegistration.
 
-        Args:
-            diffeomorphic_image_registration (darsia.DiffeomorphicImageRegistration):
-                Diffeomorphic image registration object holding a translation analysis.
-
+        Parameters
+        ----------
+        diffeomorphic_image_registration : darsia.DiffeomorphicImageRegistration
+            Diffeomorphic image registration object holding a translation analysis.
         """
         # The displacement is stored in the translation analysis as callable.
         # Thus, the current translation analysis has to be updated.
@@ -86,9 +89,10 @@ class DiffeomorphicImageRegistration:
         Update the store translation by adding the translation
         of an external diffeomorphic image registration.
 
-        Args:
-            diffeomorphic_image_registration (darsia.DiffeomorphicImageRegistration):
-                Diffeomorphic image registraton object holding a translation analysis.
+        Parameters
+        ----------
+        diffeomorphic_image_registration : darsia.DiffeomorphicImageRegistration
+            Diffeomorphic image registraton object holding a translation analysis.
         """
         # The displacement is stored in the translation analysis as callable.
         # Thus, the current translation analysis has to be updated.
@@ -105,15 +109,22 @@ class DiffeomorphicImageRegistration:
         """
         Image registration routine.
 
-        Args:
-            img (darsia.Image): test image
-            mask (np.ndaray): active mask
-            return_transformed_dst (bool): flag whether the transform is also applied
-                to dst (inversely)
+        Parameters
+        ----------
+        img : darsia.Image
+            Test image.
+        mask : np.ndaray
+            Active mask.
+        return_transformed_dst : bool
+            Flag whether the transform is also applied
+            to dst (inversely).
 
-        Returns:
-            darsia.Image: transformed test image
-            darsia.Image: transformed reference image #TODO?
+        Returns
+        -------
+        darsia.Image
+            Transformed test image.
+        darsia.Image
+            Transformed reference image #TODO?
         """
         transformed_img = self.translation_analysis(img, mask=mask)
 
@@ -137,16 +148,19 @@ class DiffeomorphicImageRegistration:
 
         This in the end only a wrapper for the translation analysis.
 
-        Args:
-            img (darsia.Image): test image
-            reverse (bool): flag whether the translation is understood as from the
-                test image to the dst image, or reversed. The default is the
-                former.
-            plot_patch_translation (bool): flag controlling whether the displacement is also
-                visualized as vector field.
-            return_patch_translation (bool): flag controlling whether the displacement
-                in the patch centers is returned in the sense of img to dst,
-                complying to the plot; default is False.
+        Parameters
+        ----------
+        img : darsia.Image
+            Test image.
+        plot_patch_translation : bool
+            Flag controlling whether the displacement is also
+            visualized as vector field.
+        return_patch_translation : bool
+            Flag controlling whether the displacement
+            in the patch centers is returned in the sense of img to dst,
+            complying to the plot; default is False.
+        mask : darsia.Image, optional
+            Active mask.
         """
         transformed_img = self.translation_analysis(img, mask=mask)
 
@@ -172,19 +186,24 @@ class DiffeomorphicImageRegistration:
         """
         Evaluate diffeormorphism in arbitrary points.
 
-        Args:
-            coords (np.ndarray, or darsia.Patches): coordinate array with shape num_pts x 2,
-                or alternatively num_rows_pts x num_cols_pts x 2, identifying points in a
-                mesh/patched image, or equivalently patch.
-            reverse (bool): flag whether the translation is understood as from the
-                test image to the baseline image, or reversed. The default is the
-                former latter.
-            units (str): input and output units; "metric" default; otherwise assumed
-                to be "pixel".
+        Parameters
+        ----------
+        coords : np.ndarray, or darsia.Patches
+            Coordinate array with shape num_pts x 2,
+            or alternatively num_rows_pts x num_cols_pts x 2, identifying points in a
+            mesh/patched image, or equivalently patch.
+        reverse : bool
+            Flag whether the translation is understood as from the
+            test image to the baseline image, or reversed. The default is the
+            former latter.
+        units : str
+            Input and output units; "metric" default; otherwise assumed
+            to be "pixel".
 
-        Returns:
-            np.ndarray: deformation vectors for all coordinates.
-
+        Returns
+        -------
+        np.ndarray
+            Deformation vectors for all coordinates.
         """
 
         # Reshape coords using a num_pts x 2 format.
@@ -229,14 +248,19 @@ class DiffeomorphicImageRegistration:
         """
         Apply computed transformation onto arbitrary image.
 
-        Args:
-            img (np.ndarray or darsia.Image): image
-            reverse (bool): flag whether the translation is understood as from the
-                test image to the baseline image, or reversed. The default is the
-                latter.
+        Parameters
+        ----------
+        img : np.ndarray or darsia.Image
+            Image.
+        reverse : bool
+            Flag whether the translation is understood as from the
+            test image to the baseline image, or reversed. The default is the
+            latter.
 
-        Returns:
-            np.ndarray, optional: transformed image, if input is array; no output otherwise
+        Returns
+        -------
+        np.ndarray, optional
+            Transformed image, if input is array; no output otherwise.
         """
         # Load the image into translation_analysis
         self.translation_analysis.load_image(img)
@@ -252,10 +276,12 @@ class DiffeomorphicImageRegistration:
         """
         Plots diffeomorphism.
 
-        Args:
-            scaling (float): scaling for vectors.
-            mask (darsia.Image, optional): active set.
-
+        Parameters
+        ----------
+        scaling : float
+            Scaling for vectors.
+        mask : darsia.Image, optional
+            Active set.
         """
         # Wrapper for translation_analysis.
         self.translation_analysis.plot_translation(
@@ -355,14 +381,20 @@ class MultiscaleDiffeomorphicImageRegistration:
         """
         Image registration routine.
 
-        Args:
-            img (Image): test image
-            mask (np.ndaray): active mask
-            return_transformed_dst (bool): flag whether the transform is also applied
-                to dst (inversely)
+        Parameters
+        ----------
+        img : Image
+            Test image.
+        mask : np.ndaray
+            Active mask.
+        return_transformed_dst : bool
+            Flag whether the transform is also applied
+            to dst (inversely).
 
-        Returns:
-            Image: transformed test image
+        Returns
+        -------
+        Image
+            Transformed test image.
         """
         # Store inputs
         transformed_img = img.copy()
@@ -407,15 +439,21 @@ class MultiscaleDiffeomorphicImageRegistration:
     ) -> tuple[darsia.Image, DiffeomorphicImageRegistration]:  # TODO typing
         """One iteration of multiscale image registration.
 
-        Args:
-            img (darsia.Image): test image
-            mask (np.ndarray): active mask
-            config (dict): parameters for image registration
+        Parameters
+        ----------
+        img : darsia.Image
+            Test image.
+        mask : np.ndarray
+            Active mask.
+        config : dict
+            Parameters for image registration.
 
-        Returns:
-            darsia.Image: transformed image
-            darsia.DiffeomorphicImageRegistration: resulting image registration
-
+        Returns
+        -------
+        darsia.Image
+            Transformed image.
+        darsia.DiffeomorphicImageRegistration
+            Resulting image registration.
         """
         # Find image registration
         image_registration = DiffeomorphicImageRegistration(
@@ -442,15 +480,19 @@ class MultiscaleDiffeomorphicImageRegistration:
         """
         Apply computed transformation onto arbitrary image.
 
-        Args:
-            img (np.ndarray or darsia.Image): image
-            reverse (bool): flag whether the translation is understood as from the
-                test image to the baseline image, or reversed. The default is the
-                latter.
+        Parameters
+        ----------
+        img : np.ndarray or darsia.Image
+            Image.
+        reverse : bool
+            Flag whether the translation is understood as from the
+            test image to the baseline image, or reversed. The default is the
+            latter.
 
-        Returns:
-            np.ndarray, optional: transformed image, if input is array; no output otherwise
-
+        Returns
+        -------
+        np.ndarray, optional
+            Transformed image, if input is array; no output otherwise.
         """
         if not hasattr(self, "combined_image_registration"):
             raise ValueError("Construct the deformation first.")
@@ -464,10 +506,12 @@ class MultiscaleDiffeomorphicImageRegistration:
         """
         Plot the dislacement stored in the current image registration.
 
-        Args:
-            scaling (float): scaling parameter to controll the length of the arrows.
-            mask (np.ndarray): active mask
-
+        Parameters
+        ----------
+        scaling : float
+            Scaling parameter to controll the length of the arrows.
+        mask : np.ndarray
+            Active mask.
         """
         if not hasattr(self, "combined_image_registration"):
             raise ValueError("Construct the deformation first.")
@@ -634,15 +678,19 @@ class ImageRegistration:
         """
         Apply computed transformation onto arbitrary image.
 
-        Args:
-            img (np.ndarray or darsia.Image): image
-            reverse (bool): flag whether the translation is understood as from the
-                test image to the baseline image, or reversed. The default is the
-                latter.
+        Parameters
+        ----------
+        img : np.ndarray or darsia.Image
+            Image.
+        reverse : bool
+            Flag whether the translation is understood as from the
+            test image to the baseline image, or reversed. The default is the
+            latter.
 
-        Returns:
-            np.ndarray, optional: transformed image, if input is array; no output otherwise
-
+        Returns
+        -------
+        np.ndarray, optional
+            Transformed image, if input is array; no output otherwise.
         """
         return self.image_registration.apply(img, reverse)
 
@@ -650,10 +698,12 @@ class ImageRegistration:
         """
         Plot the dislacement stored in the current image registration.
 
-        Args:
-            scaling (float): scaling parameter to controll the length of the arrows.
-            mask (np.ndarray): active mask
-
+        Parameters
+        ----------
+        scaling : float
+            Scaling parameter to controll the length of the arrows.
+        mask : np.ndarray
+            Active mask.
         """
         self.image_registration.plot(scaling=scaling, mask=mask)
 

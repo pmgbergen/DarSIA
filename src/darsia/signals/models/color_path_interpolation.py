@@ -95,8 +95,10 @@ class ColorPathInterpolation(ColorPathFunction):
     def to_dict(self) -> dict:
         """Convert the ColorPathInterpolation to a dictionary representation.
 
-        Returns:
-            dict: Dictionary representation of the ColorPathInterpolation.
+        Returns
+        -------
+        dict
+            Dictionary representation of the ColorPathInterpolation.
         """
         return {
             "color_path": self.color_path.to_dict(),
@@ -111,12 +113,15 @@ class ColorPathInterpolation(ColorPathFunction):
     def from_dict(cls, data: dict) -> "ColorPathInterpolation":
         """Create a ColorPathInterpolation from a dictionary.
 
-        Args:
-            data (dict): Dictionary representation of the ColorPathInterpolation.
+        Parameters
+        ----------
+        data : dict
+            Dictionary representation of the ColorPathInterpolation.
 
-        Returns:
-            ColorPathInterpolation: The created ColorPathInterpolation instance.
-
+        Returns
+        -------
+        ColorPathInterpolation
+            The created ColorPathInterpolation instance.
         """
         return cls(
             color_path=darsia.ColorPath.from_dict(data["color_path"]),
@@ -132,8 +137,10 @@ class ColorPathInterpolation(ColorPathFunction):
     def save(self, path: Path) -> None:
         """Save the ColorPathInterpolation to a file.
 
-        Args:
-            path (Path): The path to the file where the ColorPathInterpolation should be saved.
+        Parameters
+        ----------
+        path : Path
+            The path to the file where the ColorPathInterpolation should be saved.
         """
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path.with_suffix(".json"), "w") as f:
@@ -143,12 +150,16 @@ class ColorPathInterpolation(ColorPathFunction):
     def load(cls, path: Path) -> "ColorPathInterpolation":
         """Load the ColorPathInterpolation from a file.
 
-        Args:
-            path (Path): The path to the file from which the ColorPathInterpolation should be
-                loaded.
+        Parameters
+        ----------
+        path : Path
+            The path to the file from which the ColorPathInterpolation should be
+            loaded.
 
-        Returns:
-            ColorPathInterpolation: Loaded ColorPathInterpolation instance.
+        Returns
+        -------
+        ColorPathInterpolation
+            Loaded ColorPathInterpolation instance.
         """
         logger.info(f"Loading ColorPathInterpolation from {path}")
         with open(path.with_suffix(".json"), "r") as f:
@@ -166,12 +177,15 @@ class ColorPathInterpolation(ColorPathFunction):
         representation on the path, and linearly interpolated with piecewise
         defined functions (through values).
 
-        Args:
-            image: Input image to be interpreted.
+        Parameters
+        ----------
+        image : np.ndarray | darsia.Image
+            Input image to be interpreted.
 
-        Returns:
-            darsia.Image: Parametrization of the input image in terms of the color path.
-
+        Returns
+        -------
+        darsia.Image
+            Parametrization of the input image in terms of the color path.
         """
         if isinstance(image, np.ndarray):
             return self._parametrize_colors(image)
@@ -193,12 +207,15 @@ class ColorPathInterpolation(ColorPathFunction):
         Apply brute-force minimization to find the closest color representation
         on the path for each pixel in the image, and link to values.
 
-        Args:
-            colors: Input image to be interpreted.
+        Parameters
+        ----------
+        colors : np.ndarray
+            Input image to be interpreted.
 
-        Returns:
-            np.ndarray: Parametrization of the input image in terms of the color path.
-
+        Returns
+        -------
+        np.ndarray
+            Parametrization of the input image in terms of the color path.
         """
         # Fit in terms of the color path
         import time

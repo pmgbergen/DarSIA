@@ -217,9 +217,10 @@ class Image:
     def shape(self) -> tuple:
         """Shape of the image array, incl. time and data dimension.
 
-        Returns:
-            tuple: shape of the image array
-
+        Returns
+        -------
+        tuple
+            Shape of the image array.
         """
         return self.img.shape
 
@@ -227,9 +228,10 @@ class Image:
     def dtype(self) -> np.dtype:
         """Data type of the (current) image array.
 
-        Returns:
-            np.dtype: data type of the image array
-
+        Returns
+        -------
+        np.dtype
+            Data type of the image array.
         """
         return self.img.dtype
 
@@ -237,9 +239,10 @@ class Image:
     def space_num(self) -> int:
         """Spatial resolution, i.e., number of voxels.
 
-        Returns:
-            int: spatial resolution
-
+        Returns
+        -------
+        int
+            Spatial resolution.
         """
         return np.prod(self.shape[: self.space_dim])
 
@@ -247,9 +250,10 @@ class Image:
     def num_voxels(self) -> list[int]:
         """Number of voxels in each dimension.
 
-        Returns:
-            list: number of voxels in each dimension
-
+        Returns
+        -------
+        list
+            Number of voxels in each dimension.
         """
         return list(self.shape[: self.space_dim])
 
@@ -257,9 +261,10 @@ class Image:
     def voxel_size(self) -> list[float]:
         """Size of each voxel in each direction, ordered as indexing.
 
-        Returns:
-            list: size of each voxel in each direction
-
+        Returns
+        -------
+        list
+            Size of each voxel in each direction.
         """
         return [self.dimensions[i] / self.num_voxels[i] for i in range(self.space_dim)]
 
@@ -272,9 +277,10 @@ class Image:
         to be defined. Therefore, we need to define the CoordinateSystem after
         defining the spatial attributes, also implicitly defined as properties.
 
-        Returns:
-            CoordinateSystem: physical coordinate system
-
+        Returns
+        -------
+        CoordinateSystem
+            Physical coordinate system.
         """
         return darsia.CoordinateSystem(self)
 
@@ -282,9 +288,10 @@ class Image:
     def opposite_corner(self) -> darsia.Coordinate:
         """Cartesian coordinate of the corner opposite to origin.
 
-        Returns:
-            Coordinate: Cartesian coordinate of the corner opposite to origin
-
+        Returns
+        -------
+        Coordinate
+            Cartesian coordinate of the corner opposite to origin.
         """
         return self.coordinatesystem.coordinate(self.shape[: self.space_dim])
 
@@ -292,9 +299,10 @@ class Image:
     def domain(self) -> tuple:
         """Physical domain.
 
-        Returns:
-            tuple: collection of coordinates in matrix indexing defining domain
-
+        Returns
+        -------
+        tuple
+            Collection of coordinates in matrix indexing defining domain.
         """
         if self.space_dim == 1:
             return (self.origin[0], self.opposite_corner[0])
@@ -315,10 +323,11 @@ class Image:
     ) -> None:
         """Setter for time array.
 
-        Args:
-            time (scalar or list, optional): time to be set; if None, time is retrieved
-                from date.
-
+        Parameters
+        ----------
+        time : scalar or list, optional
+            Time to be set; if None, time is retrieved
+            from date.
         """
         # ! ---- Safety check
 
@@ -374,9 +383,10 @@ class Image:
     def copy(self) -> Image:
         """Copy constructor.
 
-        Returns:
-            Image: Copy of the image object.
-
+        Returns
+        -------
+        Image
+            Copy of the image object.
         """
         return copy.deepcopy(self)
 
@@ -384,10 +394,12 @@ class Image:
         """Append other image to current image. Makes in particular
         a non-space-time image to a space-time image.
 
-        Args:
-            image (Image): image to be appended.
-            offset (float or int, optional): time increment between last and next slice.
-
+        Parameters
+        ----------
+        image : Image
+            Image to be appended.
+        offset : float or int, optional
+            Time increment between last and next slice.
         """
 
         # ! ---- Safety checks
@@ -452,11 +464,13 @@ class Image:
     def update_metadata(self, meta: Optional[dict] = None, **kwargs) -> None:
         """Update metadata of image.
 
-        Args:
-            meta (dict): metadata to be updated, with keys corresponding to
-                self.metadata().
-            **kwargs: additional keyword arguments to be updated.
-
+        Parameters
+        ----------
+        meta : dict
+            Metadata to be updated, with keys corresponding to
+            self.metadata().
+        **kwargs
+            Additional keyword arguments to be updated.
         """
         if meta is not None:
             for key, value in meta.items():
@@ -473,12 +487,15 @@ class Image:
         """For scalar data types, change the data type of the data array.
         For Image data types, cast the entire image.
 
-        Args:
-            data_type: target data type
+        Parameters
+        ----------
+        data_type : type or np.dtype
+            Target data type.
 
-        Returns:
-            Image: image with transformed data type
-
+        Returns
+        -------
+        Image
+            Image with transformed data type.
         """
         if data_type in [
             int,
@@ -500,12 +517,15 @@ class Image:
     def img_as(self, data_type) -> Any:
         """Change data type via skimage.
 
-        Args:
-            data_type: target data type
+        Parameters
+        ----------
+        data_type : type or np.dtype
+            Target data type.
 
-        Returns:
-            Image: image with transformed data type
-
+        Returns
+        -------
+        Image
+            Image with transformed data type.
         """
         copy_image = self.copy()
         dtype = copy_image.img.dtype
@@ -537,9 +557,10 @@ class Image:
         """Return all metadata required to initiate an image via keyword
         arguments.
 
-        Returns:
-            dict: metadata with keys equal to all keywords arguments.
-
+        Returns
+        -------
+        dict
+            Metadata with keys equal to all keywords arguments.
         """
         metadata = {
             "space_dim": self.space_dim,
@@ -561,9 +582,10 @@ class Image:
 
         Useful to define darsia.Geometry from darsia.Image.
 
-        Returns:
-            dict: metadata with keys to instantiate a Geometry.
-
+        Returns
+        -------
+        dict
+            Metadata with keys to instantiate a Geometry.
         """
         metadata = {
             "space_dim": self.space_dim,
@@ -576,12 +598,15 @@ class Image:
     def time_slice(self, time_index: int) -> Image:
         """Extraction of single time slice.
 
-        Args:
-            time_index (int): time index in interval [0, ..., time_num-1].
+        Parameters
+        ----------
+        time_index : int
+            Time index in interval [0, ..., time_num-1].
 
-        Returns:
-            Image: single-timed image.
-
+        Returns
+        -------
+        Image
+            Single-timed image.
         """
         if not self.series:
             raise ValueError
@@ -608,16 +633,22 @@ class Image:
     def time_interval(self, indices: slice) -> Image:
         """Extraction of temporal subregion, only for space-time images.
 
-        Args:
-            indices (slice): time interval in terms of indices.
+        Parameters
+        ----------
+        indices : slice
+            Time interval in terms of indices.
 
-        Returns:
-            Image: image with restricted temporal domain.
+        Returns
+        -------
+        Image
+            Image with restricted temporal domain.
 
-        Raises:
-            ValueError: if image is not a time series.
-            ValueError: if indices is not a slice
-
+        Raises
+        ------
+        ValueError
+            If image is not a time series.
+        ValueError
+            If indices is not a slice.
         """
         # ! ---- Safety checks
 
@@ -646,10 +677,13 @@ class Image:
     ) -> Image:
         """Extract of spatial slice.
 
-        Args:
-            cut (float or int): coordinate or voxel at which the slice is extracted.
-            axis (str or int): axis, normal to the slice, addressing matrix indexing or
-                Cartesian indexing if int or str, respectively.
+        Parameters
+        ----------
+        cut : float or int
+            Coordinate or voxel at which the slice is extracted.
+        axis : str or int
+            Axis, normal to the slice, addressing matrix indexing or
+            Cartesian indexing if int or str, respectively.
         """
 
         # Translate Cartesian setting to matrix setting
@@ -678,14 +712,17 @@ class Image:
     ) -> Image:
         """Extraction of spatial subregion.
 
-        Args:
-            roi (tuple of slices, VoxelArray, or CoordinateArray): voxel intervals in all
-                dimensions, or points in space, in Cartesian coordinates, uniquely defining
-                a box, i.e., at least space_dim points. Type decides interpretation.
+        Parameters
+        ----------
+        roi : tuple of slices, VoxelArray, or CoordinateArray
+            Voxel intervals in all
+            dimensions, or points in space, in Cartesian coordinates, uniquely defining
+            a box, i.e., at least space_dim points. Type decides interpretation.
 
-        Returns:
-            Image: image with restricted spatial domain.
-
+        Returns
+        -------
+        Image
+            Image with restricted spatial domain.
         """
 
         # Manage input
@@ -768,35 +805,43 @@ class Image:
     ) -> np.ndarray:
         """Evaluate the image array at a given point location.
 
-        Args:
-            point (Voxel, Coordinate, VoxelArray, or CoordinateArray): point(s) at which
-                to evaluate the image. Coordinates are converted to voxels if necessary.
-            interpolation (str): interpolation mode. Either ``"nearest"`` (default,
-                rounds to nearest voxel) or ``"linear"`` (bilinear/trilinear
-                interpolation via ``scipy.interpolate.RegularGridInterpolator``).
-                Voxel inputs (``Voxel``/``VoxelArray``) always use nearest-neighbor
-                regardless of this parameter.
+        Parameters
+        ----------
+        point : Voxel, Coordinate, VoxelArray, or CoordinateArray
+            Point(s) at which
+            to evaluate the image. Coordinates are converted to voxels if necessary.
+        interpolation : str
+            Interpolation mode. Either ``"nearest"`` (default,
+            rounds to nearest voxel) or ``"linear"`` (bilinear/trilinear
+            interpolation via ``scipy.interpolate.RegularGridInterpolator``).
+            Voxel inputs (``Voxel``/``VoxelArray``) always use nearest-neighbor
+            regardless of this parameter.
 
-        Returns:
-            np.ndarray: image value(s) at the given point(s). For a single point,
-                returns a scalar or 1D array depending on whether the image is scalar
-                or non-scalar. For multiple points, returns an array of corresponding
-                values.
+        Returns
+        -------
+        np.ndarray
+            Image value(s) at the given point(s). For a single point,
+            returns a scalar or 1D array depending on whether the image is scalar
+            or non-scalar. For multiple points, returns an array of corresponding
+            values.
 
         Example::
 
             import darsia
+
             import numpy as np
 
             arr = np.arange(12, dtype=float).reshape(3, 4)
+
             image = darsia.ScalarImage(arr, dimensions=[1, 1], space_dim=2)
 
             # Default nearest-voxel evaluation (existing behaviour)
+
             image.eval(darsia.Coordinate([0.6, 0.5]))
 
             # Bilinear interpolation at a sub-voxel coordinate
-            image.eval(darsia.Coordinate([0.625, 0.5]), interpolation="linear")  # 8.0
 
+            image.eval(darsia.Coordinate([0.625, 0.5]), interpolation="linear")  # 8.0
         """
         # Linear interpolation path: only for coordinate inputs
         if interpolation == "linear" and isinstance(
@@ -867,12 +912,15 @@ class Image:
     def roi(self, roi: darsia.ROI) -> Image:
         """Extraction of spatial subregion using a darsia.ROI object.
 
-        Args:
-            roi (darsia.ROI): region of interest, defining a box in space.
+        Parameters
+        ----------
+        roi : darsia.ROI
+            Region of interest, defining a box in space.
 
-        Returns:
-            Image: image with restricted spatial domain.
-
+        Returns
+        -------
+        Image
+            Image with restricted spatial domain.
         """
         return roi(self)
 
@@ -881,13 +929,16 @@ class Image:
     def reset_origin(self, return_image: bool = False) -> Optional[darsia.Image]:
         """Reset origin and coordinatesystem.
 
-        Args:
-            return_image (bool, optional): flag controlling whether a copy of the image
-                is returned. Defaults to False.
+        Parameters
+        ----------
+        return_image : bool, optional
+            Flag controlling whether a copy of the image
+            is returned. Defaults to False.
 
-        Returns:
-            Image: copy of image with reset coordinatesystem
-
+        Returns
+        -------
+        Image
+            Copy of image with reset coordinatesystem.
         """
         # ! ---- Fetch and adapt metadata - simply remove origin and reinitialize
         metadata = self.metadata()
@@ -908,12 +959,14 @@ class Image:
     def __getitem__(self, key):
         """Get item using indexing syntax.
 
-        Args:
-            key: Index or mask for the image data
+        Parameters
+        ----------
+        key : int, slice, tuple, np.ndarray, or darsia.Image
+            Index or mask for the image data.
 
-        Returns:
-            Indexed image data
-
+        Returns
+        -------
+            Indexed image data.
         """
         if isinstance(key, darsia.Image):
             assert key.dtype == bool
@@ -923,9 +976,12 @@ class Image:
     def __setitem__(self, key, value):
         """Set item using indexing syntax.
 
-        Args:
-            key: Index or mask for the image data
-            value: Value to assign to the indexed locations
+        Parameters
+        ----------
+        key : int, slice, tuple, np.ndarray, or darsia.Image
+            Index or mask for the image data.
+        value : np.ndarray or scalar
+            Value to assign to the indexed locations.
         """
         if isinstance(key, darsia.Image):
             assert key.dtype == bool
@@ -938,12 +994,15 @@ class Image:
     def __add__(self, other: Image) -> Image:
         """Add two images of same size.
 
-        Arguments:
-            other (Image): image to subtract from self
+        Parameters
+        ----------
+        other : Image
+            Image to subtract from self.
 
-        Returns:
-            Image: sum of images
-
+        Returns
+        -------
+        Image
+            Sum of images.
         """
         if self.img.shape != other.img.shape:
             raise ValueError("Images have different shapes.")
@@ -954,12 +1013,15 @@ class Image:
     def __sub__(self, other: Image) -> Image:
         """Subtract two images of same size.
 
-        Arguments:
-            other (Image): image to subtract from self
+        Parameters
+        ----------
+        other : Image
+            Image to subtract from self.
 
-        Returns:
-            Image: difference image
-
+        Returns
+        -------
+        Image
+            Difference image.
         """
         if self.img.shape != other.img.shape:
             raise ValueError("Images have different shapes.")
@@ -970,12 +1032,15 @@ class Image:
     def __mul__(self, weight: float | int | np.ndarray) -> Image:
         """Scaling of image.
 
-        Arguments:
-            weight (float or int): scaling parameter
+        Parameters
+        ----------
+        weight : float or int
+            Scaling parameter.
 
-        Returns:
-            Image: scaled image
-
+        Returns
+        -------
+        Image
+            Scaled image.
         """
         if not isinstance(weight, (float, int, np.ndarray)):
             raise ValueError
@@ -986,12 +1051,15 @@ class Image:
     def __lt__(self, other: Image | int | float) -> darsia.Image:
         """Comparison of two images, identifying where the first image is smaller.
 
-        Args:
-            other (Image, or number): image or number to compare with
+        Parameters
+        ----------
+        other : Image, or number
+            Image or number to compare with.
 
-        Returns:
-            Image: image with boolean values
-
+        Returns
+        -------
+        Image
+            Image with boolean values.
         """
         result = darsia.zeros_like(self, mode="voxels", dtype=bool)
         if isinstance(other, Image):
@@ -1003,12 +1071,15 @@ class Image:
     def __gt__(self, other: Image | int | float) -> darsia.Image:
         """Comparison of two images, identifying where the first image is greater.
 
-        Args:
-            other (Image, or number): image or number to compare with
+        Parameters
+        ----------
+        other : Image, or number
+            Image or number to compare with.
 
-        Returns:
-            Image: image with boolean values
-
+        Returns
+        -------
+        Image
+            Image with boolean values.
         """
         result = darsia.zeros_like(self, mode="voxels", dtype=bool)
         if isinstance(other, Image):
@@ -1020,12 +1091,15 @@ class Image:
     def __eq__(self, other: Image | int | float) -> darsia.Image:
         """Comparison of two images, identifying where the first image is equal.
 
-        Args:
-            other (Image, or number): image or number to compare with
+        Parameters
+        ----------
+        other : Image, or number
+            Image or number to compare with.
 
-        Returns:
-            Image: image with boolean values
-
+        Returns
+        -------
+        Image
+            Image with boolean values.
         """
         result = darsia.zeros_like(self, mode="voxels", dtype=bool)
         if isinstance(other, Image):
@@ -1037,12 +1111,15 @@ class Image:
     def __le__(self, other: Image | int | float) -> darsia.Image:
         """Comparison of two images, identifying where the first image is smaller or equal.
 
-        Args:
-            other (Image, or number): image or number to compare with
+        Parameters
+        ----------
+        other : Image, or number
+            Image or number to compare with.
 
-        Returns:
-            Image: image with boolean values
-
+        Returns
+        -------
+        Image
+            Image with boolean values.
         """
         result = darsia.zeros_like(self, mode="voxels", dtype=bool)
         if isinstance(other, Image):
@@ -1054,12 +1131,15 @@ class Image:
     def __ge__(self, other: Image | int | float) -> darsia.Image:
         """Comparison of two images, identifying where the first image is greater or equal.
 
-        Args:
-            other (Image, or number): image or number to compare with
+        Parameters
+        ----------
+        other : Image, or number
+            Image or number to compare with.
 
-        Returns:
-            Image: image with boolean values
-
+        Returns
+        -------
+        Image
+            Image with boolean values.
         """
         result = darsia.zeros_like(self, mode="voxels", dtype=bool)
         if isinstance(other, Image):
@@ -1080,12 +1160,16 @@ class Image:
         """Show image using matplotlib.pyplots or plotly built-in methods. The latter
         often is faster.
 
-        Args:
-            title (str): title in the displayed window.
-            duration (int, optional): display duration in seconds.
-            mode (str): display mode; either "matplotlib" or "plotly".
-            **kwargs: additional arguments passed to show_matplotlib or show_plotly.
-
+        Parameters
+        ----------
+        title : str
+            Title in the displayed window.
+        duration : int, optional
+            Display duration in seconds.
+        mode : str
+            Display mode; either "matplotlib" or "plotly".
+        **kwargs
+            Additional arguments passed to show_matplotlib or show_plotly.
         """
         if mode == "matplotlib":
             self.show_matplotlib(title, duration, **kwargs)
@@ -1769,10 +1853,12 @@ class Image:
         NOTE: Only applicable for 2d images, which are not scalar. The image array is
         plotted without any additional information and modifications.
 
-        Args:
-            title (str): title in the displayed window.
-            **kwargs: additional arguments passed to show_matplotlib or show_plotly.
-
+        Parameters
+        ----------
+        title : str
+            Title in the displayed window.
+        **kwargs
+            Additional arguments passed to show_matplotlib or show_plotly.
         """
         # Make sure the image is 2d and not a series
         assert self.space_dim == 2, "Only applicable for 2d images."
@@ -1796,9 +1882,10 @@ class Image:
 
         NOTE: Keywords are compatible with imread_from_npz.
 
-        Args:
-            path (Path): full path to image. Use ending "npz".
-
+        Parameters
+        ----------
+        path : Path
+            Full path to image. Use ending "npz".
         """
         file_path = Path(path).with_suffix(".npz")
         file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1815,10 +1902,12 @@ class Image:
     def to_vtk(self, path: str | Path, name: Optional[str] = None) -> None:
         """Save image to file in vtk format.
 
-        Args:
-            path (Path): full path to image, without ending.
-            name (str, optional): name of the data. Defaults to None.
-
+        Parameters
+        ----------
+        path : Path
+            Full path to image, without ending.
+        name : str, optional
+            Name of the data. Defaults to None.
         """
         if name is None:
             name = self.name
@@ -1841,9 +1930,10 @@ class Image:
         """Repeated routine used to check the status of time and date
         attributes.
 
-        Returns:
-            bool: True if item is None or a list containing None.
-
+        Returns
+        -------
+        bool
+            True if item is None or a list containing None.
         """
         if isinstance(item, list):
             return None in item
@@ -1853,18 +1943,20 @@ class Image:
     def geometry(self) -> darsia.Geometry:
         """Generate (flat) geometry object corresponding to the image.
 
-        Returns:
-            darsia.Geometry: geometry object.
-
+        Returns
+        -------
+        darsia.Geometry
+            Geometry object.
         """
         return darsia.Geometry(**self.shape_metadata())
 
     def integral(self) -> float:
         """Integrate the image over its spatial dimensions.
 
-        Returns:
-            float: integral of the image over space.
-
+        Returns
+        -------
+        float
+            Integral of the image over space.
         """
         if not self.scalar:
             raise NotImplementedError("Integration only implemented for scalar images.")
@@ -1909,9 +2001,10 @@ class ScalarImage(Image):
     def copy(self) -> ScalarImage:
         """Copy constructor.
 
-        Returns:
-            ScalarImage: Copy of the image object.
-
+        Returns
+        -------
+        ScalarImage
+            Copy of the image object.
         """
         return copy.deepcopy(self)
 
@@ -1999,12 +2092,16 @@ class ScalarImage(Image):
     ) -> None:
         """Write scalar image cell-center data to CSV file.
 
-        Args:
-            path: Target CSV path.
-            delimiter: Delimiter used between values.
-            header: Optional header line. ``None`` or ``"none"`` disables header.
-            float_format: Float formatting string.
-
+        Parameters
+        ----------
+        path : Path
+            Target CSV path.
+        delimiter : str
+            Delimiter used between values.
+        header : str | None
+            Optional header line. ``None`` or ``"none"`` disables header.
+        float_format : str
+            Float formatting string.
         """
         path.parent.mkdir(parents=True, exist_ok=True)
         arr = np.asarray(self.img)
@@ -2144,9 +2241,10 @@ class OpticalImage(Image):
     def copy(self) -> OpticalImage:
         """Copy constructor.
 
-        Returns:
-            OpticalImage: Copy of the image object.
-
+        Returns
+        -------
+        OpticalImage
+            Copy of the image object.
         """
         return copy.deepcopy(self)
 
@@ -2156,9 +2254,10 @@ class OpticalImage(Image):
         """Generator of metadata; can be used to init a new optical image with same
         specs.
 
-        Returns:
-            dict: metadata with keys equal to all keywords agurments.
-
+        Returns
+        -------
+        dict
+            Metadata with keys equal to all keywords agurments.
         """
         # Start with generic metadata.
         metadata = super().metadata()
@@ -2232,15 +2331,16 @@ class OpticalImage(Image):
     def encode(self, suffix: str, **kwargs) -> bytes:
         """Encode image without writing to file.
 
-        Arguments:
-            suffix (str): file format extension.
+        Parameters
+        ----------
+        suffix : str
+            File format extension.
             keyword arguments:
-                quality (int): number between 0 and 100, indicating
-                    the resolution used to store a jpg image
-                compression (int): number between 0 and 9, indicating
-                    the level of compression used for storing in
-                    png format.
-
+            quality (int): number between 0 and 100, indicating
+            the resolution used to store a jpg image
+            compression (int): number between 0 and 9, indicating
+            the level of compression used for storing in
+            png format.
         """
         # To prepare for the use of cv2.imwrite, convert to BGR color space.
         bgr_image = self.to_trichromatic("BGR", return_image=True)
@@ -2293,14 +2393,17 @@ class OpticalImage(Image):
     def to_trichromatic(self, color_space: str, return_image: bool = False) -> None:
         """Transforms image to another trichromatic color space.
 
-        Args:
-            color_space: target color space.
-            return_image (bool): flag controlling whether the converted image
-                is returned, or converted internally.
+        Parameters
+        ----------
+        color_space : str
+            Target color space.
+        return_image : bool
+            Flag controlling whether the converted image
+            is returned, or converted internally.
 
-        Returns:
+        Returns
+        -------
             OpticalImage (optional): converted image, if requested via 'return_image'.
-
         """
 
         if color_space.upper() not in ["RGB", "BGR", "HSV", "HLS", "LAB"]:
@@ -2337,9 +2440,10 @@ class OpticalImage(Image):
     ) -> ScalarImage:
         """Returns monochromatic version of the image.
 
-        Returns:
-            ScalarImage: monochromatic image.
-
+        Returns
+        -------
+        ScalarImage
+            Monochromatic image.
         """
         # Do not alter underlying image, as this operation cannot be reversed.
         image = self.copy()
@@ -2409,18 +2513,25 @@ class OpticalImage(Image):
         """
         Adds a grid on the image and returns new image.
 
-        Arguments:
-            origin (np.ndarray): origin of the grid, in physical units - the reference
-                coordinate system is provided by the corresponding attribute
-                coordinatesystem
-            dx (float): grid size in x-direction, in physical units
-            dy (float): grid size in y-direction, in physical units
-            color (tuple of int): BGR color of the grid
-            thickness (int): thickness of the grid lines
+        Parameters
+        ----------
+        origin : np.ndarray
+            Origin of the grid, in physical units - the reference
+            coordinate system is provided by the corresponding attribute
+            coordinatesystem.
+        dx : float
+            Grid size in x-direction, in physical units.
+        dy : float
+            Grid size in y-direction, in physical units.
+        color : tuple of int
+            BGR color of the grid.
+        thickness : int
+            Thickness of the grid lines.
 
-        Returns:
-            OpticalImage: original image with grid on top
-
+        Returns
+        -------
+        OpticalImage
+            Original image with grid on top.
         """
         # Set origin if it was not provided
         if origin is None:

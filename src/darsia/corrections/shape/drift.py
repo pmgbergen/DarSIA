@@ -95,14 +95,18 @@ class DriftCorrection(darsia.BaseCorrection):
         """
         Main routine for aligning image with baseline image.
 
-        Args:
-            img (np.ndarray): input image, to be aligned.
-            roi (2-tuple of slices, optional): ROI to be applied to img; if None
-                the cached roi is used.
+        Parameters
+        ----------
+        img : np.ndarray
+            Input image, to be aligned.
+        roi : 2-tuple of slices, optional
+            ROI to be applied to img; if None
+            the cached roi is used.
 
-        Returns:
-            np.ndarray: aligned image array.
-
+        Returns
+        -------
+        np.ndarray
+            Aligned image array.
         """
         if self.active:
             # Define roi for source image. Let input argument be dominating over self.roi.

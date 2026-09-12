@@ -124,17 +124,25 @@ class ImagePorosityConfig:
 
         Reads the ``[image_porosity]`` section and updates the instance in-place.
 
-        Args:
-            path: Path (or list of paths) to the TOML config file(s).
+        Parameters
+        ----------
+        path : Path | list[Path]
+            Path (or list of paths) to the TOML config file(s).
 
-        Returns:
-            self – updated in-place and returned for chaining.
+        Returns
+        -------
+            Self – updated in-place and returned for chaining.
 
-        Raises:
-            KeyError: if the ``[image_porosity]`` section is absent.
-            ValueError: if ``mode`` is not one of the supported values.
-            ValueError: if ``tol`` is not a float in ``(0, 1]``.
-            ValueError: if ``patches`` does not have exactly 2 elements.
+        Raises
+        ------
+        KeyError
+            If the ``[image_porosity]`` section is absent.
+        ValueError
+            If ``mode`` is not one of the supported values.
+        ValueError
+            If ``tol`` is not a float in ``(0, 1]``.
+        ValueError
+            If ``patches`` does not have exactly 2 elements.
         """
         sec = _get_section_from_toml(path, "image_porosity")
         return self._load_dict(sec)
@@ -142,16 +150,23 @@ class ImagePorosityConfig:
     def _load_dict(self, sec: dict) -> "ImagePorosityConfig":
         """Populate from a plain dictionary (e.g. a parsed TOML section).
 
-        Args:
-            sec: Dictionary for the ``[image_porosity]`` section.
+        Parameters
+        ----------
+        sec : dict
+            Dictionary for the ``[image_porosity]`` section.
 
-        Returns:
-            self – updated in-place and returned for chaining.
+        Returns
+        -------
+            Self – updated in-place and returned for chaining.
 
-        Raises:
-            ValueError: if ``mode`` is not one of the supported values.
-            ValueError: if ``tol`` is not a float in ``(0, 1]``.
-            ValueError: if ``patches`` does not have exactly 2 elements.
+        Raises
+        ------
+        ValueError
+            If ``mode`` is not one of the supported values.
+        ValueError
+            If ``tol`` is not a float in ``(0, 1]``.
+        ValueError
+            If ``patches`` does not have exactly 2 elements.
         """
         self.active = bool(sec.get("active", self.active))
 

@@ -24,14 +24,18 @@ def get_mean_color(
 ) -> np.ndarray:
     """Calculate the mean color of an image, optionally masked by a mask.
 
-    Args:
-        image (darsia.Image): The image from which to calculate the mean color.
-        mask (darsia.Image | np.ndarray | None): Optional mask to apply on the image.
-            If `None`, the entire image is used.
+    Parameters
+    ----------
+    image : darsia.Image
+        The image from which to calculate the mean color.
+    mask : darsia.Image | np.ndarray | None
+        Optional mask to apply on the image.
+        If `None`, the entire image is used.
 
-    Returns:
-        np.ndarray: The mean color of the image, calculated as the average of RGB values.
-
+    Returns
+    -------
+    np.ndarray
+        The mean color of the image, calculated as the average of RGB values.
     """
     if isinstance(mask, darsia.Image):
         subimage = image.img[mask.img]
@@ -146,13 +150,17 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
         - Continue selecting areas until you decide to stop (e.g., by closing
             the figure without selecting a new area).
 
-        Args:
-            image (darsia.Image): The image from which to define the color path.
-            mask (darsia.Image): The mask to apply on the image for color path definition.
+        Parameters
+        ----------
+        image : darsia.Image
+            The image from which to define the color path.
+        mask : darsia.Image
+            The mask to apply on the image for color path definition.
 
-        Returns:
-            darsia.ColorPath: The defined color path with selected colors.
-
+        Returns
+        -------
+        darsia.ColorPath
+            The defined color path with selected colors.
         """
         # Sanity checks
         assert mask.img.dtype == bool, "Mask must be a boolean mask."
@@ -189,10 +197,12 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
         Assign a single color path to all labels. For this an interactive
         selection of the color path is performed, cf. `define_color_path`.
 
-        Args:
-            image (darsia.Image): The image from which to define the global color path.
-            mask (darsia.Image): The mask to apply on the image for color path definition.
-
+        Parameters
+        ----------
+        image : darsia.Image
+            The image from which to define the global color path.
+        mask : darsia.Image
+            The mask to apply on the image for color path definition.
         """
         # Interactivee definition of the color path
         color_path = self.define_color_path(image, mask)
@@ -256,10 +266,14 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
             - Define a new color path just for this label.
             - Tune the values for the color path.
 
-        Args:
-            image (darsia.Image): The image from which to define the local color path.
-            mask (darsia.Image): The mask to apply on the image for color path definition.
-
+        Parameters
+        ----------
+        images : darsia.Image or list of darsia.Image
+            The image(s) from which to define the local color path.
+        mask : darsia.Image
+            The mask to apply on the image for color path definition.
+        cmap : str or matplotlib.colors.Colormap, optional
+            Optional colormap for visualization.
         """
         if not isinstance(images, list):
             images = [images]
@@ -286,9 +300,10 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
             next coarse images - keep track of the idx in the list and return when
             finishing.
 
-            Returns:
-                int: The index of the last selected image in the list of images.
-
+            Returns
+            -------
+            int
+                The index of the last selected image in the list of images.
             """
             nonlocal image_idx  # noqa: F824
 
@@ -621,13 +636,18 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
             - Define a new color path just for this label.
             - Tune the values for the color path based on mass computation
 
-        Args:
-            mass_computation (darsia.MassComputation): The mass computation tool.
-            mask (darsia.Image): The mask to apply on the image for color path definition.
-            calibration_images (list[darsia.Image]): The images used for calibration.
-            cmap: Optional colormap for visualization.
-            show (bool): Whether to display plots during processing.
-
+        Parameters
+        ----------
+        mass_computation : darsia.MassComputation
+            The mass computation tool.
+        mask : darsia.Image
+            The mask to apply on the image for color path definition.
+        calibration_images : list[darsia.Image]
+            The images used for calibration.
+        cmap : str or matplotlib.colors.Colormap, optional
+            Optional colormap for visualization.
+        show : bool
+            Whether to display plots during processing.
         """
         assert False, "continue here"
 
@@ -641,10 +661,12 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
             - Define a new color path just for this label.
             - Tune the values for the color path.
 
-        Args:
-            image (darsia.Image): The image from which to define the local color path.
-            mask (darsia.Image): The mask to apply on the image for color path definition.
-
+        Parameters
+        ----------
+        image : darsia.Image
+            The image from which to define the local color path.
+        mask : darsia.Image
+            The mask to apply on the image for color path definition.
         """
         while True:
             # Pick label
@@ -757,10 +779,12 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
             - Use "Prev" and "Next" to navigate through color paths.
             - Click "Close" to finish tuning.
 
-        Args:
-            image (darsia.Image): The image to visualize the color paths.
-            initial_color_path_idx (int): The index of the initial color path to start tuning.
-
+        Parameters
+        ----------
+        image : darsia.Image
+            The image to visualize the color paths.
+        initial_color_path_idx : int
+            The index of the initial color path to start tuning.
         """
         color_path_idx = initial_color_path_idx
 
@@ -861,9 +885,10 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
     def save(self, path: Path) -> None:
         """Save the calibration data to json file.
 
-        Args:
-            path (Path): The path to save the calibration data.
-
+        Parameters
+        ----------
+        path : Path
+            The path to save the calibration data.
         """
 
         # Save the color paths and their associations
@@ -906,9 +931,10 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
     def load(self, path: Path) -> None:
         """Load the calibration data from json file.
 
-        Args:
-            path (Path): path to load the model
-
+        Parameters
+        ----------
+        path : Path
+            Path to load the model.
         """
         # Load the json file
         with open(path, "r") as f:

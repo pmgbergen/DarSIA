@@ -30,12 +30,15 @@ AnyCorrection = (
 def read_correction(path: Path) -> AnyCorrection:
     """General function to read corrections from a file.
 
-    Args:
-        path (Path): path to npz file
+    Parameters
+    ----------
+    path : Path
+        Path to npz file.
 
-    Returns:
-        BaseCorrection: correction object
-
+    Returns
+    -------
+    BaseCorrection
+        Correction object.
     """
 
     # Read class name from npz file

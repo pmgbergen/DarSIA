@@ -13,14 +13,19 @@ def detect_value(
 ) -> darsia.VoxelArray:
     """Detects a value in an image.
 
-    Args:
-        img (darsia.ScalarImage): The image to detect the value in.
-        value (float): The value to detect.
-        tolerance (float, optional): The tolerance for the value detection. Defaults to 0.1.
+    Parameters
+    ----------
+    img : darsia.ScalarImage
+        The image to detect the value in.
+    value : float
+        The value to detect.
+    tolerance : float, optional
+        The tolerance for the value detection. Defaults to 0.1.
 
-    Returns:
-        darsia.VoxelArray: Pixels with the detected value.
-
+    Returns
+    -------
+    darsia.VoxelArray
+        Pixels with the detected value.
     """
     # Find pixels with the value within the tolerance
     indices = np.where(np.abs(img.img - value) < tolerance)
@@ -39,16 +44,21 @@ def detect_color(
 ) -> darsia.VoxelArray:
     """Detects a color in an image.
 
-    Args:
-        img (darsia.OpticalImage): The image to detect the color in. Assumed to be in RGB
-            format. With values in the range [0, 1].
-        color (Union[list[float], np.ndarray]): The color to detect, assumed to be in
-            RGB format. With values in the range [0, 1].
-        tolerance (float, optional): The tolerance for the color detection. Defaults to 0.1.
+    Parameters
+    ----------
+    img : darsia.OpticalImage
+        The image to detect the color in. Assumed to be in RGB
+        format. With values in the range [0, 1].
+    color : Union[list[float], np.ndarray]
+        The color to detect, assumed to be in
+        RGB format. With values in the range [0, 1].
+    tolerance : float, optional
+        The tolerance for the color detection. Defaults to 0.1.
 
-    Returns:
-        darsia.VoxelArray: Pixels with the detected color.
-
+    Returns
+    -------
+    darsia.VoxelArray
+        Pixels with the detected color.
     """
     distance = darsia.ScalarImage(np.linalg.norm(img.img - color, axis=2))
     return detect_value(distance, 0, tolerance=tolerance)
@@ -78,12 +88,15 @@ def monochromatic_concentration_analysis(
 def orthogonal_colors(color: np.ndarray) -> np.ndarray:
     """Returns the orthogonal colors to the input color.
 
-    Args:
-        color (Union[list[float], np.ndarray]): The color to find the orthogonal colors to.
+    Parameters
+    ----------
+    color : Union[list[float], np.ndarray]
+        The color to find the orthogonal colors to.
 
-    Returns:
-        np.ndarray: The orthogonal colors (as rows) to the input color.
-
+    Returns
+    -------
+    np.ndarray
+        The orthogonal colors (as rows) to the input color.
     """
     # Define (normalized) plane normal to the input color
     v1 = np.array([1, 0, 0], dtype=float)
@@ -123,14 +136,18 @@ def detect_closest_point(
 ) -> Union[darsia.Voxel, darsia.Coordinate]:
     """Detects the point closest to a target.
 
-    Args:
-        points (Union[darsia.VoxelArray, darsia.CoordinateArray]): The points to search for
-            the closest one.
-        target (Union[darsia.Voxel, darsia.Coordinate]): The target point.
+    Parameters
+    ----------
+    points : Union[darsia.VoxelArray, darsia.CoordinateArray]
+        The points to search for
+        the closest one.
+    target : Union[darsia.Voxel, darsia.Coordinate]
+        The target point.
 
-    Returns:
-        Union[darsia.Voxel, darsia.Coordinate]: The point in points closest to the target.
-
+    Returns
+    -------
+    Union[darsia.Voxel, darsia.Coordinate]
+        The point in points closest to the target.
     """
     # Find the voxel with the smallest distance to the target
     distances = np.linalg.norm(points - target, axis=1)

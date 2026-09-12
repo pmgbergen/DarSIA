@@ -38,12 +38,16 @@ class Geometry:
         """
         Constructor.
 
-        Args:
-            space_dim (int): spatial dimensions of the geometry.
-            shape (tuple of int): shape of voxelization of the geometry.
-            dimensions (list, optional): dimensions of the entire geometry.
-            voxel_size (list, optional): dimensions of single voxel.
-
+        Parameters
+        ----------
+        space_dim : int
+            Spatial dimensions of the geometry.
+        num_voxels : tuple of int
+            Shape of the voxelisation of the geometry.
+        dimensions : list, optional
+            Dimensions of the entire geometry.
+        voxel_size : list, optional
+            Dimensions of single voxel.
         """
 
         self.space_dim = space_dim
@@ -113,17 +117,22 @@ class Geometry:
         """
         Integrate data over the entire geometry.
 
-        Args:
-            data (np.ndarray): data attached to voxels.
+        Parameters
+        ----------
+        data : np.ndarray
+            Data attached to voxels.
 
-        Returns:
-            float or array: integral of data over geometry, array if time series and/or
-                non-scalar data is provided.
+        Returns
+        -------
+        float or array
+            Integral of data over geometry, array if time series and/or
+            non-scalar data is provided.
 
-        Raises:
-            ValueError: In dimensions other than 2, if data and geometry incompatible
-                and reshape is needed.
-
+        Raises
+        ------
+        ValueError
+            In dimensions other than 2, if data and geometry incompatible
+            and reshape is needed.
         """
         # ! ---- Make sure that the geometry is compatible with the provided data
 
@@ -152,16 +161,21 @@ class Geometry:
     def make_extensive(self, data: darsia.Image) -> darsia.ExtensiveImage:
         """Convert intensive values to integrated per-cell values on geometry grid.
 
-        Args:
-            data (darsia.Image): image of intensive values.
+        Parameters
+        ----------
+        data : darsia.Image
+            Image of intensive values.
 
-        Returns:
-            darsia.ExtensiveImage: extensive image represented on geometry voxelization.
+        Returns
+        -------
+        darsia.ExtensiveImage
+            Extensive image represented on geometry voxelization.
 
-        Raises:
-            ValueError: if data is not an image, dimensions are incompatible, or
-                incompatible reshaping is requested in dimensions other than 2.
-
+        Raises
+        ------
+        ValueError
+            If data is not an image, dimensions are incompatible, or
+            incompatible reshaping is requested in dimensions other than 2.
         """
         if not isinstance(data, darsia.Image):
             raise ValueError("Data type not supported.")
@@ -199,16 +213,22 @@ class Geometry:
         """Normalize image with respect to another one, such that both have the same
         integral.
 
-        Args:
-            img (darsia.Image): image to be rescaled
-            img_ref (darsia.Image): reference image
-            return_ratio (bool): flag controlling whether the ratio between reference
-                and original integrals is returned
+        Parameters
+        ----------
+        img : darsia.Image
+            Image to be rescaled.
+        img_ref : darsia.Image
+            Reference image.
+        return_ratio : bool
+            Flag controlling whether the ratio between reference
+            and original integrals is returned.
 
-        Returns:
-            darsia.Image: rescaled image
-            np.ndarray, optional: ratio between reference and original integrals
-
+        Returns
+        -------
+        darsia.Image
+            Rescaled image.
+        np.ndarray, optional
+            Ratio between reference and original integrals.
         """
         integral_ref = self.integrate(img_ref)
         integral = self.integrate(img)
@@ -223,12 +243,15 @@ class Geometry:
     def subregion(self, roi: darsia.CoordinateArray) -> "Geometry":
         """Extract subregion of the geometry.
 
-        Args:
-            roi (darsia.CoordinateArray): region of interest.
+        Parameters
+        ----------
+        roi : darsia.CoordinateArray
+            Region of interest.
 
-        Returns:
-            Geometry: subregion geometry.
-
+        Returns
+        -------
+        Geometry
+            Subregion geometry.
         """
         # Compute new dimensions
         new_dimensions = []
@@ -266,16 +289,23 @@ class WeightedGeometry(Geometry):
         """
         Constructor for extruded two-dimensional geometry.
 
-        Args:
-            weight (float or array): weight compatible with geometry.
-            space_dim (int): see Geometry.
-            num_voxels (tuple): see Geometry.
-            dimensions (list): see Geometry.
-            voxel_size (list): see Geometry.
+        Parameters
+        ----------
+        weight : float or array
+            Weight compatible with geometry.
+        space_dim : int
+            See Geometry.
+        num_voxels : tuple
+            See Geometry.
+        dimensions : list
+            See Geometry.
+        voxel_size : list
+            See Geometry.
 
-        Raises:
-            ValueError: if weight has wrong dimensions.
-
+        Raises
+        ------
+        ValueError
+            If weight has wrong dimensions.
         """
         super().__init__(space_dim, num_voxels, dimensions, voxel_size)
 
@@ -301,12 +331,15 @@ class WeightedGeometry(Geometry):
     def subregion(self, roi: darsia.CoordinateArray) -> "WeightedGeometry":
         """Extract subregion of the geometry.
 
-        Args:
-            roi (darsia.CoordinateArray): region of interest.
+        Parameters
+        ----------
+        roi : darsia.CoordinateArray
+            Region of interest.
 
-        Returns:
-            WeightedGeometry: subregion geometry.
-
+        Returns
+        -------
+        WeightedGeometry
+            Subregion geometry.
         """
         # Extract sub-geometry using base class method
         sub_geometry = super().subregion(roi)
@@ -346,16 +379,23 @@ class ExtrudedGeometry(WeightedGeometry):
         """
         Constructor for extruded two-dimensional geometry.
 
-        Args:
-            expansion (float or array): effective depth/area of 1d/2d geometry.
-            space_dim (int): see Geometry.
-            num_voxels (tuple): see Geometry.
-            dimensions (list): see Geometry.
-            voxel_size (list): see Geometry.
+        Parameters
+        ----------
+        expansion : float or array
+            Effective depth/area of 1d/2d geometry.
+        space_dim : int
+            See Geometry.
+        num_voxels : tuple
+            See Geometry.
+        dimensions : list
+            See Geometry.
+        voxel_size : list
+            See Geometry.
 
-        Raises:
-            ValueError: if spatial dimension not 2.
-
+        Raises
+        ------
+        ValueError
+            If spatial dimension not 2.
         """
         self.depth = expansion
         super().__init__(expansion, space_dim, num_voxels, dimensions, voxel_size)
@@ -376,13 +416,18 @@ class PorousGeometry(WeightedGeometry):
         """
         Constructor for extruded two-dimensional geometry.
 
-        Args:
-            porosity (float or array): porosity.
-            space_dim (int): see Geometry.
-            num_voxels (tuple): see Geometry.
-            dimensions (list): see Geometry.
-            voxel_size (list): see Geometry.
-
+        Parameters
+        ----------
+        porosity : float or array
+            Porosity.
+        space_dim : int
+            See Geometry.
+        num_voxels : tuple
+            See Geometry.
+        dimensions : list
+            See Geometry.
+        voxel_size : list
+            See Geometry.
         """
         self.porosity = porosity
         super().__init__(porosity, space_dim, num_voxels, dimensions, voxel_size)
@@ -404,14 +449,20 @@ class ExtrudedPorousGeometry(WeightedGeometry):
         """
         Constructor for extruded, porous, two-dimensional geometry.
 
-        Args:
-            porosity (float or array): porosity.
-            depth (float or array): effective depth.
-            space_dim (int): see Geometry.
-            num_voxels (tuple): see Geometry.
-            dimensions (list): see Geometry.
-            voxel_size (list): see Geometry.
-
+        Parameters
+        ----------
+        porosity : float or array
+            Porosity.
+        depth : float or array
+            Effective depth.
+        space_dim : int
+            See Geometry.
+        num_voxels : tuple
+            See Geometry.
+        dimensions : list
+            See Geometry.
+        voxel_size : list
+            See Geometry.
         """
         self.porosity = porosity
         self.depth = depth
@@ -430,9 +481,10 @@ class ExtrudedPorousGeometry(WeightedGeometry):
     def update(self, depth: float | np.ndarray | darsia.Image) -> None:
         """Update effective depth and recompute weighted volume.
 
-        Args:
-            depth (float or array): effective depth.
-
+        Parameters
+        ----------
+        depth : float or array
+            Effective depth.
         """
         self.depth = depth
         if isinstance(self.porosity, darsia.Image) and isinstance(depth, darsia.Image):

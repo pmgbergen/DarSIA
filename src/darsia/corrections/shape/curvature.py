@@ -20,12 +20,14 @@ import darsia
 def load_curvature_correction_config_from_toml(path: Path) -> dict:
     """Load curvature correction config from a toml file.
 
-    Arguments:
-        path (Path): path to the toml file.
+    Parameters
+    ----------
+    path : Path
+        Path to the toml file.
 
-    Returns:
-        config (dict): config dictionary for curvature correction.
-
+    Returns
+    -------
+        Config (dict): config dictionary for curvature correction.
     """
     data = tomllib.loads(path.read_text())
 
@@ -44,13 +46,16 @@ def load_curvature_correction_config_from_dict(
 ) -> dict:
     """Load curvature correction config from a dictionary.
 
-    Arguments:
-        sec (dict): dictionary containing curvature correction settings.
-        source (str): descriptive name for warnings (e.g., file path or "config").
+    Parameters
+    ----------
+    sec : dict
+        Dictionary containing curvature correction settings.
+    source : str
+        Descriptive name for warnings (e.g., file path or "config").
 
-    Returns:
-        config (dict): config dictionary for curvature correction.
-
+    Returns
+    -------
+        Config (dict): config dictionary for curvature correction.
     """
     config = {}
 
@@ -122,46 +127,42 @@ class CurvatureCorrection(darsia.BaseCorrection):
     Contains routines for setting up the curvature correction, as well as applying
     it to images.
 
-    Attributes:
-        config (dict): config dictionary for curvture correction.
+    Attributes
+    ----------
+    config : dict
+        Config dictionary for curvture correction.
 
         Circumstantial attributes:
-            reference_image (np.ndarray): image matrix of the reference image.
-            current_image (np.ndarray): image matrix of the updated reference image.
-            width (float): physical width of reference image.
-            height (float): physical height of reference image.
-            in_meters (bool): True if width/height is in meters.
-            Ny (int): number of pixels in vertical direction in reference image.
-            Nx (int): number of pixels in horizontal direction in reference image.
-
+        reference_image (np.ndarray): image matrix of the reference image.
+        current_image (np.ndarray): image matrix of the updated reference image.
+        width (float): physical width of reference image.
+        height (float): physical height of reference image.
+        in_meters (bool): True if width/height is in meters.
+        Ny (int): number of pixels in vertical direction in reference image.
+        Nx (int): number of pixels in horizontal direction in reference image.
     """
 
     def __init__(
         self, config: dict | str | Path | list[Path] | None = None, **kwargs
     ) -> None:
         """
-        Constructor of curvature correction class.
+        Set up the curvature correction.
 
-        NOTE: CurvatureCorrection should be mostly initialized with a config file
-        which controls the correction routine. The possibility to define a curvature
-        correction using a path to an image (not a darsia.Image) should be however
-        only used for setting up the config file via CurvatureCorrection as
-        showcased in examples/notebooks/curvature_correction_walkthrough.ipynb
+        Normally initialised from a config file that controls the correction
+        routine. Initialising from an image path (not a ``darsia.Image``) is
+        only meant for building the config file interactively.
 
-        Arguments:
-            kwargs (Optional keyword arguments):
-                config (dict, str, Path): config dictionary; default is None. Either this
-                            or the image must be provided.
-                image (Path | np.ndarray): image source that either can
-                            be provided as a path to an image or an image matrix.
-                            Either this or the config must be provided.
-                width (float): physical width of the image. Only relevant if
-                            image is provided.
-                height (float): physical height of the image. Only relevant if
-                            image is provided.
-                in_meters (bool): returns True if width and height are given
-                            in terms of meters. Only relevant if image
-                            is provided.
+        Parameters
+        ----------
+        **kwargs
+            Either ``config`` or ``image`` must be given::
+
+                config (dict | str | Path)   config dictionary (default None)
+                image (Path | np.ndarray)    image source, as a path or an array
+                width (float)                physical image width (image mode)
+                height (float)               physical image height (image mode)
+                in_meters (bool)             whether width/height are in metres
+                                             (image mode)
         """
 
         # Setup config from file if provided
@@ -255,8 +256,10 @@ class CurvatureCorrection(darsia.BaseCorrection):
         """
         Writes the config dictionary to a json-file.
 
-        Arguments:
-            path (Path): path to the json file
+        Parameters
+        ----------
+        path : Path
+            Path to the json file.
         """
 
         with open(Path(path), "w") as outfile:
@@ -266,8 +269,10 @@ class CurvatureCorrection(darsia.BaseCorrection):
         """
         Reads a json-file to the config disctionary.
 
-        Arguments:
-            path (Path): path to the json-file.
+        Parameters
+        ----------
+        path : Path
+            Path to the json-file.
         """
         with open(str(path), "r") as openfile:
             self.config = json.load(openfile)
@@ -275,9 +280,10 @@ class CurvatureCorrection(darsia.BaseCorrection):
     def save(self, path: Path) -> None:
         """Save the curvature correction to a file.
 
-        Arguments:
-            path (Path): path to the file
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file.
         """
         # Make sure the parent directory exists
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -295,9 +301,10 @@ class CurvatureCorrection(darsia.BaseCorrection):
     def load(self, path: Path) -> None:
         """Load the curvature correction from a file.
 
-        Arguments:
-            path (Path): path to the file
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file.
         """
         # Make sure the file exists
         if not path.is_file():
@@ -336,19 +343,19 @@ class CurvatureCorrection(darsia.BaseCorrection):
 
     def pre_bulge_correction(self, **kwargs) -> None:
         """
-        Initialize the curvature correction by forcing all stright lines
-        to curve inwards and not outwards.
+        Force all straight lines to curve inwards rather than outwards.
 
-        Arguments:
-            kwargs (optional keyword arguments):
-                "horizontal_bulge" (float): parameter for the curvature correction related to
-                    the horizontal bulge of the image.
-                "horizontal_center_offset" (int): offset in terms of pixel of the image center
-                    in x-direction, as compared to the numerical center
-                vertical_bulge (float): parameter for the curvature correction related to the
-                    vertical bulge of the image.
-                "vertical_center_offset" (int): offset in terms of pixel of the image center in
-                    y-direction, as compared to the numerical center
+        Parameters
+        ----------
+        **kwargs
+            Curvature parameters::
+
+                horizontal_bulge (float)          horizontal bulge
+                horizontal_center_offset (int)    x offset of the image centre
+                                                  from the numerical centre, px
+                vertical_bulge (float)            vertical bulge
+                vertical_center_offset (int)      y offset of the image centre
+                                                  from the numerical centre, px
         """
         self.config["init"] = {
             "horizontal_bulge": kwargs.get("horizontal_bulge", 0),
@@ -369,11 +376,16 @@ class CurvatureCorrection(darsia.BaseCorrection):
         Corrects bulging of image, depending on the amount of pixels that the
         image is bulged inwards on each side.
 
-        Arguments:
-            left (int): amount of bulged pixels on the left side of the image.
-            right (int): amount of bulged pixels on the right side of the image.
-            top (int): amount of bulged pixels on the top of the image.
-            bottom (int): amount of bulged pixels on the bottom of the image.
+        Parameters
+        ----------
+        left : int
+            Amount of bulged pixels on the left side of the image.
+        right : int
+            Amount of bulged pixels on the right side of the image.
+        top : int
+            Amount of bulged pixels on the top of the image.
+        bottom : int
+            Amount of bulged pixels on the bottom of the image.
         """
         (
             horizontal_bulge,
@@ -399,16 +411,20 @@ class CurvatureCorrection(darsia.BaseCorrection):
         stretch_center: list,
     ) -> None:
         """
-        Stretch correction.
+        Stretch the image from the displacement of a single point.
 
-        Stretches the image depending on the displacement of a
-        single point (point source <--> point_destination) and
-        an undisplaced point (stretch_center)
+        The image is stretched given a point's displacement
+        (``point_source`` -> ``point_destination``) and one undisplaced point
+        (``stretch_center``).
 
-        Arguments:
-            "point_source" (list): point that has been translated.
-            "point_destination" (list): the ought to be position.
-            "stretch_center" (list): the stretch center.
+        Parameters
+        ----------
+        point_source : list
+            Point that has been translated.
+        point_destination : list
+            Its intended position.
+        stretch_center : list
+            The undisplaced (stretch centre) point.
         """
         (
             horizontal_stretch,
@@ -439,17 +455,19 @@ class CurvatureCorrection(darsia.BaseCorrection):
         Compute the bulge parameters depending on the maximum number of pixels
         that the image has been displaced on each side.
 
-        Arguments:
-            img (np.ndarray, optional): image array, basis for the computation.
-            kwargs (optional keyword arguments):
-                "left" (int): the maximum number of pixels that the image
-                              has been displaced on the left side
-                "right" (int): the maximum number of pixels that the image
-                              has been displaced on the right side
-                "top" (int): the maximum number of pixels that the image
-                              has been displaced on the top
-                "bottom" (int): the maximum number of pixels that the image
-                              has been displaced on the bottom
+        Parameters
+        ----------
+        img : np.ndarray, optional
+            Image array, basis for the computation.
+        **kwargs : optional keyword arguments
+            "left" (int): the maximum number of pixels that the image
+            has been displaced on the left side
+            "right" (int): the maximum number of pixels that the image
+            has been displaced on the right side
+            "top" (int): the maximum number of pixels that the image
+            has been displaced on the top
+            "bottom" (int): the maximum number of pixels that the image
+            has been displaced on the bottom.
         """
 
         left = kwargs.get("left", 0)
@@ -503,12 +521,14 @@ class CurvatureCorrection(darsia.BaseCorrection):
         Compute the stretch parameters depending on the stretch center,
         and a known translation.
 
-        Arguments:
-            img (np.ndarray, optional): image array, basis for the computation.
-            kwargs (optional keyword arguments):
-                "point_source" (list): point that has been translated.
-                "point_destination" (list): the ought to be position.
-                "stretch_center" (list): the stretch center.
+        Parameters
+        ----------
+        img : np.ndarray, optional
+            Image array, basis for the computation.
+        **kwargs : optional keyword arguments
+            "point_source" (list): point that has been translated.
+            "point_destination" (list): the ought to be position.
+            "stretch_center" (list): the stretch center.
         """
 
         if img is None:
@@ -634,12 +654,15 @@ class CurvatureCorrection(darsia.BaseCorrection):
         corrected image as an array. If set in the constructor, the image
         will be resized in the first step.
 
-        Arguments:
-            img (np.ndarray): image array
+        Parameters
+        ----------
+        img : np.ndarray
+            Image array.
 
-        Returns:
-            np.ndarray: curvature corrected image.
-
+        Returns
+        -------
+        np.ndarray
+            Curvature corrected image.
         """
         # Precompute transformed coordinates based on self.config, if required.
         if (
@@ -677,12 +700,17 @@ class CurvatureCorrection(darsia.BaseCorrection):
         in contrast to __call__ does always use the keyword arguments and constructs
         the transformation instead of using cached values.
 
-        Args:
-            img (np.ndarray): image array
-            kwargs (optional keyword arguments): see _transform_coordinates for more details.
+        Parameters
+        ----------
+        img : np.ndarray
+            Image array.
+        **kwargs : optional keyword arguments
+            See _transform_coordinates for more details.
 
-        Returns:
-            np.ndarray: corrected image
+        Returns
+        -------
+        np.ndarray
+            Corrected image.
         """
         # Read size of image
         Ny, Nx = img.shape[:2]
@@ -716,8 +744,10 @@ class CurvatureCorrection(darsia.BaseCorrection):
 
         The final result is stored in cache.
 
-        Args:
-            img (np.ndarray)
+        Parameters
+        ----------
+        img : np.ndarray
+            Image array.
         """
         # Define the current pixel mesh before any transformation
         Ny, Nx = img.shape[:2]
@@ -799,26 +829,28 @@ class CurvatureCorrection(darsia.BaseCorrection):
         self, X: np.ndarray, Y: np.ndarray, **kwargs
     ) -> tuple[np.ndarray, np.ndarray]:
         """
-        Routine for applying stretch and bulge transformation of coordinates.
+        Apply the stretch and bulge transformation to coordinates.
 
-        Args:
-            img (np.ndarray): image array
-            kwargs (optional keyword arguments): see _transform_coordinates for more details.
-                "horizontal_bulge" (float): parameter for the curvature correction related
-                    to the horizontal bulge of the image.
-                "horizontal_stretch" (float): parameter for the curvature correction related
-                    to the horizontal stretch of the image
-                "horizontal_center_offset" (int): offset in terms of pixel of the image
-                    center in x-direction, as compared to the numerical center
-                vertical_bulge (float): parameter for the curvature correction related to
-                    the vertical bulge of the image.
-                "vertical_stretch" (float): parameter for the curvature correction related
-                    to the vertical stretch of the image
-                "vertical_center_offset" (int): offset in terms of pixel of the image center
-                    in y-direction, as compared to the numerical center
+        Parameters
+        ----------
+        X, Y : np.ndarray
+            Coordinate arrays.
+        **kwargs
+            Curvature parameters::
 
-        Returns:
-            tuple of arrays: the transformed coordinates; first x and second y.
+                horizontal_bulge (float)          horizontal bulge
+                horizontal_stretch (float)        horizontal stretch
+                horizontal_center_offset (int)    x offset of the image centre
+                                                  from the numerical centre, px
+                vertical_bulge (float)            vertical bulge
+                vertical_stretch (float)          vertical stretch
+                vertical_center_offset (int)      y offset of the image centre
+                                                  from the numerical centre, px
+
+        Returns
+        -------
+        tuple of np.ndarray
+            The transformed coordinates, ``(x, y)``.
         """
         # Read in tuning parameters
         horizontal_bulge: float = kwargs.get("horizontal_bulge", 0.0)
@@ -865,13 +897,19 @@ class CurvatureCorrection(darsia.BaseCorrection):
         """
         Routine to transform an image based on transformed coordinates.
 
-        Args:
-            img (np.ndarray): image array
-            grid (np.ndarray): array of x and y components of the transformed coordinates
-            shape (tuple): shape of the final image
+        Parameters
+        ----------
+        img : np.ndarray
+            Image array.
+        grid : np.ndarray
+            Array of x and y components of the transformed coordinates.
+        shape : tuple
+            Shape of the final image.
 
-        Returns:
-            np.ndarray: transformed image
+        Returns
+        -------
+        np.ndarray
+            Transformed image.
         """
         # Initialize the corrected image. To unify code, transform to 3d arrays and
         # transform back in the end if needed.
@@ -900,12 +938,15 @@ class CurvatureCorrection(darsia.BaseCorrection):
     def correct_metadata(self, metadata: dict = {}) -> dict:
         """Extract metadata from the config file.
 
-        Args:
-            metadata (dict, optional): metadata dictionary to be updated. Defaults to {}.
+        Parameters
+        ----------
+        metadata : dict, optional
+            Metadata dictionary to be updated. Defaults to {}.
 
-        Returns:
-            dict: metadata
-
+        Returns
+        -------
+        dict
+            Metadata.
         """
         # Initialize metadata
         meta = {}

@@ -18,15 +18,18 @@ def _reorient_colorchecker(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Reorient the colorchecker such that the brown swatch is in the top left corner.
 
-    Args:
-        img (np.ndarray): Image of the colorchecker.
-        local_voxels (np.ndarray): Voxels of the colorchecker (do not need to be sorted
-            in any way).
+    Parameters
+    ----------
+    img : np.ndarray
+        Image of the colorchecker.
+    local_voxels : np.ndarray
+        Voxels of the colorchecker (do not need to be sorted
+        in any way).
 
-    Returns:
-        reoriented_img_cc (np.ndarray): Reoriented image of the colorchecker.
-        reoriented_local_voxels (np.ndarray): Reoriented voxels of the colorchecker.
-
+    Returns
+    -------
+        Reoriented_img_cc (np.ndarray): Reoriented image of the colorchecker.
+        Reoriented_local_voxels (np.ndarray): Reoriented voxels of the colorchecker.
     """
     # Assert that the image is in uint8 or uint16 format
     if img.dtype in [np.uint8, np.uint16]:
@@ -149,15 +152,19 @@ def find_colorchecker(
 
     Search for position and colors.
 
-    Args:
-        img (darsia.Image): Image to search in.
-        strategy (str, optional): Strategy to target corner. Defaults to "upper_right".
-        update (float, optional): Update factor for the search window. Defaults to 0.8.
+    Parameters
+    ----------
+    img : darsia.Image
+        Image to search in.
+    strategy : str, optional
+        Strategy to target corner. Defaults to "upper_right".
+    update : float, optional
+        Update factor for the search window. Defaults to 0.8.
 
-    Returns:
-        colorchecker (darsia.CustomColorChecker): Colorchecker.
-        global_voxels (np.ndarray): Voxels of the colorchecker.
-
+    Returns
+    -------
+        Colorchecker (darsia.CustomColorChecker): Colorchecker.
+        Global_voxels (np.ndarray): Voxels of the colorchecker.
     """
 
     # Preproccess image array (required by the algorthms provided by colour-science)

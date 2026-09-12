@@ -20,19 +20,23 @@ def _deep_merge(base: dict, update: dict) -> dict:
     When both dicts have the same key with dict values, merges them recursively
     instead of overwriting.
 
-    Args:
-        base: Base dictionary to merge into.
-        update: Dictionary with updates to merge.
+    Parameters
+    ----------
+    base : dict
+        Base dictionary to merge into.
+    update : dict
+        Dictionary with updates to merge.
 
-    Returns:
+    Returns
+    -------
         Merged dictionary (base is modified in-place).
 
-    Example:
+    Examples
+    --------
         >>> base = {"a": {"x": 1, "y": 2}, "b": 3}
         >>> update = {"a": {"y": 20, "z": 30}, "c": 4}
         >>> _deep_merge(base, update)
         {"a": {"x": 1, "y": 20, "z": 30}, "b": 3, "c": 4}
-
     """
     for key, value in update.items():
         if key in base and isinstance(base[key], dict) and isinstance(value, dict):
@@ -88,13 +92,15 @@ def _get_key(section: dict, key: str, default=None, required=True, type_=None) -
 def _convert_to_hours(time_value: float | str) -> float:
     """Convert time value to hours.
 
-    Args:
-        time_value: Time as float (hours) or string in "DD:HH:MM:SS", "HH:MM:SS",
-            "HH:MM", "HH", or numeric format
+    Parameters
+    ----------
+    time_value : float | str
+        Time as float (hours) or string in "DD:HH:MM:SS", "HH:MM:SS",
+        "HH:MM", "HH", or numeric format.
 
-    Returns:
-        Time in hours as float
-
+    Returns
+    -------
+        Time in hours as float.
     """
     if isinstance(time_value, (int, float)):
         return float(time_value)
@@ -159,10 +165,13 @@ def _validate_choice(value: str, *, allowed: set[str], context: str, key: str) -
 def _format_hours(hours: float) -> str:
     """Convert floating-point hours to HH:MM:SS string format.
 
-    Args:
-        hours: Hours as a float (can be fractional).
+    Parameters
+    ----------
+    hours : float
+        Hours as a float (can be fractional).
 
-    Returns:
+    Returns
+    -------
         Formatted string in HH:MM:SS format (no day component).
     """
     if hours is None:
@@ -180,13 +189,18 @@ def _normalize_time_string(value: float | str) -> str:
     Accepts float hours or any string format supported by _convert_to_hours,
     converts to float hours, then formats to canonical HH:MM:SS.
 
-    Args:
-        value: Time as float (hours) or string in any recognized format.
+    Parameters
+    ----------
+    value : float | str
+        Time as float (hours) or string in any recognized format.
 
-    Returns:
+    Returns
+    -------
         Canonical HH:MM:SS format string.
 
-    Raises:
-        ValueError: If the input cannot be parsed as a time value.
+    Raises
+    ------
+    ValueError
+        If the input cannot be parsed as a time value.
     """
     return _format_hours(_convert_to_hours(value))

@@ -83,6 +83,7 @@ dev = [
   "isort",
   "flake8",
   "mypy",
+  "numpydoc",
   "meshio",
   "deepdiff",
   "pyamg",
@@ -121,5 +122,23 @@ required-version = "24.10.0"
 profile = "black"
 line_length = 88
 skip = ["src/darsia/__init__.py"]
+
+# ── numpydoc docstring linting (advisory CI job "numpydoc-lint") ──────────────
+# Run locally with:  uv run numpydoc lint <file(s)>
+#
+# Started as an explicit allow-list of the checks that flag real problems
+# (unknown/undocumented types, mismatched or mis-ordered parameters, bad
+# sections). Broaden towards the full NumPy convention over time; the CI job is
+# advisory (continue-on-error) until the backlog is worked down.
+[tool.numpydoc_validation]
+checks = [
+  "PR02",  # a documented parameter is not in the signature
+  "PR03",  # documented parameters are in the wrong order
+  "PR04",  # a parameter has no type
+  "PR08",  # parameter description should start with a capital letter
+  "PR10",  # missing space before the colon in "name : type"
+  "GL06",  # unknown section title
+  "GL07",  # sections in the wrong order
+]
 
 # ── flake8 does not natively support pyproject.toml; config remains in setup.cfg

@@ -18,15 +18,13 @@ class PiecewisePerspectiveTransform:
 
     def __init__(self, **kwargs) -> None:
         """
-        Constructor method.
+        Store the external inputs as patches.
 
-        Stores external inputs as patches.
-
-        Args:
-            **kwargs (optional):
-                verbosity (int): if larger than 0, statements regarding timings
-                are printed.
-
+        Parameters
+        ----------
+        **kwargs
+            ``verbosity`` (int) -- if greater than 0, timing statements are
+            printed.
         """
         # Initialize flag
         self.have_transform = False
@@ -45,14 +43,19 @@ class PiecewisePerspectiveTransform:
         Hence, stiching together the transformed images results in
         an image without overlap and gaps.
 
-        Args:
-            patches (darsia.Patches): patched image
-            displacement (Callable): relative deformation map; assumed to be continuous
-            reverse (bool): flag whether displacement is applied with negative weight
+        Parameters
+        ----------
+        patches : darsia.Patches
+            Patched image.
+        displacement : Callable
+            Relative deformation map; assumed to be continuous.
+        reverse : bool
+            Flag whether displacement is applied with negative weight.
 
-        Returns:
-            darsia.Image: transformed image
-
+        Returns
+        -------
+        darsia.Image
+            Transformed image.
         """
         # TODO extend to 3d?
         if patches.num_active_spatial_axes != 2:

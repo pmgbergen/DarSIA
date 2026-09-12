@@ -353,12 +353,15 @@ class FluidFlowerConfig:
     def check(self, *args: str) -> None:
         """Check that required components are loaded.
 
-        Args:
-            keys (list[str]): List of keys to check.
+        Parameters
+        ----------
+        *args : str
+            Keys to check.
 
-        Raises:
-            ValueError: If a required component is not loaded.
-
+        Raises
+        ------
+        ValueError
+            If a required component is not loaded.
         """
         for key in args:
             assert key in [

@@ -64,13 +64,17 @@ class LabelColorPathMapRegression:
     ) -> darsia.LabelColorMap:
         """Get the base colors for each label in the image.
 
-        Args:
-            image (darsia.Image): The image from which to extract base colors.
-            verbose (bool): Whether to print additional information.
+        Parameters
+        ----------
+        image : darsia.Image
+            The image from which to extract base colors.
+        verbose : bool
+            Whether to print additional information.
 
-        Returns:
-            LabelColorMap: An object containing the base colors for each label.
-
+        Returns
+        -------
+        LabelColorMap
+            An object containing the base colors for each label.
         """
         base_colors = {}
         for mask, label in darsia.Masks(self.labels, return_label=True):
@@ -100,11 +104,15 @@ class LabelColorPathMapRegression:
     def get_mean_base_color(self, image: darsia.Image) -> np.ndarray:
         """Get the mean base color across all labels in the image.
 
-        Args:
-            image (darsia.Image): The image from which to extract base colors.
+        Parameters
+        ----------
+        image : darsia.Image
+            The image from which to extract base colors.
 
-        Returns:
-            np.ndarray: The mean base color across all labels.
+        Returns
+        -------
+        np.ndarray
+            The mean base color across all labels.
         """
         base_colors = self.get_base_colors(image)
         return base_colors.mean()
@@ -113,11 +121,15 @@ class LabelColorPathMapRegression:
     def base_color_image(self, image: darsia.Image) -> darsia.Image:
         """Create an image where each label is colored by its base color.
 
-        Args:
-            image (darsia.Image): The image from which to extract base colors.
+        Parameters
+        ----------
+        image : darsia.Image
+            The image from which to extract base colors.
 
-        Returns:
-            darsia.Image: An image where each label is colored by its base color.
+        Returns
+        -------
+        darsia.Image
+            An image where each label is colored by its base color.
         """
         base_color_image = image.copy()
         base_colors = self.get_base_colors(image)
@@ -143,20 +155,28 @@ class LabelColorPathMapRegression:
         creating a 3D histogram of color occurrences, which is then normalized
         to identify significant colors.
 
-        Args:
-            images (list[darsia.Image]): The images to analyze.
-            baseline (darsia.Image | None): The baseline image for comparison.
-            resolution (tuple[int, int, int]): The resolution of the color histogram.
-            ignore (darsia.LabelColorSpectrumMap | darsia.ColorSpectrum | None): Colors to
-                ignore in the spectrum.
-            threshold_zero (float): The threshold for zeroing out insignificant colors.
-            threshold_significant (float): The threshold for significant colors.
-            path (Path): Folder to store images.
-            verbose (bool): Whether to print verbose output.
+        Parameters
+        ----------
+        images : list[darsia.Image]
+            The images to analyze.
+        baseline : darsia.Image | None
+            The baseline image for comparison.
+        ignore : darsia.LabelColorSpectrumMap | darsia.ColorSpectrum | None
+            Colors to
+            ignore in the spectrum.
+        threshold_zero : float
+            The threshold for zeroing out insignificant colors.
+        threshold_significant : float
+            The threshold for significant colors.
+        path : Path
+            Folder to store images.
+        verbose : bool
+            Whether to print verbose output.
 
-        Returns:
-            LabelColorSpectrumMap: The color spectrum for each label.
-
+        Returns
+        -------
+        LabelColorSpectrumMap
+            The color spectrum for each label.
         """
         # TODO introduce a mask, and remove labels.
 
@@ -348,15 +368,19 @@ class LabelColorPathMapRegression:
     ) -> darsia.LabelColorSpectrumMap:
         """Expand the color spectrum through linear regression.
 
-        Args:
-            color_spectrum_map (LabelColorSpectrumMap): The color spectrum to expand.
-            verbose (bool): Whether to print additional information.
-            min_points (int): Minimum number of significant points to perform regression.
-            # min_weight (float): Minimum weight for the regression.
+        Parameters
+        ----------
+        color_spectrum : ColorSpectrum or LabelColorSpectrumMap
+            The color spectrum to expand.
+        min_points : int
+            Minimum number of significant points to perform regression.
+        verbose : bool
+            Whether to print additional information.
 
-        Returns:
-            LabelColorSpectrumMap: The expanded color spectrum.
-
+        Returns
+        -------
+        LabelColorSpectrumMap
+            The expanded color spectrum.
         """
         if isinstance(color_spectrum, darsia.ColorSpectrum):
             return self._expand_color_spectrum(
@@ -386,15 +410,21 @@ class LabelColorPathMapRegression:
     ) -> darsia.ColorSpectrum:
         """Expand the color spectrum through linear regression.
 
-        Args:
-            color_spectrum (LabelColorSpectrum): The color spectrum to expand.
-            min_points (int): Minimum number of significant points to perform regression.
-            title (str): Title for the verbose plot.
-            verbose (bool): Whether to print additional information.
+        Parameters
+        ----------
+        color_spectrum : LabelColorSpectrum
+            The color spectrum to expand.
+        min_points : int
+            Minimum number of significant points to perform regression.
+        title : str
+            Title for the verbose plot.
+        verbose : bool
+            Whether to print additional information.
 
-        Returns:
-            ColorSpectrum: The expanded color spectrum.
-
+        Returns
+        -------
+        ColorSpectrum
+            The expanded color spectrum.
         """
         # Sanity check - compatibility of spectrum with discrete color range
         assert color_spectrum.spectrum.shape == self.discrete_color_range.shape
@@ -548,29 +578,39 @@ class LabelColorPathMapRegression:
     ) -> darsia.ColorPath:
         """Find a relative color path through the significant boxes.
 
-        Args:
-            spectrum (ColorSpectrum): The color spectrum to analyze.
-            ignore (ColorSpectrum | None): The color spectrum to ignore.
-            num_segments (int): The number of segments for the color path.
-            name (str): Name of the color path.
-            directory (Path | None): Directory to save verbose plots.
-            weighting (str): How to use histogram counts when fitting the path.
-                ``"threshold"`` (default) uses binary 0/1 weights controlled by
-                the spectrum threshold – counts are not used beyond that.
-                ``"wls"`` weights each active bin by its normalised probability.
-                ``"wls_sqrt"`` weights by the square-root of the probability.
-                ``"wls_log"`` weights by ``log(1 + count)`` where count is
-                derived from the normalised probability scaled by the total
-                number of active bins.
-            mode (str): Color-path selection mode.
-                ``"auto"`` returns the automated result.
-                ``"manual"`` starts from the automated result and allows
-                interactive key-color editing before finalizing.
-            verbose (bool): Whether to print additional information.
+        Parameters
+        ----------
+        spectrum : ColorSpectrum
+            The color spectrum to analyze.
+        ignore : ColorSpectrum | None
+            The color spectrum to ignore.
+        num_segments : int
+            The number of segments for the color path.
+        name : str
+            Name of the color path.
+        directory : Path | None
+            Directory to save verbose plots.
+        weighting : str
+            How to use histogram counts when fitting the path.
+            ``"threshold"`` (default) uses binary 0/1 weights controlled by
+            the spectrum threshold – counts are not used beyond that.
+            ``"wls"`` weights each active bin by its normalised probability.
+            ``"wls_sqrt"`` weights by the square-root of the probability.
+            ``"wls_log"`` weights by ``log(1 + count)`` where count is
+            derived from the normalised probability scaled by the total
+            number of active bins.
+        mode : str
+            Color-path selection mode.
+            ``"auto"`` returns the automated result.
+            ``"manual"`` starts from the automated result and allows
+            interactive key-color editing before finalizing.
+        verbose : bool
+            Whether to print additional information.
 
-        Returns:
-            darsia.ColorPath: The relative color path through the significant boxes.
-
+        Returns
+        -------
+        darsia.ColorPath
+            The relative color path through the significant boxes.
         """
         assert (
             spectrum.color_range.color_mode == darsia.ColorMode.RELATIVE
@@ -884,19 +924,23 @@ class LabelColorPathMapRegression:
                 path, suggesting curved behavior that may benefit from splitting into
                 multiple segments
 
-            Args:
-                segment_range: A range object specifying indices of points in the segment
+            Parameters
+            ----------
+            segment_range : range
+                A range object specifying indices of points in the segment.
 
-            Returns:
-                float: The 80th percentile of L1 errors between linear regression
-                    predictions and actual colors. Values are typically in [0, 3]
-                    for normalized RGB color space.
+            Returns
+            -------
+            float
+                The 80th percentile of L1 errors between linear regression
+                predictions and actual colors. Values are typically in [0, 3]
+                for normalized RGB color space.
 
-            Note:
+            Notes
+            -----
                 The use of quantile (0.8) instead of mean makes this robust to outlier
                 colors that deviate from the main path. This is important for color paths
                 that may have occasional noisy measurements or artifacts.
-
             """
             segment_embedding = sorted_embedding[segment_range]
             segment_relative_colors = sorted_relative_colors[segment_range]
@@ -941,14 +985,16 @@ class LabelColorPathMapRegression:
             The smoothing uses a Savitzky-Golay filter which preserves sharp features
             while removing high-frequency noise from the error curves.
 
-            Args:
-                segment_range: A range object specifying indices in the segment
+            Parameters
+            ----------
+            segment_range : range
+                A range object specifying indices in the segment.
 
-            Returns:
+            Returns
+            -------
                 Tuple of two dicts:
-                    - left_segment: {"range": range, "error": float, "length": float}
-                    - right_segment: {"range": range, "error": float, "length": float}
-
+                - left_segment: {"range": range, "error": float, "length": float}
+                - right_segment: {"range": range, "error": float, "length": float}
             """
             from scipy.signal import savgol_filter
 
@@ -1489,30 +1535,42 @@ class LabelColorPathMapRegression:
     ) -> darsia.LabelColorPathMap:
         """Find relative color paths for each label in the spectrum map.
 
-        Args:
-            label_color_spectrum_map (LabelColorSpectrumMap): The color spectrum map to
-                analyze.
-            ignore (LabelColorSpectrumMap | None): The color spectrum map to ignore.
-            num_segments (int): The number of segments for the color path.
-            weighting (Literal): How to use histogram counts when fitting each path.
-                ``"threshold"`` (default) uses binary 0/1 weights from the spectrum
-                threshold – counts are not used beyond that.
-                ``"wls"``, ``"wls_sqrt"``, and ``"wls_log"`` use count-weighted
-                average errors – see :meth:`_find_color_path` for details.
-            mode (Literal): Color-path selection mode.
-                ``"auto"`` returns the automated result.
-                ``"manual"`` enables interactive key-color postprocessing.
-            preview_image (darsia.Image | None): Calibration image for manual preview.
-            preview_images (list[darsia.Image] | None): Calibration images for manual
-                preview navigation.
-            preview_baseline (darsia.Image | None): Baseline used for relative color preview.
-            ignore_labels (list[int] | None): Label IDs to skip fitting and produce
-                zero-paths for instead. Defaults to None (no labels ignored).
-            verbose (bool): Whether to print additional information.
+        Parameters
+        ----------
+        color_spectrum : LabelColorSpectrumMap
+            The color spectrum map to
+            analyze.
+        ignore : LabelColorSpectrumMap | None
+            The color spectrum map to ignore.
+        num_segments : int
+            The number of segments for the color path.
+        weighting : Literal
+            How to use histogram counts when fitting each path.
+            ``"threshold"`` (default) uses binary 0/1 weights from the spectrum
+            threshold – counts are not used beyond that.
+            ``"wls"``, ``"wls_sqrt"``, and ``"wls_log"`` use count-weighted
+            average errors – see :meth:`_find_color_path` for details.
+        mode : Literal
+            Color-path selection mode.
+            ``"auto"`` returns the automated result.
+            ``"manual"`` enables interactive key-color postprocessing.
+        preview_image : darsia.Image | None
+            Calibration image for manual preview.
+        preview_images : list[darsia.Image] | None
+            Calibration images for manual
+            preview navigation.
+        preview_baseline : darsia.Image | None
+            Baseline used for relative color preview.
+        ignore_labels : list[int] | None
+            Label IDs to skip fitting and produce
+            zero-paths for instead. Defaults to None (no labels ignored).
+        verbose : bool
+            Whether to print additional information.
 
-        Returns:
-            LabelColorPathMap: The relative color path map through the significant boxes.
-
+        Returns
+        -------
+        LabelColorPathMap
+            The relative color path map through the significant boxes.
         """
         if ignore_labels is None:
             ignore_labels = []

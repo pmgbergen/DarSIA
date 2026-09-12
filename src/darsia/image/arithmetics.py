@@ -15,18 +15,25 @@ import darsia
 def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia.Image:
     """Scalar or element-wise weight of images.
 
-    Args:
-        img (darsia.Image): image.
-        weight (float or Image): weight, either constant, or heterogeneous provided through
-            an image with local coordinates (need to be the same as for the input image).
+    Parameters
+    ----------
+    img : darsia.Image
+        Image.
+    weight : float or Image
+        Weight, either constant, or heterogeneous provided through
+        an image with local coordinates (need to be the same as for the input image).
 
-    Returns:
-        Image: weighted image.
+    Returns
+    -------
+    Image
+        Weighted image.
 
-    Raises:
-        NotImplementedError: if the weight has incompatible size and the images are 3d.
-        ValueError: if the weight is of unsopported type
-
+    Raises
+    ------
+    NotImplementedError
+        If the weight has incompatible size and the images are 3d.
+    ValueError
+        If the weight is of unsopported type.
     """
     weighted_img = img.copy()
     if isinstance(weight, float) or isinstance(weight, int):
@@ -75,15 +82,20 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
 def superpose(images: list[darsia.Image]) -> darsia.Image:
     """Superposition of images with possibly incompatible coordinatesystems.
 
-    Args:
-        images (list of images): images
+    Parameters
+    ----------
+    images : list of images
+        Images.
 
-    Returns:
-        Image: superposed image.
+    Returns
+    -------
+    Image
+        Superposed image.
 
-    Raises:
-        NotImplementedError: If dimension of images is not 2.
-
+    Raises
+    ------
+    NotImplementedError
+        If dimension of images is not 2.
     """
     # ! ---- Commonalities.
 
@@ -235,12 +247,15 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
 def stack(images: list[darsia.Image]) -> darsia.Image:
     """Append images from list and create a new image.
 
-    Args:
-        images (list of images): images
+    Parameters
+    ----------
+    images : list of images
+        Images.
 
-    Returns:
-        Image: stacked image
-
+    Returns
+    -------
+    Image
+        Stacked image.
     """
     image = images[0]
     for i in range(1, len(images)):

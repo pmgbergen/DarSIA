@@ -32,16 +32,22 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
     ) -> None:
         """Constructor.
 
-        Args:
-            baseline (Image): baseline image; relevant for relative analysis as well as
-                calibration in a comparative sense (on multiple images)
-            labels (Image, optional): labeled image, if not provided, the analysis is
-                considered homogeneous
-            relative (bool): flag controlling whether the analysis is relative
-            show_plot (bool): flag controlling whether intermediate plots are showed
-            kwargs: other keyword arguments
-                - kernel (Kernel): kernel for interpolation
+        Parameters
+        ----------
+        baseline : Image
+            Baseline image; relevant for relative analysis as well as
+            calibration in a comparative sense (on multiple images).
+        labels : Image, optional
+            Labeled image, if not provided, the analysis is
+            considered homogeneous.
+        relative : bool
+            Flag controlling whether the analysis is relative.
+        show_plot : bool
+            Flag controlling whether intermediate plots are showed.
+        **kwargs
+            Other keyword arguments.
 
+            - kernel (Kernel): kernel for interpolation
         """
 
         # Allow to parse standard objects for initializing a concentration analysis.
@@ -101,21 +107,25 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
     def expert_knowledge(self, image: darsia.Image) -> None:
         """Expert knowledge for concentration analysis.
 
-        Args:
-            image (Image): image to be analyzed
-
+        Parameters
+        ----------
+        image : Image
+            Image to be analyzed.
         """
         ...
 
     def __call__(self, image: darsia.Image) -> darsia.Image:
         """Perform concentration analysis with additional expert knowledge.
 
-        Args:
-            image (Image): image to be analyzed
+        Parameters
+        ----------
+        image : Image
+            Image to be analyzed.
 
-        Returns:
-            Image: concentration map
-
+        Returns
+        -------
+        Image
+            Concentration map.
         """
         from time import time
 
@@ -131,9 +141,10 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
     def save(self, path: darsia.Path) -> None:
         """Save calibration data to a file.
 
-        Args:
-            path (Path): path to the file
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file.
         """
         np.savez(
             path,
@@ -148,9 +159,10 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
     def load(self, path: darsia.Path) -> None:
         """Load calibration data from a file.
 
-        Args:
-            path (Path): path to the file
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file.
         """
         data = np.load(path, allow_pickle=True)["config"].item()
         self.characteristic_colors = data["characteristic_colors"]
@@ -162,8 +174,10 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
     def __str__(self) -> str:
         """String representation of the analysis object.
 
-        Returns:
-            str: string representation
+        Returns
+        -------
+        str
+            String representation.
         """
         info = []
         for i, (_, label) in enumerate(darsia.Masks(self.labels, return_label=True)):
@@ -179,10 +193,12 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
 
         Update heterogeneous kernel interpolation.
 
-        Args:
-            colors (list): list of colors
-            concentrations (list): list of concentrations
-
+        Parameters
+        ----------
+        colors : list
+            List of colors.
+        concentrations : list
+            List of concentrations.
         """
         for i, (_, label) in enumerate(darsia.Masks(self.labels, return_label=True)):
             self.model[0][label].update(supports=colors[i], values=concentrations[i])
@@ -200,16 +216,21 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
 
         Use all to fix the support points assignment.
 
-        Args:
-            calibration_image (Image): calibration image for extracting colors
-            mask (Image): boolean image-mask acting as mask for the calibration image
-            width (int): width of sample boxes returned from assistant - irrelevant if
-                boxed defined
-            num_clusters (int): number of characteristic clusters extracted
-            reset (bool): flag controlling whether the calibration is reset. If False,
-                the calibration is appended, allowing multi-step calibration, based on
-                different images.
-
+        Parameters
+        ----------
+        calibration_image : Image
+            Calibration image for extracting colors.
+        mask : Image
+            Boolean image-mask acting as mask for the calibration image.
+        width : int
+            Width of sample boxes returned from assistant - irrelevant if
+            boxed defined.
+        num_clusters : int
+            Number of characteristic clusters extracted.
+        reset : bool
+            Flag controlling whether the calibration is reset. If False,
+            the calibration is appended, allowing multi-step calibration, based on
+            different images.
         """
         # TODO include possibility to deactivate untrustful support points
 
@@ -310,15 +331,18 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
         """
         Calibrate using samples from a single image.
 
-        Args:
-            calibration_image (Image): calibration image for extracting colors
-            samples (list[tuple[slice, slice]]): the sample regions to use for calibration
-            concentrations (list[float]): the concentration values for the samples
-            mask (Image): boolean image-mask acting as mask for the calibration image
-            num_clusters (int): number of characteristic clusters extracted
-            reset (bool): flag controlling whether the calibration is reset. If False,
-                the calibration is appended, allowing multi-step calibration.
-
+        Parameters
+        ----------
+        calibration_image : Image
+            Calibration image for extracting colors.
+        samples : list[tuple[slice, slice]]
+            The sample regions to use for calibration.
+        concentrations : list[float]
+            The concentration values for the samples.
+        mask : Image
+            Boolean image-mask acting as mask for the calibration image.
+        num_clusters : int
+            Number of characteristic clusters extracted.
         """
         # TODO include possibility to deactivate untrustful support points
 

@@ -112,9 +112,10 @@ class PWTransformation:
     def save(self, path: Path) -> None:
         """Save the transformation to file in csv format.
 
-        Args:
-            path (Path): Path to the file where the transformation should be saved.
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file where the transformation should be saved.
         """
         path.parent.mkdir(parents=True, exist_ok=True)
         df = pd.DataFrame({"supports": self.supports, "values": self.values})
@@ -125,9 +126,10 @@ class PWTransformation:
     def load(cls, path: Path) -> "PWTransformation":
         """Load the transformation from file in csv format.
 
-        Args:
-            path (Path): Path to the file from which the transformation should be loaded.
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file from which the transformation should be loaded.
         """
         df = pd.read_csv(path.with_suffix(".csv"))
         supports = df["supports"].to_numpy()

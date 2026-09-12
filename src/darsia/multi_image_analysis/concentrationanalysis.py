@@ -131,11 +131,13 @@ class ConcentrationAnalysis:
     ) -> None:
         """Update of the baseline image or parameters.
 
-        Args:
-            base (Image, optional): image array
-            mask (np.ndarray, optional): boolean mask, detecting which pixels
-                will be considered, all other will be ignored in the analysis.
-
+        Parameters
+        ----------
+        base : Image, optional
+            Image array.
+        mask : np.ndarray, optional
+            Boolean mask, detecting which pixels
+            will be considered, all other will be ignored in the analysis.
         """
         if base is not None:
             self.base = base.copy()
@@ -161,10 +163,11 @@ class ConcentrationAnalysis:
         of signal to concentration. The cleaning filter should be understood
         as thresholding mask.
 
-        Args:
-            baseline_images (list of images): series of baseline_images; default: use
-                internally available baseline images.
-
+        Parameters
+        ----------
+        baseline_images : list of images
+            Series of baseline_images; default: use
+            internally available baseline images.
         """
 
         if baseline_images is None and self.base is not None:
@@ -200,9 +203,10 @@ class ConcentrationAnalysis:
     def read_cleaning_filter_from_file(self, path: Union[str, Path]) -> None:
         """Read cleaning filter from file.
 
-        Args:
-            path (str or Path): path to cleaning filter array.
-
+        Parameters
+        ----------
+        path : str or Path
+            Path to cleaning filter array.
         """
         # Fetch the threshold mask from file
         self.threshold_cleaning_filter = np.load(path)
@@ -218,9 +222,10 @@ class ConcentrationAnalysis:
     def write_cleaning_filter_to_file(self, path_to_filter: Union[str, Path]) -> None:
         """Store cleaning filter to file.
 
-        Args:
-            path_to_filter (str or Path): path for storage of the cleaning filter.
-
+        Parameters
+        ----------
+        path_to_filter : str or Path
+            Path for storage of the cleaning filter.
         """
         path_to_filter = Path(path_to_filter)
         path_to_filter.parents[0].mkdir(parents=True, exist_ok=True)
@@ -231,12 +236,15 @@ class ConcentrationAnalysis:
     def __call__(self, img: darsia.Image) -> darsia.Image:
         """Extract concentration based on a reference image and rescaling.
 
-        Args:
-            img (darsia.Image): probing image
+        Parameters
+        ----------
+        img : darsia.Image
+            Probing image.
 
-        Returns:
-            darsia.Image: concentration
-
+        Returns
+        -------
+        darsia.Image
+            Concentration.
         """
         # Make sure that the image is converted to float for substraction
         if img.img.dtype not in [float, np.float32, np.float64]:
@@ -316,9 +324,12 @@ class ConcentrationAnalysis:
         """Routine allowing for plotting of intermediate results.
         Requires overwrite.
 
-        Args:
-            img (np.ndarray): image
-            title (str): title for the plot
+        Parameters
+        ----------
+        img : np.ndarray
+            Image.
+        title : str
+            Title for the plot.
         """
         if self.verbosity >= 2:
             plt.figure(title)
@@ -329,12 +340,15 @@ class ConcentrationAnalysis:
     def _subtract_background(self, img: darsia.Image) -> np.ndarray:
         """Take difference between input image and cached baseline image.
 
-        Args:
-            img (darsia.Image): test image.
+        Parameters
+        ----------
+        img : darsia.Image
+            Test image.
 
-        Returns:
-            np.ndarray: difference with background image
-
+        Returns
+        -------
+        np.ndarray
+            Difference with background image.
         """
 
         if self.base is None:
@@ -367,12 +381,15 @@ class ConcentrationAnalysis:
     def _reduce_signal(self, img: np.ndarray) -> np.ndarray:
         """Make a scalar image from potentially multi-colored image.
 
-        Args:
-            img (np.ndarray): image
+        Parameters
+        ----------
+        img : np.ndarray
+            Image.
 
-        Returns:
-            np.ndarray: monochromatic reduction of the array
-
+        Returns
+        -------
+        np.ndarray
+            Monochromatic reduction of the array.
         """
         if self.signal_reduction is None:
             return img
@@ -382,12 +399,15 @@ class ConcentrationAnalysis:
     def _clean_signal(self, img: np.ndarray) -> np.ndarray:
         """Apply cleaning thresholds.
 
-        Args:
-            img (np.ndarray): input image
+        Parameters
+        ----------
+        img : np.ndarray
+            Input image.
 
-        Returns:
-            np.ndarray: cleaned image
-
+        Returns
+        -------
+        np.ndarray
+            Cleaned image.
         """
         return (
             img
@@ -401,23 +421,30 @@ class ConcentrationAnalysis:
         Here, it is assumed that only one segment is present.
         Thus, no rescaling is performed.
 
-        Args:
-            img (np.ndarray): image
+        Parameters
+        ----------
+        img : np.ndarray
+            Image.
 
-        Returns:
-            np.ndarray: balanced image
-
+        Returns
+        -------
+        np.ndarray
+            Balanced image.
         """
         return img if self.balancing is None else self.balancing(img)
 
     def _restore_signal(self, signal: np.ndarray) -> np.ndarray:
         """Apply restoration.
 
-        Args:
-            signal (np.ndarray): input signal
+        Parameters
+        ----------
+        signal : np.ndarray
+            Input signal.
 
-        Return:
-            np.ndarray: smooth signal
+        Returns
+        -------
+        np.ndarray
+            Smooth signal.
         """
         return signal if self.restoration is None else self.restoration(signal)
 
@@ -425,15 +452,19 @@ class ConcentrationAnalysis:
         """Postprocessing routine, essentially converting a continuous
         signal into physical data (binary, continuous concentration etc.)
 
-        Args:
-            signal (np.ndarray): clean continous signal with values
-                in the range between 0 and 1.
-            diff (np.ndarray): original difference of images, allowing
-                to extract new information besides the signal.
+        Parameters
+        ----------
+        signal : np.ndarray
+            Clean continous signal with values
+            in the range between 0 and 1.
+        diff : np.ndarray
+            Original difference of images, allowing
+            to extract new information besides the signal.
 
-        Returns:
-            np.ndarray: physical data
-
+        Returns
+        -------
+        np.ndarray
+            Physical data.
         """
         return signal if self.model is None else self.model(signal)
 
@@ -478,13 +509,18 @@ class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
         signal into physical data (binary, continuous concentration etc.)
         Use a prior-posterior approach, allowing to review the prior choice.
 
-        Args:
-            signal (np.ndarray): mooth signal
-            diff (np.ndarray): original difference of images, allowing
-                to extract new information besides the signal.
+        Parameters
+        ----------
+        signal : np.ndarray
+            Mooth signal.
+        diff : np.ndarray
+            Original difference of images, allowing
+            to extract new information besides the signal.
 
-        Returns:
-            np.ndarray: physical data
+        Returns
+        -------
+        np.ndarray
+            Physical data.
         """
         # Determine prior
         prior = self.model(signal, self.mask)

@@ -44,13 +44,16 @@ def prepare_download_data(path: Path | list[Path] | list[str] | str) -> Download
     ``config.download.source``. When ``config.download.skip_existing`` is set,
     files already present in the destination folder are filtered out.
 
-    Args:
-        path: Config path input accepted by ``FluidFlowerConfig`` (single path or
-            a list of paths as ``Path``/``str``).
+    Parameters
+    ----------
+    path : Path | list[Path] | list[str] | str
+        Config path input accepted by ``FluidFlowerConfig`` (single path or
+        a list of paths as ``Path``/``str``).
 
-    Returns:
+    Returns
+    -------
         DownloadPlan containing selected source files, destination paths/folder,
-        and total download size (bytes and formatted string).
+        And total download size (bytes and formatted string).
     """
 
     config = FluidFlowerConfig(path, require_data=True, require_results=False)

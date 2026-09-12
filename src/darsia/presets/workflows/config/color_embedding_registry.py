@@ -199,17 +199,24 @@ class ColorEmbeddingRegistry:
         Hand-parses TOML (like FormatRegistry and RoiRegistry) since array-of-tables
         is not supported by the generic _get_section_from_toml helper.
 
-        Args:
-            path: Path or list of Paths to TOML config file(s).
-            data: Data folder path.
-            results: Results folder path.
+        Parameters
+        ----------
+        path : Path | list[Path]
+            Path or list of Paths to TOML config file(s).
+        data : Path | None
+            Data folder path.
+        results : Path | None
+            Results folder path.
 
-        Returns:
-            self
+        Returns
+        -------
+            Self.
 
-        Raises:
-            ValueError: If any array section is not an array-of-tables, if any
-                entry is missing required field (name), or if names are duplicated.
+        Raises
+        ------
+        ValueError
+            If any array section is not an array-of-tables, if any
+            entry is missing required field (name), or if names are duplicated.
         """
         paths = [path] if isinstance(path, Path) else path
         self._embeddings = {}
@@ -285,14 +292,16 @@ class ColorEmbeddingRegistry:
     def resolve(self, embedding: str | ColorEmbedding) -> ColorEmbedding:
         """Resolve embedding identifier or object to embedding object.
 
-        Args:
-            embedding: Either a string identifier of a registered embedding, or a
-                ColorEmbedding object. If an object is provided, it is verified to be
-                registered in self._embeddings.
+        Parameters
+        ----------
+        embedding : str | ColorEmbedding
+            Either a string identifier of a registered embedding, or a
+            ColorEmbedding object. If an object is provided, it is verified to be
+            registered in self._embeddings.
 
-        Returns:
+        Returns
+        -------
             The corresponding ColorEmbedding object.
-
         """
         if isinstance(embedding, str):  # embedding_id
             if embedding not in self._embeddings:
@@ -314,7 +323,8 @@ class ColorEmbeddingRegistry:
     def resolve_all(self) -> dict[str, ColorEmbedding]:
         """Return a dict of all registered embeddings (already resolved at load time).
 
-        Returns:
+        Returns
+        -------
             Dict mapping embedding names to their ColorEmbedding objects.
         """
         return dict(self._embeddings)

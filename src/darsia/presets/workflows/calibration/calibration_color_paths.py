@@ -32,10 +32,12 @@ def calibration_color_paths_from_context(
 ) -> None:
     """Calibration of color paths for a given fluidflower class and configuration.
 
-    Args:
-        cls: Rig class.
-        path: The path to the configuration file.
-        show: Whether to display plots during processing.
+    Parameters
+    ----------
+    ctx : AnalysisContext
+        Analysis context, providing the config, experiment, and rig.
+    show : bool
+        Whether to display plots during processing.
     """
     # ! ---- LOAD FROM CONTEXT ----
 
@@ -248,10 +250,13 @@ def calibration_color_paths_from_context(
 def collect_existing_calibration_paths_to_delete(path: Path | list[Path]) -> list[Path]:
     """Collect existing calibration paths that would be deleted.
 
-    Args:
-        path: Path(s) to the configuration file(s).
+    Parameters
+    ----------
+    path : Path | list[Path]
+        Path(s) to the configuration file(s).
 
-    Returns:
+    Returns
+    -------
         List of unique existing paths in deletion order.
     """
 
@@ -281,12 +286,14 @@ def delete_calibration(
     Removes the color paths calibration file, baseline color spectrum folder,
     color range file, and all cached images in the results/cache folder.
 
-    Args:
-        path: Path(s) to the configuration file(s).
-        require_confirmation: If True, ask for command-line confirmation before
-            deleting. Set to False for already-confirmed non-interactive flows
-            (e.g. GUI confirmation dialogs).
-
+    Parameters
+    ----------
+    path : Path | list[Path]
+        Path(s) to the configuration file(s).
+    require_confirmation : bool
+        If True, ask for command-line confirmation before
+        deleting. Set to False for already-confirmed non-interactive flows
+        (e.g. GUI confirmation dialogs).
     """
     logger.warning(
         """\033[91mDeleting existing calibration data. Use with caution as this """

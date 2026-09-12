@@ -113,11 +113,14 @@ class CustomColorChecker(ColorChecker):
         3. Read from file
         The priority is as above.
 
-        Args:
-            colors (np.ndarray, optional): reference RGB colors
-            image (np.ndarray, optional): image restricted to color checker
-            path (Path, optional): path for storing and fetching reference colors
-
+        Parameters
+        ----------
+        reference_colors : np.ndarray, optional
+            Reference RGB colors.
+        image : np.ndarray, optional
+            Image restricted to color checker.
+        path : Path, optional
+            Path for storing and fetching reference colors.
         """
         # Assert only one argument is provided
         assert (
@@ -145,11 +148,15 @@ class CustomColorChecker(ColorChecker):
         Exepcts images to be restricted to the ROI such that the landmarks in the
         corners are also the corners of the image.
 
-        Args:
-            img: image of color checker.
+        Parameters
+        ----------
+        img : np.ndarray
+            Image of color checker.
 
-        Returns:
-            np.ndarray: 4 x 6 array with colour checker colors.
+        Returns
+        -------
+        np.ndarray
+            4 x 6 array with colour checker colors.
         """
         # Assert that the image is in uint8 or uint16 format
         if img.dtype in [np.uint8, np.uint16]:
@@ -251,10 +258,11 @@ class ColorCorrection(darsia.BaseCorrection):
     ) -> None:
         """Auxiliary function for initialization from config.
 
-        Args:
-            base (Image or ColorChecker, optional): reference defining a color checker; if
-                None provided, use CustomColorChecker.
-
+        Parameters
+        ----------
+        base : Image or ColorChecker, optional
+            Reference defining a color checker; if
+            None provided, use CustomColorChecker.
         """
         self.active: bool = self.config.get("active", True)
         """Flag controlling whether correction is active"""
@@ -297,12 +305,16 @@ class ColorCorrection(darsia.BaseCorrection):
         user-input on the location of the color checker. Reference to the general workflow:
         https://github.com/colour-science/colour-checker-detection/blob/master/colour_checker_detection/examples/examples_detection.ipynb
 
-        Args:
-            img (np.ndarray): image in RGB space, with values in uint8,
-                uint16, float32, or float64.
+        Parameters
+        ----------
+        img : np.ndarray
+            Image in RGB space, with values in uint8,
+            uint16, float32, or float64.
 
-        Returns:
-            np.ndarray: corrected image
+        Returns
+        -------
+        np.ndarray
+            Corrected image.
         """
         if not self.active:
             return skimage.img_as_float(img).astype(np.float32)
@@ -400,8 +412,10 @@ class ColorCorrection(darsia.BaseCorrection):
         """
         Writes the config dictionary to a json-file.
 
-        Arguments:
-            path (Path): path to the json file
+        Parameters
+        ----------
+        path : Path
+            Path to the json file.
         """
         with open(Path(path), "w") as outfile:
             json.dump(self.config, outfile, indent=4)
@@ -409,9 +423,10 @@ class ColorCorrection(darsia.BaseCorrection):
     def save(self, path: Path) -> None:
         """Save the color correction to a file.
 
-        Args:
-            path (Path): path to the file
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file.
         """
         # Make sure that the path exists
         path.parents[0].mkdir(parents=True, exist_ok=True)
@@ -428,9 +443,10 @@ class ColorCorrection(darsia.BaseCorrection):
     def load(self, path: Path) -> None:
         """Load the color correction from a file.
 
-        Args:
-            path (Path): path to the file
-
+        Parameters
+        ----------
+        path : Path
+            Path to the file.
         """
         assert path.exists(), f"File {path} does not exist."
         data = np.load(path, allow_pickle=True)
@@ -447,9 +463,10 @@ class ColorCorrection(darsia.BaseCorrection):
 
         Defines self.colorchecker.
 
-        Args:
-            base (Image or ColorChecker, optional): reference for color checker
-
+        Parameters
+        ----------
+        base : Image or ColorChecker, optional
+            Reference for color checker.
         """
         if base is None:
             # Choose a classic color checker
@@ -467,12 +484,15 @@ class ColorCorrection(darsia.BaseCorrection):
         """
         Auxiliary function to extract roi from image.
 
-        Args:
-            img (np.ndarray): input image
+        Parameters
+        ----------
+        img : np.ndarray
+            Input image.
 
-        Returns:
-            np.ndarray: restricted image
-
+        Returns
+        -------
+        np.ndarray
+            Restricted image.
         """
         row_pixels = np.sort(self.roi[:, 0])
         col_pixels = np.sort(self.roi[:, 1])

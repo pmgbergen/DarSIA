@@ -30,14 +30,18 @@ import numpy as np
 def to_matrix_indexing(axis: Union[str, int], indexing: str) -> str:
     """Conversion of single axis in Cartesian to matrix indexing.
 
-    Args:
-        axis (str or int): input axis in Cartesian indexing sense.
-        indexing (str): reference Cartesian indexing, also identifying
-            the dimension.
+    Parameters
+    ----------
+    axis : str or int
+        Input axis in Cartesian indexing sense.
+    indexing : str
+        Reference Cartesian indexing, also identifying
+        the dimension.
 
-    Returns:
-        str: converted axis in matrix indexing sense.
-
+    Returns
+    -------
+    str
+        Converted axis in matrix indexing sense.
     """
     assert indexing in "xy", "xyz"
 
@@ -64,12 +68,15 @@ def to_matrix_indexing(axis: Union[str, int], indexing: str) -> str:
 def to_cartesian_indexing(axis: Union[str, int], indexing: str) -> str:
     """Conversion of single axis in matrix indexing to Cartesian indexing.
 
-    Args:
-        axis (str or int): input axis in matrix indexing sense.
+    Parameters
+    ----------
+    axis : str or int
+        Input axis in matrix indexing sense.
 
-    Returns:
-        str: converted axis in Cartesian indexing sense.
-
+    Returns
+    -------
+    str
+        Converted axis in Cartesian indexing sense.
     """
     # Convert numeric axis description
     if isinstance(axis, int):
@@ -206,12 +213,17 @@ def matrixToCartesianIndexing(img: np.ndarray, dim: int = 2) -> np.ndarray:
     when communicating image data to conventional simulators, which use
     the Cartesian indexing.
 
-    Arguments:
-        np.ndarray: image array with matrix indexing
-        dim (int): dimension of the image, default is 2
+    Parameters
+    ----------
+    img : np.ndarray
+        Image array with matrix indexing.
+    dim : int
+        Dimension of the image, default is 2.
 
-    Returns:
-        np.ndarray: image array with Cartesian indexing
+    Returns
+    -------
+    np.ndarray
+        Image array with Cartesian indexing.
     """
     if dim == 1:
         pass
@@ -237,15 +249,17 @@ def cartesianToMatrixIndexing(img: np.ndarray) -> np.ndarray:
     """
     Reordering data indexing, converting from (x,y) to (row,col) indexing.
 
-    Inverse to matrixToCartesianIndexing.
+    Inverse of :func:`matrixToCartesianIndexing`. Assumes 2d images.
 
-    NOTE: Assumes 2d images.
+    Parameters
+    ----------
+    img : np.ndarray
+        Image array with Cartesian indexing.
 
-    Arguments:
-        np.ndarray: image array with Cartesian indexing
-
-    Returns:
-        np.ndarray: image array with matrix indexing
+    Returns
+    -------
+    np.ndarray
+        Image array with matrix indexing.
     """
     # Two operations are require: Swapping axis and flipping the vertical axis.
 

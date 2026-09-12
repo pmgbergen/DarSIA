@@ -16,16 +16,23 @@ class AxisReduction:
         self, axis: Union[str, int], dim: int = 3, mode: str = "average", **kwargs
     ) -> None:
         """
-        Args:
-            axis (int or str): numeric axis index (matrix indexing) or Cartesian axis
-            dim (int): dimension of the input image
-            mode (str): mode used in the reduction ("average", "sum", "slice")
-            kwargs: additional arguments:
-                - "slice_idx" (int): index of the slice (only for mode "slice")
+        Parameters
+        ----------
+        axis : int or str
+            Numeric axis index (matrix indexing) or Cartesian axis.
+        dim : int
+            Dimension of the input image.
+        mode : str
+            Mode used in the reduction ("average", "sum", "slice").
+        **kwargs
+            Additional arguments:
 
-        Raises:
-            NotImplementedError: if dim not 3.
+            - "slice_idx" (int): index of the slice (only for mode "slice")
 
+        Raises
+        ------
+        NotImplementedError
+            If dim not 3.
         """
 
         # Convert axis to numeric index
@@ -55,12 +62,15 @@ class AxisReduction:
     def __call__(self, img: darsia.Image) -> darsia.Image:
         """Reduction routine.
 
-        Args:
-            img (Image): nd image.
+        Parameters
+        ----------
+        img : Image
+            Nd image.
 
-        Returns:
-            Image: (n-1)d image.
-
+        Returns
+        -------
+        Image
+            (n-1)d image.
         """
         # Manage update of indexing
         original_dim = img.space_dim
@@ -142,17 +152,24 @@ def reduce_axis(
 ) -> darsia.Image:
     """Utility function, essentially wrapping AxisReduction as a method.
 
-    Args:
-        img (Image): nd image.
-        axis (int or str): numeric index (corresponding to matrix indexing) or
-            Cartesian axis
-        mode (str): mode used in the reduction ("sum", "scaled", "slice")
-        kwargs: additional arguments:
-            - "slice_idx" (int): index of the slice (only for mode "slice")
+    Parameters
+    ----------
+    image : Image
+        Nd image.
+    axis : int or str
+        Numeric index (corresponding to matrix indexing) or
+        Cartesian axis.
+    mode : str
+        Mode used in the reduction ("sum", "scaled", "slice").
+    **kwargs
+        Additional arguments:
 
-    Returns:
-        Image: (n-1)d image.
+        - "slice_idx" (int): index of the slice (only for mode "slice")
 
+    Returns
+    -------
+    Image
+        (n-1)d image.
     """
     dim = image.space_dim
     reduction = AxisReduction(axis, dim, mode, **kwargs)
@@ -164,14 +181,19 @@ def extrude_along_axis(img: darsia.Image, height: float, num: int) -> darsia.Ima
 
     NOTE: For now the extrusion is performed along the z axis.
 
-    Args:
-        img (darsia.Image): 2d image
-        height (float): height of the extrusion
-        num (int): number of pixels per extruded axis
+    Parameters
+    ----------
+    img : darsia.Image
+        2d image.
+    height : float
+        Height of the extrusion.
+    num : int
+        Number of pixels per extruded axis.
 
-    Returns:
-        darsia.Image: 3d image
-
+    Returns
+    -------
+    darsia.Image
+        3d image.
     """
     # Fetch data and extrude along 0-axis (z-axis)
     arr = img.img

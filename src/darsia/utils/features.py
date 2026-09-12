@@ -102,19 +102,27 @@ class FeatureDetection:
         """
         Match two sets of features via a homography.
 
-        Args:
-            features_src (tuple): source features given as tuple of keypoints and descriptors
-            features_dst (tuple): destination features given as tuple of keypoints and
-                descriptors
-            keep_percent (float): number between 0 and 1 indicating how many features should
-                be considered for finding a match; 0 denotes none, while 1 denotes all.
-            return_matches (bool): flag controlling whether also the matches are returned,
-                which could e.g. be used for plotting
+        Parameters
+        ----------
+        features_src : tuple
+            Source features given as tuple of keypoints and descriptors.
+        features_dst : tuple
+            Destination features given as tuple of keypoints and
+            descriptors.
+        keep_percent : float
+            Number between 0 and 1 indicating how many features should
+            be considered for finding a match; 0 denotes none, while 1 denotes all.
+        return_matches : bool
+            Flag controlling whether also the matches are returned,
+            which could e.g. be used for plotting.
 
-        Returns:
-            np.ndarray: homography matrix matching the features
-            bool: flag indicating whether procedure has been successful
-            matches (optional): matches between features # TODO type
+        Returns
+        -------
+        np.ndarray
+            Homography matrix matching the features.
+        bool
+            Flag indicating whether procedure has been successful.
+            Matches (optional): matches between features # TODO type.
         """
         # Unpack features (keypoints and descriptors)
         kps_src, descs_src = features_src

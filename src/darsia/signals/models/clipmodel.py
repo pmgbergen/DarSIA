@@ -20,14 +20,17 @@ class ClipModel(darsia.Model):
         """
         Clipping model initialization.
 
-        Args:
-            min_value (float | None): lower clip value
-            max_value (float | None): upper clip value
-            key (str): additional key (prefix) for kwargs
-            kwargs (keyword arguments):
-                key + '_min_value': lower clip value
-                key + '_max_value': upper clip value
-
+        Parameters
+        ----------
+        min_value : float | None
+            Lower clip value.
+        max_value : float | None
+            Upper clip value.
+        key : str
+            Additional key (prefix) for kwargs.
+        **kwargs : keyword arguments
+            Key + '_min_value': lower clip value
+            key + '_max_value': upper clip value.
         """
         if key is None:
             self._min_value = min_value
@@ -47,10 +50,12 @@ class ClipModel(darsia.Model):
         """
         Update of internal parameters.
 
-        Args:
-            min_value (float, optional): lower clip value
-            max_value (float, optional): upper clip value
-
+        Parameters
+        ----------
+        min_value : float, optional
+            Lower clip value.
+        max_value : float, optional
+            Upper clip value.
         """
         if min_value is not None:
             self._min_value = min_value
@@ -67,9 +72,10 @@ class ClipModel(darsia.Model):
         Short cut to update scaling and offset parameters using a
         general function signature.
 
-        Args:
-            parameters (np.ndarray): 2-array containing min and max values.
-
+        Parameters
+        ----------
+        parameters : np.ndarray
+            2-array containing min and max values.
         """
         if (
             dofs is None
@@ -88,12 +94,15 @@ class ClipModel(darsia.Model):
         """
         Application of clipping.
 
-        Args:
-            img (np.ndarray | Image): image
+        Parameters
+        ----------
+        img : np.ndarray | Image
+            Image.
 
-        Returns:
-            np.ndarray | Image: converted signal; output type is the same as input type
-
+        Returns
+        -------
+        np.ndarray | Image
+            Converted signal; output type is the same as input type.
         """
 
         if isinstance(img, np.ndarray):

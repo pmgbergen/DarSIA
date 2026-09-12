@@ -18,10 +18,12 @@ class Flash:
     def __init__(self, s_g_max: float = 1, s_g_cutoff: float = 0) -> None:
         """Constructor.
 
-        Args:
-            s_g_max (float): maximum saturation in gas phase
-            s_g_cutoff (float): cutoff saturation in gas phase
-
+        Parameters
+        ----------
+        s_g_max : float
+            Maximum saturation in gas phase.
+        s_g_cutoff : float
+            Cutoff saturation in gas phase.
         """
         self.s_g_max = s_g_max
         """Maximum saturation in gas phase."""
@@ -33,14 +35,18 @@ class Flash:
     ) -> tuple[darsia.Image, darsia.Image, darsia.Image, darsia.Image]:
         """Flash calculation.
 
-        Args:
-            c_g (Image): numerical concentration in gas phase
-            c_aq (Image): numerical concentration in aqueous phase
+        Parameters
+        ----------
+        c_g : Image
+            Numerical concentration in gas phase.
+        c_aq : Image
+            Numerical concentration in aqueous phase.
 
-        Returns:
-            tuple: volumetric concentration in gas phase, volumetric concentration in aqueous
-                phase, saturation in gas phase, saturation in aqueous phase
-
+        Returns
+        -------
+        tuple
+            Volumetric concentration in gas phase, volumetric concentration in aqueous
+            phase, saturation in gas phase, saturation in aqueous phase.
         """
 
         if np.max(c_g.img) > 1 + 1e-6:
@@ -95,14 +101,18 @@ class AdvancedFlash(Flash):
     ) -> tuple[darsia.Image, darsia.Image, darsia.Image, darsia.Image]:
         """Flash calculation with restoration.
 
-        Args:
-            c_g (Image): numerical concentration in gas phase
-            c_aq (Image): numerical concentration in aqueous phase
+        Parameters
+        ----------
+        c_g : Image
+            Numerical concentration in gas phase.
+        c_aq : Image
+            Numerical concentration in aqueous phase.
 
-        Returns:
-            tuple: volumetric concentration in gas phase, volumetric concentration in aqueous
-                phase, saturation in gas phase, saturation in aqueous phase
-
+        Returns
+        -------
+        tuple
+            Volumetric concentration in gas phase, volumetric concentration in aqueous
+            phase, saturation in gas phase, saturation in aqueous phase.
         """
         # Flash
         chi_g, chi_aq, s_g, s_aq = super().__call__(c_g, c_aq)
@@ -150,12 +160,16 @@ class SimpleFlash:
     ) -> None:
         """Update of internal parameters.
 
-        Args:
-            min_value_aq (float | None): Minimum value for aqueous phase.
-            max_value_aq (float | None): Maximum value for aqueous phase.
-            min_value_g (float | None): Minimum value for gas phase.
-            max_value_g (float | None): Maximum value for gas phase.
-
+        Parameters
+        ----------
+        min_value_aq : float | None
+            Minimum value for aqueous phase.
+        max_value_aq : float | None
+            Maximum value for aqueous phase.
+        min_value_g : float | None
+            Minimum value for gas phase.
+        max_value_g : float | None
+            Maximum value for gas phase.
         """
         self.min_value_aq = min_value_aq or self.min_value_aq
         self.max_value_aq = max_value_aq or self.max_value_aq
@@ -166,12 +180,15 @@ class SimpleFlash:
     def __call__(self, signal: darsia.Image) -> tuple[darsia.Image, darsia.Image]:
         """Simple flash calculation.
 
-        Args:
-            signal (Image): numerical signal
+        Parameters
+        ----------
+        signal : Image
+            Numerical signal.
 
-        Returns:
-            tuple: volumetric concentration in aqueous phase, saturation in gas phase
-
+        Returns
+        -------
+        tuple
+            Volumetric concentration in aqueous phase, saturation in gas phase.
         """
         # if np.isclose(self.cut_off, 0):
         #    c_aq = darsia.full_like(signal, 0.0)
@@ -216,9 +233,10 @@ class SimpleFlash:
     def to_dict(self) -> dict:
         """Convert the SimpleFlash parameters to a dictionary.
 
-        Returns:
-            dict: Dictionary representation of the SimpleFlash parameters.
-
+        Returns
+        -------
+        dict
+            Dictionary representation of the SimpleFlash parameters.
         """
         return {
             "min_value_aq": self.min_value_aq,
@@ -231,9 +249,10 @@ class SimpleFlash:
     def from_dict(cls, data: dict) -> "SimpleFlash":
         """Create a SimpleFlash from a dictionary.
 
-        Args:
-            data (dict): Dictionary representation of the SimpleFlash parameters.
-
+        Parameters
+        ----------
+        data : dict
+            Dictionary representation of the SimpleFlash parameters.
         """
         return cls(
             min_value_aq=data["min_value_aq"],
@@ -245,9 +264,10 @@ class SimpleFlash:
     def save(self, path: Path) -> None:
         """Save the SimpleFlash parameters to a file.
 
-        Args:
-            path (Path): The path to the file where the parameters will be saved.
-
+        Parameters
+        ----------
+        path : Path
+            The path to the file where the parameters will be saved.
         """
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path.with_suffix(".json"), "w") as f:
@@ -258,12 +278,15 @@ class SimpleFlash:
     def load(cls, path: Path) -> "SimpleFlash":
         """Load the SimpleFlash parameters from a file.
 
-        Args:
-            path (Path): The path to the file from which the parameters will be loaded.
+        Parameters
+        ----------
+        path : Path
+            The path to the file from which the parameters will be loaded.
 
-        Returns:
-            SimpleFlash: The loaded SimpleFlash instance.
-
+        Returns
+        -------
+        SimpleFlash
+            The loaded SimpleFlash instance.
         """
         with open(path.with_suffix(".json"), "r") as f:
             data = json.load(f)

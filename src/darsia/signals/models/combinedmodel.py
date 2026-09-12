@@ -30,15 +30,20 @@ class CombinedModel(darsia.Model):
         )
 
     def __call__(self, img: np.ndarray, *args) -> np.ndarray:
-        """
-        concatenate the application of the models
+        """Concatenate the application of the models.
 
-        args:
-            img (np.ndarray): input image
+        Parameters
+        ----------
+        img : np.ndarray
+            Input image.
+        *args
+            Additional positional arguments, distributed across the models
+            according to each model's ``__call__`` signature.
 
-        returns:
-            np.ndarray: combined model response
-
+        Returns
+        -------
+        np.ndarray
+            Combined model response.
         """
         result = img.copy()
         for model in self.models:
@@ -62,10 +67,13 @@ class CombinedModel(darsia.Model):
         """
         Wrapper of update routines of single models.
 
-        Args:
-            parameters (np.ndarray): parameter array
-            pos_model (int): position index addressing a single model.
-
+        Parameters
+        ----------
+        parameters : np.ndarray
+            Parameter array.
+        dofs : list of tuple[int, str] or Literal["all"], optional
+            Degrees of freedom to update, as (model index, parameter name)
+            pairs. If None or "all" (default), all models are updated in full.
         """
         # Cache a copy of the parameters
         parameters_cache = parameters.copy()
@@ -87,11 +95,14 @@ class CombinedModel(darsia.Model):
     def __getitem__(self, pos_model: int) -> darsia.Model:
         """Access single models.
 
-        Args:
-            pos_model (int): position index addressing a single model.
+        Parameters
+        ----------
+        pos_model : int
+            Position index addressing a single model.
 
-        Returns:
-            darsia.Model: single model
-
+        Returns
+        -------
+        darsia.Model
+            Single model.
         """
         return self.models[pos_model]

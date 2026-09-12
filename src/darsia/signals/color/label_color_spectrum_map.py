@@ -13,10 +13,11 @@ class LabelColorSpectrumMap(dict[int, darsia.ColorSpectrum]):
     def __init__(self, color_spectra: dict[int, darsia.ColorSpectrum] | None = None):
         """Initialize the LabelColorSpectrumMap.
 
-        Args:
-            color_spectra (dict[int, darsia.ColorSpectrum], optional): Initial mapping of
-                labels to color spectra.
-
+        Parameters
+        ----------
+        color_spectra : dict[int, darsia.ColorSpectrum], optional
+            Initial mapping of
+            labels to color spectra.
         """
         super().__init__(color_spectra or {})
 
@@ -37,9 +38,10 @@ class LabelColorSpectrumMap(dict[int, darsia.ColorSpectrum]):
 
         Stores each color spectrum in a separate file named `color_spectrum_{label}.json`.
 
-        Args:
-            directory (darsia.Path): The directory to save the color spectrum files.
-
+        Parameters
+        ----------
+        directory : darsia.Path
+            The directory to save the color spectrum files.
         """
         directory.mkdir(parents=True, exist_ok=True)
         for label, color_spectrum in self.items():
@@ -52,9 +54,10 @@ class LabelColorSpectrumMap(dict[int, darsia.ColorSpectrum]):
 
         Identifies files named `color_spectrum_{label}.json` and loads them.
 
-        Args:
-            directory (darsia.Path): The directory containing color spectrum files.
-
+        Parameters
+        ----------
+        directory : darsia.Path
+            The directory containing color spectrum files.
         """
         color_spectra = {}
         for file in directory.glob("color_spectrum_*.json"):

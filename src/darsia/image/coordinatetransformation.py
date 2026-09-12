@@ -47,13 +47,18 @@ class CoordinateTransformation:
     ) -> None:
         """Constructor.
 
-        Args:
-            coordinatesystem_src (CoordinateSystem): source coordinate system
-            coordinatesystem_dst (CoordinateSystem): target coordinate system
-            pts_src (CoordinateArray, VoxelArray, VoxelCenterArray): source points
-            pts_dst (CoordinateArray, VoxelArray, VoxelCenterArray): target points
-            fit_options (dict): options for the affine fit
-
+        Parameters
+        ----------
+        coordinatesystem_src : CoordinateSystem
+            Source coordinate system.
+        coordinatesystem_dst : CoordinateSystem
+            Target coordinate system.
+        pts_src : CoordinateArray, VoxelArray, VoxelCenterArray
+            Source points.
+        pts_dst : CoordinateArray, VoxelArray, VoxelCenterArray
+            Target points.
+        fit_options : dict
+            Options for the affine fit.
         """
         # Cache coordinate systems
         self.coordinatesystem_src = coordinatesystem_src
@@ -83,13 +88,17 @@ class CoordinateTransformation:
         NOTE: Only supported for 2d.
         NOTE: Requires extra dependency.
 
-        Returns:
-            tuple of slices: voxel intervals ready to be used to extract subregions.
+        Returns
+        -------
+        tuple of slices
+            Voxel intervals ready to be used to extract subregions.
 
-        Raises:
-            NotImplementedError: if dimension not 2
-            ImportError: if Python package largestinteriorrectangle not installed.
-
+        Raises
+        ------
+        NotImplementedError
+            If dimension not 2.
+        ImportError
+            If Python package largestinteriorrectangle not installed.
         """
 
         if self.dim not in [2, 3]:
@@ -186,12 +195,15 @@ class CoordinateTransformation:
     def correct_metadata(self, image: darsia.Image) -> dict:
         """Correction routine of metadata.
 
-        Args:
-            image (darsia.Image): image corresponding to some source image
+        Parameters
+        ----------
+        image : darsia.Image
+            Image corresponding to some source image.
 
-        Returns:
-            dict: metadata corresponding to a destination image
-
+        Returns
+        -------
+        dict
+            Metadata corresponding to a destination image.
         """
         # Fetch src meta
         meta_src = image.metadata()
@@ -210,12 +222,15 @@ class CoordinateTransformation:
     def __call__(self, image: darsia.Image) -> darsia.Image:
         """Main routine, transforming an image and its meta data.
 
-        Args:
-            image (darsia.Image): input image
+        Parameters
+        ----------
+        image : darsia.Image
+            Input image.
 
-        Returns:
-            darsia.Image: transformed image
-
+        Returns
+        -------
+        darsia.Image
+            Transformed image.
         """
         # Transform the image data (without touching the meta)
         transformed_image_with_original_meta = self.affine_correction(

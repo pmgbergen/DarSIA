@@ -16,16 +16,22 @@ def bounding_box(
     """
     Determine bounding box for a set of given coordinates.
 
-    Args:
-        voxels (VoxelArray): voxel array of size N x dim, using matrix indexing in 2d.
-        padding (int): padding to create a slightly larger bounding box. Might
-            be of interest if the area that is prescribed in coords cover slightly less than
-            strictly needed. Default is 0.
-        max_size (list or tuple, optional): max size of bounding box in each dimension.
+    Parameters
+    ----------
+    voxels : VoxelArray
+        Voxel array of size N x dim, using matrix indexing in 2d.
+    padding : int
+        Padding to create a slightly larger bounding box. Might
+        be of interest if the area that is prescribed in coords cover slightly less than
+        strictly needed. Default is 0.
+    max_size : list or tuple, optional
+        Max size of bounding box in each dimension.
 
-    Returns:
-        tuple of slices: slices with ranges from min to max value
-            per dimension.
+    Returns
+    -------
+    tuple of slices
+        Slices with ranges from min to max value
+        per dimension.
     """
     bounding_box: tuple[slice, ...] = ()
 
@@ -47,16 +53,17 @@ def bounding_box(
 
 def bounding_box_inverse(bounding_box: tuple) -> darsia.VoxelArray:
     """
-    Returns an array that would produce the same bounding box from the bounding_box()
-    function above.
+    Inverse of :func:`bounding_box`.
 
-    Args:
-        tuple of slices: slices with ranges from min to max value
-            per dimension.
+    Parameters
+    ----------
+    bounding_box : tuple
+        Tuple of slices with per-dimension ranges from min to max value.
 
-    Returns:
-        voxels (VoxelArray): voxel array of size N x dim, using matrix indexing in 2d.
-
+    Returns
+    -------
+    darsia.VoxelArray
+        Voxel array of size ``N x dim``, using matrix indexing in 2d.
     """
     voxels = darsia.VoxelArray(
         [
@@ -75,13 +82,16 @@ def perimeter(box: Union[tuple, np.ndarray]) -> Union[int, float]:
     Returns the perimeter of a box. Accepts both tuples of slices
     as well as arrays of coordinates as input.
 
-    Args:
-        box (tuple of slices or np.ndarray): definition of a box,
-            either as tuple of slices, or coordinates (can also
-            use metric units)
+    Parameters
+    ----------
+    box : tuple of slices or np.ndarray
+        Definition of a box,
+        either as tuple of slices, or coordinates (can also
+        use metric units).
 
-    Returns:
-        float or int (depending on input): perimeter
+    Returns
+    -------
+        Float or int (depending on input): perimeter.
     """
     # Convert to array
     box = box if isinstance(box, np.ndarray) else bounding_box_inverse(box)
@@ -103,17 +113,23 @@ def random_patches(
 ) -> Optional[list[tuple[slice]]]:
     """Utility to extract random patches from a mask.
 
-    Args:
-        mask (np.ndarray): binary mask to extract patches from.
-        width (int): width of the patches.
-        num_patches (int): number of patches to extract.
+    Parameters
+    ----------
+    mask : np.ndarray
+        Binary mask to extract patches from.
+    width : int
+        Width of the patches.
+    num_patches : int
+        Number of patches to extract.
 
-    Returns:
-        list of tuples: patches as slices.
-        None: if the mask is too small to extract patches.
+    Returns
+    -------
+    list of tuples
+        Patches as slices.
+    None
+        If the mask is too small to extract patches.
 
     NOTE: The function utilizes randomness. For reproducibility, the seed is fixed.
-
     """
     # Fix seed for reproducibility
     np.random.seed(42)

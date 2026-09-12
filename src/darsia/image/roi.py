@@ -21,11 +21,12 @@ class ROI:
     ) -> None:
         """Initialize the ROI with a list of coordinates.
 
-        Args:
-            coordinates (list[darsia.Coordinate] | darsia.CoordinateArray): Coordinates
-                defining the polygon. If first and last coordinates are not the same,
-                the first coordinate will be appended to the end to close the polygon.
-
+        Parameters
+        ----------
+        coordinates : list[darsia.Coordinate] | darsia.CoordinateArray
+            Coordinates
+            defining the polygon. If first and last coordinates are not the same,
+            the first coordinate will be appended to the end to close the polygon.
         """
         # Check type of coordinates
         assert all(

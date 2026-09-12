@@ -24,46 +24,55 @@ class SegmentationComparison:
 
     Routines for comparing segmentations and creating visualizations of the comparison.
 
-    Attributes:
-        number_of_segmented_images (int): Number of segmented images that one compares
-        segmentation_names (list[str]): list of names for each of the segmentations.
-            Will affect legends in plots.
-        components (list): list of values the different (active) components in the
-            segmentations. As of now, up to two are allowed for and the default values
-            are 1 and 2.
-        component_names (list[str]): list of names for each of the components. Will
-            be visual in legends.
-        gray_colors (np.ndarray): array of base gray colors (in RGB space) that accounts
-            for different overlapping segmentations of different components.
-        colors (np.ndarray): color values for the different unique segmentations.
-            Default is created from a colormap (matplotlib) depending on the amount of
-            present segmentations.
-        color_dictionary (dict): dictionary relating all of the different colors to
-            different overlapping segmentation situations.
-
+    Attributes
+    ----------
+    number_of_segmented_images : int
+        Number of segmented images that one compares.
+    segmentation_names : list[str]
+        List of names for each of the segmentations.
+        Will affect legends in plots.
+    components : list
+        List of values the different (active) components in the
+        segmentations. As of now, up to two are allowed for and the default values
+        are 1 and 2.
+    component_names : list[str]
+        List of names for each of the components. Will
+        be visual in legends.
+    gray_colors : np.ndarray
+        Array of base gray colors (in RGB space) that accounts
+        for different overlapping segmentations of different components.
+    colors : np.ndarray
+        Color values for the different unique segmentations.
+        Default is created from a colormap (matplotlib) depending on the amount of
+        present segmentations.
+    color_dictionary : dict
+        Dictionary relating all of the different colors to
+        different overlapping segmentation situations.
     """
 
     def __init__(self, number_of_segmented_images: int = 2, **kwargs) -> None:
         """
         Constructor of compare segmentations class.
 
-        Args:
-            number_of_segmented_images (int): Number of segmentations to be compared
+        Parameters
+        ----------
+        number_of_segmented_images : int
+            Number of segmentations to be compared.
             Optional keyword arguments (kwargs):
-                segmentation_names (list): list of names for the different segmented
-                    images. So far only used in legends and color dictionary.
-                components (list): list of the different components that are
-                    considered in the segmented images. So far only two are allowed
-                    to be provided.
-                component_names (list):  list of names for the different components.
-                    So far only used in legends, and color dictionary.
-                gray_colors (np.ndarray): array of three different scales of
-                    gray (in RGB format), one for each of the different combinations of
-                    components in the segmentations.
-                colors (np.ndarray): Array of different colors that should
-                    indicate unique components in each segmentation.
-                light_scaling (float): Indicate how much lighter the second
-                    component should be scaled in its unique color.
+            segmentation_names (list): list of names for the different segmented
+            images. So far only used in legends and color dictionary.
+            components (list): list of the different components that are
+            considered in the segmented images. So far only two are allowed
+            to be provided.
+            component_names (list):  list of names for the different components.
+            So far only used in legends, and color dictionary.
+            gray_colors (np.ndarray): array of three different scales of
+            gray (in RGB format), one for each of the different combinations of
+            components in the segmentations.
+            colors (np.ndarray): Array of different colors that should
+            indicate unique components in each segmentation.
+            light_scaling (float): Indicate how much lighter the second
+            component should be scaled in its unique color.
         """
 
         self.number_of_segmented_images = number_of_segmented_images
@@ -142,9 +151,9 @@ class SegmentationComparison:
         if np.all(self.gray_colors[0] == self.gray_colors[1]) and np.all(
             self.gray_colors[1] == self.gray_colors[2]
         ):
-            self.color_dictionary[f"Segmentations overlap"] = self.gray_colors[0]
-            self.color_dictionary[f"Segmentations overlap"] = self.gray_colors[1]
-            self.color_dictionary[f"Segmentations overlap"] = self.gray_colors[2]
+            self.color_dictionary["Segmentations overlap"] = self.gray_colors[0]
+            self.color_dictionary["Segmentations overlap"] = self.gray_colors[1]
+            self.color_dictionary["Segmentations overlap"] = self.gray_colors[2]
         else:
             self.color_dictionary[
                 f"Overlapping segmentations in {self.component_names[0]}"
@@ -153,7 +162,7 @@ class SegmentationComparison:
                 f"Overlapping segmentations in {self.component_names[1]}"
             ] = self.gray_colors[1]
             self.color_dictionary[
-                f"Segmentations overlap with different components."
+                "Segmentations overlap with different components."
             ] = self.gray_colors[2]
 
     def __call__(
@@ -165,17 +174,18 @@ class SegmentationComparison:
         """
         Comparison of segmentations.
 
-        Args:
-            segmentations (asterisk argument): Allows to provide an arbitraty
-                number of segmented numpy arrays or da.Images of integers to be compared
-            Optional keyword arguments (kwargs):
-                plot_result (bool): plots the result with matplotlib if True,
-                    default is False.
-                roi (Union[tuple, np.ndarray]): roi where the segmentations should be
-                    compared, default is the maximal roi that fits in all segmentations.
-                    Should be provided in pixel coordinates using matrix indexing, either
-                    as a tuple of slices, or an array of corner points.
-
+        Parameters
+        ----------
+        *segmentations
+            Arbitrary number of segmented numpy arrays or darsia.Images of integers
+            to be compared.
+        plot_result : bool
+            Plots the result with matplotlib if True; default is False.
+        **kwargs
+            ROI (tuple or np.ndarray) where the segmentations should be compared;
+            default is the maximal ROI that fits in all segmentations. Should be
+            provided in pixel coordinates using matrix indexing, either as a
+            tuple of slices, or an array of corner points.
         """
 
         # Define number of segmentations
@@ -359,13 +369,18 @@ class SegmentationComparison:
         """
         Returns a list of all possible combinations of segmentations.
 
-        Args:
-            num_segmentations (int, optional): Number of segmentations. Defaults to 5.
-            *segmentation_numbers (tuple[int, ...]): The segmentation numbers that
-                should be included in the combinations. Defaults to ().
+        Parameters
+        ----------
+        *segmentation_numbers : tuple[int, ...]
+            The segmentation numbers that
+            should be included in the combinations. Defaults to ().
+        num_segmentations : int, optional
+            Number of segmentations. Defaults to 5.
 
-        Returns:
-            list[list[int]]: List of all possible combinations of segmentations.
+        Returns
+        -------
+        list[list[int]]
+            List of all possible combinations of segmentations.
         """
 
         # Create an empty list of all possible combinations of segmentations
@@ -419,12 +434,15 @@ class SegmentationComparison:
         matplotlib.pyplot's imshow and prints a legend with colors from the image
         and dictionary
 
-        Args:
-            image (np.ndarray): image with comparison of segmentations.
-            figure_name (str): Figure name.
-            legend_anchor (tuple): tuple of coordinates (x,y) in Euclidean
-                style that determines legend anchor.
-
+        Parameters
+        ----------
+        image : np.ndarray
+            Image with comparison of segmentations.
+        figure_name : str
+            Figure name.
+        legend_anchor : tuple
+            Tuple of coordinates (x,y) in Euclidean
+            style that determines legend anchor.
         """
         plt.figure(figure_name)
         plt.imshow(image)
@@ -442,14 +460,18 @@ class SegmentationComparison:
         Function that extracts information from the color dictionary and creates
         legend entries depending on provided colors.
 
-        Args:
-            unique_colors (np.ndarray): numpy array of color values whose
-                information should be extracted from the color dictionary.
-            custom_legend_text (Optional[list[str]]): in case it is desirable
-                to customize legend.
+        Parameters
+        ----------
+        unique_colors : np.ndarray
+            Numpy array of color values whose
+            information should be extracted from the color dictionary.
+        custom_legend_text : Optional[list[str]]
+            In case it is desirable
+            to customize legend.
 
-        Returns:
-            patches (list): patches suitable for legend in matplotlib.pyplot.
+        Returns
+        -------
+            Patches (list): patches suitable for legend in matplotlib.pyplot.
         """
 
         # create a patch (proxy artist) for every color
@@ -475,11 +497,14 @@ class SegmentationComparison:
         Given an image it extracts the unique color values (except background color)
         and returns them as an array.
 
-        Args:
-            image (np.ndarray): image array.
+        Parameters
+        ----------
+        image : np.ndarray
+            Image array.
 
-        Returns:
-            array of unique colors in input image.
+        Returns
+        -------
+            Array of unique colors in input image.
         """
         nx, ny, _ = image.shape
         flat_im = image.reshape((nx * ny, 3))
@@ -499,10 +524,13 @@ class SegmentationComparison:
         Function for sorting an array of colors and setting gray colors
         to the end of the array.
 
-        Args:
-            colors (np.ndarray): array of colors values.
+        Parameters
+        ----------
+        colors : np.ndarray
+            Array of colors values.
 
-        Returns:
+        Returns
+        -------
             Sorted array of color values.
         """
         sorted_colors = np.zeros_like(colors)
@@ -528,18 +556,24 @@ class SegmentationComparison:
         Routine for post processing the image, removing background,
         drawing contours and applying opacity.
 
-        Args:
-            image (np.ndarray): image array with comparison of segmentations.
-            unique_colors (np.ndarray): array of unique color values found
-                in image. If it is not provided it will find them
-                (but this takes some extra seconds).
-            opacity (float): opacity value for the colors in the image.
-            contour_thickness (int): thickness of the contours in the
-                return image.
+        Parameters
+        ----------
+        image : np.ndarray
+            Image array with comparison of segmentations.
+        unique_colors : np.ndarray
+            Array of unique color values found
+            in image. If it is not provided it will find them
+            (but this takes some extra seconds).
+        opacity : float
+            Opacity value for the colors in the image.
+        contour_thickness : int
+            Thickness of the contours in the
+            return image.
 
-        Returns:
-            processed image with drawn contours, opacity in the interior
-            of the distinct colors, and a removed background.
+        Returns
+        -------
+            Processed image with drawn contours, opacity in the interior.
+            Of the distinct colors, and a removed background.
         """
 
         # Gray version of image
@@ -593,17 +627,25 @@ class SegmentationComparison:
         """
         Plots a comparison image overlayed a base image using matplotlib.
 
-        Args:
-            comparison_image (np.ndarray): The image containing comparison of segmentations.
-            base_image (np.ndarray): The base image that is to be overlayed.
-            figure_name (str): Figure name.
-            opacity (float): Tha opacity value for the comparison image.
-            legend_anchor (tuple): tuple of coordinates (x,y) in euclidean style that
-                determines legend anchor.
-            custom_legend (Optional[list[mpatches.Patch]]): in case it is desirable to create
-                a custom legend.
-            custom_legend_text (Optional[list[str]]): in case it is desirable
-                to customize legend.
+        Parameters
+        ----------
+        comparison_image : np.ndarray
+            The image containing comparison of segmentations.
+        base_image : np.ndarray
+            The base image that is to be overlayed.
+        figure_name : str
+            Figure name.
+        opacity : float
+            Tha opacity value for the comparison image.
+        legend_anchor : tuple
+            Tuple of coordinates (x,y) in euclidean style that
+            determines legend anchor.
+        custom_legend : Optional[list[mpatches.Patch]]
+            In case it is desirable to create
+            a custom legend.
+        custom_legend_text : Optional[list[str]]
+            In case it is desirable
+            to customize legend.
         """
 
         # Get unique colors and sort them
@@ -650,15 +692,20 @@ class SegmentationComparison:
         """
         Returns color fractions.
 
-        Arguments:
-            comparison_image (np.ndarray): Comparison of segmentations
-            colors (np.ndarray): array of color values in the comparison image
-            depth_map (np.ndarray, optional): depth map for the image
+        Parameters
+        ----------
+        comparison_image : np.ndarray
+            Comparison of segmentations.
+        colors : np.ndarray
+            Array of color values in the comparison image.
+        depth_map : np.ndarray, optional
+            Depth map for the image.
 
-        Returns:
+        Returns
+        -------
             (dict): Dictionary relating each color to the fraction of
-                the number of pixels that the color occupies and the
-                total number of occupied pixels in the image.
+            the number of pixels that the color occupies and the
+            total number of occupied pixels in the image.
         """
         # Create empty list for color fractions
         fractions: list = []
@@ -697,17 +744,19 @@ class SegmentationComparison:
 
     def _get_key(self, val, dictionary: dict):
         """
-        Returns key from dictionary and provided value.
+        Return the key of ``dictionary`` whose value equals ``val``.
 
-        Arguments:
-            val: value in the dictionary
-            dictionary (dict): dictionary where key matching
-                to val is searched for
+        Parameters
+        ----------
+        val : object
+            Value in the dictionary.
+        dictionary : dict
+            Dictionary in which the key matching ``val`` is searched for.
 
-        returns
-            key in dictionary
-
-
+        Returns
+        -------
+        object
+            The matching key.
         """
         for key, value in dictionary.items():
             if np.array_equal(val, value):

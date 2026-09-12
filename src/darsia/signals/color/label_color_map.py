@@ -28,9 +28,10 @@ class LabelColorMap:
     def load(self, path: Path) -> None:
         """Load base colors from a csv file.
 
-        Args:
-            path (Path): The path to the csv file.
-
+        Parameters
+        ----------
+        path : Path
+            The path to the csv file.
         """
         df = pd.read_csv(path)
         # Expect columns: label, r, g, b

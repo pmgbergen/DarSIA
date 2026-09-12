@@ -21,11 +21,13 @@ class TranslationEstimator:
     def __init__(self, max_features: int = 200, tol: float = 0.05, keep_percent=0.1):
         """Setup of user-defined tuning parameters.
 
-        Args:
-            max_features (int): feature detection parameter
-            tol (float): tolerance used to detect whether matching transformation is a
-                translation
-
+        Parameters
+        ----------
+        max_features : int
+            Feature detection parameter.
+        tol : float
+            Tolerance used to detect whether matching transformation is a
+            translation.
         """
         self._max_features = max_features
         self._keep_percent = keep_percent
@@ -114,18 +116,25 @@ class TranslationEstimator:
     ) -> np.ndarray:
         """Align two images through feature matching in provided ROIs.
 
-        Args:
-            img_src (np.ndarray or darsia.Image): source image
-            img_dst (np.ndarray or darsia.Image): destination image
-            roi_src (tuple of slices): region of interested associated to the source image
-            roi_dst (tuple of slices): region of interested associated to the destination image
-                translation
-            plot_matches (bool): flag controlling whether the matching features are plotted;
-                useful for debugging; default value is False
+        Parameters
+        ----------
+        img_src : np.ndarray or darsia.Image
+            Source image.
+        img_dst : np.ndarray or darsia.Image
+            Destination image.
+        roi_src : tuple of slices
+            Region of interested associated to the source image.
+        roi_dst : tuple of slices
+            Region of interested associated to the destination image
+            translation.
+        plot_matches : bool
+            Flag controlling whether the matching features are plotted;
+            useful for debugging; default value is False.
 
-        Returns:
-            np.ndarray, optional: aligned source image, if input of type array
-
+        Returns
+        -------
+        np.ndarray, optional
+            Aligned source image, if input of type array.
         """
         # Determine effective translation
         if isinstance(img_src, np.ndarray) and isinstance(img_dst, np.ndarray):
@@ -149,18 +158,25 @@ class TranslationEstimator:
     ) -> np.ndarray:
         """Align two images through feature matching in provided ROIs.
 
-        Args:
-            img_src (np.ndarray): source image
-            img_dst (np.ndarray): destination image
-            roi_src (tuple of slices): region of interested associated to the source image
-            roi_dst (tuple of slices): region of interested associated to the destination image
-                translation
-            plot_matches (bool): flag controlling whether the matching features are plotted;
-                useful for debugging; default value is False
+        Parameters
+        ----------
+        img_src : np.ndarray
+            Source image.
+        img_dst : np.ndarray
+            Destination image.
+        roi_src : tuple of slices
+            Region of interested associated to the source image.
+        roi_dst : tuple of slices
+            Region of interested associated to the destination image
+            translation.
+        plot_matches : bool
+            Flag controlling whether the matching features are plotted;
+            useful for debugging; default value is False.
 
-        Returns:
-            np.ndarray: aligned source image
-
+        Returns
+        -------
+        np.ndarray
+            Aligned source image.
         """
         # Determine effective translation
         translation, intact_translation = self.find_effective_translation(
@@ -185,15 +201,20 @@ class TranslationEstimator:
     ) -> np.ndarray:
         """Align two images through feature matching in provided ROIs.
 
-        Args:
-            img_src (image): source image, which will be modified and aligned
-            img_dst (image): destination image
-            roi_src (tuple of slices): region of interested associated to the source image
-            roi_dst (tuple of slices): region of interested associated to the destination image
-                translation
-            plot_matches (bool): flag controlling whether the matching features are plotted;
-                useful for debugging; default value is False
-
+        Parameters
+        ----------
+        img_src : image
+            Source image, which will be modified and aligned.
+        img_dst : image
+            Destination image.
+        roi_src : tuple of slices
+            Region of interested associated to the source image.
+        roi_dst : tuple of slices
+            Region of interested associated to the destination image
+            translation.
+        plot_matches : bool
+            Flag controlling whether the matching features are plotted;
+            useful for debugging; default value is False.
         """
         # Determine effective translation
         translation, intact_translation = self.find_effective_translation(
@@ -223,28 +244,41 @@ class TranslationEstimator:
     ) -> tuple:
         """Determine matching map (homography or partial affine transformation).
 
-        Args:
-            img_src (np.ndarray): source image
-            img_dst (np.ndarry): destination image
-            roi_src (tuple of slices, optional): region of interest for the source image
-            roi_dst (tuple of slices, optional): region of interest for the destination image
-            mask_src (np.ndarray, optional): boolean mask detecting considered pixels in
-                the analysis; if None, all pixels are considered.
-            mask_dst (np.ndarray, optional): boolean mask detecting considered pixels in
-                the analysis; if None, all pixels are considered.
-            transformation_type (str): either "homography" or "partial_affine"
-            keep_percent (float): how much of the features should be considered for finding
-                the transformation
-            return_matches (bool): flag controlling whether the inliers among all matches
-                are returned
-            plot_matches (bool): flag controlling whether found matches are plotted;
-                default is False
+        Parameters
+        ----------
+        img_src : np.ndarray
+            Source image.
+        img_dst : np.ndarry
+            Destination image.
+        roi_src : tuple of slices, optional
+            Region of interest for the source image.
+        roi_dst : tuple of slices, optional
+            Region of interest for the destination image.
+        mask_src : np.ndarray, optional
+            Boolean mask detecting considered pixels in
+            the analysis; if None, all pixels are considered.
+        mask_dst : np.ndarray, optional
+            Boolean mask detecting considered pixels in
+            the analysis; if None, all pixels are considered.
+        transformation_type : str
+            Either "homography" or "partial_affine".
+        keep_percent : float
+            How much of the features should be considered for finding
+            the transformation.
+        return_matches : bool
+            Flag controlling whether the inliers among all matches
+            are returned.
+        plot_matches : bool
+            Flag controlling whether found matches are plotted;
+            default is False.
 
-        Returns:
-            np.ndarray: transformation matrix operating on pixel coordinates using reverse
-                matrix indexing
-            bool: flag indicating whether the procedure was successful
-
+        Returns
+        -------
+        np.ndarray
+            Transformation matrix operating on pixel coordinates using reverse
+            matrix indexing.
+        bool
+            Flag indicating whether the procedure was successful.
         """
         if transformation_type not in ["homography", "partial_affine"]:
             raise ValueError(
@@ -330,13 +364,16 @@ class TranslationEstimator:
     def _isclose_translation(self, transformation: np.ndarray) -> bool:
         """Checking whether a transformation is close to a translation.
 
-        Args:
-            transformation (np.ndarray): transformation matrix, e.g., homography,
-                or affine map
+        Parameters
+        ----------
+        transformation : np.ndarray
+            Transformation matrix, e.g., homography,
+            or affine map.
 
-        Returns:
-            bool: flag whether transformation is close to a translation
-
+        Returns
+        -------
+        bool
+            Flag whether transformation is close to a translation.
         """
         return transformation is not None and np.allclose(
             transformation[:2, :2], np.eye(2), atol=self._tol
@@ -350,13 +387,18 @@ class TranslationEstimator:
         all workflows this method will be combined with methods like
         find_matching_transformation which involve RANSAC.
 
-        Args:
-            matches (tuple of arrays): src and dst points, which are supposed to
-                be a translation from each other apart.
-        Returns:
-            np.ndarray: translation matrix
-            bool: flag indicating whether the procedure was successful
+        Parameters
+        ----------
+        matches : tuple of arrays
+            Src and dst points, which are supposed to
+            be a translation from each other apart.
 
+        Returns
+        -------
+        np.ndarray
+            Translation matrix.
+        bool
+            Flag indicating whether the procedure was successful.
         """
         # Extract the translation directly as average displacement from all
         # provided matches - have to assume that the matches are well chosen.
@@ -380,9 +422,10 @@ class TranslationCorrection(darsia.BaseCorrection):
     def __init__(self, translation: Optional[Union[str, Path]] = None):
         """Contructor.
 
-        Args:
-            translation (str or Path): path to predefined translation.
-
+        Parameters
+        ----------
+        translation : str or Path
+            Path to predefined translation.
         """
 
         # Read translation from file
@@ -399,12 +442,15 @@ class TranslationCorrection(darsia.BaseCorrection):
     def correct_array(self, img: np.ndarray) -> np.ndarray:
         """Main routine. Perform translation.
 
-        Args:
-            img (np.ndarray): image to be corrected.
+        Parameters
+        ----------
+        img : np.ndarray
+            Image to be corrected.
 
-        Returns:
-            array: Corrected image
-
+        Returns
+        -------
+        array
+            Corrected image.
         """
         (h, w) = img.shape[:2]
         translated_img = cv2.warpAffine(img, self.translation, (w, h))

@@ -20,9 +20,10 @@ class CropAssistant(darsia.PointSelectionAssistant):
 
         Based on PointSelectionAssistant configured to use points in Voxel format.
 
-        Args:
-            img (darsia.Image): input image
-
+        Parameters
+        ----------
+        img : darsia.Image
+            Input image.
         """
         super().__init__(img, **kwargs)
 
@@ -57,12 +58,15 @@ class CropAssistant(darsia.PointSelectionAssistant):
         top_right) based on its row/col relative to the centroid of all 4 points.
         This makes the assistant robust to click order.
 
-        Args:
-            pts: VoxelArray of 4 points in arbitrary order, each [row, col].
+        Parameters
+        ----------
+        pts : darsia.VoxelArray
+            VoxelArray of 4 points in arbitrary order, each [row, col].
 
-        Returns:
-            dict with keys "top_left", "bottom_left", "bottom_right", "top_right",
-            each mapping to a (row, col) tuple.
+        Returns
+        -------
+            Dict with keys "top_left", "bottom_left", "bottom_right", "top_right",
+            Each mapping to a (row, col) tuple.
         """
         assert len(pts) == 4, "Expected 4 points"
         pts_array = np.array(pts)
@@ -92,9 +96,10 @@ class CropAssistant(darsia.PointSelectionAssistant):
     def __call__(self) -> dict:
         """Run the assistant.
 
-        Returns:
-            dict: configuration for the 'crop' option of CurvatureCorrection
-
+        Returns
+        -------
+        dict
+            Configuration for the 'crop' option of CurvatureCorrection.
         """
         # Prompt a welcome message
         print("Welcome to the CropAssistant!")
@@ -124,9 +129,10 @@ class CropAssistant(darsia.PointSelectionAssistant):
 
         Converts internal Voxel-based corners to tuple[int, int] for config layer.
 
-        Returns:
-            dict: configuration for the 'crop' option of CurvatureCorrection
-
+        Returns
+        -------
+        dict
+            Configuration for the 'crop' option of CurvatureCorrection.
         """
         return {
             "crop": {
@@ -155,14 +161,19 @@ class CropAssistant(darsia.PointSelectionAssistant):
 
         Detect marks and define a box based on them.
 
-        Args:
-            color (Union[list[float], np.ndarray]): color of the marks
-            width (float): width of the box
-            height (float): height of the box
+        Parameters
+        ----------
+        color : Union[list[float], np.ndarray]
+            Color of the marks.
+        width : float
+            Width of the box.
+        height : float
+            Height of the box.
 
-        Returns:
-            dict: configuration for the 'crop' option of CurvatureCorrection
-
+        Returns
+        -------
+        dict
+            Configuration for the 'crop' option of CurvatureCorrection.
         """
         if not isinstance(color, np.ndarray):
             color = np.array(color)
@@ -189,13 +200,15 @@ class CropAssistant(darsia.PointSelectionAssistant):
     ) -> dict[str, darsia.Voxel]:
         """Find marks in the image and classify into named corners.
 
-        Args:
-            color (Union[list[float], np.ndarray]): color of the marks
+        Parameters
+        ----------
+        color : Union[list[float], np.ndarray]
+            Color of the marks.
 
-        Returns:
-            dict with keys "top_left", "bottom_left", "bottom_right", "top_right",
-            each mapping to a (row, col) tuple of the detected corner.
-
+        Returns
+        -------
+            Dict with keys "top_left", "bottom_left", "bottom_right", "top_right",
+            Each mapping to a (row, col) tuple of the detected corner.
         """
         # Find all pixels with the specified color
         marked_voxels = darsia.detect_color(self.img, color, tolerance=5e-2)

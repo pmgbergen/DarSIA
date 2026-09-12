@@ -62,17 +62,20 @@ def polynomial_interpolation(
 ) -> np.ndarray:
     """Determine a voxeled spatial map from measurements through polynomial interpolation.
 
-    Args:
-        measurements (tuple[np.ndarray, ...]): tuple of x, y, and data measurements,
-            providing the input for interpolation.
-        shape (tuple of int): target shape of the output map.
-        coordinate_system (darsia.CoordinateSystem): coordinate system of the
-            correspoinding physical image.
-        degree (int): degree of the polynomial interpolation.
+    Parameters
+    ----------
+    measurements : tuple[np.ndarray, ...]
+        Tuple of x, y and data measurements providing the interpolation input.
+    coordinate_system : darsia.CoordinateSystem
+        Coordinate system of the corresponding physical image; sets the output
+        shape.
+    degree : int
+        Degree of the polynomial interpolation.
 
-    Returns:
-        np.ndarray: map
-
+    Returns
+    -------
+    np.ndarray
+        The interpolated map.
     """
     # Deterimine dimension of space of polynomial coefficients
     dimension = sum(
@@ -136,17 +139,18 @@ def illumination_interpolation(
 ) -> np.ndarray:
     """Determine a voxeled spatial map from measurements through polynomial interpolation.
 
-    Args:
-        measurements (tuple[np.ndarray, ...]): tuple of x, y, and data measurements,
-            providing the input for interpolation.
-        shape (tuple of int): target shape of the output map.
-        coordinate_system (darsia.CoordinateSystem): coordinate system of the
-            correspoinding physical image.
-        degree (int): degree of the polynomial interpolation.
+    Parameters
+    ----------
+    measurements : tuple[np.ndarray, ...]
+        Tuple of x, y and data measurements providing the interpolation input.
+    coordinate_system : darsia.CoordinateSystem
+        Coordinate system of the corresponding physical image; sets the output
+        shape.
 
-    Returns:
-        np.ndarray: map
-
+    Returns
+    -------
+    np.ndarray
+        The interpolated map.
     """
 
     def interpolator(
@@ -204,20 +208,31 @@ def interpolate_to_image(
 ) -> darsia.Image:
     """Interpolate data to image.
 
-    Args:
-        data (np.ndarray): (x,y,measurements) data to be interpolated.
-        image (darsia.Image): Image to which data shall be interpolated.
-        method (str): Interpolation method to use. Options are:
-            - "rbf": Radial Basis Function interpolation (default).
-            - "polynomial": Polynomial interpolation.
-            - "linear": Linear interpolation.
-            - "quadratic": Quadratic interpolation.
-            - "cubic": Cubic interpolation.
-            - "quartic": Quartic interpolation.
+    Parameters
+    ----------
+    data : np.ndarray
+        (x,y,measurements) data to be interpolated.
+    image : darsia.Image
+        Image to which data shall be interpolated.
+    method : str
+        Interpolation method to use. Options are:
 
-    Returns:
-        darsia.Image: interpolated image.
+        - "rbf": Radial Basis Function interpolation (default).
 
+        - "polynomial": Polynomial interpolation.
+
+        - "linear": Linear interpolation.
+
+        - "quadratic": Quadratic interpolation.
+
+        - "cubic": Cubic interpolation.
+
+        - "quartic": Quartic interpolation.
+
+    Returns
+    -------
+    darsia.Image
+        Interpolated image.
     """
     # Initialize image
     interpolated_image = image.copy()
@@ -274,21 +289,33 @@ def interpolate_to_image_from_csv(
 ) -> darsia.Image:
     """Interpolate data from CSV to image.
 
-    Args:
-        csv_file (Path): Path to the CSV file containing the data.
-        key (str): Key to identify the data in the CSV file.
-        image (darsia.Image): Image to which data shall be interpolated.
-        method (str): Interpolation method to use. Options are:
-            - "rbf": Radial Basis Function interpolation (default).
-            - "polynomial": Polynomial interpolation.
-            - "linear": Linear interpolation.
-            - "quadratic": Quadratic interpolation.
-            - "cubic": Cubic interpolation.
-            - "quartic": Quartic interpolation.
+    Parameters
+    ----------
+    csv_file : Path
+        Path to the CSV file containing the data.
+    key : str
+        Key to identify the data in the CSV file.
+    image : darsia.Image
+        Image to which data shall be interpolated.
+    method : str
+        Interpolation method to use. Options are:
 
-    Returns:
-        darsia.Image: Interpolated image.
+        - "rbf": Radial Basis Function interpolation (default).
 
+        - "polynomial": Polynomial interpolation.
+
+        - "linear": Linear interpolation.
+
+        - "quadratic": Quadratic interpolation.
+
+        - "cubic": Cubic interpolation.
+
+        - "quartic": Quartic interpolation.
+
+    Returns
+    -------
+    darsia.Image
+        Interpolated image.
     """
     # Convert data to the format expected by interpolate_to_image
     data = pd.read_csv(csv_file)

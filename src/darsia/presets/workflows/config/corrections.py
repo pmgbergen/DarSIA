@@ -13,9 +13,10 @@ from .utils import _get_section_from_toml
 class TypeCorrectionConfig:
     """Configuration for type conversion correction.
 
-    Attributes:
-        target_type: Target data type for conversion (default: np.float64).
-
+    Attributes
+    ----------
+    target_type
+        Target data type for conversion (default: np.float64).
     """
 
     target_type: Type[np.floating] = field(
@@ -30,11 +31,14 @@ class TypeCorrectionConfig:
     def load(self, sec: dict) -> "TypeCorrectionConfig":
         """Load type correction configuration from a dictionary.
 
-        Args:
-            sec: Dictionary containing type correction settings.
+        Parameters
+        ----------
+        sec : dict
+            Dictionary containing type correction settings.
 
-        Returns:
-            self with loaded configuration
+        Returns
+        -------
+            Self with loaded configuration.
         """
         str_target_type = sec.get("target_type", "float64")
         if str_target_type == "float32":
@@ -51,12 +55,15 @@ class ResizeCorrectionConfig:
     Supports two modes: uniform scaling via ``scale`` factor, or explicit target shape
     resizing. Exactly one mode must be configured via the ``mode`` field.
 
-    Attributes:
-        mode: Resize mode — either ``"scale"`` (scale all axes uniformly) or
-            ``"target_shape"`` (resize to explicit rows/cols).
-        scale: Uniform scale factor applied to both spatial axes (mode='scale' only).
-        target_shape: Target ``(rows, cols)`` shape to resize to (mode='target_shape' only).
-
+    Attributes
+    ----------
+    mode
+        Resize mode — either ``"scale"`` (scale all axes uniformly) or
+        ``"target_shape"`` (resize to explicit rows/cols).
+    scale
+        Uniform scale factor applied to both spatial axes (mode='scale' only).
+    target_shape
+        Target ``(rows, cols)`` shape to resize to (mode='target_shape' only).
     """
 
     mode: Literal["scale", "target_shape"] = field(
@@ -101,15 +108,20 @@ class ResizeCorrectionConfig:
     def load(self, sec: dict) -> "ResizeCorrectionConfig":
         """Load resize correction configuration from a dictionary.
 
-        Args:
-            sec: Dictionary containing resize correction settings.
+        Parameters
+        ----------
+        sec : dict
+            Dictionary containing resize correction settings.
 
-        Returns:
-            self with loaded configuration
+        Returns
+        -------
+            Self with loaded configuration.
 
-        Raises:
-            ValueError: if mode is invalid, if required field for the mode is missing,
-                or if target_shape does not have exactly 2 elements.
+        Raises
+        ------
+        ValueError
+            If mode is invalid, if required field for the mode is missing,
+            or if target_shape does not have exactly 2 elements.
         """
         mode = sec.get("mode", self.mode)
         if mode not in ("scale", "target_shape"):
@@ -147,18 +159,20 @@ class ResizeCorrectionConfig:
     ) -> tuple[tuple[int, int], float | tuple[float, float]]:
         """Resolve target shape and resize factor for a given current shape.
 
-        Args:
-            current_shape: current (rows, cols) shape of the image to be
-                resized.
+        Parameters
+        ----------
+        current_shape : tuple[int, int]
+            Current (rows, cols) shape of the image to be
+            resized.
 
-        Returns:
+        Returns
+        -------
             (target_shape, resize_factor) tuple where:
             - target_shape: resolved (rows, cols) target shape.
             - resize_factor: scalar factor (mode='scale') or (scale_x,
-              scale_y) tuple (mode='target_shape') to pass to downstream
-              corrections (e.g. CurvatureCorrection) that need to rescale
-              pixel-calibrated config values.
-
+            Scale_y) tuple (mode='target_shape') to pass to downstream
+            corrections (e.g. CurvatureCorrection) that need to rescale
+            pixel-calibrated config values.
         """
         if self.mode == "scale":
             target_shape = tuple(int(round(s * self.scale)) for s in current_shape)
@@ -175,11 +189,16 @@ class ResizeCorrectionConfig:
 class InitCorrectionConfig:
     """Configuration for initial (pre-bulge) curvature correction stage.
 
-    Attributes:
-        horizontal_bulge: Horizontal bulge coefficient (default: 0.0).
-        vertical_bulge: Vertical bulge coefficient (default: 0.0).
-        horizontal_center_offset: Horizontal offset of bulge center in pixels (default: 0).
-        vertical_center_offset: Vertical offset of bulge center in pixels (default: 0).
+    Attributes
+    ----------
+    horizontal_bulge
+        Horizontal bulge coefficient (default: 0.0).
+    vertical_bulge
+        Vertical bulge coefficient (default: 0.0).
+    horizontal_center_offset
+        Horizontal offset of bulge center in pixels (default: 0).
+    vertical_center_offset
+        Vertical offset of bulge center in pixels (default: 0).
     """
 
     horizontal_bulge: float = field(
@@ -224,14 +243,22 @@ class InitCorrectionConfig:
 class CropCorrectionConfig:
     """Configuration for crop curvature correction stage.
 
-    Attributes:
-        top_left: Top-left corner as [row, col] in pixels (matrix indexing).
-        bottom_left: Bottom-left corner as [row, col] in pixels (matrix indexing).
-        bottom_right: Bottom-right corner as [row, col] in pixels (matrix indexing).
-        top_right: Top-right corner as [row, col] in pixels (matrix indexing).
-        width: Crop width (default: 1.0).
-        height: Crop height (default: 1.0).
-        in_meters: Whether width/height are in meters (default: True).
+    Attributes
+    ----------
+    top_left
+        Top-left corner as [row, col] in pixels (matrix indexing).
+    bottom_left
+        Bottom-left corner as [row, col] in pixels (matrix indexing).
+    bottom_right
+        Bottom-right corner as [row, col] in pixels (matrix indexing).
+    top_right
+        Top-right corner as [row, col] in pixels (matrix indexing).
+    width
+        Crop width (default: 1.0).
+    height
+        Crop height (default: 1.0).
+    in_meters
+        Whether width/height are in meters (default: True).
     """
 
     top_left: tuple[int, int] | None = field(
@@ -296,11 +323,14 @@ class CropCorrectionConfig:
     def load(self, sec: dict) -> "CropCorrectionConfig":
         """Load crop correction configuration from a dictionary.
 
-        Args:
-            sec: Dictionary containing crop correction settings.
+        Parameters
+        ----------
+        sec : dict
+            Dictionary containing crop correction settings.
 
-        Returns:
-            self with loaded configuration
+        Returns
+        -------
+            Self with loaded configuration.
         """
         # Try to load individual corner fields first
         corners = [
@@ -327,11 +357,16 @@ class CropCorrectionConfig:
 class BulgeCorrectionConfig:
     """Configuration for bulge curvature correction stage.
 
-    Attributes:
-        horizontal_bulge: Horizontal bulge coefficient (default: 0.0).
-        vertical_bulge: Vertical bulge coefficient (default: 0.0).
-        horizontal_center_offset: Horizontal offset of bulge center in pixels (default: 0).
-        vertical_center_offset: Vertical offset of bulge center in pixels (default: 0).
+    Attributes
+    ----------
+    horizontal_bulge
+        Horizontal bulge coefficient (default: 0.0).
+    vertical_bulge
+        Vertical bulge coefficient (default: 0.0).
+    horizontal_center_offset
+        Horizontal offset of bulge center in pixels (default: 0).
+    vertical_center_offset
+        Vertical offset of bulge center in pixels (default: 0).
     """
 
     horizontal_bulge: float = field(
@@ -376,11 +411,16 @@ class BulgeCorrectionConfig:
 class StretchCorrectionConfig:
     """Configuration for stretch curvature correction stage.
 
-    Attributes:
-        horizontal_stretch: Horizontal stretch coefficient (default: 0.0).
-        vertical_stretch: Vertical stretch coefficient (default: 0.0).
-        horizontal_center_offset: Horizontal offset of stretch center in pixels (default: 0).
-        vertical_center_offset: Vertical offset of stretch center in pixels (default: 0).
+    Attributes
+    ----------
+    horizontal_stretch
+        Horizontal stretch coefficient (default: 0.0).
+    vertical_stretch
+        Vertical stretch coefficient (default: 0.0).
+    horizontal_center_offset
+        Horizontal offset of stretch center in pixels (default: 0).
+    vertical_center_offset
+        Vertical offset of stretch center in pixels (default: 0).
     """
 
     horizontal_stretch: float = field(
@@ -434,12 +474,18 @@ class CurvatureCorrectionConfig:
     init (pre-bulge) → crop → bulge → stretch. Each stage is independently
     toggleable via the ``active`` list.
 
-    Attributes:
-        init: Initial (pre-bulge) correction stage.
-        crop: Crop correction stage.
-        bulge: Bulge correction stage.
-        stretch: Stretch correction stage.
-        inactive: Parsed but deactivated stage configs (preserved when toggled off).
+    Attributes
+    ----------
+    init
+        Initial (pre-bulge) correction stage.
+    crop
+        Crop correction stage.
+    bulge
+        Bulge correction stage.
+    stretch
+        Stretch correction stage.
+    inactive
+        Parsed but deactivated stage configs (preserved when toggled off).
     """
 
     init: InitCorrectionConfig | None = field(
@@ -481,11 +527,14 @@ class CurvatureCorrectionConfig:
     def load(self, sec: dict) -> "CurvatureCorrectionConfig":
         """Load curvature correction configuration from a dictionary.
 
-        Args:
-            sec: Dictionary containing curvature correction settings.
+        Parameters
+        ----------
+        sec : dict
+            Dictionary containing curvature correction settings.
 
-        Returns:
-            self with loaded configuration
+        Returns
+        -------
+            Self with loaded configuration.
         """
         # Mapping of stage names to their config classes
         _STAGE_CLASSES = {
@@ -581,12 +630,14 @@ class DriftCorrectionConfig:
     def load(self, sec: dict) -> "DriftCorrectionConfig":
         """Load drift correction configuration from a dictionary.
 
-        Args:
-            sec: Dictionary containing drift correction settings.
+        Parameters
+        ----------
+        sec : dict
+            Dictionary containing drift correction settings.
 
-        Returns:
-            self with loaded configuration
-
+        Returns
+        -------
+            Self with loaded configuration.
         """
         self.colorchecker = sec.get("colorchecker")
 
@@ -608,9 +659,10 @@ class DriftCorrectionConfig:
 class ColorCorrectionConfig:
     """Configuration for color correction.
 
-    Attributes:
-        colorchecker: Position of color checker for color correction.
-
+    Attributes
+    ----------
+    colorchecker
+        Position of color checker for color correction.
     """
 
     colorchecker: (
@@ -631,12 +683,14 @@ class ColorCorrectionConfig:
     def load(self, sec: dict) -> "ColorCorrectionConfig":
         """Load color correction configuration from a dictionary.
 
-        Args:
-            sec: Dictionary containing color correction settings.
+        Parameters
+        ----------
+        sec : dict
+            Dictionary containing color correction settings.
 
-        Returns:
-            self with loaded configuration
-
+        Returns
+        -------
+            Self with loaded configuration.
         """
         self.colorchecker = sec.get("colorchecker")
 
@@ -786,8 +840,10 @@ class RelativeColorCorrectionConfig:
         """Convert explicit config fields to the plain dict format expected by
         RelativeColorCorrection.
 
-        Returns:
-            dict with keys: mode, method, degree, sample_size, debug
+        Returns
+        -------
+        dict with keys
+            Mode, method, degree, sample_size, debug.
         """
         return {
             "mode": self.mode,
@@ -802,18 +858,28 @@ class RelativeColorCorrectionConfig:
 class IlluminationCorrectionConfig:
     """Configuration for illumination correction.
 
-    Attributes:
-        labels: List of label IDs to use for illumination correction (default: []).
-        interpolation: Interpolation method for scaling ("rbf", "quartic", "illumination";
-            default: "illumination").
-        colorspace: Color space for interpolation ("rgb", "rgb-scalar", "lab", "lab-scalar",
-            "hsl", "hsl-scalar", "gray"; default: "hsl-scalar").
-        width: Width of patches used for interpolation in pixels (default: 100).
-        num_samples: Number of sample patches to use (default: 30).
-        seed: Random seed for reproducible patch sampling (default: 42).
-        sigma: Sigma for Gaussian smoothing of the illumination map in pixels (default: 100.0).
-        outliers: Fraction of outliers [0.0–1.0] to discard (default: 0.1).
-        bounds: [min, max] bounds for illumination correction factors (default: [0.5, 2.0]).
+    Attributes
+    ----------
+    labels
+        List of label IDs to use for illumination correction (default: []).
+    interpolation
+        Interpolation method for scaling ("rbf", "quartic", "illumination";
+        default: "illumination").
+    colorspace
+        Color space for interpolation ("rgb", "rgb-scalar", "lab", "lab-scalar",
+        "hsl", "hsl-scalar", "gray"; default: "hsl-scalar").
+    width
+        Width of patches used for interpolation in pixels (default: 100).
+    num_samples
+        Number of sample patches to use (default: 30).
+    seed
+        Random seed for reproducible patch sampling (default: 42).
+    sigma
+        Sigma for Gaussian smoothing of the illumination map in pixels (default: 100.0).
+    outliers
+        Fraction of outliers [0.0–1.0] to discard (default: 0.1).
+    bounds
+        [min, max] bounds for illumination correction factors (default: [0.5, 2.0]).
     """
 
     labels: list[int] = field(
@@ -912,12 +978,14 @@ class IlluminationCorrectionConfig:
     def load(self, sec: dict) -> "IlluminationCorrectionConfig":
         """Load illumination correction configuration from a dictionary.
 
-        Args:
-            sec: Dictionary containing illumination correction settings.
+        Parameters
+        ----------
+        sec : dict
+            Dictionary containing illumination correction settings.
 
-        Returns:
-            self with loaded configuration
-
+        Returns
+        -------
+            Self with loaded configuration.
         """
 
         _supported_colorspaces = (
@@ -957,10 +1025,14 @@ class IlluminationCorrectionConfig:
 class PatchwiseIlluminationCorrectionConfig:
     """Configuration for patchwise illumination correction.
 
-    Attributes:
-        baseline_paths: Paths to baseline images (not yet GUI-editable; edit via TOML).
-        nw: Number of patches in the width direction (default: 1000).
-        eps: Small constant to avoid division by zero (default: 1e-6).
+    Attributes
+    ----------
+    baseline_paths
+        Paths to baseline images (not yet GUI-editable; edit via TOML).
+    nw
+        Number of patches in the width direction (default: 1000).
+    eps
+        Small constant to avoid division by zero (default: 1e-6).
     """
 
     baseline_paths: list[Path] = field(
@@ -1000,12 +1072,13 @@ class PatchwiseIlluminationCorrectionConfig:
     def load(self, sec: dict) -> "PatchwiseIlluminationCorrectionConfig":
         """Load patchwise illumination correction configuration from a dictionary.
 
-        Args:
-            sec: Dictionary containing patchwise illumination correction settings.
+        Parameters
+        ----------
+        sec : dict
+            Dictionary containing patchwise illumination correction settings.
 
-         Returns:
+            Returns:
             self with loaded configuration
-
         """
         _baseline_paths = sec.get("baseline_paths", self.baseline_paths)
         self.baseline_paths = [Path(p) for p in _baseline_paths]
@@ -1034,24 +1107,32 @@ class CorrectionsConfig:
     during rig setup. Each correction type has its own configuration class that handles
     type-specific settings.
 
-    Attributes:
-        type: TypeCorrectionConfig for type conversion correction (default: None).
-            Converts image to a specified numpy floating-point type (e.g., float32, float64).
-        resize: ResizeCorrectionConfig for resize correction (default: None).
-            Resizes images to a target shape or scale.
-        drift: DriftCorrectionConfig for drift correction (default: None).
-            Corrects color drift based on color checker position.
-        curvature: CurvatureCorrectionConfig for curvature correction (default: None).
-            Corrects lens distortion based on laser grid configuration.
-        color: ColorCorrectionConfig for color correction (default: None).
-            Applies color correction based on color checker position.
-        relative_color: Enable relative color correction based on color checker
-            (default: False). Boolean flag for enabling/disabling.
-        illumination: Enable illumination correction.
-        patchwise_illumination: PatchwiseIlluminationCorrectionConfig for patchwise
-            illumination correction (default: None). Corrects illumination variations
-            across the image using patchwise interpolation.
-
+    Attributes
+    ----------
+    type
+        TypeCorrectionConfig for type conversion correction (default: None).
+        Converts image to a specified numpy floating-point type (e.g., float32, float64).
+    resize
+        ResizeCorrectionConfig for resize correction (default: None).
+        Resizes images to a target shape or scale.
+    drift
+        DriftCorrectionConfig for drift correction (default: None).
+        Corrects color drift based on color checker position.
+    curvature
+        CurvatureCorrectionConfig for curvature correction (default: None).
+        Corrects lens distortion based on laser grid configuration.
+    color
+        ColorCorrectionConfig for color correction (default: None).
+        Applies color correction based on color checker position.
+    relative_color
+        Enable relative color correction based on color checker
+        (default: False). Boolean flag for enabling/disabling.
+    illumination
+        Enable illumination correction.
+    patchwise_illumination
+        PatchwiseIlluminationCorrectionConfig for patchwise
+        illumination correction (default: None). Corrects illumination variations
+        across the image using patchwise interpolation.
     """
 
     # Configuration objects for each correction type
@@ -1106,11 +1187,14 @@ class CorrectionsConfig:
     def load(self, path: Path | list[Path]) -> "CorrectionsConfig":
         """Load correction configuration from TOML file.
 
-        Args:
-            path: Path to TOML config file
+        Parameters
+        ----------
+        path : Path | list[Path]
+            Path to TOML config file.
 
-        Returns:
-            self with loaded configuration
+        Returns
+        -------
+            Self with loaded configuration.
         """
         sec = _get_section_from_toml(path, "corrections")
 

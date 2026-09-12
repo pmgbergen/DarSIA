@@ -12,11 +12,15 @@ def sort_quad(
 ) -> Union[darsia.VoxelArray, darsia.CoordinateArray]:
     """Sorts the four points of a quadrilateral in a clockwise fashion.
 
-    Args:
-        pts (array): 4x2 array of points
+    Parameters
+    ----------
+    pts : array
+        4x2 array of points.
 
-    Returns:
-        array: 4x2 array of points sorted clockwise
+    Returns
+    -------
+    array
+        4x2 array of points sorted clockwise.
     """
     if isinstance(pts, darsia.CoordinateArray):
         raise NotImplementedError("CoordinateArray not implemented yet.")

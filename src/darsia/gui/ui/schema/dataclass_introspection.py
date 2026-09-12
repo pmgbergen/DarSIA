@@ -90,10 +90,13 @@ SECTION_LOADABLE = {"rig": "rig"}
 def _unwrap_optional(field_type: Any) -> Any:
     """Unwrap Optional[X] (Union[X, None]) to X, leaving list/tuple alone.
 
-    Args:
-        field_type: The type annotation to unwrap.
+    Parameters
+    ----------
+    field_type : Any
+        The type annotation to unwrap.
 
-    Returns:
+    Returns
+    -------
         The unwrapped type, or the original if not Optional.
     """
     origin = get_origin(field_type)
@@ -114,11 +117,15 @@ def _resolve_field_type(dataclass_type: type, raw_type: Any) -> Any:
     callers already handle non-type field_type values via metadata overrides
     and the `_infer_widget_type` string fallback.
 
-    Args:
-        dataclass_type: The dataclass being introspected.
-        raw_type: The field's raw type annotation (might be a string).
+    Parameters
+    ----------
+    dataclass_type : type
+        The dataclass being introspected.
+    raw_type : Any
+        The field's raw type annotation (might be a string).
 
-    Returns:
+    Returns
+    -------
         The resolved type if resolvable, otherwise the raw annotation.
     """
     if not isinstance(raw_type, str):
@@ -134,12 +141,17 @@ def _resolve_field_type(dataclass_type: type, raw_type: Any) -> Any:
 def _infer_widget_type(field_type: Any, metadata: dict) -> str:
     """Infer widget type from field type annotation and metadata.
 
-    Args:
-        field_type: The dataclass field's type annotation.
-        metadata: The field's metadata dict.
+    Parameters
+    ----------
+    field_type : Any
+        The dataclass field's type annotation.
+    metadata : dict
+        The field's metadata dict.
 
-    Returns:
-        Widget type string: "bool", "file", "folder", "string", "int", "float", "list", etc.
+    Returns
+    -------
+    Widget type string
+        "bool", "file", "folder", "string", "int", "float", "list", etc.
     """
     # Check for explicit widget override in metadata
     if "widget" in metadata:
@@ -174,10 +186,13 @@ def _infer_widget_type(field_type: Any, metadata: dict) -> str:
 def _field_default(field: Any) -> Any:
     """Resolve a dataclass field's default value, or None if not usable as a pre-fill.
 
-    Args:
-        field: A dataclass field object.
+    Parameters
+    ----------
+    field : Any
+        A dataclass field object.
 
-    Returns:
+    Returns
+    -------
         The field's default value if usable for pre-filling a widget, or None otherwise.
         Skips empty collections ([], {}, Path()) and nested dataclass instances.
     """
@@ -210,10 +225,13 @@ def _field_default(field: Any) -> Any:
 def _infer_list_type(field_type: Any) -> str:
     """Infer the element type of a list/tuple field for the UI label.
 
-    Args:
-        field_type: The list/tuple type annotation (e.g., list[str], tuple[int, int]).
+    Parameters
+    ----------
+    field_type : Any
+        The list/tuple type annotation (e.g., list[str], tuple[int, int]).
 
-    Returns:
+    Returns
+    -------
         Widget type string for the element type (e.g., "string", "int").
     """
     args = get_args(field_type)
@@ -226,10 +244,13 @@ def _infer_list_type(field_type: Any) -> str:
 def _infer_fixed_length(field_type: Any) -> int | None:
     """Infer the fixed arity of a tuple[...] annotation, else None.
 
-    Args:
-        field_type: The type annotation (e.g., tuple[int, int], tuple[float, float, float]).
+    Parameters
+    ----------
+    field_type : Any
+        The type annotation (e.g., tuple[int, int], tuple[float, float, float]).
 
-    Returns:
+    Returns
+    -------
         The number of elements if fixed-arity tuple, else None.
     """
     if get_origin(field_type) is not tuple:
@@ -243,14 +264,18 @@ def _infer_fixed_length(field_type: Any) -> int | None:
 def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]:
     """Build field schema for a dataclass type, recursing into Optional[dataclass] fields.
 
-    Args:
-        dataclass_type: The dataclass type to introspect.
-        key_prefix: The TOML key prefix for this level (e.g., "corrections" or
-            "corrections.resize").
+    Parameters
+    ----------
+    dataclass_type : type
+        The dataclass type to introspect.
+    key_prefix : str
+        The TOML key prefix for this level (e.g., "corrections" or
+        "corrections.resize").
 
-    Returns:
+    Returns
+    -------
         List of setting dicts with key, type, help, link, options, fields (for groups),
-        list_type (for lists), default, etc.
+        List_type (for lists), default, etc.
     """
     settings = []
     for field in fields(dataclass_type):
@@ -359,15 +384,19 @@ def get_section_fields(
 ) -> list[dict[str, Any]] | None:
     """Get GUI widget schema for all fields in a config section.
 
-    Args:
-        section: Section name (e.g., "rig", "depth", "calibration")
-        only_group: Optional filter to show only one nested-dataclass group by name
-            (e.g., "setup" to show only the setup group in the options section).
-            If provided, returns only the group field matching this name.
+    Parameters
+    ----------
+    section : str
+        Section name (e.g., "rig", "depth", "calibration").
+    only_group : str | None
+        Optional filter to show only one nested-dataclass group by name
+        (e.g., "setup" to show only the setup group in the options section).
+        If provided, returns only the group field matching this name.
 
-    Returns:
+    Returns
+    -------
         List of setting dicts with key, type, help, link, options, fields (for groups),
-        list_type (for lists), default, etc.
+        List_type (for lists), default, etc.
         Returns None if section is not recognized.
     """
     if section not in SECTION_TO_DATACLASS:

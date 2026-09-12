@@ -40,22 +40,32 @@ class ProcessRunner:
         Returns the QProcess (caller must keep a reference alive, e.g. on the tab,
         and call abort_workflow_process(process) to abort it).
 
-        Args:
-            argv: Command and arguments as list of strings.
-            run_button: Button to disable during process and enable after.
-            abort_button: Button to show during process and hide after.
-            cwd: Working directory for the process (optional).
-            workflow: Workflow name (e.g. "setup"), used for the dashboard and
-                the terminal-state Done/Error dialog. Dialog is skipped if None.
-            actions: Enabled action labels for this run, used to infer a results
-                folder for the Done dialog's "Open in folder" button.
-            config_path: Config path for this run, used for the same purpose.
-            on_stream_line: Called with each raw output line that starts with
-                STREAM_LINE_PREFIX; such lines are not logged or included in
-                the error-dialog detail text. All other lines are handled as
-                before (logged + buffered for the error dialog).
-            on_progress_line: Same, but for lines starting with
-                PROGRESS_LINE_PREFIX.
+        Parameters
+        ----------
+        argv : list of str
+            Command and arguments as list of strings.
+        run_button : QAbstractButton
+            Button to disable during process and enable after.
+        abort_button : QAbstractButton
+            Button to show during process and hide after.
+        cwd : str or Path, optional
+            Working directory for the process (optional).
+        workflow : str, optional
+            Workflow name (e.g. "setup"), used for the dashboard and
+            the terminal-state Done/Error dialog. Dialog is skipped if None.
+        actions : list of str, optional
+            Enabled action labels for this run, used to infer a results
+            folder for the Done dialog's "Open in folder" button.
+        config_path : str or Path, optional
+            Config path for this run, used for the same purpose.
+        on_stream_line : callable, optional
+            Called with each raw output line that starts with
+            STREAM_LINE_PREFIX; such lines are not logged or included in
+            the error-dialog detail text. All other lines are handled as
+            before (logged + buffered for the error dialog).
+        on_progress_line : callable, optional
+            Same, but for lines starting with
+            PROGRESS_LINE_PREFIX.
         """
         process = QProcess(self.main_window)
         process.setProgram(argv[0])

@@ -56,10 +56,12 @@ class SimpleFluidFlower:
         The correction routines assume a simple setup (e.g., no strong curvature) and
         at least one dominating sand layer spreading the domain.
 
-        Args:
-            baseline (Path): path to baseline image
-            debug (bool): flag for debugging
-
+        Parameters
+        ----------
+        baseline : Path
+            Path to baseline image.
+        debug : bool
+            Flag for debugging.
         """
         self.raw_baseline = darsia.imread(baseline)
         """Baseline image for the tabletop without any corrections."""
@@ -119,24 +121,40 @@ class SimpleFluidFlower:
     ) -> None:
         """Setup Table top based on characteristic input image (preferably the baseline).
 
-        Args:
-            specs (dict): specifications of the FluidFlower, includes:
-                - width (float): width of the ROI
-                - height (float): height of the ROI
-                - depth (float): depth of the porous medium
-                - porosity (float): porosity of the porous medium
-                - colorchecker_position (str): position of the color checker
-            segmentation (Path): path to segmentation image
-            curvature_options (dict): options for curvature correction, includes:
-                - roi (Path): path to image with ROI
-                - roi_mode (str): mode for ROI selection
-                - roi_color (list[float]): color of the ROI, only used in automatic mode
-            relative_color_options (dict): options for relative color correction, includes:
-                - images (list[Path]): list of paths to images
-            illumination_options (dict): options for illumination correction, includes:
-                - illumination_mode (str): mode for illumination
-            dynamic_illumination_options (dict): TODO
+        Parameters
+        ----------
+        specs : dict
+            Specifications of the FluidFlower, includes:
 
+            - width (float): width of the ROI
+
+            - height (float): height of the ROI
+
+            - depth (float): depth of the porous medium
+
+            - porosity (float): porosity of the porous medium
+
+            - colorchecker_position (str): position of the color checker
+        segmentation : Path
+            Path to segmentation image.
+        curvature_options : dict
+            Options for curvature correction, includes:
+
+            - roi (Path): path to image with ROI
+
+            - roi_mode (str): mode for ROI selection
+
+            - roi_color (list[float]): color of the ROI, only used in automatic mode
+        relative_color_options : dict
+            Options for relative color correction, includes:
+
+            - images (list[Path]): list of paths to images
+        illumination_options : dict
+            Options for illumination correction, includes:
+
+            - illumination_mode (str): mode for illumination
+        dynamic_illumination_options : dict
+            TODO.
         """
 
         # Specs of ROI
@@ -261,9 +279,10 @@ class SimpleFluidFlower:
     ) -> darsia.DriftCorrection:
         """Setup drift correction based on color checker.
 
-        Returns:
-            DriftCorrection: drift_correction
-
+        Returns
+        -------
+        DriftCorrection
+            Drift_correction.
         """
 
         # Define translation correction object based on color checker
@@ -284,14 +303,19 @@ class SimpleFluidFlower:
     ) -> darsia.CurvatureCorrection:
         """Setup shape correction based on provided images.
 
-        Args:
-            roi (Path): path to image with ROI
-            roi_mode (Literal["interactive", "automatic"]): mode for ROI selection
-            roi_color (Optional[list[float]]): color of the ROI, only used in automatic mode
+        Parameters
+        ----------
+        roi : Path
+            Path to image with ROI.
+        roi_mode : Literal["interactive", "automatic"]
+            Mode for ROI selection.
+        roi_color : Optional[list[float]]
+            Color of the ROI, only used in automatic mode.
 
-        Returns:
-            CurvatureCorrection: curvature_correction
-
+        Returns
+        -------
+        CurvatureCorrection
+            Curvature_correction.
         """
 
         # Read auxiliary images for calibration - make sure they are of the same size
@@ -323,12 +347,15 @@ class SimpleFluidFlower:
     ) -> darsia.IlluminationCorrection:
         """Setup color correction based on color checker.
 
-        Args:
-            illumination_mode (Literal["automatic", "interactive"]): mode for illumination
+        Parameters
+        ----------
+        illumination_mode : Literal["automatic", "interactive"]
+            Mode for illumination.
 
-        Returns:
-            IlluminationCorrection: illumination_correction
-
+        Returns
+        -------
+        IlluminationCorrection
+            Illumination_correction.
         """
         # Define illumination gradient correction by estimating the lightness on distributed
         # samples. Use random samples in main reservoir.
@@ -369,13 +396,17 @@ class SimpleFluidFlower:
     ) -> darsia.DynamicIlluminationCorrection:
         """Setup dynamic illumination correction based on baseline image.
 
-        Args:
-            baseline (darsia.Image): baseline image
-            options (dict): options for dynamic illumination correction
+        Parameters
+        ----------
+        baseline : darsia.Image
+            Baseline image.
+        options : dict
+            Options for dynamic illumination correction.
 
-        Returns:
-            DynamicIlluminationCorrection: dynamic_illumination_correction
-
+        Returns
+        -------
+        DynamicIlluminationCorrection
+            Dynamic_illumination_correction.
         """
         # Define dynamic illumination correction object
         dynamic_illumination_correction = darsia.DynamicIlluminationCorrection()
@@ -390,9 +421,10 @@ class SimpleFluidFlower:
     ) -> darsia.ColorCorrection:
         """Setup color correction based on color checker.
 
-        Returns:
-            ColorCorrection: color_correction
-
+        Returns
+        -------
+        ColorCorrection
+            Color_correction.
         """
         # Define color correction object - target here the same colors as in the original
         # image (modulo curvature correction)
@@ -411,12 +443,15 @@ class SimpleFluidFlower:
     def setup_segmentation(self, segmentation: Path) -> darsia.Image:
         """Setup segmentation based on provided image.
 
-        Args:
-            segmentation (Path): path to segmentation image
+        Parameters
+        ----------
+        segmentation : Path
+            Path to segmentation image.
 
-        Returns:
-            darsia.Labels: labels object
-
+        Returns
+        -------
+        darsia.Labels
+            Labels object.
         """
         segmentation_image = darsia.resize(
             darsia.imread(segmentation),
@@ -454,10 +489,11 @@ class SimpleFluidFlower:
     ) -> None:
         """Activate corrections based on input list and update baseline.
 
-        Args:
-            corrections (list[str]): list of corrections to activate; expected values are
-                "drift", "curvature", "illumination", "color"
-
+        Parameters
+        ----------
+        corrections : list[str]
+            List of corrections to activate; expected values are
+            "drift", "curvature", "illumination", "color".
         """
         # Update corrections
         self.corrections = []
@@ -494,21 +530,25 @@ class SimpleFluidFlower:
     def expert_knowledge(self, img: darsia.Image) -> None:
         """Possibility to apply expert knowledge to the image after preprocessing.
 
-        Args:
-            img (np.ndarray): image array
-
+        Parameters
+        ----------
+        img : np.ndarray
+            Image array.
         """
         ...
 
     def read_image(self, path: Path) -> darsia.Image:
         """Read image and apply corrections.
 
-        Args:
-            path (Path): path to image
+        Parameters
+        ----------
+        path : Path
+            Path to image.
 
-        Returns:
-            darsia.Image: image object
-
+        Returns
+        -------
+        darsia.Image
+            Image object.
         """
 
         # Read image from file and apply corrections
@@ -526,9 +566,10 @@ class SimpleFluidFlower:
     def save(self, folder: Path) -> None:
         """Save the tabletop to a folder.
 
-        Args:
-            folder (Path): path to folder
-
+        Parameters
+        ----------
+        folder : Path
+            Path to folder.
         """
         # Make sure folder exists
         folder.mkdir(parents=True, exist_ok=True)
@@ -661,12 +702,15 @@ class SimpleFluidFlower:
     def restrict_to_water_height(self, img: darsia.Image) -> darsia.Image:
         """Restrict image to water height.
 
-        Args:
-            img (darsia.Image): image
+        Parameters
+        ----------
+        img : darsia.Image
+            Image.
 
-        Returns:
-            darsia.Image: restricted image
-
+        Returns
+        -------
+        darsia.Image
+            Restricted image.
         """
         return img.subregion(
             roi=darsia.CoordinateArray([[0, 0], [self.width, self.water_height]])

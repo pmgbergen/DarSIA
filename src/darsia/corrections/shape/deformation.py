@@ -15,18 +15,21 @@ import darsia
 class DeformationCorrection(darsia.BaseCorrection):
     """Patch-wise defined deformation correction defined through image registration.
 
-    Attributes:
-        base (darsia.Image): reference (baseline) image.
-
+    Attributes
+    ----------
+    base : darsia.Image
+        Reference (baseline) image.
     """
 
     def __init__(self, base: darsia.Image, config: Optional[dict]) -> None:
         """Constructor.
 
-        Args:
-            base (darsia.Image): baseline image
-            config (dict, optional): contains all tuning parameters.
-
+        Parameters
+        ----------
+        base : darsia.Image
+            Baseline image.
+        config : dict, optional
+            Contains all tuning parameters.
         """
         # Convert config to dictionary.
         if config is None:
@@ -45,12 +48,15 @@ class DeformationCorrection(darsia.BaseCorrection):
     def correct_array(self, img: np.ndarray) -> np.ndarray:
         """Main routine for aligning image with baseline image.
 
-        Args:
-            img (np.ndarray): input image, to be aligned.
+        Parameters
+        ----------
+        img : np.ndarray
+            Input image, to be aligned.
 
-        Returns:
-            np.ndarray: aligned image array.
-
+        Returns
+        -------
+        np.ndarray
+            Aligned image array.
         """
         if self.active:
             metadata = self.base.metadata()

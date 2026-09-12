@@ -16,11 +16,13 @@ class BinaryRemoveSmallObjects:
 
     def __init__(self, min_size: Optional[int] = None, key: str = "", **kwargs) -> None:
         """
-        Args:
-            min_size (int): min size of objects which will not be removed.
-            key (str): prefix
+        Parameters
+        ----------
+        min_size : int
+            Min size of objects which will not be removed.
+        key : str
+            Prefix.
             kwargs (keyword arguments)
-
         """
         self.min_size = (
             kwargs.get(key + "remove small objects size", 1)
@@ -32,12 +34,15 @@ class BinaryRemoveSmallObjects:
         """
         Remove small objects.
 
-        Args:
-            img (np.ndarray): boolean input image
+        Parameters
+        ----------
+        img : np.ndarray
+            Boolean input image.
 
-        Returns:
-            np.ndarray: boolean inpainted image
-
+        Returns
+        -------
+        np.ndarray
+            Boolean inpainted image.
         """
         if self.min_size > 1:
             img = skimage.morphology.remove_small_objects(img, min_size=self.min_size)
@@ -54,11 +59,13 @@ class BinaryFillHoles:
         self, area_threshold: Optional[int] = None, key: str = "", **kwargs
     ) -> None:
         """
-        Args:
-            area_threshold (int): max size of holes which will be filled.
-            key (str): prefix
+        Parameters
+        ----------
+        area_threshold : int
+            Max size of holes which will be filled.
+        key : str
+            Prefix.
             kwargs (keyword arguments)
-
         """
         self.area_threshold = (
             kwargs.get(key + "fill holes size", 0)
@@ -70,12 +77,15 @@ class BinaryFillHoles:
         """
         Fill holes.
 
-        Args:
-            img (np.ndarray): boolean input image
+        Parameters
+        ----------
+        img : np.ndarray
+            Boolean input image.
 
-        Returns:
-            np.ndarray: boolean inpainted image
-
+        Returns
+        -------
+        np.ndarray
+            Boolean inpainted image.
         """
         if self.area_threshold > 0:
             img = skimage.morphology.remove_small_holes(
@@ -94,11 +104,13 @@ class BinaryLocalConvexCover:
         self, cover_patch_size: Optional[int] = None, key: str = "", **kwargs
     ) -> None:
         """
-        Args:
-            cover_patch_size (int): size of local patches
-            key (str): prefix
+        Parameters
+        ----------
+        cover_patch_size : int
+            Size of local patches.
+        key : str
+            Prefix.
             kwargs (keyword arguments)
-
         """
         self.cover_patch_size = (
             kwargs.get(key + "local convex cover size", 0)
@@ -110,12 +122,15 @@ class BinaryLocalConvexCover:
         """
         Fill holes.
 
-        Args:
-            img (np.ndarray): boolean input image
+        Parameters
+        ----------
+        img : np.ndarray
+            Boolean input image.
 
-        Returns:
-            np.ndarray: boolean inpainted image
-
+        Returns
+        -------
+        np.ndarray
+            Boolean inpainted image.
         """
         if self.cover_patch_size > 1:
             covered_img = np.zeros(img.shape[:2], dtype=bool)

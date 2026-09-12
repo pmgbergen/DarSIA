@@ -29,19 +29,25 @@ class VolumeAveragingConfig:
 class TVDConfig:
     """Configuration for TVD (Total Variation Denoising) restoration.
 
-    Attributes:
-        method: TVD solver method. One of "chambolle", "anisotropic bregman",
-            "isotropic bregman", "heterogeneous bregman".
-        weight: Regularization weight. Either a float or one of the strings
-            "porosity" (use fluidflower.image_porosity as heterogeneous weight)
-            or "boolean_porosity" (use fluidflower.boolean_porosity as heterogeneous
-            weight). When a string value is provided, "heterogeneous bregman" is
-            automatically selected as the TVD method.
-        max_num_iter: Maximum number of iterations.
-        eps: Convergence tolerance.
-        omega: Data fidelity weight (only for "heterogeneous bregman").
-        regularization: Regularization parameter (only for "heterogeneous bregman").
-
+    Attributes
+    ----------
+    method
+        TVD solver method. One of "chambolle", "anisotropic bregman",
+        "isotropic bregman", "heterogeneous bregman".
+    weight
+        Regularization weight. Either a float or one of the strings
+        "porosity" (use fluidflower.image_porosity as heterogeneous weight)
+        or "boolean_porosity" (use fluidflower.boolean_porosity as heterogeneous
+        weight). When a string value is provided, "heterogeneous bregman" is
+        automatically selected as the TVD method.
+    max_num_iter
+        Maximum number of iterations.
+    eps
+        Convergence tolerance.
+    omega
+        Data fidelity weight (only for "heterogeneous bregman").
+    regularization
+        Regularization parameter (only for "heterogeneous bregman").
     """
 
     method: Literal[

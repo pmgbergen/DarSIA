@@ -80,12 +80,15 @@ class CoordinateArray(Coordinate):
     def __getitem__(self, key: int) -> Coordinate:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
-        Args:
-            key (int): identificator (for row in CoordinateArray)
+        Parameters
+        ----------
+        key : int
+            Identificator (for row in CoordinateArray).
 
-        Returns:
-            Coordinate: corresponding coordinate
-
+        Returns
+        -------
+        Coordinate
+            Corresponding coordinate.
         """
         ...
 
@@ -93,12 +96,15 @@ class CoordinateArray(Coordinate):
     def __getitem__(self, key: np.ndarray) -> CoordinateArray:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
-        Args:
-            key (np.ndarray): identificator (for rows in CoordinateArray)
+        Parameters
+        ----------
+        key : np.ndarray
+            Identificator (for rows in CoordinateArray).
 
-        Returns:
-            CoordinateArray: corresponding coordinates
-
+        Returns
+        -------
+        CoordinateArray
+            Corresponding coordinates.
         """
         ...
 
@@ -120,12 +126,15 @@ class VoxelArray(Voxel):
     def __getitem__(self, key: int) -> Voxel:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
-        Args:
-            key (int): identificator (for row in VoxelArray)
+        Parameters
+        ----------
+        key : int
+            Identificator (for row in VoxelArray).
 
-        Returns:
-            Voxel: corresponding voxel
-
+        Returns
+        -------
+        Voxel
+            Corresponding voxel.
         """
         ...
 
@@ -133,12 +142,15 @@ class VoxelArray(Voxel):
     def __getitem__(self, key: np.ndarray) -> VoxelArray:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
-        Args:
-            key (np.ndarray): identificator (for rows in VoxelArray)
+        Parameters
+        ----------
+        key : np.ndarray
+            Identificator (for rows in VoxelArray).
 
-        Returns:
-            VoxelArray: corresponding voxels
-
+        Returns
+        -------
+        VoxelArray
+            Corresponding voxels.
         """
         ...
 
@@ -159,12 +171,15 @@ class VoxelCenterArray(VoxelCenter):
     def __getitem__(self, key: int) -> VoxelCenter:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
-        Args:
-            key (int): identificator (for row in VoxelArray)
+        Parameters
+        ----------
+        key : int
+            Identificator (for row in VoxelArray).
 
-        Returns:
-            VoxelCenter: corresponding voxel
-
+        Returns
+        -------
+        VoxelCenter
+            Corresponding voxel.
         """
         ...
 
@@ -172,12 +187,15 @@ class VoxelCenterArray(VoxelCenter):
     def __getitem__(self, key: np.ndarray) -> VoxelCenterArray:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
-        Args:
-            key (np.ndarray): identificator (for rows in VoxelArray)
+        Parameters
+        ----------
+        key : np.ndarray
+            Identificator (for rows in VoxelArray).
 
-        Returns:
-            VoxelCenterArray: corresponding voxels
-
+        Returns
+        -------
+        VoxelCenterArray
+            Corresponding voxels.
         """
         ...
 
@@ -197,15 +215,18 @@ class VoxelCenterArray(VoxelCenter):
 def make_coordinate(pts: Union[list, np.ndarray]) -> Union[Coordinate, CoordinateArray]:
     """Quick-access constructor for Coordinate or CoordinateArray.
 
-    Args:
-        pts (Union[list, np.ndarray]): list of points or array of points
+    Parameters
+    ----------
+    pts : Union[list, np.ndarray]
+        List of points or array of points.
 
-    Returns:
-        Union[Coordinate, CoordinateArray]: Coordinate or CoordinateArray variant of
-            point (type depends on input), i.e. if a single point is provided, a
-            Coordinate is returned, if a list of points is provided, a CoordinateArray
-            is returned.
-
+    Returns
+    -------
+    Union[Coordinate, CoordinateArray]
+        Coordinate or CoordinateArray variant of
+        point (type depends on input), i.e. if a single point is provided, a
+        Coordinate is returned, if a list of points is provided, a CoordinateArray
+        is returned.
     """
     pts = np.array(pts)
     if len(pts.shape) == 1:
@@ -224,16 +245,20 @@ def make_voxel(
 ) -> Union[Voxel, VoxelArray]:
     """Quick-access constructor for Voxel or VoxelArray.
 
-    Args:
-        pts (Union[list, np.ndarray]): list of points or array of points
-        matrix_indexing (bool, optional): whether to use matrix indexing (first index
-            corresponds to row, second to column, third to depth). Defaults to True.
+    Parameters
+    ----------
+    pts : Union[list, np.ndarray]
+        List of points or array of points.
+    matrix_indexing : bool, optional
+        Whether to use matrix indexing (first index
+        corresponds to row, second to column, third to depth). Defaults to True.
 
-    Returns:
-        Union[Voxel, VoxelArray]: Voxel or VoxelArray variant of point (type depends on
-            input), i.e. if a single point is provided, a Voxel is returned, if a list
-            of points is provided, a VoxelArray is returned.
-
+    Returns
+    -------
+    Union[Voxel, VoxelArray]
+        Voxel or VoxelArray variant of point (type depends on
+        input), i.e. if a single point is provided, a Voxel is returned, if a list
+        of points is provided, a VoxelArray is returned.
     """
     pts_array = np.array(pts)
     if len(pts_array.shape) == 1:
@@ -252,17 +277,21 @@ def make_voxel_center(
 ) -> Union[VoxelCenter, VoxelArray]:
     """Quick-access constructor for VoxelCenter or VoxelCenterArray.
 
-    Args:
-        pts (Union[list, np.ndarray]): list of points or array of points
-        matrix_indexing (bool, optional): whether to use matrix indexing (first index
-            corresponds to row, second to column, third to depth). Defaults to True.
+    Parameters
+    ----------
+    pts : Union[list, np.ndarray]
+        List of points or array of points.
+    matrix_indexing : bool, optional
+        Whether to use matrix indexing (first index
+        corresponds to row, second to column, third to depth). Defaults to True.
 
-    Returns:
-        Union[VoxelCenter, VoxelCenterArray]: VoxelCenter or VoxelCenterArray variant
-            of point (type depends on input), i.e. if a single point is provided, a
-            VoxelCenter is returned, if a list of points is provided, a VoxelCenterArray
-            is returned.
-
+    Returns
+    -------
+    Union[VoxelCenter, VoxelCenterArray]
+        VoxelCenter or VoxelCenterArray variant
+        of point (type depends on input), i.e. if a single point is provided, a
+        VoxelCenter is returned, if a list of points is provided, a VoxelCenterArray
+        is returned.
     """
     pts_array = np.array(pts)
     if len(pts_array.shape) == 1:
@@ -287,12 +316,15 @@ def to_coordinate(
 ) -> Union[Coordinate, CoordinateArray]:
     """Conversion of point to Coordinate.
 
-    Args:
-        coordinatesystem (CoordinateSystem, optional): coordinate system used for conversion
+    Parameters
+    ----------
+    coordinatesystem : CoordinateSystem, optional
+        Coordinate system used for conversion.
 
-    Returns:
-        Coordinate or CoordinateArray: Coordinate variant of point (type depends on input)
-
+    Returns
+    -------
+    Coordinate or CoordinateArray
+        Coordinate variant of point (type depends on input).
     """
     if isinstance(self, Coordinate):
         return self.copy()
@@ -308,12 +340,15 @@ def to_voxel(
 ) -> Union[Voxel, VoxelArray]:
     """Conversion of point to Voxel.
 
-    Args:
-        coordinatesystem (CoordinateSystem, optional): coordinate system used for conversion
+    Parameters
+    ----------
+    coordinatesystem : CoordinateSystem, optional
+        Coordinate system used for conversion.
 
-    Returns:
-        Voxel or VoxelArray: Voxel variant of point
-
+    Returns
+    -------
+    Voxel or VoxelArray
+        Voxel variant of point.
     """
     if isinstance(self, Voxel):
         return self.copy()
@@ -331,12 +366,15 @@ def to_voxel_center(
 ) -> Union[VoxelCenter, VoxelCenterArray]:
     """Conversion of point to VoxelCenter.
 
-    Args:
-        coordinatesystem (CoordinateSystem, optional): coordinate system used for conversion
+    Parameters
+    ----------
+    coordinatesystem : CoordinateSystem, optional
+        Coordinate system used for conversion.
 
-    Returns:
-        VoxelCenter or VoxelCenterArray: VoxelCenter variant of point
-
+    Returns
+    -------
+    VoxelCenter or VoxelCenterArray
+        VoxelCenter variant of point.
     """
     if isinstance(self, VoxelCenter):
         return self.copy()
@@ -352,13 +390,17 @@ def to_voxel_center(
 def to(self, cls, coordinatesystem: Optional[darsia.CoordinateSystem] = None):
     """Conversion of point to a different point type.
 
-    Args:
-        cls (type): class to convert to
-        coordinatesystem (CoordinateSystem, optional): coordinate system used for conversion
+    Parameters
+    ----------
+    cls : type
+        Class to convert to.
+    coordinatesystem : CoordinateSystem, optional
+        Coordinate system used for conversion.
 
-    Returns:
-        cls: cls variant of point
-
+    Returns
+    -------
+    cls
+        Cls variant of point.
     """
     if cls in [Coordinate, CoordinateArray]:
         return self.to_coordinate(coordinatesystem)

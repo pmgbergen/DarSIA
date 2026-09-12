@@ -22,10 +22,12 @@ class LabelsAssistantMenu(darsia.BaseAssistant):
     ) -> None:
         """Initialize module.
 
-        Args:
-            img (darsia.Image): input image
-            background (Optional[darsia.Image]): background image
-
+        Parameters
+        ----------
+        img : darsia.Image
+            Input image.
+        background : Optional[darsia.Image]
+            Background image.
         """
         self.name = "Labels assistant menu"
         """Name of the module."""
@@ -57,9 +59,10 @@ class LabelsAssistantMenu(darsia.BaseAssistant):
         """Finalize selection if 'enter' is pressed, and reset containers if 'escape'
         is pressed.
 
-        Args:
-            event: key press event
-
+        Parameters
+        ----------
+        event : matplotlib.backend_bases.KeyEvent
+            Key press event.
         """
         if self.verbosity:
             print(f"Current key: {event}")
@@ -99,9 +102,10 @@ class LabelsAssistantMenu(darsia.BaseAssistant):
     def __call__(self) -> str:
         """Call the assistant.
 
-        Returns:
-            str: next action to be executed by LabelsAssistant.
-
+        Returns
+        -------
+        str
+            Next action to be executed by LabelsAssistant.
         """
         self.action = None
         super().__call__()
@@ -120,11 +124,14 @@ class LabelsSegmentAssistant:
     ) -> None:
         """Initialize module.
 
-        Args:
-            labels (Optional[darsia.Image]): input labels
-            background (darsia.Image): background image
-            mask (Optional[np.ndarray]): mask to be used for segmentation
-
+        Parameters
+        ----------
+        labels : Optional[darsia.Image]
+            Input labels.
+        background : darsia.Image
+            Background image.
+        mask : Optional[np.ndarray]
+            Mask to be used for segmentation.
         """
         self.labels = labels
         """Input labels."""
@@ -156,9 +163,10 @@ class LabelsSegmentAssistant:
     def __call__(self) -> darsia.Image:
         """Call the assistant.
 
-        Returns:
-            darsia.Image: new labels through segmentation
-
+        Returns
+        -------
+        darsia.Image
+            New labels through segmentation.
         """
         point_selection_assistant = darsia.PointSelectionAssistant(
             name="Pick characteristic points for segmentation.",
@@ -207,9 +215,10 @@ class MonochromaticAssistant(darsia.BaseAssistant):
     def __init__(self, img: darsia.Image, **kwargs) -> None:
         """Initialize module.
 
-        Args:
-            img (darsia.Image): input image
-
+        Parameters
+        ----------
+        img : darsia.Image
+            Input image.
         """
         self.name = "Monochromatic assistant"
         """Name of the module."""
@@ -241,9 +250,10 @@ class MonochromaticAssistant(darsia.BaseAssistant):
     def _on_key_press(self, event) -> None:
         """Key press event handler.
 
-        Args:
-            event: key press event
-
+        Parameters
+        ----------
+        event : matplotlib.backend_bases.KeyEvent
+            Key press event.
         """
         if self.verbosity:
             print(f"Current key: {event}")
@@ -274,9 +284,10 @@ class MonochromaticAssistant(darsia.BaseAssistant):
     def __call__(self) -> darsia.Image:
         """Call the assistant.
 
-        Returns:
-            darsia.Image: monochromatic image
-
+        Returns
+        -------
+        darsia.Image
+            Monochromatic image.
         """
         self._print_instructions()
         plt.ion()
@@ -293,10 +304,12 @@ class LabelsMaskSelectionAssistant:
     ) -> None:
         """Initialize module.
 
-        Args:
-            labels (darsia.Image): input labels
-            background (Optional[darsia.Image]): background image
-
+        Parameters
+        ----------
+        labels : darsia.Image
+            Input labels.
+        background : Optional[darsia.Image]
+            Background image.
         """
         self.name = "Labels mask selection assistant"
         """Name of the module."""
@@ -310,9 +323,10 @@ class LabelsMaskSelectionAssistant:
     def __call__(self) -> np.ndarray:
         """Call the assistant.
 
-        Returns:
-            np.ndarray: mask
-
+        Returns
+        -------
+        np.ndarray
+            Mask.
         """
         # Identify points characterizing different regions to be merged
         point_selection_assistant = darsia.PointSelectionAssistant(
@@ -345,10 +359,12 @@ class LabelsPickAssistant:
     ) -> None:
         """Initialize module.
 
-        Args:
-            labels (darsia.Image): input labels
-            background (darsia.Image): background image
-
+        Parameters
+        ----------
+        labels : darsia.Image
+            Input labels.
+        background : darsia.Image
+            Background image.
         """
         self.labels = labels
         """Input labels."""
@@ -360,9 +376,10 @@ class LabelsPickAssistant:
     def __call__(self) -> darsia.Image:
         """Call the assistant.
 
-        Returns:
-            darsia.Image: selected labels
-
+        Returns
+        -------
+        darsia.Image
+            Selected labels.
         """
         # Extract mask corresponding to chosen points
         mask_selection_assistant = darsia.LabelsMaskSelectionAssistant(
@@ -387,10 +404,12 @@ class LabelsMergeAssistant:
     ) -> None:
         """Initialize module.
 
-        Args:
-            labels (darsia.Image): input labels
-            background (Optional[darsia.Image]): background image
-
+        Parameters
+        ----------
+        labels : darsia.Image
+            Input labels.
+        background : Optional[darsia.Image]
+            Background image.
         """
         self.name = "Labels merge assistant"
         """Name of the module."""
@@ -428,10 +447,12 @@ class LabelsAssistant:
     ) -> None:
         """Initialize module.
 
-        Args:
-            labels (Optional[darsia.Image]): input labels
-            background (Optional[darsia.Image]): background image
-
+        Parameters
+        ----------
+        labels : Optional[darsia.Image]
+            Input labels.
+        background : Optional[darsia.Image]
+            Background image.
         """
         self.name = "Labels assistant"
         """Name of the assistant."""
@@ -473,9 +494,10 @@ class LabelsAssistant:
         Always call the menu first. Then call the next module. Repeat until the
         assistant is finalized. The instructions are printed only for the first call.
 
-        Returns:
-            darsia.Image: current labels
-
+        Returns
+        -------
+        darsia.Image
+            Current labels.
         """
         if not self.finalized:
             # Call menu

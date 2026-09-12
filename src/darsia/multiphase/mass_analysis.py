@@ -28,11 +28,14 @@ class CO2MassAnalysis:
     ) -> None:
         """Initialization of mass analysis.
 
-        Args:
-            baseline (Image): baseline image
-            atmospheric_pressure (float): atmospheric pressure in bar
-            atmospheric_temperature (float): temperature in Celsius
-
+        Parameters
+        ----------
+        baseline : Image
+            Baseline image.
+        atmospheric_pressure : float
+            Atmospheric pressure in bar.
+        atmospheric_temperature : float
+            Temperature in Celsius.
         """
         self.baseline = baseline
         """Baseline image."""
@@ -61,10 +64,12 @@ class CO2MassAnalysis:
     ) -> None:
         """Update atmospheric pressure and temperature.
 
-        Args:
-            atmospheric_pressure (float): atmospheric pressure in bar
-            atmospheric_temperature (float): temperature in Celsius
-
+        Parameters
+        ----------
+        atmospheric_pressure : float
+            Atmospheric pressure in bar.
+        atmospheric_temperature : float
+            Temperature in Celsius.
         """
         self.atmospheric_pressure = atmospheric_pressure or self.atmospheric_pressure
         self.atmospheric_temperature = (
@@ -100,9 +105,10 @@ class CO2MassAnalysis:
     def log(self, path: Path) -> None:
         """Plot density, solubility, hydrostatic pressure, temperature.
 
-        Args:
-            path (Path): path to save the plots
-
+        Parameters
+        ----------
+        path : Path
+            Path to save the plots.
         """
         plt.figure("density")
         plt.imshow(self.density_gaseous_co2)
@@ -360,14 +366,18 @@ class CO2MassAnalysis:
         - Mass of dissolved CO2: ( m_aq = chi_aq x solubility_co2 )
         - Total mass of CO2: ( m = m_g + m_aq )
 
-        Args:
-            chi_g (Image): volumetric concentration in gas phase
-            chi_aq (Image): volumetric concentration in aqueous
+        Parameters
+        ----------
+        chi_g : Image
+            Volumetric concentration in gas phase.
+        chi_aq : Image
+            Volumetric concentration in aqueous.
 
-        Returns:
-            Tuple[Image, Image, Image]: mass map of CO2, mass map of gaseous CO2, mass map of
-                aqueous CO2
-
+        Returns
+        -------
+        Tuple[Image, Image, Image]
+            Mass map of CO2, mass map of gaseous CO2, mass map of
+            aqueous CO2.
         """
         # Allocate mass maps
         mass = darsia.zeros_like(chi_aq, mode="voxels", dtype=np.float32)
@@ -406,13 +416,16 @@ class CO2MassAnalysis:
     ) -> "darsia.SimpleMassAnalysisResults":
         """Determine phase maps from a total mass map and recompute components.
 
-        Args:
-            mass (darsia.Image): Total CO2 mass map.
+        Parameters
+        ----------
+        mass : darsia.Image
+            Total CO2 mass map.
 
-        Returns:
-            darsia.SimpleMassAnalysisResults: Reconstructed concentrations, saturation,
-                and component masses.
-
+        Returns
+        -------
+        darsia.SimpleMassAnalysisResults
+            Reconstructed concentrations, saturation,
+            and component masses.
         """
         solubility = self.solubility_co2
         density = self.density_gaseous_co2
@@ -478,12 +491,15 @@ class AdvancedCO2MassAnalysis:
     ) -> tuple[darsia.Image, darsia.Image, darsia.Image, darsia.Image, darsia.Image]:
         """Analyze mass of CO2, given maps for dissolved and gaseous CO2.
 
-        Args:
-            img (Image): input image
+        Parameters
+        ----------
+        img : Image
+            Input image.
 
-        Returns:
-            tuple: mass of CO2, mass map of CO2
-
+        Returns
+        -------
+        tuple
+            Mass of CO2, mass map of CO2.
         """
         c_g = self.concentration_analysis_g(img)
         c_aq = self.concentration_analysis_aq(img)
@@ -502,21 +518,25 @@ class AdvancedCO2MassAnalysis:
     def mass(self, img: darsia.Image) -> darsia.Image:
         """Analyze mass of CO2, given maps for dissolved and gaseous CO2.
 
-        Args:
-            img (Image): input image
+        Parameters
+        ----------
+        img : Image
+            Input image.
 
-        Returns:
-            Image: mass of CO2
-
+        Returns
+        -------
+        Image
+            Mass of CO2.
         """
         return self(img)[0]
 
     def ndofs(self) -> int:
         """Return number of degrees of freedom of the mass analysis.
 
-        Returns:
-            int: number of degrees of freedom
-
+        Returns
+        -------
+        int
+            Number of degrees of freedom.
         """
         return (
             self.concentration_analysis_g.ndofs()
@@ -526,9 +546,10 @@ class AdvancedCO2MassAnalysis:
     def update_parameters(self, params: np.ndarray) -> None:
         """Update parameters of the mass analysis.
 
-        Args:
-            params (np.ndarray): parameters
-
+        Parameters
+        ----------
+        params : np.ndarray
+            Parameters.
         """
         ndofs_g = self.concentration_analysis_g.ndofs()
         ndofs_aq = self.concentration_analysis_aq.ndofs()

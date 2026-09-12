@@ -77,9 +77,10 @@ class BaseAssistant(ABC):
         """Finalize selection if 'enter' is pressed, and reset containers if 'escape'
         is pressed.
 
-        Args:
-            event: key press event
-
+        Parameters
+        ----------
+        event : matplotlib.backend_bases.KeyEvent
+            Key press event.
         """
         if self.verbosity:
             print(f"Current key: {event.key}")

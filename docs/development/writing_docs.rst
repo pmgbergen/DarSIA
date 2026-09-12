@@ -54,9 +54,9 @@ data as ``../images/<file>``.
 Docstrings
 ==========
 
-Docstrings feed the API reference. ``sphinx.ext.napoleon`` renders both
-Google- and NumPy-style, and the codebase uses a mix; NumPy style is preferred
-for new and substantially edited docstrings.
+Docstrings feed the API reference and must be **NumPy style**, rendered by
+``numpydoc``. Run ``numpydoc validate darsia.<object>`` (or the pre-commit hook,
+if configured) to check one against the conventions.
 
 Maintaining the workflow docs
 =============================

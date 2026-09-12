@@ -44,9 +44,10 @@ class TypeCorrection(darsia.BaseCorrection):
     def save(self, path: Path) -> None:
         """Save the class name and data type to a npz file.
 
-        Args:
-            path (Path): path to npz file
-
+        Parameters
+        ----------
+        path : Path
+            Path to npz file.
         """
         np.savez(path, class_name=type(self).__name__, data_type=self.data_type)
 

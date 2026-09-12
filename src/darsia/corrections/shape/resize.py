@@ -32,16 +32,24 @@ class ResizeCorrection(darsia.BaseCorrection):
     ) -> None:
         """Constructor matching darsia.Resize's signature.
 
-        Args:
-            ref_image (Image, optional): image whose shape is desired
-            shape (tuple of int, optional): desired shape (in matrix indexing)
-            fx (float, optional): resize factor in x-dimension.
-            fy (float, optional): resize factor in y-dimension.
-            interpolation (str, optional): interpolation method.
-            dtype: conversion dtype before resizing; nothing happens if None.
-            key (str): prefix for kwargs-based configuration.
-            **kwargs: additional configuration options.
-
+        Parameters
+        ----------
+        ref_image : Image, optional
+            Image whose shape is desired.
+        shape : tuple of int, optional
+            Desired shape (in matrix indexing).
+        fx : float, optional
+            Resize factor in x-dimension.
+        fy : float, optional
+            Resize factor in y-dimension.
+        interpolation : str, optional
+            Interpolation method.
+        dtype : np.dtype or type, optional
+            Conversion dtype before resizing; nothing happens if None.
+        key : str
+            Prefix for kwargs-based configuration.
+        **kwargs
+            Additional configuration options.
         """
         self._resize = darsia.Resize(
             ref_image=ref_image,
@@ -66,13 +74,17 @@ class ResizeCorrection(darsia.BaseCorrection):
         correct_array, which receives only np.ndarray), then delegates to
         BaseCorrection's correct overwrite/copy/metadata dispatch.
 
-        Args:
-            image (array or Image): image to resize.
-            overwrite (bool): whether to mutate in place.
+        Parameters
+        ----------
+        image : array or Image
+            Image to resize.
+        overwrite : bool
+            Whether to mutate in place.
 
-        Returns:
-            array or Image: resized image, same format as input.
-
+        Returns
+        -------
+        array or Image
+            Resized image, same format as input.
         """
         if isinstance(image, darsia.Image):
             self._input_is_extensive_image = isinstance(image, darsia.ExtensiveImage)
@@ -81,12 +93,15 @@ class ResizeCorrection(darsia.BaseCorrection):
     def correct_array(self, image: np.ndarray) -> np.ndarray:
         """Resize a raw numpy array.
 
-        Args:
-            image (np.ndarray): input image array.
+        Parameters
+        ----------
+        image : np.ndarray
+            Input image array.
 
-        Returns:
-            np.ndarray: resized image array.
-
+        Returns
+        -------
+        np.ndarray
+            Resized image array.
         """
         return self._resize.resize_array(
             image, is_extensive=self._input_is_extensive_image
@@ -95,9 +110,10 @@ class ResizeCorrection(darsia.BaseCorrection):
     def save(self, path: Path) -> None:
         """Save the resize correction to a file.
 
-        Args:
-            path (Path): path to save the parameters to.
-
+        Parameters
+        ----------
+        path : Path
+            Path to save the parameters to.
         """
         np.savez(
             path,
@@ -114,9 +130,10 @@ class ResizeCorrection(darsia.BaseCorrection):
     def load(self, path: Path) -> None:
         """Load the resize correction from a file.
 
-        Args:
-            path (Path): path to load the parameters from.
-
+        Parameters
+        ----------
+        path : Path
+            Path to load the parameters from.
         """
         self._resize = darsia.Resize()
         self._resize.load(path)

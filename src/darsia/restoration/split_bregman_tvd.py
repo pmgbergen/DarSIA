@@ -32,24 +32,38 @@ def split_bregman_tvd(
     diffusion equation with a mass penalization term, the second subproblem is a
     shrinkage step. The regularization term is weighted by the parameter ell.
 
-    Args:
-        img (array): image array
-        mu (float or array): TV penalization parameter
-        omega (float or array): mass penalization parameter
-        ell (float or array): regularization parameter
-        dim (int): spatial dimension of the image
-        max_num_iter (int): maximum number of iterations
-        eps (float): tolerance for relative increment of the energy functional
-        x0 (tuple of arrays, optional): initial guess for image and split Bregman
-            variables
-        isotropic (bool): whether to use isotropic TV denoising
-        verbose (bool, int): verbosity (frequency if int)
-        solver (da.Solver): solver to use for the inner linear system
-        adaptive (lambda, Optional): adaptivity schedule
+    Parameters
+    ----------
+    img : array
+        Image array.
+    mu : float or array
+        TV penalization parameter.
+    omega : float or array
+        Mass penalization parameter.
+    ell : float or array
+        Regularization parameter.
+    dim : int
+        Spatial dimension of the image.
+    max_num_iter : int
+        Maximum number of iterations.
+    eps : float
+        Tolerance for relative increment of the energy functional.
+    x0 : tuple of arrays, optional
+        Initial guess for image and split Bregman
+        variables.
+    isotropic : bool
+        Whether to use isotropic TV denoising.
+    verbose : bool, int
+        Verbosity (frequency if int).
+    solver : da.Solver
+        Solver to use for the inner linear system.
+    adaptive : lambda, Optional
+        Adaptivity schedule.
 
-    Returns:
-        array: denoised image
-
+    Returns
+    -------
+    array
+        Denoised image.
     """
     # Keep track of input type and convert input image to float for further calculations
     img_dtype = img.dtype

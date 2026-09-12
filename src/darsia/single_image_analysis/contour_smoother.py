@@ -78,12 +78,14 @@ class ContourSmoother(ABC):
     def __call__(self, contour: Contour) -> Contour:
         """Main entry point.
 
-        Args:
-            contour: OpenCV contour (N,1,2) or (N,2).
+        Parameters
+        ----------
+        contour : Contour
+            OpenCV contour (N,1,2) or (N,2).
 
-        Returns:
+        Returns
+        -------
             Smoothed contour in OpenCV format (N,1,2) with integer coordinates.
-
         """
         xy = _as_xy(contour)
         out_xy = self._smooth_xy(xy)
@@ -94,12 +96,14 @@ class ContourSmoother(ABC):
     def _smooth_xy(self, xy: np.ndarray) -> np.ndarray:
         """Main method.
 
-        Args:
-            xy: Nx2 array of contour points as floats.
+        Parameters
+        ----------
+        xy : np.ndarray
+            Nx2 array of contour points as floats.
 
-        Returns:
+        Returns
+        -------
             Nx2 array of smoothed contour points as floats.
-
         """
         raise NotImplementedError
 

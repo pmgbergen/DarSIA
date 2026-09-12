@@ -28,13 +28,18 @@ class ConcentrationAnalysisBase(darsia.AnalysisBase):
         """
         Wrapper to find cleaning filter of the concentration analysis.
 
-        Args:
-            concentration_analysis (darsia.ConcentrationAnalysis): concentration analysis
-                to be set up.
-            cleaning_filter (str or Path): path to cleaning filter array.
-            baseline_images (list of str or Path): paths to baseline images.
-            update (bool): flag controlling whether the calibration and setup should
-                be updated.
+        Parameters
+        ----------
+        concentration_analysis : darsia.ConcentrationAnalysis
+            Concentration analysis
+            to be set up.
+        cleaning_filter : str or Path
+            Path to cleaning filter array.
+        baseline_images : list of str or Path
+            Paths to baseline images.
+        update : bool
+            Flag controlling whether the calibration and setup should
+            be updated.
         """
         # Set volume information
         # TODO include; after also including self.determine_effective_volumes (abstractmethod).

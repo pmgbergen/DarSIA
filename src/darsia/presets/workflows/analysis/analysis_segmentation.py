@@ -39,11 +39,14 @@ def analysis_segmentation_from_context(
 ) -> None:
     """Segmentation analysis using pre-prepared context.
 
-    Args:
-        ctx: Pre-prepared analysis context with color_to_mass_analysis initialized.
-        show: Whether to show the images.
-        stream_callback: Optional callback receiving streamed segmentation previews.
-
+    Parameters
+    ----------
+    ctx : AnalysisContext
+        Pre-prepared analysis context with color_to_mass_analysis initialized.
+    show : bool
+        Whether to show the images.
+    stream_callback : Callable[[dict[str, bytes] | None], None] | None
+        Optional callback receiving streamed segmentation previews.
     """
     assert ctx.config.analysis is not None
     assert ctx.config.analysis.segmentation is not None
@@ -167,13 +170,18 @@ def analysis_segmentation(
 ):
     """Segmentation analysis (standalone entry point).
 
-    Args:
-        cls: Rig class.
-        path: Path or list of paths to config files.
-        show: Whether to show the images.
-        all: Whether to use all images.
-        stream_callback: Optional callback receiving streamed segmentation previews.
-
+    Parameters
+    ----------
+    cls : type[Rig]
+        Rig class.
+    path : Path | list[Path]
+        Path or list of paths to config files.
+    show : bool
+        Whether to show the images.
+    all : bool
+        Whether to use all images.
+    stream_callback : Callable[[dict[str, bytes] | None], None] | None
+        Optional callback receiving streamed segmentation previews.
     """
     ctx = prepare_analysis_context(
         cls=cls,

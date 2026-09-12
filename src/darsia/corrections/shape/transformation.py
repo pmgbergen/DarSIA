@@ -30,12 +30,14 @@ class BaseTransformation(ABC):
     ) -> None:
         """Set array input and output type for generalized perspective transformation.
 
-        Args:
-            pts_src (Union[darsia.Coordinate, darsia.Voxel, darsia.VoxelCenter]): source
-                points
-            pts_dst (Union[darsia.Coordinate, darsia.Voxel, darsia.VoxelCenter]): target
-                points
-
+        Parameters
+        ----------
+        pts_src : Union[darsia.Coordinate, darsia.Voxel, darsia.VoxelCenter]
+            Source
+            points.
+        pts_dst : Union[darsia.Coordinate, darsia.Voxel, darsia.VoxelCenter]
+            Target
+            points.
         """
         # Assert (implicitly) pts_src and pts_dst are lists of coordinates or voxels.
         assert pts_src.shape == pts_dst.shape, "source and target points must match"
@@ -73,9 +75,10 @@ class BaseTransformation(ABC):
 
         Required for parameter fitting through optimization.
 
-        Args:
-            parameters (np.ndarray): parameters of transformation
-
+        Parameters
+        ----------
+        parameters : np.ndarray
+            Parameters of transformation.
         """
         ...
 
@@ -103,13 +106,16 @@ class BaseTransformation(ABC):
     ) -> Union[np.ndarray, darsia.Coordinate, darsia.Voxel, darsia.VoxelCenter]:
         """Apply transformation to array.
 
-        Args:
-            x (np.ndarray): array to transform (type depends on input type
-                of transformation)
+        Parameters
+        ----------
+        x : np.ndarray
+            Array to transform (type depends on input type
+            of transformation).
 
-        Returns:
-            np.ndarray: transformed array
-
+        Returns
+        -------
+        np.ndarray
+            Transformed array.
         """
         # For now, convert to plain numpy array
         x_arr = np.asarray(x)
@@ -135,13 +141,16 @@ class BaseTransformation(ABC):
     ) -> Union[np.ndarray, darsia.Coordinate, darsia.Voxel, darsia.VoxelCenter]:
         """Apply inverse transformation to array.
 
-        Args:
-            x (np.ndarray): array to transform (type depends on input type
-                of transformation)
+        Parameters
+        ----------
+        x : np.ndarray
+            Array to transform (type depends on input type
+            of transformation).
 
-        Returns:
-            np.ndarray: transformed array
-
+        Returns
+        -------
+        np.ndarray
+            Transformed array.
         """
         # For now, convert to plain numpy array
         x_arr = np.asarray(x)
@@ -165,13 +174,16 @@ class BaseTransformation(ABC):
     def call_array(self, x: np.ndarray) -> np.ndarray:
         """Apply transformation to array.
 
-        Args:
-            x (np.ndarray): array to transform (type depends on input type
-                of transformation)
+        Parameters
+        ----------
+        x : np.ndarray
+            Array to transform (type depends on input type
+            of transformation).
 
-        Returns:
-            np.ndarray: transformed array
-
+        Returns
+        -------
+        np.ndarray
+            Transformed array.
         """
         ...
 
@@ -179,13 +191,16 @@ class BaseTransformation(ABC):
     def inverse_array(self, x: np.ndarray) -> np.ndarray:
         """Apply inverse transformation to array.
 
-        Args:
-            x (np.ndarray): array to transform (type depends on input type
-                of transformation)
+        Parameters
+        ----------
+        x : np.ndarray
+            Array to transform (type depends on input type
+            of transformation).
 
-        Returns:
-            np.ndarray: transformed array
-
+        Returns
+        -------
+        np.ndarray
+            Transformed array.
         """
         ...
 
@@ -209,12 +224,15 @@ class TransformationCorrection(darsia.BaseCorrection):
     def correct_array(self, array_src: np.ndarray) -> np.ndarray:
         """Correction routine of array data.
 
-        Args:
-            image_src (np.ndarray): array corresponding to some source image
+        Parameters
+        ----------
+        array_src : np.ndarray
+            Array corresponding to some source image.
 
-        Returns:
-            np.ndarray: array corresponding to some destination image
-
+        Returns
+        -------
+        np.ndarray
+            Array corresponding to some destination image.
         """
 
         # Strategy: Warp entire array by mapping target voxels to destination voxels by

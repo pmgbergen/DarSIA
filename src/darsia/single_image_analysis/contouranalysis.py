@@ -32,21 +32,29 @@ def contour_length(
     """
     Calculation of the contour length of a segmented region.
 
-    Args:
-        img (darsia.Image): segmented image with boolean or integer values.
-        roi (np.ndarray): set of points, for which a bounding box defines a ROI.
-        values_of_interest (int or list of int): only active if integer-valued
-            image provided; defines the values of interest, i.e., which part
-            of the image is treated as active.
-        fill_holes (bool): flag controlling whether holes in the determined mask
-            are filled before the contour length is computed; if not, holes are
-            treated as contour; default is True.
-        verbosity (bool): flag controlling whether intermediate results are plotted;
-            default is False.
+    Parameters
+    ----------
+    img : darsia.Image
+        Segmented image with boolean or integer values.
+    roi : np.ndarray
+        Set of points, for which a bounding box defines a ROI.
+    values_of_interest : int or list of int
+        Only active if integer-valued
+        image provided; defines the values of interest, i.e., which part
+        of the image is treated as active.
+    fill_holes : bool
+        Flag controlling whether holes in the determined mask
+        are filled before the contour length is computed; if not, holes are
+        treated as contour; default is True.
+    verbosity : bool
+        Flag controlling whether intermediate results are plotted;
+        default is False.
 
-    Returns:
-        float: contour length in metric units based on the coordinate system of the
-            input image.
+    Returns
+    -------
+    float
+        Contour length in metric units based on the coordinate system of the
+        input image.
     """
     # Make copy of image and restrict to region of interest
     img_roi = img.copy() if roi is None else cast(darsia.Image, img.subregion(roi))
@@ -137,9 +145,10 @@ class ContourAnalysis:
     ) -> None:
         """Constructor.
 
-        Args:
-            verbosity (bool): Verbosity flag.
-
+        Parameters
+        ----------
+        verbosity : bool
+            Verbosity flag.
         """
 
         self.verbosity = verbosity
@@ -158,12 +167,16 @@ class ContourAnalysis:
     ) -> None:
         """Read labeled image and restrict to values of interest.
 
-        Args:
-            img (Image): labeled image.
-            roi (array, optional): set of points defining a box.
-            values_of_interest (int, list of int, optional): label values of interest.
-            fill_holes (bool): flag controlling whether holes in labels are filles.
-
+        Parameters
+        ----------
+        img : Image
+            Labeled image.
+        mask : Image
+            Boolean mask covering the values of interest.
+        roi : array, optional
+            Set of points defining a box.
+        fill_holes : bool
+            Flag controlling whether holes in labels are filles.
         """
 
         # Make copy of image and restrict to region of interest
@@ -203,10 +216,11 @@ class ContourAnalysis:
     def contours(self) -> list[np.ndarray]:
         """Determine contour of loaded labeled image.
 
-        Returns:
-            list[np.ndarray]: list of contours, where each contour is given as an
-                array of pixels.
-
+        Returns
+        -------
+        list[np.ndarray]
+            List of contours, where each contour is given as an
+            array of pixels.
         """
         # Extract contours.
         contours, _ = cv2.findContours(
@@ -228,10 +242,11 @@ class ContourAnalysis:
     def length(self) -> float:
         """Determine length of loaded labeled image.
 
-        Returns:
-            float: length of the interface between values of interest and others.
-                Output in metric units.
-
+        Returns
+        -------
+        float
+            Length of the interface between values of interest and others.
+            Output in metric units.
         """
         # Determine the actual contour length of the different regions in
         # the mask - includes boundary.
@@ -255,12 +270,15 @@ class ContourAnalysis:
         """Auxiliary function to determine the length of the contour
         of the regions with presribed value within self.mask.
 
-        Args:
-            value (bool): value of interest.
+        Parameters
+        ----------
+        value : bool
+            Value of interest.
 
-        Returns:
-            float: contour length.
-
+        Returns
+        -------
+        float
+            Contour length.
         """
         # Fix mask depending on the value of interest.
         mask = self.mask if value else np.logical_not(self.mask)
@@ -289,17 +307,22 @@ class ContourAnalysis:
         Determine local extrema of the contour, where the extremality
         is defined by a direction.
 
-        Args:
-            contours (np.ndarray | None): contours to analyze. If None, contours are determined
-                from the mask; default is None.
-            direction (np.ndarray): direction vector with orientation
+        Parameters
+        ----------
+        direction : np.ndarray
+            Direction vector with orientation.
             # TODO do not allow for contours as input, make Contour analysis. Provide
             # possiblility to use contour as input in a different way.
+        contours : np.ndarray | None
+            Contours to analyze. If None, contours are determined
+            from the mask; default is None.
 
-        Returns:
-            array: pixels of peaks.
-            array: pixels of valleys.
-
+        Returns
+        -------
+        array
+            Pixels of peaks.
+        array
+            Pixels of valleys.
         """
         # Sanity check
         if not np.isclose(direction, np.array([0, -1])).all():
@@ -414,20 +437,28 @@ class ContourAnalysis:
     ) -> None:
         """Plot peaks on top of the provided image.
 
-        Args:
-            img (darsia.Image): image to plot on.
-            peaks_pixels (np.ndarray): pixels of peaks.
-            contours (list[np.ndarray], optional): contours to plot; if None, no contours are
-                plotted; default is None.
-            roi (darsia.CoordinateArray | None): region of interest. If provided, peaks are
-                translated to the top left corner of the ROI; default is None.
-            path (Path, optional): path to save the plot; if None, no saving is performed.
-            show (bool): flag controlling whether the plot is shown; default is True.
-            dpi (int): dots per inch for the saved plot; default is 1000.
-            **kwargs: additional keyword arguments for plotting.
-                - color (str): color for the peaks; default is "r".
-                - size (int): size for the peaks; default is 20.
-
+        Parameters
+        ----------
+        img : darsia.Image
+            Image to plot on.
+        peaks_pixels : np.ndarray
+            Pixels of peaks.
+        roi : darsia.CoordinateArray | None
+            Region of interest. If provided, peaks are
+            translated to the top left corner of the ROI; default is None.
+        contours : list[np.ndarray], optional
+            Contours to plot; if None, no contours are
+            plotted; default is None.
+        path : Path, optional
+            Path to save the plot; if None, no saving is performed.
+        show : bool
+            Flag controlling whether the plot is shown; default is True.
+        dpi : int
+            Dots per inch for the saved plot; default is 1000.
+        **kwargs
+            Additional keyword arguments for plotting.
+            - color (str): color for the peaks; default is "r".
+            - size (int): size for the peaks; default is 20.
         """
 
         # Extract the top left pixel of the roi. NOTE: Need to swap for matplotlib,
@@ -493,9 +524,10 @@ class ContourAnalysis:
     def number_peaks(self) -> int:
         """Determine number of peaks.
 
-        Returns:
-            int: number of peaks.
-
+        Returns
+        -------
+        int
+            Number of peaks.
         """
         peaks_pixels, _ = self.local_extrema()
         return len(peaks_pixels)
@@ -513,25 +545,33 @@ class ContourAnalysis:
     ) -> None:
         """Plot valleys on top of the provided image.
 
-        Args:
-            img (darsia.Image): image to plot on.
-            valleys_pixels (np.ndarray): pixels of valleys.
-            contours (list[np.ndarray], optional): contours to plot; if None, no contours are
-                plotted; default is None.
-            roi (darsia.CoordinateArray | None): region of interest. If provided, valleys are
-                translated to the top left corner of the ROI; default is None.
-            path (Path, optional): path to save the plot; if None, no saving is performed.
-            show (bool): flag controlling whether the plot is shown; default is True.
-            dpi (int): dots per inch for the saved plot; default is 1000.
-            **kwargs: additional keyword arguments for plotting.
-                - valley_color (str): color for valley lines; default is "c".
-                - valley_linewidth (float): line width for valley lines; default is 1.
-                - y_min (float): lower y-limit for valley lines; default is top of ROI.
-                - y_max (float): upper y-limit for valley lines; default is bottom of ROI.
-                - plot_valley_dots (bool): if True, valley dots are added; default is False.
-                - valley_dot_color (str): color for valley dots; default is valley_color.
-                - valley_dot_size (float): dot size for valley dots; default is 20.
-
+        Parameters
+        ----------
+        img : darsia.Image
+            Image to plot on.
+        valleys_pixels : np.ndarray
+            Pixels of valleys.
+        roi : darsia.CoordinateArray | None
+            Region of interest. If provided, valleys are
+            translated to the top left corner of the ROI; default is None.
+        contours : list[np.ndarray], optional
+            Contours to plot; if None, no contours are
+            plotted; default is None.
+        path : Path, optional
+            Path to save the plot; if None, no saving is performed.
+        show : bool
+            Flag controlling whether the plot is shown; default is True.
+        dpi : int
+            Dots per inch for the saved plot; default is 1000.
+        **kwargs
+            Additional keyword arguments for plotting.
+            - valley_color (str): color for valley lines; default is "c".
+            - valley_linewidth (float): line width for valley lines; default is 1.
+            - y_min (float): lower y-limit for valley lines; default is top of ROI.
+            - y_max (float): upper y-limit for valley lines; default is bottom of ROI.
+            - plot_valley_dots (bool): if True, valley dots are added; default is False.
+            - valley_dot_color (str): color for valley dots; default is valley_color.
+            - valley_dot_size (float): dot size for valley dots; default is 20.
         """
 
         top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
@@ -616,9 +656,10 @@ class ContourAnalysis:
     def number_valleys(self) -> int:
         """Determine number of valleys.
 
-        Returns:
-            int: number of valleys.
-
+        Returns
+        -------
+        int
+            Number of valleys.
         """
         _, valleys_pixels = self.local_extrema()
         return len(valleys_pixels)

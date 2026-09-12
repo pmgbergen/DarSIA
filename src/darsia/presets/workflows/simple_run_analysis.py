@@ -77,12 +77,18 @@ class SimpleMultiphaseTimeSeriesData(darsia.TimeSeriesData):
     ) -> None:
         """Append a new data point to the multiphase data.
 
-        Args:
-            time (float): Time at which the data was recorded.
-            name (str): Name for the data point, e.g. name of raw image.
-            mass_g (float): Mass of the gaseous phase at this time point.
-            mass_aq (float): Mass of the aqueous phase at this time point.
-            exact_mass_tot (Optional[float]): Exact/expected total mass.
+        Parameters
+        ----------
+        time : float
+            Time at which the data was recorded.
+        name : str
+            Name for the data point, e.g. name of raw image.
+        mass_g : float
+            Mass of the gaseous phase at this time point.
+        mass_aq : float
+            Mass of the aqueous phase at this time point.
+        exact_mass_tot : Optional[float]
+            Exact/expected total mass.
         """
         self.time.append(time)
         self.name.append(name)
@@ -108,10 +114,11 @@ class SimpleMultiphaseTimeSeriesData(darsia.TimeSeriesData):
 
         The comparison is drawn based on the total and exact mass (reference).
 
-        Args:
-            tol (float): Absolute or relative threshold for the mass difference.
-                Default is np.inf, which means no cleaning.
-
+        Parameters
+        ----------
+        tol : float
+            Absolute or relative threshold for the mass difference.
+            Default is np.inf, which means no cleaning.
         """
         # Determine indices where the relative error is below the threshold (to be kept)
         error = np.abs(
@@ -174,12 +181,14 @@ class SimpleRunAnalysis(darsia.MultiphaseTimeSeriesAnalysis):
     def __init__(self, geometry: darsia.Geometry, colors: dict = {}) -> None:
         """Initialize the SimpleRunAnalysis class.
 
-        Args:
-            geometry (darsia.Geometry): Geometry for integration of mass.
-            colors (dict, optional): Dictionary specifying colors for plotting.
-                Keys are 'aqueous', 'gaseous', and 'mass'. Values are RGB tuples.
-                Defaults to None, which uses preset colors.
-
+        Parameters
+        ----------
+        geometry : darsia.Geometry
+            Geometry for integration of mass.
+        colors : dict, optional
+            Dictionary specifying colors for plotting.
+            Keys are 'aqueous', 'gaseous', and 'mass'. Values are RGB tuples.
+            Defaults to None, which uses preset colors.
         """
 
         super().__init__(geometry=geometry)
@@ -204,12 +213,13 @@ class SimpleRunAnalysis(darsia.MultiphaseTimeSeriesAnalysis):
     ) -> None:
         """Track the mass analysis result and add to time series data.
 
-        Args:
-            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results
-                containing the component data.
-            exact_mass (float): The exact injected mass at the time of the analysis result.
-            time (float): Time in hours since the start of the injection.
-
+        Parameters
+        ----------
+        mass_analysis_result : darsia.MassAnalysisResults
+            The mass analysis results
+            containing the component data.
+        exact_mass : float
+            The exact injected mass at the time of the analysis result.
         """
         self.data.append(
             time=mass_analysis_result.time,
@@ -229,15 +239,20 @@ class SimpleRunAnalysis(darsia.MultiphaseTimeSeriesAnalysis):
     ) -> darsia.Image:
         """Customized contour plot of the signal analysis.
 
-        Args:
-            img (darsia.Image): The image on which to plot the contours.
-            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results
-                containing the component data.
-            path (Path): Path to save the contour plot image.
+        Parameters
+        ----------
+        img : darsia.Image
+            The image on which to plot the contours.
+        mass_analysis_result : darsia.MassAnalysisResults
+            The mass analysis results
+            containing the component data.
+        path : Path
+            Path to save the contour plot image.
 
-        Returns:
-            darsia.Image: The contour plot image with mass contours.
-
+        Returns
+        -------
+        darsia.Image
+            The contour plot image with mass contours.
         """
         return super().plot_contour_signal(
             img=img,
@@ -256,15 +271,20 @@ class SimpleRunAnalysis(darsia.MultiphaseTimeSeriesAnalysis):
     ) -> darsia.Image:
         """Customized contour plot of the mass analysis.
 
-        Args:
-            img (darsia.Image): The image on which to plot the contours.
-            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results
-                containing the component data.
-            path (Path): Path to save the contour plot image.
+        Parameters
+        ----------
+        img : darsia.Image
+            The image on which to plot the contours.
+        mass_analysis_result : darsia.MassAnalysisResults
+            The mass analysis results
+            containing the component data.
+        path : Path
+            Path to save the contour plot image.
 
-        Returns:
-            darsia.Image: The contour plot image with mass contours.
-
+        Returns
+        -------
+        darsia.Image
+            The contour plot image with mass contours.
         """
         ref_value = 3
         values = [

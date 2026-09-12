@@ -183,5 +183,5 @@ images/metadata/*.txt
 uv.lock
 
 # ...but committed documentation assets are kept (logo, GUI screenshots).
-# docs/_static/**
-# docs/user_guide/gui/images/**
+!docs/_static/**
+!docs/user_guide/gui/images/**

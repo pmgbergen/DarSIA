@@ -32,9 +32,10 @@ class ScalingModel(darsia.Model):
         """
         Update of internal parameters.
 
-        Args:
-            scaling (float, optional): slope
-
+        Parameters
+        ----------
+        scaling : float, optional
+            Slope.
         """
 
         if scaling is not None:
@@ -51,9 +52,10 @@ class ScalingModel(darsia.Model):
 
         The main use is the model calibration. Do not update the offset.
 
-        Args:
-            parameters (np.ndarray): 2-array containing scaling and offset values.
-
+        Parameters
+        ----------
+        parameters : np.ndarray
+            2-array containing scaling and offset values.
         """
         if dofs is None or dofs == "all" or set(dofs) == set(["scaling"]):
             self.update(scaling=parameters[0])
@@ -64,12 +66,15 @@ class ScalingModel(darsia.Model):
         """
         Application of linear model.
 
-        Args:
-            img (np.ndarray): image
+        Parameters
+        ----------
+        img : np.ndarray
+            Image.
 
-        Returns:
-            np.ndarray: converted signal
-
+        Returns
+        -------
+        np.ndarray
+            Converted signal.
         """
         if np.isclose(self._scaling, 1.0):
             return img
@@ -99,10 +104,12 @@ class LinearModel(darsia.Model):
         """
         Update of internal parameters.
 
-        Args:
-            scaling (float, optional): slope
-            offset (float, optional): offset
-
+        Parameters
+        ----------
+        scaling : float, optional
+            Slope.
+        offset : float, optional
+            Offset.
         """
 
         if scaling is not None:
@@ -124,9 +131,10 @@ class LinearModel(darsia.Model):
 
         The main use is the model calibration. Do not update the offset.
 
-        Args:
-            parameters (np.ndarray): 2-array containing scaling and offset values.
-
+        Parameters
+        ----------
+        parameters : np.ndarray
+            2-array containing scaling and offset values.
         """
         if dofs is None or dofs == ["all"] or set(dofs) == set(["scaling", "offset"]):
             self.update(scaling=parameters[0], offset=parameters[1])
@@ -141,12 +149,15 @@ class LinearModel(darsia.Model):
         """
         Application of linear model.
 
-        Args:
-            img (np.ndarray): image
+        Parameters
+        ----------
+        img : np.ndarray
+            Image.
 
-        Returns:
-            np.ndarray: converted signal
-
+        Returns
+        -------
+        np.ndarray
+            Converted signal.
         """
         return self._scaling * img + self._offset
 
@@ -214,10 +225,12 @@ class HeterogeneousLinearModel(darsia.Model):
         """
         Update of internal parameters.
 
-        Args:
-            scaling (np.ndarray, optional): slope
-            offset (np.ndarray, optional): offset
-
+        Parameters
+        ----------
+        scaling : np.ndarray, optional
+            Slope.
+        offset : np.ndarray, optional
+            Offset.
         """
 
         if scaling is not None:
@@ -239,9 +252,10 @@ class HeterogeneousLinearModel(darsia.Model):
         Short cut to update scaling and offset parameters using a
         general function signature.
 
-        Args:
-            parameters (np.ndarray): 2-array containing scaling and offset values.
-
+        Parameters
+        ----------
+        parameters : np.ndarray
+            2-array containing scaling and offset values.
         """
         if dofs is None or dofs == "all" or set(dofs) == set(["scaling", "offset"]):
             self.update(
@@ -257,12 +271,15 @@ class HeterogeneousLinearModel(darsia.Model):
         """
         Application of linear model.
 
-        Args:
-            img (np.ndarray): image
+        Parameters
+        ----------
+        img : np.ndarray
+            Image.
 
-        Returns:
-            np.ndarray: converted signal
-
+        Returns
+        -------
+        np.ndarray
+            Converted signal.
         """
         # Potentially need to resize labels.
         if img.shape != self.cached_labels:
