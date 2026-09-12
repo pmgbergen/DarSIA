@@ -54,6 +54,13 @@ class MenuBuilder:
         self.main_window.addAction(quit_action)
 
         settings_menu = menu_bar.addMenu("&Settings")
+        # Two views of the same config: guided first, then the full expert editor.
+        self.setup_wizard_action = self._add_action(
+            settings_menu,
+            "Setup &Wizard...",
+            self.main_window.open_setup_wizard,
+        )
+        settings_menu.addSeparator()
         self.open_full_config_action = self._add_action(
             settings_menu,
             "Open &Full Config",

@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -363,8 +364,9 @@ class FileDialogHelper:
         value_is_directory=False,
         key_source=None,
         form_context=None,
+        value_is_number=False,
     ):
-        """Create a per-folder dict[Path, Path] editor with two-column rows.
+        """Create a per-folder dict[Path, Path|float] editor with two-column rows.
 
         The key column is locked: rows are generated 1:1 from the settings list
         named by ``key_source`` (read-only, no Browse button, no manual
@@ -382,12 +384,15 @@ class FileDialogHelper:
             that supplies the (read-only) key column.
         form_context : dict
             Contains "form" (QFormLayout) for dynamic row insertion/removal.
+        value_is_number : bool, optional
+            If True, the value column is a plain numeric field (no Browse button)
+            and the result is tagged "number_map" instead of "path_map".
 
         Returns
         -------
         tuple
             (label_text, result_dict) where result_dict carries "widget" (header),
-            the "path_map" tag and "rows" ([(key_edit, value_edit), ...]).
+            the "path_map"/"number_map" tag and "rows" ([(key_edit, value_edit), ...]).
         """
         key = setting_dict["key"]
         display_name = setting_dict.get("name", key)
@@ -429,19 +434,30 @@ class FileDialogHelper:
             form.insertRow(insert_idx, "", row_widget)
 
         def build_locked_value_field(initial_value=""):
-            """Browse button + editable value field shared by every locked row,
-            including the one embedded directly in the header."""
+            """Value field shared by every locked row, including the one embedded
+            directly in the header. Numeric maps get a bare validated field; path
+            maps also get a Browse button."""
+            value_edit = QLineEdit()
+            if initial_value not in (None, ""):
+                value_edit.setText(str(initial_value))
+
+            if value_is_number:
+                value_edit.setPlaceholderText(
+                    setting_dict.get("placeholder", "Enter a number")
+                )
+                validator = QDoubleValidator()
+                validator.setNotation(QDoubleValidator.StandardNotation)
+                value_edit.setValidator(validator)
+                return None, value_edit
+
             value_browse_button = QPushButton("Browse")
             value_browse_button.setMaximumWidth(80)
-            value_edit = QLineEdit()
             value_placeholder = (
                 "Select folder or type path"
                 if value_is_directory
                 else "Select file or type path"
             )
             value_edit.setPlaceholderText(value_placeholder)
-            if initial_value:
-                value_edit.setText(str(initial_value))
             value_browse_button.clicked.connect(
                 lambda: self._browse_for_path(
                     value_is_directory,
@@ -468,7 +484,8 @@ class FileDialogHelper:
             value_browse_button, value_edit = build_locked_value_field(initial_value)
 
             row_layout.addWidget(key_edit, stretch=1)
-            row_layout.addWidget(value_browse_button)
+            if value_browse_button is not None:
+                row_layout.addWidget(value_browse_button)
             row_layout.addWidget(value_edit, stretch=1)
 
             insert_row(row_widget)
@@ -490,7 +507,8 @@ class FileDialogHelper:
                 saved.get(first_folder, "")
             )
             header_layout.addWidget(key_edit, stretch=1)
-            header_layout.addWidget(value_browse_button)
+            if value_browse_button is not None:
+                header_layout.addWidget(value_browse_button)
             header_layout.addWidget(value_edit, stretch=1)
             header_layout.addWidget(build_help_column(setting_dict))
             row_data_list.append({"widget": header_widget})
@@ -516,6 +534,6 @@ class FileDialogHelper:
         # Return enriched dict: widget for form insertion, rows for save_settings
         return display_name, {
             "widget": header_widget,
-            "path_map": True,
+            "number_map" if value_is_number else "path_map": True,
             "rows": row_pairs,
         }
