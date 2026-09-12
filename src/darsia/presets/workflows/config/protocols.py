@@ -29,16 +29,25 @@ class ProtocolsConfig:
         },
     )
     """Per-folder mapping from data folder to imaging protocol file, or (file, sheet)."""
-    blacklist: Path | tuple[Path, str] | None = field(
-        default=None,
-        metadata={
-            "name": "Blacklist",
-            "help": "Path to a file listing images to exclude, or [file, sheet].",
-            "widget": "file",
-            "group": "Imaging",
-        },
+    blacklist: Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]] | None = (
+        field(
+            default=None,
+            metadata={
+                "name": "Blacklist",
+                "help": (
+                    "Table mapping each data folder to its blacklist file (listing "
+                    "images to exclude), or [file, sheet]. A folder with no entry "
+                    "has no blacklist. The folder column mirrors [data].folders and "
+                    "is not editable here; add or remove folders in the Data tab."
+                ),
+                "widget": "path_map",
+                "key_source": "data.folders",
+                "group": "Imaging",
+            },
+        )
     )
-    """Path to the blacklist protocol file or (file, sheet)."""
+    """Per-folder mapping from data folder to blacklist file, or (file, sheet).
+    A single bare value is also accepted for single-folder configs."""
     imaging_mode: str = field(
         default="exif",
         metadata={
@@ -112,7 +121,12 @@ class ProtocolsConfig:
 
         try:
             blacklist_protocol = sec["blacklist"]
-            if isinstance(blacklist_protocol, str) and not blacklist_protocol.strip():
+            if isinstance(blacklist_protocol, dict):
+                self.blacklist = {
+                    Path(folder): self._parse_protocol_value(protocol)
+                    for folder, protocol in blacklist_protocol.items()
+                }
+            elif isinstance(blacklist_protocol, str) and not blacklist_protocol.strip():
                 self.blacklist = None
             else:
                 self.blacklist = self._parse_protocol_value(blacklist_protocol)

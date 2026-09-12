@@ -118,17 +118,13 @@ def preview_protocol_setup_conflicts(path: Path | list[Path]) -> list[Path]:
 
 
 def _extract_imaging_protocol_dataframe(
-    files: list[Path], pad: int, mode: str, root: Path
+    files: list[Path], mode: str, root: Path
 ) -> pd.DataFrame:
     file_paths: list[str] = []
-    file_ids: list[int] = []
     date_times: list[datetime] = []
 
     for i, filename in enumerate(files):
         logger.info("Processing file %s / %s", i + 1, len(files))
-        image_id = (
-            int(Path(filename).stem[-pad:]) if pad > 0 else int(Path(filename).stem)
-        )
         if mode == "exif":
             date_time = _extract_exif_datetime(filename)
         elif mode == "ctime":
@@ -142,7 +138,6 @@ def _extract_imaging_protocol_dataframe(
             )
             continue
         file_paths.append(filename.relative_to(root).as_posix())
-        file_ids.append(image_id)
         date_times.append(date_time)
 
     if len(date_times) == 0:
@@ -151,9 +146,7 @@ def _extract_imaging_protocol_dataframe(
             "Use [protocols].imaging_mode = 'ctime' or provide EXIF metadata."
         )
 
-    return pd.DataFrame(
-        {"path": file_paths, "image_id": file_ids, "datetime": date_times}
-    )
+    return pd.DataFrame({"path": file_paths, "datetime": date_times})
 
 
 def _write_csv(df: pd.DataFrame, path: Path) -> None:
@@ -254,9 +247,7 @@ def setup_imaging_protocol(
             raise FileNotFoundError(
                 f"No image files with suffix {suffix} found in {folder}."
             )
-        imaging_df = _extract_imaging_protocol_dataframe(
-            files, config.data.pad, mode, folder
-        )
+        imaging_df = _extract_imaging_protocol_dataframe(files, mode, folder)
         _write_csv(imaging_df, imaging_path)
         logger.info("Saved imaging protocol CSV to %s", imaging_path)
 

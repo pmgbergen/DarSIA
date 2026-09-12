@@ -55,7 +55,7 @@ def _touch_images(folder: Path, count: int) -> list[Path]:
     return paths
 
 
-def test_imaging_protocol_prefers_path_match_and_uses_blacklist_index(
+def test_imaging_protocol_matches_by_path_and_blacklist(
     tmp_path: Path,
 ) -> None:
     start = datetime(2026, 1, 1, 0, 0, 0)
@@ -66,19 +66,13 @@ def test_imaging_protocol_prefers_path_match_and_uses_blacklist_index(
         [
             {
                 "path": "sub/img_00999.JPG",
-                "image_id": 999,
                 "datetime": (start + timedelta(hours=5)).isoformat(),
-            },
-            {
-                "path": "",
-                "image_id": 1,
-                "datetime": (start + timedelta(hours=1)).isoformat(),
             },
         ],
     )
-    pd.DataFrame({"image_id": [999]}).to_csv(blacklist_path, index=False)
+    pd.DataFrame({"path": ["sub/img_00999.JPG"]}).to_csv(blacklist_path, index=False)
 
-    protocol = ImagingProtocol(protocol_path, pad=5, blacklist=blacklist_path)
+    protocol = ImagingProtocol(protocol_path, blacklist=blacklist_path)
     dt = protocol.get_datetime(tmp_path / "sub" / "img_00999.JPG")
     assert dt == pd.Timestamp(start + timedelta(hours=5))
     assert protocol.is_blacklisted(tmp_path / "sub" / "img_00999.JPG")
@@ -105,7 +99,6 @@ def test_find_images_for_times_uses_deepest_folder_mapping_and_deduplicates(
         [
             {
                 "path": f"img_{i:05d}.JPG",
-                "image_id": i,
                 "datetime": (start + timedelta(hours=i)).isoformat(),
             }
             for i in range(1, 4)
@@ -116,7 +109,6 @@ def test_find_images_for_times_uses_deepest_folder_mapping_and_deduplicates(
         [
             {
                 "path": f"sub/img_{i:05d}.JPG",
-                "image_id": i,
                 "datetime": (start + timedelta(hours=100 + i)).isoformat(),
             }
             for i in range(1, 4)
@@ -129,7 +121,6 @@ def test_find_images_for_times_uses_deepest_folder_mapping_and_deduplicates(
         injection_protocol=injection_path,
         pressure_temperature_protocol=pressure_path,
         blacklist_protocol=None,
-        pad=5,
     )
 
     selected = experiment.find_images_for_times(times=[101.1, 101.2], data=sub_images)
@@ -153,7 +144,6 @@ def test_find_images_for_times_reuses_cached_timeline_for_same_data_pool(
         [
             {
                 "path": f"img_{i:05d}.JPG",
-                "image_id": i,
                 "datetime": (start + timedelta(hours=i)).isoformat(),
             }
             for i in range(1, 1001)
@@ -166,7 +156,6 @@ def test_find_images_for_times_reuses_cached_timeline_for_same_data_pool(
         injection_protocol=injection_path,
         pressure_temperature_protocol=pressure_path,
         blacklist_protocol=None,
-        pad=5,
     )
 
     call_count = 0
@@ -209,7 +198,6 @@ def test_iter_available_resolves_protocol_once_per_path(
         [
             {
                 "path": f"img_{i:05d}.JPG",
-                "image_id": i,
                 "datetime": (start + timedelta(hours=i)).isoformat(),
             }
             for i in range(1, 3)
@@ -220,7 +208,6 @@ def test_iter_available_resolves_protocol_once_per_path(
         [
             {
                 "path": f"sub/img_{i:05d}.JPG",
-                "image_id": i,
                 "datetime": (start + timedelta(hours=100 + i)).isoformat(),
             }
             for i in range(1, 3)
@@ -233,7 +220,6 @@ def test_iter_available_resolves_protocol_once_per_path(
         injection_protocol=injection_path,
         pressure_temperature_protocol=pressure_path,
         blacklist_protocol=None,
-        pad=5,
     )
 
     call_count = 0

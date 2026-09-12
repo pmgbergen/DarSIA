@@ -63,8 +63,8 @@ def test_setup_imaging_protocol_generates_all_csv_templates(tmp_path: Path) -> N
     assert pressure_path.exists()
 
     imaging_df = pd.read_csv(imaging_path)
-    assert set(imaging_df.columns) == {"path", "image_id", "datetime"}
-    assert imaging_df["image_id"].tolist() == [1, 2]
+    assert set(imaging_df.columns) == {"path", "datetime"}
+    assert imaging_df["path"].tolist() == ["img_0001.JPG", "img_0002.JPG"]
 
     injection_df = pd.read_csv(injection_path)
     assert set(injection_df.columns) == {
