@@ -61,7 +61,7 @@ class LabelsAssistantMenu(darsia.BaseAssistant):
 
         Parameters
         ----------
-        event
+        event : matplotlib.backend_bases.KeyEvent
             Key press event.
         """
         if self.verbosity:
@@ -252,7 +252,7 @@ class MonochromaticAssistant(darsia.BaseAssistant):
 
         Parameters
         ----------
-        event
+        event : matplotlib.backend_bases.KeyEvent
             Key press event.
         """
         if self.verbosity:

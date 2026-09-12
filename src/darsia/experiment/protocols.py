@@ -354,15 +354,15 @@ class ImagingProtocol:
         ----------
         paths : Path | list[Path]
             Path to the folder containing images.
-        times : list[float]
-            List of times (in seconds) to find corresponding images for.
+        datetimes : list of datetime
+            List of datetimes to find corresponding images for.
         tol : float | None
             Tolerance (in seconds) for finding closest images.
 
         Returns
         -------
-        list[darsia.Image]
-            List of images corresponding to the specified times.
+        list[Path]
+            List of image paths corresponding to the specified datetimes.
         """
         # Restrict df from imaging_interval to available image ids
         if isinstance(paths, list):
@@ -421,13 +421,13 @@ class ImagingProtocol:
 
         Parameters
         ----------
-        times : list[float]
-            List of times (in seconds) to find corresponding images for.
+        datetimes : list of datetime
+            List of datetimes to find corresponding images for.
 
         Returns
         -------
         list
-            List of images (ids) corresponding to the specified times.
+            List of image ids corresponding to the specified datetimes.
         """
         # Collect the closest images
         image_ids = []

@@ -176,16 +176,16 @@ class SegmentationComparison:
 
         Parameters
         ----------
-        segmentations : asterisk argument
-            Allows to provide an arbitraty
-            number of segmented numpy arrays or da.Images of integers to be compared.
-            Optional keyword arguments (kwargs):
-            plot_result (bool): plots the result with matplotlib if True,
-            default is False.
-            roi (Union[tuple, np.ndarray]): roi where the segmentations should be
-            compared, default is the maximal roi that fits in all segmentations.
-            Should be provided in pixel coordinates using matrix indexing, either
-            as a tuple of slices, or an array of corner points.
+        *segmentations
+            Arbitrary number of segmented numpy arrays or darsia.Images of integers
+            to be compared.
+        plot_result : bool
+            Plots the result with matplotlib if True; default is False.
+        **kwargs
+            ROI (tuple or np.ndarray) where the segmentations should be compared;
+            default is the maximal ROI that fits in all segmentations. Should be
+            provided in pixel coordinates using matrix indexing, either as a
+            tuple of slices, or an array of corner points.
         """
 
         # Define number of segmentations

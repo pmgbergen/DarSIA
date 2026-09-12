@@ -245,8 +245,6 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
             ----------
             params : np.ndarray
                 Model parameters.
-            args
-                Concentration analysis based arguments.
             """
 
             # Set the stage
@@ -429,8 +427,6 @@ class AbsoluteVolumeModelObjectiveMixin(AbstractModelObjective):
             ----------
             params : np.ndarray
                 Model parameters.
-            args
-                Concentration analysis based arguments.
             """
             # Set the stage
             self.update_model_for_calibration(params, options)

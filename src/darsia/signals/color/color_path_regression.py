@@ -161,8 +161,6 @@ class LabelColorPathMapRegression:
             The images to analyze.
         baseline : darsia.Image | None
             The baseline image for comparison.
-        resolution : tuple[int, int, int]
-            The resolution of the color histogram.
         ignore : darsia.LabelColorSpectrumMap | darsia.ColorSpectrum | None
             Colors to
             ignore in the spectrum.
@@ -372,13 +370,12 @@ class LabelColorPathMapRegression:
 
         Parameters
         ----------
-        color_spectrum_map : LabelColorSpectrumMap
+        color_spectrum : ColorSpectrum or LabelColorSpectrumMap
             The color spectrum to expand.
-        verbose : bool
-            Whether to print additional information.
         min_points : int
             Minimum number of significant points to perform regression.
-            # min_weight (float): Minimum weight for the regression.
+        verbose : bool
+            Whether to print additional information.
 
         Returns
         -------
@@ -929,7 +926,7 @@ class LabelColorPathMapRegression:
 
             Parameters
             ----------
-            segment_range
+            segment_range : range
                 A range object specifying indices of points in the segment.
 
             Returns
@@ -990,7 +987,7 @@ class LabelColorPathMapRegression:
 
             Parameters
             ----------
-            segment_range
+            segment_range : range
                 A range object specifying indices in the segment.
 
             Returns
@@ -1540,7 +1537,7 @@ class LabelColorPathMapRegression:
 
         Parameters
         ----------
-        label_color_spectrum_map : LabelColorSpectrumMap
+        color_spectrum : LabelColorSpectrumMap
             The color spectrum map to
             analyze.
         ignore : LabelColorSpectrumMap | None

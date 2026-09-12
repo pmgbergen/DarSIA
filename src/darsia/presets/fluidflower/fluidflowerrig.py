@@ -24,7 +24,7 @@ class FluidFlowerRig(darsia.AnalysisBase):
 
         Parameters
         ----------
-        base : str, Path or list of such
+        baseline : str, Path or list of such
             Baseline images, used to
             set up analysis tools and cleaning tools.
         config : str or Path

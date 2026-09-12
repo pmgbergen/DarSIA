@@ -207,7 +207,7 @@ class AnalysisBase:
 
         Parameters
         ----------
-        image : Path or Image
+        img : Path or Image
             Path to single image.
         **kwargs
             Optional keyword arguments.

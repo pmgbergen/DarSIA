@@ -170,9 +170,6 @@ class TranslationAnalysis:
             Units for input (first entry) and output (second entry)
             ranges of the resulting translation map; accepts either "metric"
             or "pixel".
-        mask : np.ndarray, optional
-            Boolean mask marking all pixels to be considered;
-            all if mask is None (default).
 
         Returns
         -------

@@ -145,12 +145,8 @@ class ContinuityBasedBalancingCalibrationMixin(AbstractBalancingCalibration):
 
         Parameters
         ----------
-        input_images : list of np.ndarray
-            Input for _convert_signal.
-        images_diff : list of np.ndarray
-            Plain differences wrt background image.
-        relative_times : list of float
-            Times.
+        images : list of np.ndarray
+            Cleaned signal images to calibrate against.
         options : dict
             Dictionary with objective value, here the injection rate.
 

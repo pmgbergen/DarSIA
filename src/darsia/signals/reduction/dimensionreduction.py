@@ -154,7 +154,7 @@ def reduce_axis(
 
     Parameters
     ----------
-    img : Image
+    image : Image
         Nd image.
     axis : int or str
         Numeric index (corresponding to matrix indexing) or

@@ -62,8 +62,6 @@ class SkeletonAnalysis:
             Labeled image.
         roi : array, optional
             Set of points defining a box.
-        values_of_interest : int, list of int, optional
-            Label values of interest.
         fill_holes : bool
             Flag controlling whether holes in labels are filles.
         """
