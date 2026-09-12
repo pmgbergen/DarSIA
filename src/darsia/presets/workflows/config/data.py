@@ -5,6 +5,8 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from natsort import natsorted, ns
+
 from .utils import _get_key, _get_section_from_toml
 
 logger = logging.getLogger(__name__)
@@ -168,13 +170,16 @@ class DataConfig:
             all_data: list[Path] = []
             for folder in self.folders:
                 all_data.extend(
-                    sorted(
-                        folder / file
-                        for file in os.listdir(folder)
-                        if file.endswith(self.baseline.suffix)
+                    natsorted(
+                        (
+                            folder / file
+                            for file in os.listdir(folder)
+                            if file.endswith(self.baseline.suffix)
+                        ),
+                        alg=ns.IGNORECASE,
                     )
                 )
-            self.data = sorted(set(all_data))
+            self.data = natsorted(set(all_data), alg=ns.IGNORECASE)
             if len(self.data) == 0:
                 raise FileNotFoundError(
                     f"""No image files with suffix {self.baseline.suffix} found in """
