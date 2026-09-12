@@ -59,7 +59,7 @@ class ImagingProtocolConfig:
             ),
             "widget": "path_map",
             "key_source": "data.folders",
-            "group": "Imaging",
+            "group": "Image registry",
         },
     )
     """Per-folder mapping from data folder to imaging protocol file, or (file, sheet)."""
@@ -76,7 +76,7 @@ class ImagingProtocolConfig:
                 ),
                 "widget": "path_map",
                 "key_source": "data.folders",
-                "group": "Imaging",
+                "group": "Image registry",
             },
         )
     )
@@ -94,7 +94,7 @@ class ImagingProtocolConfig:
                 "protocol file alone (author it by hand instead)."
             ),
             "options": ["exif", "ctime", "interval", "detailed"],
-            "group": "Imaging",
+            "group": "Image registry",
         },
     )
     """Datetime extraction mode for imaging protocol setup: 'exif', 'ctime',
@@ -111,7 +111,7 @@ class ImagingProtocolConfig:
             ),
             "widget": "number_map",
             "key_source": "data.folders",
-            "group": "Imaging",
+            "group": "Image registry",
             "depends_on": {"field": "imaging_mode", "value": "interval"},
         },
     )
@@ -127,7 +127,7 @@ class ImagingProtocolConfig:
                 "datetime, or a specific reference image."
             ),
             "options": ["first_image", "baseline", "fixed", "image"],
-            "group": "Imaging",
+            "group": "Image registry",
         },
     )
     """What counts as time zero: 'first_image', 'baseline', 'fixed', or 'image'."""
@@ -138,7 +138,7 @@ class ImagingProtocolConfig:
             "help": "ISO-8601 datetime to use as time zero (start_reference='fixed').",
             "placeholder": "e.g., 2023-10-31 11:08:28",
             "depends_on": {"field": "start_reference", "value": "fixed"},
-            "group": "Imaging",
+            "group": "Image registry",
         },
     )
     """ISO-8601 datetime string used as time zero when start_reference='fixed'."""
@@ -149,7 +149,7 @@ class ImagingProtocolConfig:
             "help": "Image file to use as time zero (start_reference='image').",
             "widget": "file",
             "depends_on": {"field": "start_reference", "value": "image"},
-            "group": "Imaging",
+            "group": "Image registry",
         },
     )
     """Reference image used as time zero when start_reference='image'."""
@@ -235,7 +235,7 @@ class InjectionProtocolConfig:
             "name": "Injection protocol",
             "help": "Path to the injection-protocol file, or [file, sheet].",
             "widget": "file",
-            "group": "Experiment",
+            "group": "Operating conditions",
             "table_viewer": "csv",
         },
     )
@@ -251,7 +251,7 @@ class InjectionProtocolConfig:
                 "(header-only) template if none exists yet."
             ),
             "options": ["constant", "detailed"],
-            "group": "Experiment",
+            "group": "Operating conditions",
         },
     )
     """Injection template mode: 'constant' or 'detailed'."""
@@ -261,7 +261,7 @@ class InjectionProtocolConfig:
             "name": "Injection rate",
             "help": "Constant injection rate written to the injection template.",
             "depends_on": {"field": "injection_mode", "value": "constant"},
-            "group": "Experiment",
+            "group": "Operating conditions",
         },
     )
     """Constant injection rate (injection_mode='constant' only)."""
@@ -271,7 +271,7 @@ class InjectionProtocolConfig:
             "name": "Injection coordinates",
             "help": "Constant injection coordinates written to the injection template.",
             "depends_on": {"field": "injection_mode", "value": "constant"},
-            "group": "Experiment",
+            "group": "Operating conditions",
         },
     )
     """Constant injection coordinates (injection_mode='constant' only)."""
@@ -317,7 +317,7 @@ class PressureTemperatureProtocolConfig:
             "name": "Pressure/Temperature protocol",
             "help": "Path to the pressure-temperature protocol file, or [file, sheet].",
             "widget": "file",
-            "group": "Experiment",
+            "group": "Experimental conditions",
             "table_viewer": "csv",
         },
     )
@@ -332,7 +332,7 @@ class PressureTemperatureProtocolConfig:
                 "(author/point to a full custom CSV instead)."
             ),
             "options": ["constant", "detailed"],
-            "group": "Experiment",
+            "group": "Experimental conditions",
         },
     )
     """Pressure/temperature template mode: 'constant' or 'detailed'."""
@@ -342,7 +342,7 @@ class PressureTemperatureProtocolConfig:
             "name": "Pressure (bar)",
             "help": "Constant pressure written to the pressure-temperature template.",
             "depends_on": {"field": "pressure_temperature_mode", "value": "constant"},
-            "group": "Experiment",
+            "group": "Experimental conditions",
         },
     )
     """Constant pressure in bar (pressure_temperature_mode='constant' only)."""
@@ -352,7 +352,7 @@ class PressureTemperatureProtocolConfig:
             "name": "Temperature (C)",
             "help": "Constant temperature written to the pressure-temperature template.",
             "depends_on": {"field": "pressure_temperature_mode", "value": "constant"},
-            "group": "Experiment",
+            "group": "Experimental conditions",
         },
     )
     """Constant temperature in Celsius (pressure_temperature_mode='constant' only)."""
