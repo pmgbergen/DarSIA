@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Iterable
 
 import pandas as pd
+from natsort import natsorted, ns
 from PIL import Image
 from PIL.ExifTags import TAGS
 
@@ -245,8 +246,9 @@ def setup_imaging_protocol(
         config.data.baseline.name if config.data.baseline is not None else None
     )
     for folder, imaging_path in imaging_targets.items():
-        files = sorted(
-            folder / name for name in os.listdir(folder) if name.endswith(suffix)
+        files = natsorted(
+            (folder / name for name in os.listdir(folder) if name.endswith(suffix)),
+            alg=ns.IGNORECASE,
         )
         if len(files) == 0:
             raise FileNotFoundError(
