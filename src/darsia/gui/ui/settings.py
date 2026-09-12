@@ -1,7 +1,6 @@
 """Settings and input widget factory for DarSIA GUI."""
 
 import ast
-from pathlib import Path
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -1895,26 +1894,9 @@ class SettingsFactory:
 
         # "From catalogue" submenu
         try:
-            # Load the bundled catalogue
-            catalogue_path = (
-                Path(__file__).parent.parent
-                / "config"
-                / "catalogue"
-                / config_meta["catalogue_file"]
-            )
-            if not catalogue_path.exists():
-                # Fallback: try relative to darsia installation
-                import darsia
+            from darsia.presets.workflows.config.catalogue import catalogue_path as _cat
 
-                darsia_root = Path(darsia.__file__).parent
-                catalogue_path = (
-                    darsia_root
-                    / "presets"
-                    / "workflows"
-                    / "config"
-                    / "catalogue"
-                    / config_meta["catalogue_file"]
-                )
+            catalogue_path = _cat(config_meta["catalogue_file"])
 
             # Dynamically import the catalogue class
             module_path, class_name = config_meta["catalogue_class"].rsplit(":", 1)

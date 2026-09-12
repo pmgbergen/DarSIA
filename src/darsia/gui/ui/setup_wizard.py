@@ -27,17 +27,16 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from darsia.presets.workflows.config import catalogue as _catalogue_pkg
-from darsia.presets.workflows.config.catalogue.series import (
+from darsia.presets.workflows.config.catalogue import (
     PIECE_LABELS,
     SeriesCatalogue,
+    load_catalogue,
 )
 
 from .schema.dataclass_introspection import get_section_fields
 from .settings import unwrap_composite_widget
 from .theme import muted_text_color, success_color, theme_signal
 
-SERIES_CATALOGUE_PATH = Path(_catalogue_pkg.__file__).parent / "series.toml"
 ASSETS_DIR = Path(__file__).parent / "assets" / "setup_wizard"
 NO_SERIES = "None — start blank"
 
@@ -234,7 +233,7 @@ class SetupWizardDialog(QDialog):
 
     def _load_catalogue(self) -> SeriesCatalogue:
         try:
-            return SeriesCatalogue().load(SERIES_CATALOGUE_PATH)
+            return load_catalogue("series")
         except Exception as exc:  # pragma: no cover - defensive, surfaced in the log
             self.main_window.print_log(f"Could not load series catalogue: {exc}")
             return SeriesCatalogue()
