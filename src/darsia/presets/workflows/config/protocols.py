@@ -1,4 +1,16 @@
-"""Protocol configuration for the setup."""
+"""Protocol configuration for the setup.
+
+DarSIA reads three protocols — imaging, injection and pressure/temperature — and
+each one owns its own fields, defaults and parsing here. :class:`ProtocolsConfig`
+gathers all three.
+
+They are *mixed in* rather than nested, which keeps the TOML flat under a single
+``[protocols]`` table. Nesting would collide with ``[protocols.imaging]``, which is
+already the per-folder imaging-protocol table, and would break every existing run
+config. Base classes are therefore listed in reverse order, since a dataclass
+collects inherited fields in reverse-MRO order and the field order drives the GUI
+layout.
+"""
 
 import logging
 from dataclasses import dataclass, field
@@ -14,9 +26,26 @@ _SUPPORTED_PRESSURE_TEMPERATURE_MODES = {"constant", "detailed"}
 _SUPPORTED_INJECTION_MODES = {"constant", "detailed"}
 
 
+def _parse_protocol_value(
+    value: str | Path | list[str] | tuple[str, str],
+) -> Path | tuple[Path, str]:
+    """Normalize a protocol entry to a path, or a (path, sheet) pair."""
+    if isinstance(value, (list, tuple)):
+        return (Path(value[0]), value[1])
+    if isinstance(value, (str, Path)):
+        return Path(value)
+    raise ValueError(
+        "Protocol value must be a string, Path, or a list of [path, sheet]."
+    )
+
+
 @dataclass
-class ProtocolsConfig:
-    """Protocol configuration for the setup."""
+class ImagingProtocolConfig:
+    """Which image was taken when: the imaging protocol and how to build it.
+
+    Also owns the start reference, since that is a statement about the imaging
+    timeline — the injection and pressure/temperature templates are anchored to it.
+    """
 
     imaging: dict[Path, Path | tuple[Path, str]] | None = field(
         default=None,
@@ -68,8 +97,8 @@ class ProtocolsConfig:
             "group": "Imaging",
         },
     )
-    """Datetime extraction mode for imaging protocol setup: 'exif', 'ctime', or
-    'interval' (prescribed time increments, no per-file reads)."""
+    """Datetime extraction mode for imaging protocol setup: 'exif', 'ctime',
+    'interval' (prescribed time increments, no per-file reads), or 'detailed'."""
     imaging_interval_seconds: dict[Path, float] | None = field(
         default=None,
         metadata={
@@ -124,6 +153,82 @@ class ProtocolsConfig:
         },
     )
     """Reference image used as time zero when start_reference='image'."""
+
+    def load_imaging(self, sec: dict) -> None:
+        """Read the imaging keys from a flat [protocols] section."""
+        try:
+            imaging_protocol = sec["imaging"]
+            if not isinstance(imaging_protocol, dict):
+                raise ValueError(
+                    "[protocols].imaging must be a per-folder table:\n"
+                    '[protocols.imaging]\n"<folder>" = "<path>" or ["<path>", "<sheet>"]\n'
+                    "A bare scalar value is no longer supported."
+                )
+            self.imaging = {
+                Path(folder): _parse_protocol_value(protocol)
+                for folder, protocol in imaging_protocol.items()
+            }
+        except KeyError:
+            self.imaging = None
+
+        try:
+            blacklist_protocol = sec["blacklist"]
+            if isinstance(blacklist_protocol, dict):
+                self.blacklist = {
+                    Path(folder): _parse_protocol_value(protocol)
+                    for folder, protocol in blacklist_protocol.items()
+                }
+            elif isinstance(blacklist_protocol, str) and not blacklist_protocol.strip():
+                self.blacklist = None
+            else:
+                self.blacklist = _parse_protocol_value(blacklist_protocol)
+        except KeyError:
+            self.blacklist = None
+
+        self.imaging_mode = str(
+            sec.get("imaging_mode", sec.get("mode", "exif"))
+        ).lower()
+        if self.imaging_mode not in _SUPPORTED_IMAGING_MODES:
+            raise ValueError(
+                "Imaging mode must be one of "
+                f"{sorted(_SUPPORTED_IMAGING_MODES)} via [protocols].imaging_mode."
+            )
+
+        imaging_interval_seconds = sec.get("imaging_interval_seconds")
+        if isinstance(imaging_interval_seconds, dict) and imaging_interval_seconds:
+            self.imaging_interval_seconds = {
+                Path(folder): float(value)
+                for folder, value in imaging_interval_seconds.items()
+            }
+        else:
+            self.imaging_interval_seconds = None
+
+        self.start_reference = str(sec.get("start_reference", "first_image")).lower()
+        if self.start_reference not in _SUPPORTED_START_REFERENCES:
+            raise ValueError(
+                "Start reference must be one of "
+                f"{sorted(_SUPPORTED_START_REFERENCES)} via [protocols].start_reference."
+            )
+
+        start_reference_fixed = sec.get("start_reference_fixed")
+        self.start_reference_fixed = (
+            str(start_reference_fixed).strip()
+            if start_reference_fixed and str(start_reference_fixed).strip()
+            else None
+        )
+
+        start_reference_image = sec.get("start_reference_image")
+        self.start_reference_image = (
+            Path(start_reference_image)
+            if start_reference_image and str(start_reference_image).strip()
+            else None
+        )
+
+
+@dataclass
+class InjectionProtocolConfig:
+    """When injection ran, where, and at what rate."""
+
     injection: Path | tuple[Path, str] | None = field(
         default=None,
         metadata={
@@ -170,6 +275,42 @@ class ProtocolsConfig:
         },
     )
     """Constant injection coordinates (injection_mode='constant' only)."""
+
+    def load_injection(self, sec: dict) -> None:
+        """Read the injection keys from a flat [protocols] section."""
+        try:
+            injection_protocol = sec["injection"]
+            if isinstance(injection_protocol, str) and not injection_protocol.strip():
+                self.injection = None
+            else:
+                self.injection = _parse_protocol_value(injection_protocol)
+        except KeyError:
+            self.injection = None
+
+        self.injection_mode = str(sec.get("injection_mode", "constant")).lower()
+        if self.injection_mode not in _SUPPORTED_INJECTION_MODES:
+            raise ValueError(
+                "Injection mode must be one of "
+                f"{sorted(_SUPPORTED_INJECTION_MODES)} via [protocols].injection_mode."
+            )
+
+        self.injection_rate = float(sec.get("injection_rate", 0.0))
+
+        injection_coordinates = sec.get("injection_coordinates", (0.0, 0.0))
+        if len(injection_coordinates) != 2:
+            raise ValueError(
+                "[protocols].injection_coordinates must have exactly 2 entries "
+                f"(x, y), got {injection_coordinates!r}."
+            )
+        self.injection_coordinates = tuple(
+            float(value) for value in injection_coordinates
+        )
+
+
+@dataclass
+class PressureTemperatureProtocolConfig:
+    """The pressure and temperature conditions over the run."""
+
     pressure_temperature: Path | tuple[Path, str] | None = field(
         default=None,
         metadata={
@@ -216,58 +357,8 @@ class ProtocolsConfig:
     )
     """Constant temperature in Celsius (pressure_temperature_mode='constant' only)."""
 
-    def _parse_protocol_value(
-        self, value: str | Path | list[str] | tuple[str, str]
-    ) -> Path | tuple[Path, str]:
-        if isinstance(value, (list, tuple)):
-            return (Path(value[0]), value[1])
-        if isinstance(value, (str, Path)):
-            return Path(value)
-        raise ValueError(
-            "Protocol value must be a string, Path, or a list of [path, sheet]."
-        )
-
-    def load(self, path: Path) -> "ProtocolsConfig":
-        sec = _get_section_from_toml(path, "protocols")
-        try:
-            imaging_protocol = sec["imaging"]
-            if not isinstance(imaging_protocol, dict):
-                raise ValueError(
-                    "[protocols].imaging must be a per-folder table:\n"
-                    '[protocols.imaging]\n"<folder>" = "<path>" or ["<path>", "<sheet>"]\n'
-                    "A bare scalar value is no longer supported."
-                )
-            self.imaging = {
-                Path(folder): self._parse_protocol_value(protocol)
-                for folder, protocol in imaging_protocol.items()
-            }
-
-        except KeyError:
-            self.imaging = None
-
-        try:
-            injection_protocol = sec["injection"]
-            if isinstance(injection_protocol, str) and not injection_protocol.strip():
-                self.injection = None
-            else:
-                self.injection = self._parse_protocol_value(injection_protocol)
-        except KeyError:
-            self.injection = None
-
-        try:
-            blacklist_protocol = sec["blacklist"]
-            if isinstance(blacklist_protocol, dict):
-                self.blacklist = {
-                    Path(folder): self._parse_protocol_value(protocol)
-                    for folder, protocol in blacklist_protocol.items()
-                }
-            elif isinstance(blacklist_protocol, str) and not blacklist_protocol.strip():
-                self.blacklist = None
-            else:
-                self.blacklist = self._parse_protocol_value(blacklist_protocol)
-        except KeyError:
-            self.blacklist = None
-
+    def load_pressure_temperature(self, sec: dict) -> None:
+        """Read the pressure/temperature keys from a flat [protocols] section."""
         try:
             pressure_temperature_protocol = sec["pressure_temperature"]
             if (
@@ -276,69 +367,11 @@ class ProtocolsConfig:
             ):
                 self.pressure_temperature = None
             else:
-                self.pressure_temperature = self._parse_protocol_value(
+                self.pressure_temperature = _parse_protocol_value(
                     pressure_temperature_protocol
                 )
         except KeyError:
             self.pressure_temperature = None
-
-        self.imaging_mode = str(
-            sec.get("imaging_mode", sec.get("mode", "exif"))
-        ).lower()
-        if self.imaging_mode not in _SUPPORTED_IMAGING_MODES:
-            raise ValueError(
-                "Imaging mode must be one of "
-                f"{sorted(_SUPPORTED_IMAGING_MODES)} via [protocols].imaging_mode."
-            )
-
-        imaging_interval_seconds = sec.get("imaging_interval_seconds")
-        if isinstance(imaging_interval_seconds, dict) and imaging_interval_seconds:
-            self.imaging_interval_seconds = {
-                Path(folder): float(value)
-                for folder, value in imaging_interval_seconds.items()
-            }
-        else:
-            self.imaging_interval_seconds = None
-
-        self.start_reference = str(sec.get("start_reference", "first_image")).lower()
-        if self.start_reference not in _SUPPORTED_START_REFERENCES:
-            raise ValueError(
-                "Start reference must be one of "
-                f"{sorted(_SUPPORTED_START_REFERENCES)} via [protocols].start_reference."
-            )
-
-        start_reference_fixed = sec.get("start_reference_fixed")
-        self.start_reference_fixed = (
-            str(start_reference_fixed).strip()
-            if start_reference_fixed and str(start_reference_fixed).strip()
-            else None
-        )
-
-        start_reference_image = sec.get("start_reference_image")
-        self.start_reference_image = (
-            Path(start_reference_image)
-            if start_reference_image and str(start_reference_image).strip()
-            else None
-        )
-
-        self.injection_mode = str(sec.get("injection_mode", "constant")).lower()
-        if self.injection_mode not in _SUPPORTED_INJECTION_MODES:
-            raise ValueError(
-                "Injection mode must be one of "
-                f"{sorted(_SUPPORTED_INJECTION_MODES)} via [protocols].injection_mode."
-            )
-
-        self.injection_rate = float(sec.get("injection_rate", 0.0))
-
-        injection_coordinates = sec.get("injection_coordinates", (0.0, 0.0))
-        if len(injection_coordinates) != 2:
-            raise ValueError(
-                "[protocols].injection_coordinates must have exactly 2 entries "
-                f"(x, y), got {injection_coordinates!r}."
-            )
-        self.injection_coordinates = tuple(
-            float(value) for value in injection_coordinates
-        )
 
         self.pressure_temperature_mode = str(
             sec.get("pressure_temperature_mode", "constant")
@@ -353,6 +386,22 @@ class ProtocolsConfig:
         self.pressure_bar = float(sec.get("pressure_bar", 1.013))
         self.temperature_celsius = float(sec.get("temperature_celsius", 20.0))
 
+
+@dataclass
+class ProtocolsConfig(
+    # Reverse order on purpose: dataclasses collect inherited fields in
+    # reverse-MRO order, and that order is what the GUI renders top to bottom.
+    PressureTemperatureProtocolConfig,
+    InjectionProtocolConfig,
+    ImagingProtocolConfig,
+):
+    """All three protocols for a run, read from one flat [protocols] section."""
+
+    def load(self, path: Path) -> "ProtocolsConfig":
+        sec = _get_section_from_toml(path, "protocols")
+        self.load_imaging(sec)
+        self.load_injection(sec)
+        self.load_pressure_temperature(sec)
         return self
 
     def error(self):
