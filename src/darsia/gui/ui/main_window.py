@@ -567,6 +567,22 @@ class MainWindow(QMainWindow):
         """Show the About dialog."""
         AboutDialog(self).exec()
 
+    def open_setup_wizard(self):
+        """Open the guided setup wizard for the currently-loaded config.
+
+        The wizard edits the same config the Settings tabs do and saves to the
+        same file, so it needs one to exist: without a config loaded, route
+        through the normal 'new config' flow first.
+        """
+        from .setup_wizard import SetupWizardDialog
+
+        if not self.config_file:
+            self.print_log("Setup Wizard: create or open a config file first.")
+            self.config_controller.new_config()
+            if not self.config_file:
+                return
+        SetupWizardDialog(self).exec()
+
     def print_log(self, text):
         """Emit log_message signal to append text to log window (thread-safe via Qt signal)."""
         self.log_message.emit(text)

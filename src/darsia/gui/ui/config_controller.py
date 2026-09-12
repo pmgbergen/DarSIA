@@ -97,6 +97,51 @@ class ConfigController:
             self.main_window.print_log(f"Error loading config file: {e}")
             return
 
+    def apply_series_preset(self, preset, enabled: dict[str, bool]) -> list[str]:
+        """Apply the checked pieces of an experiment-series preset to the config.
+
+        Each piece is written to its own config path (see ``SeriesPreset.pieces``).
+        Unchecked pieces are a no-op: nothing is written and any pre-existing
+        value in the config is left untouched rather than cleared.
+
+        Parameters
+        ----------
+        preset : SeriesPreset
+            The chosen catalogue preset.
+        enabled : dict[str, bool]
+            Piece name -> whether the user kept it checked.
+
+        Returns
+        -------
+            Names of the pieces actually applied.
+        """
+        # Flush pending edits before mutating config_dict, so in-progress edits
+        # elsewhere survive the rebuild below (same contract as apply_partial_preset).
+        self.main_window.settings_factory._sync_settings_inputs_to_config_dict()
+
+        applied: list[str] = []
+        for piece, (path, section) in preset.pieces().items():
+            if not enabled.get(piece, False):
+                continue
+            config = self.main_window.config_dict
+            for part in path[:-1]:
+                config = config.setdefault(part, {})
+            config[path[-1]] = section.copy()
+            applied.append(piece)
+
+            # Only maintain an 'active' list that the config already declares:
+            # absent means "everything present is active", so introducing one
+            # here would silently deactivate every correction we didn't touch.
+            if path[:-1] == ("corrections",):
+                corrections = self.main_window.config_dict["corrections"]
+                active = corrections.get("active")
+                if isinstance(active, list) and path[-1] not in active:
+                    active.append(path[-1])
+
+        self.main_window.settings_inputs.clear()
+        self.main_window.settings_factory.refresh_current_view()
+        return applied
+
     def apply_partial_preset(self, key_path: str, preset_dict: dict) -> None:
         """Apply a partial preset (e.g. curvature correction config) to the current config.
 
