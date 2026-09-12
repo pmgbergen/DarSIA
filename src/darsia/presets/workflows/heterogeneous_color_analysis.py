@@ -268,10 +268,12 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
 
         Parameters
         ----------
-        image : darsia.Image
-            The image from which to define the local color path.
+        images : darsia.Image or list of darsia.Image
+            The image(s) from which to define the local color path.
         mask : darsia.Image
             The mask to apply on the image for color path definition.
+        cmap : str or matplotlib.colors.Colormap, optional
+            Optional colormap for visualization.
         """
         if not isinstance(images, list):
             images = [images]
@@ -642,7 +644,7 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
             The mask to apply on the image for color path definition.
         calibration_images : list[darsia.Image]
             The images used for calibration.
-        cmap
+        cmap : str or matplotlib.colors.Colormap, optional
             Optional colormap for visualization.
         show : bool
             Whether to display plots during processing.

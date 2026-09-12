@@ -134,8 +134,9 @@ def select_image_paths(
         The protocolled experiment.
     all : bool
         Whether to use all images.
-    sub_config
-        Optional sub-configuration for the analysis.
+    sub_config : object, optional
+        Sub-configuration for the analysis (e.g. a workflow-specific config
+        section); duck-typed, expected to expose a ``data_selection`` attribute.
     source : Path | None
         Optional source path for time-based image lookup.
 

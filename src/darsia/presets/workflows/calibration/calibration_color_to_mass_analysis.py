@@ -69,10 +69,8 @@ def calibration_color_to_mass_analysis_from_context(
 
     Parameters
     ----------
-    cls
-        The class of the rig to be calibrated.
-    path
-        The path to the configuration file.
+    ctx : AnalysisContext
+        Analysis context, providing the config, experiment, and rig.
     ref_path : Path | None
         The path to the reference configuration file (if any).
     reset : bool

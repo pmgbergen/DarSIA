@@ -196,8 +196,14 @@ class HeterogeneousColorToMassAnalysis:
 
         Parameters
         ----------
-        image : darsia.Image
-            The image from which to define the local color path.
+        images : list[darsia.Image]
+            The images to use for calibration.
+        experiment : darsia.ProtocolledExperiment
+            The protocolled experiment.
+        rois : dict[str, darsia.VoxelArray or darsia.CoordinateArray], optional
+            Named regions of interest; defaults to the entire frame.
+        cmap : str or matplotlib.colors.Colormap, optional
+            Optional colormap for visualization.
         """
 
         # Fill up rois with "entire frame"
@@ -2582,8 +2588,14 @@ class HeterogeneousColorToMassAnalysis:
 
         Parameters
         ----------
-        image : darsia.Image
-            The image from which to define the local color path.
+        images : list[darsia.Image]
+            The images to use for calibration.
+        experiment : darsia.ProtocolledExperiment
+            The protocolled experiment.
+        rois : dict[str, darsia.VoxelArray or darsia.CoordinateArray], optional
+            Named regions of interest; defaults to the entire frame.
+        cmap : str or matplotlib.colors.Colormap, optional
+            Optional colormap for visualization.
         """
         # Fill up rois with "entire frame"
         rois = rois or {}
@@ -2806,8 +2818,8 @@ class HeterogeneousColorToMassAnalysis:
 
         Parameters
         ----------
-        path : Path
-            The path to save the calibration data.
+        folder : Path
+            The folder to save the calibration data to.
         """
         # Save the color path interpretation
         for label in np.unique(self.labels.img):
@@ -2868,8 +2880,24 @@ class HeterogeneousColorToMassAnalysis:
 
         Parameters
         ----------
-        path : Path
-            Path to load the model.
+        folder : Path
+            Folder to load the model from.
+        baseline : darsia.Image
+            Baseline image.
+        labels : darsia.Image
+            Labeled image.
+        co2_mass_analysis : darsia.CO2MassAnalysis
+            The CO2 mass analysis tool.
+        geometry : darsia.ExtrudedPorousGeometry
+            The geometry used for mass computation.
+        restoration : darsia.Model, optional
+            Restoration model applied prior to analysis.
+        basis : ColorEmbeddingBasis, optional
+            Basis used for the color embedding.
+        expert_knowledge_adapter : ExpertKnowledgeAdapter, optional
+            Adapter for injecting expert-knowledge corrections.
+        contour_smoother : darsia.ContourSmoother, optional
+            Optional smoother for the label contours.
         """
         color_path_interpretation = {
             label: darsia.ColorPathInterpolation.load(

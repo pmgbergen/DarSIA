@@ -220,8 +220,6 @@ class SimpleRunAnalysis(darsia.MultiphaseTimeSeriesAnalysis):
             containing the component data.
         exact_mass : float
             The exact injected mass at the time of the analysis result.
-        time : float
-            Time in hours since the start of the injection.
         """
         self.data.append(
             time=mass_analysis_result.time,

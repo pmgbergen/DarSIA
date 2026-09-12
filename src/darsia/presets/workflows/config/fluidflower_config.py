@@ -355,8 +355,8 @@ class FluidFlowerConfig:
 
         Parameters
         ----------
-        keys : list[str]
-            List of keys to check.
+        *args : str
+            Keys to check.
 
         Raises
         ------

@@ -27,7 +27,7 @@ def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> 
     ----------
     path : Path | list[Path]
         Path to configuration file (needs to comply with FluidFlowerConfig).
-    key
+    key : str, optional
         Column identifier in the csv file to use for interpolation (default: "mean").
     show : bool
         Whether to show the resulting depth map.

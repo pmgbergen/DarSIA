@@ -441,7 +441,7 @@ class Rig:
         ----------
         path : Path
             Path to the labels file. If the file exists, it will be loaded.
-        apply_correction : bool
+        apply_corrections : bool
             If True, applies corrections to the labels based on
             the baseline image.
         log : Path | None
@@ -518,7 +518,7 @@ class Rig:
         ----------
         path : Path
             Path to the facies file. If the file exists, it will be loaded.
-        apply_correction : bool
+        apply_corrections : bool
             If True, applies corrections to the facies based on
             the baseline image.
         log : Path | None
