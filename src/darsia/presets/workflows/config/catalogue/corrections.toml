@@ -15,3 +15,16 @@ top_right = [0, 7660]
 width = 0.92
 height = 0.55
 in_meters = true
+
+[[curvature_preset]]
+name = "FF Bilbo (BC0xx)"
+description = "Bilbo rig, BC0xx experiment series (and B033, same physical setup)"
+
+[curvature_preset.crop]
+top_left = [0, 343]
+bottom_left = [4437, 322]
+bottom_right = [4416, 7690]
+top_right = [0, 7669]
+width = 0.92
+height = 0.55
+in_meters = true
