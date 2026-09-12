@@ -8,6 +8,11 @@ from .utils import _get_section_from_toml
 
 logger = logging.getLogger(__name__)
 
+_SUPPORTED_IMAGING_MODES = {"exif", "ctime", "interval", "detailed"}
+_SUPPORTED_START_REFERENCES = {"first_image", "baseline", "fixed", "image"}
+_SUPPORTED_PRESSURE_TEMPERATURE_MODES = {"constant", "detailed"}
+_SUPPORTED_INJECTION_MODES = {"constant", "detailed"}
+
 
 @dataclass
 class ProtocolsConfig:
@@ -52,12 +57,73 @@ class ProtocolsConfig:
         default="exif",
         metadata={
             "name": "Imaging mode",
-            "help": "Datetime extraction mode for imaging protocol setup.",
-            "options": ["exif", "ctime"],
+            "help": (
+                "Datetime extraction mode for imaging protocol setup. 'exif'/"
+                "'ctime' read each image's real timestamp (auto from metadata); "
+                "'interval' computes timestamps from a prescribed cadence instead "
+                "(see 'Imaging interval'); 'detailed' leaves an existing imaging "
+                "protocol file alone (author it by hand instead)."
+            ),
+            "options": ["exif", "ctime", "interval", "detailed"],
             "group": "Imaging",
         },
     )
-    """Datetime extraction mode for imaging protocol setup: 'exif' or 'ctime'."""
+    """Datetime extraction mode for imaging protocol setup: 'exif', 'ctime', or
+    'interval' (prescribed time increments, no per-file reads)."""
+    imaging_interval_seconds: dict[Path, float] | None = field(
+        default=None,
+        metadata={
+            "name": "Imaging interval",
+            "help": (
+                "Table mapping each data folder to a fixed imaging interval in "
+                "seconds, used when Imaging mode is 'interval'. One uniform "
+                "interval per folder. The folder column mirrors [data].folders "
+                "and is not editable here; add or remove folders in the Data tab."
+            ),
+            "widget": "number_map",
+            "key_source": "data.folders",
+            "group": "Imaging",
+            "depends_on": {"field": "imaging_mode", "value": "interval"},
+        },
+    )
+    """Per-folder fixed imaging interval in seconds (interval mode only)."""
+    start_reference: str = field(
+        default="first_image",
+        metadata={
+            "name": "Start reference",
+            "help": (
+                "What counts as time zero when anchoring interval-mode imaging "
+                "and the injection/pressure-temperature templates: the first "
+                "image in each folder, the configured baseline image, a fixed "
+                "datetime, or a specific reference image."
+            ),
+            "options": ["first_image", "baseline", "fixed", "image"],
+            "group": "Imaging",
+        },
+    )
+    """What counts as time zero: 'first_image', 'baseline', 'fixed', or 'image'."""
+    start_reference_fixed: str | None = field(
+        default=None,
+        metadata={
+            "name": "Fixed start time",
+            "help": "ISO-8601 datetime to use as time zero (start_reference='fixed').",
+            "placeholder": "e.g., 2023-10-31 11:08:28",
+            "depends_on": {"field": "start_reference", "value": "fixed"},
+            "group": "Imaging",
+        },
+    )
+    """ISO-8601 datetime string used as time zero when start_reference='fixed'."""
+    start_reference_image: Path | None = field(
+        default=None,
+        metadata={
+            "name": "Reference image",
+            "help": "Image file to use as time zero (start_reference='image').",
+            "widget": "file",
+            "depends_on": {"field": "start_reference", "value": "image"},
+            "group": "Imaging",
+        },
+    )
+    """Reference image used as time zero when start_reference='image'."""
     injection: Path | tuple[Path, str] | None = field(
         default=None,
         metadata={
@@ -69,6 +135,30 @@ class ProtocolsConfig:
         },
     )
     """Path to the injection protocol file or (file, sheet)."""
+    injection_mode: str = field(
+        default="constant",
+        metadata={
+            "name": "Injection mode",
+            "help": (
+                "'constant' writes a single-row, zero-rate scaffold to fill in by "
+                "hand; 'detailed' leaves an existing injection-protocol file alone, "
+                "or writes an empty (header-only) template if none exists yet."
+            ),
+            "options": ["constant", "detailed"],
+            "group": "Experiment",
+        },
+    )
+    """Injection template mode: 'constant' or 'detailed'."""
+    injection_rate: float = field(
+        default=0.0,
+        metadata={
+            "name": "Injection rate",
+            "help": "Constant injection rate written to the injection template.",
+            "depends_on": {"field": "injection_mode", "value": "constant"},
+            "group": "Experiment",
+        },
+    )
+    """Constant injection rate (injection_mode='constant' only)."""
     pressure_temperature: Path | tuple[Path, str] | None = field(
         default=None,
         metadata={
@@ -80,6 +170,40 @@ class ProtocolsConfig:
         },
     )
     """Path to the pressure-temperature protocol file or (file, sheet)."""
+    pressure_temperature_mode: str = field(
+        default="constant",
+        metadata={
+            "name": "Pressure/Temperature mode",
+            "help": (
+                "'constant' writes a single-row template from the values below; "
+                "'detailed' leaves the pressure-temperature protocol file alone "
+                "(author/point to a full custom CSV instead)."
+            ),
+            "options": ["constant", "detailed"],
+            "group": "Experiment",
+        },
+    )
+    """Pressure/temperature template mode: 'constant' or 'detailed'."""
+    pressure_bar: float = field(
+        default=1.013,
+        metadata={
+            "name": "Pressure (bar)",
+            "help": "Constant pressure written to the pressure-temperature template.",
+            "depends_on": {"field": "pressure_temperature_mode", "value": "constant"},
+            "group": "Experiment",
+        },
+    )
+    """Constant pressure in bar (pressure_temperature_mode='constant' only)."""
+    temperature_celsius: float = field(
+        default=20.0,
+        metadata={
+            "name": "Temperature (C)",
+            "help": "Constant temperature written to the pressure-temperature template.",
+            "depends_on": {"field": "pressure_temperature_mode", "value": "constant"},
+            "group": "Experiment",
+        },
+    )
+    """Constant temperature in Celsius (pressure_temperature_mode='constant' only)."""
 
     def _parse_protocol_value(
         self, value: str | Path | list[str] | tuple[str, str]
@@ -150,11 +274,61 @@ class ProtocolsConfig:
         self.imaging_mode = str(
             sec.get("imaging_mode", sec.get("mode", "exif"))
         ).lower()
-        if self.imaging_mode not in {"exif", "ctime"}:
+        if self.imaging_mode not in _SUPPORTED_IMAGING_MODES:
             raise ValueError(
-                "Imaging mode must be either 'exif' or 'ctime' via "
-                "[protocols].imaging_mode."
+                "Imaging mode must be one of "
+                f"{sorted(_SUPPORTED_IMAGING_MODES)} via [protocols].imaging_mode."
             )
+
+        imaging_interval_seconds = sec.get("imaging_interval_seconds")
+        if isinstance(imaging_interval_seconds, dict) and imaging_interval_seconds:
+            self.imaging_interval_seconds = {
+                Path(folder): float(value)
+                for folder, value in imaging_interval_seconds.items()
+            }
+        else:
+            self.imaging_interval_seconds = None
+
+        self.start_reference = str(sec.get("start_reference", "first_image")).lower()
+        if self.start_reference not in _SUPPORTED_START_REFERENCES:
+            raise ValueError(
+                "Start reference must be one of "
+                f"{sorted(_SUPPORTED_START_REFERENCES)} via [protocols].start_reference."
+            )
+
+        start_reference_fixed = sec.get("start_reference_fixed")
+        self.start_reference_fixed = (
+            str(start_reference_fixed).strip()
+            if start_reference_fixed and str(start_reference_fixed).strip()
+            else None
+        )
+
+        start_reference_image = sec.get("start_reference_image")
+        self.start_reference_image = (
+            Path(start_reference_image)
+            if start_reference_image and str(start_reference_image).strip()
+            else None
+        )
+
+        self.injection_mode = str(sec.get("injection_mode", "constant")).lower()
+        if self.injection_mode not in _SUPPORTED_INJECTION_MODES:
+            raise ValueError(
+                "Injection mode must be one of "
+                f"{sorted(_SUPPORTED_INJECTION_MODES)} via [protocols].injection_mode."
+            )
+
+        self.pressure_temperature_mode = str(
+            sec.get("pressure_temperature_mode", "constant")
+        ).lower()
+        if self.pressure_temperature_mode not in _SUPPORTED_PRESSURE_TEMPERATURE_MODES:
+            raise ValueError(
+                "Pressure/temperature mode must be one of "
+                f"{sorted(_SUPPORTED_PRESSURE_TEMPERATURE_MODES)} via "
+                "[protocols].pressure_temperature_mode."
+            )
+
+        self.pressure_bar = float(sec.get("pressure_bar", 1.013))
+        self.temperature_celsius = float(sec.get("temperature_celsius", 20.0))
 
         return self
 
