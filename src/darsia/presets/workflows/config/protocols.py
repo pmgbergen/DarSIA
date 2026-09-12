@@ -140,9 +140,10 @@ class ProtocolsConfig:
         metadata={
             "name": "Injection mode",
             "help": (
-                "'constant' writes a single-row, zero-rate scaffold to fill in by "
-                "hand; 'detailed' leaves an existing injection-protocol file alone, "
-                "or writes an empty (header-only) template if none exists yet."
+                "'constant' writes a single-row protocol from the rate and "
+                "coordinates below, spanning the whole run; 'detailed' leaves an "
+                "existing injection-protocol file alone, or writes an empty "
+                "(header-only) template if none exists yet."
             ),
             "options": ["constant", "detailed"],
             "group": "Experiment",
@@ -159,6 +160,16 @@ class ProtocolsConfig:
         },
     )
     """Constant injection rate (injection_mode='constant' only)."""
+    injection_coordinates: tuple[float, float] = field(
+        default=(0.0, 0.0),
+        metadata={
+            "name": "Injection coordinates",
+            "help": "Constant injection coordinates written to the injection template.",
+            "depends_on": {"field": "injection_mode", "value": "constant"},
+            "group": "Experiment",
+        },
+    )
+    """Constant injection coordinates (injection_mode='constant' only)."""
     pressure_temperature: Path | tuple[Path, str] | None = field(
         default=None,
         metadata={
@@ -316,6 +327,18 @@ class ProtocolsConfig:
                 "Injection mode must be one of "
                 f"{sorted(_SUPPORTED_INJECTION_MODES)} via [protocols].injection_mode."
             )
+
+        self.injection_rate = float(sec.get("injection_rate", 0.0))
+
+        injection_coordinates = sec.get("injection_coordinates", (0.0, 0.0))
+        if len(injection_coordinates) != 2:
+            raise ValueError(
+                "[protocols].injection_coordinates must have exactly 2 entries "
+                f"(x, y), got {injection_coordinates!r}."
+            )
+        self.injection_coordinates = tuple(
+            float(value) for value in injection_coordinates
+        )
 
         self.pressure_temperature_mode = str(
             sec.get("pressure_temperature_mode", "constant")
