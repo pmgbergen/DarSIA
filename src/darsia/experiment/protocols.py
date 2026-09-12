@@ -145,47 +145,36 @@ class ImagingProtocol:
     def __init__(
         self,
         path: Path | tuple[Path, str],
-        pad: int,
         blacklist: Optional[Path | tuple[Path, str]] = None,
     ) -> None:
         self.df = self._load_protocol(path)
         """DataFrame containing the protocol."""
-        self.pad = pad
-        """Number of digits in the image id in the file name."""
 
         if blacklist is not None:
             self.blacklist_df = self._load_blacklist(blacklist)
         else:
-            self.blacklist_df = pd.DataFrame(columns=["image_id"])
+            self.blacklist_df = pd.DataFrame(columns=["path"])
 
-        self.blacklist_ids: set[int] = set(
-            self.blacklist_df["image_id"].astype(int).tolist()
-        )
-        self.datetime_by_image_id: dict[int, datetime] = {}
-        for image_id, dt in zip(self.df["image_id"], self.df["datetime"]):
-            image_id_int = int(image_id)
-            if image_id_int not in self.datetime_by_image_id:
-                self.datetime_by_image_id[image_id_int] = dt
+        self.blacklisted_paths: set[str] = {
+            self._normalize_protocol_path(str(p))
+            for p in self.blacklist_df["path"]
+            if p is not None and not pd.isna(p)
+        }
 
         self.datetime_by_path_key: dict[str, datetime] = {}
         for protocol_path, dt in zip(self.df["path"], self.df["datetime"]):
             if protocol_path is None or pd.isna(protocol_path):
+                logger.warning("Skipping protocol row with no path: datetime %s.", dt)
                 continue
             key = self._normalize_protocol_path(str(protocol_path))
-            if key.lower() in {"nan", "none"}:
+            if key.lower() in {"nan", "none", ""}:
+                logger.warning("Skipping protocol row with no path: datetime %s.", dt)
                 continue
             if key not in self.datetime_by_path_key:
                 self.datetime_by_path_key[key] = dt
 
-    def image_id(self, path: Path) -> int:
-        """Extract image id from file name."""
-        try:
-            return int(path.stem[-self.pad :])
-        except ValueError:
-            raise ValueError(f"Invalid image id in file name: {path.stem}")
-
     def is_blacklisted(self, file_name: Path) -> bool:
-        """Check if the image is blacklisted based on the file name.
+        """Check if the image is blacklisted based on its path.
 
         Parameters
         ----------
@@ -199,16 +188,16 @@ class ImagingProtocol:
         bool
             True if the image is blacklisted, False otherwise.
         """
-        if not self.blacklist_ids:
+        if not self.blacklisted_paths:
             return False
 
-        # Fetch id from input file
-        current_id = self.image_id(file_name)
-
-        return current_id in self.blacklist_ids
+        return any(
+            key in self.blacklisted_paths
+            for key in self._candidate_protocol_paths(file_name)
+        )
 
     def get_datetime(self, file_name: Path) -> Optional[datetime]:
-        """Get the datetime of the image based on the file name.
+        """Get the datetime of the image based on its path.
 
         Parameters
         ----------
@@ -223,20 +212,12 @@ class ImagingProtocol:
             The datetime of the image. None, if the file name
             is not contained in any of the imaging intervals.
         """
-        # Fetch id from input file
-        current_id = self.image_id(file_name)
-
-        # Prefer an exact path match when the protocol contains path entries.
         for key in self._candidate_protocol_paths(file_name):
             dt = self.datetime_by_path_key.get(key)
             if dt is not None:
                 return dt
 
-        # Fallback: image-id based lookup.
-        dt = self.datetime_by_image_id.get(current_id)
-        if dt is None:
-            raise ValueError(f"Image id {current_id} not found in protocol.")
-        return dt
+        raise ValueError(f"Path {file_name} not found in protocol.")
 
     @staticmethod
     def _normalize_protocol_path(path: str) -> str:
@@ -273,31 +254,21 @@ class ImagingProtocol:
         # Make all columns lowercase
         df.columns = [col.lower() for col in df.columns]
 
-        # Associate image id and time
-        # assert "path" in df.columns, "Column 'Path' not found in the protocol file."
-        assert (
-            "image_id" in df.columns
-        ), "Column 'Image_id' not found in the protocol file."
+        # Associate path and time
+        assert "path" in df.columns, "Column 'Path' not found in the protocol file."
         assert (
             "datetime" in df.columns
         ), "Column 'Datetime' not found in the protocol file."
-        if "path" in df.columns:
-            paths = (
-                df["path"]
-                .astype(str)
-                .str.replace(r"\\", "/", regex=False)
-                .str.lstrip("./")
-            )
-        else:
-            paths = [None] * len(df)
-        images = df["image_id"]
+        paths = (
+            df["path"].astype(str).str.replace(r"\\", "/", regex=False).str.lstrip("./")
+        )
         datetimes = df["datetime"]
 
         # Convert datetimes to pandas datetime objects
         datetimes = pd.to_datetime(datetimes)
 
         # Make a new dataframe object and return
-        return pd.DataFrame({"path": paths, "image_id": images, "datetime": datetimes})
+        return pd.DataFrame({"path": paths, "datetime": datetimes})
 
     def _load_blacklist(self, path: Path | tuple[Path, str]) -> pd.DataFrame:
         if isinstance(path, list) or isinstance(path, tuple):
@@ -315,13 +286,13 @@ class ImagingProtocol:
         else:
             raise ValueError("Unsupported file format. Use CSV or Excel files.")
 
-        # Expect only one column without any header
+        # Expect only one column without any header, listing image paths
         assert (
             df.shape[1] == 1
         ), "Blacklist protocol file should contain only one column."
-        df.columns = ["image_id"]
-        images = df["image_id"]
-        return pd.DataFrame({"image_id": images})
+        df.columns = ["path"]
+        paths = df["path"]
+        return pd.DataFrame({"path": paths})
 
     def find_images_for_paths(self, paths: list[Path]) -> list[Path]:
         """Find image paths for given paths.
@@ -373,15 +344,15 @@ class ImagingProtocol:
         # Remove blacklisted paths
         available_paths = self.find_images_for_paths(all_paths)
 
-        # Convert to ID.
-        available_image_ids = {}
+        # Convert to normalized protocol path keys.
+        available_paths_by_key: dict[str, Path] = {}
         for p in available_paths:
-            try:
-                available_image_ids[self.image_id(p)] = p
-            except ValueError:
-                ...
+            for key in self._candidate_protocol_paths(p):
+                if key in self.datetime_by_path_key:
+                    available_paths_by_key[key] = p
+                    break
 
-        df = self.df[self.df["image_id"].isin(available_image_ids.keys())]
+        df = self.df[self.df["path"].isin(available_paths_by_key.keys())]
 
         # Safety check.
         if df.empty:
@@ -395,13 +366,13 @@ class ImagingProtocol:
             )
             time_distance = abs((df["datetime"] - dt).dt.total_seconds())
             if tol is None:
-                closest_available_image_path = available_image_ids[
-                    df[df["datetime"] == closest_available_time]["image_id"].values[0]
+                closest_available_image_path = available_paths_by_key[
+                    df[df["datetime"] == closest_available_time]["path"].values[0]
                 ]
                 closest_available_image_paths.append(closest_available_image_path)
             elif time_distance.min() < tol:
-                closest_available_image_path = available_image_ids[
-                    df[df["datetime"] == closest_available_time]["image_id"].values[0]
+                closest_available_image_path = available_paths_by_key[
+                    df[df["datetime"] == closest_available_time]["path"].values[0]
                 ]
                 closest_available_image_paths.append(closest_available_image_path)
 
@@ -430,19 +401,17 @@ class ImagingProtocol:
             List of image ids corresponding to the specified datetimes.
         """
         # Collect the closest images
-        image_ids = []
+        image_paths = []
 
         for dt in datetimes:
             closest_available_time = min(
                 self.df["datetime"], key=lambda t: abs((t - dt).total_seconds())
             )
-            image_id = self.df[self.df["datetime"] == closest_available_time][
-                "image_id"
-            ]
-            image_ids.append(image_id.values[0])
+            image_path = self.df[self.df["datetime"] == closest_available_time]["path"]
+            image_paths.append(image_path.values[0])
 
         # Return unique paths only but keep order
-        return list(dict.fromkeys(image_ids))
+        return list(dict.fromkeys(image_paths))
 
 
 class InjectionProtocol:

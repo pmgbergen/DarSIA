@@ -71,7 +71,7 @@ def test_save_settings_path_map_round_trip_into_protocol_setup(tmp_path: Path) -
 
     # Create test image and dummy protocol files
     _create_test_image(images_folder / "img_0001.JPG", now)
-    imaging_csv.write_text("path,image_id,datetime\nimg_0001.JPG,1,2023-11-15 12:00:00")
+    imaging_csv.write_text("path,datetime\nimg_0001.JPG,2023-11-15 12:00:00")
     injection_csv.write_text(
         "id,location_x,location_y,start,end,rate_kg/s\n1,0.5,0.5,00:00:00,01:00:00,0.0"
     )
@@ -191,9 +191,8 @@ def test_save_settings_path_map_round_trip_into_protocol_setup(tmp_path: Path) -
     df = pd.read_csv(imaging_csv)
     assert set(df.columns) == {
         "path",
-        "image_id",
         "datetime",
-    }, f"Expected columns {{path, image_id, datetime}}, got {set(df.columns)}"
-    assert df["image_id"].tolist() == [
-        1
-    ], f"Expected image_id=[1], got {df['image_id'].tolist()}"
+    }, f"Expected columns {{path, datetime}}, got {set(df.columns)}"
+    assert df["path"].tolist() == [
+        "img_0001.JPG"
+    ], f"Expected path=['img_0001.JPG'], got {df['path'].tolist()}"

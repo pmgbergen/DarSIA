@@ -27,11 +27,16 @@ def find_images_for_datetimes(
     list[Path]
         List of image paths corresponding to the specified datetimes.
     """
-    # Restrict df from imagign_interval to available image ids
+    # Restrict df from imaging_protocol to available paths
     available_paths = list(folder.glob("*"))
-    available_image_ids = {imaging_protocol.image_id(p): p for p in available_paths}
+    available_paths_by_key: dict[str, Path] = {}
+    for p in available_paths:
+        for key in imaging_protocol._candidate_protocol_paths(p):
+            if key in imaging_protocol.datetime_by_path_key:
+                available_paths_by_key[key] = p
+                break
     df = imaging_protocol.df[
-        imaging_protocol.df["image_id"].isin(available_image_ids.keys())
+        imaging_protocol.df["path"].isin(available_paths_by_key.keys())
     ]
 
     # Collect the closest images
@@ -41,8 +46,8 @@ def find_images_for_datetimes(
         closest_available_time = min(
             df["datetime"], key=lambda t: abs((t - dt).total_seconds())
         )
-        image_path = available_image_ids[
-            df[df["datetime"] == closest_available_time]["image_id"].values[0]
+        image_path = available_paths_by_key[
+            df[df["datetime"] == closest_available_time]["path"].values[0]
         ]
         closest_image_paths.append(image_path)
 

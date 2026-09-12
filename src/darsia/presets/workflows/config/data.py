@@ -22,7 +22,6 @@ class DataConfig:
         # or folders = ["path/to/images_a", "path/to/images_b"]
         format = "JPG"
         baseline = "path/to/baseline.jpg"
-        pad = 0
         results = "path/to/results"
 
     """
@@ -64,11 +63,6 @@ class DataConfig:
         },
     )
     """Path to the baseline image."""
-    pad: int = field(
-        default=0,
-        metadata={"hidden": True},
-    )
-    """Pad for image names."""
     results: Path = field(
         default_factory=Path,
         metadata={
@@ -160,10 +154,6 @@ class DataConfig:
                 self.baseline = self.folder / baseline
         if require_data and not self.baseline.is_file():
             raise FileNotFoundError(f"Baseline image {self.baseline} not found.")
-
-        # Get format
-        numeric_part = "".join(filter(str.isdigit, self.baseline.stem))
-        self.pad = len(numeric_part) if numeric_part else 0
 
         # Get data
         if require_data:

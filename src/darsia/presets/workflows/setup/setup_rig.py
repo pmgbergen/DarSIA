@@ -72,7 +72,6 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
         injection_protocol=config.protocols.injection,
         pressure_temperature_protocol=config.protocols.pressure_temperature,
         blacklist_protocol=config.protocols.blacklist,
-        pad=config.data.pad,
     )
 
     # Determine effective baseline path, using cache when enabled.

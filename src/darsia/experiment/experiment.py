@@ -47,15 +47,21 @@ class ProtocolledExperiment:
         imaging_protocol: Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]],
         injection_protocol: Optional[Path | tuple[Path, str]] = None,
         pressure_temperature_protocol: Optional[Path | tuple[Path, str]] = None,
-        blacklist_protocol: Optional[Path | tuple[Path, str]] = None,
-        pad: int = 5,
+        blacklist_protocol: Optional[
+            Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]]
+        ] = None,
     ):
         self.data = data
         """Pool of data paths."""
         if isinstance(imaging_protocol, dict):
+            blacklist_map = (
+                blacklist_protocol if isinstance(blacklist_protocol, dict) else {}
+            )
             self.imaging_protocol = None
             self.imaging_protocols = {
-                Path(folder): darsia.ImagingProtocol(protocol, pad, blacklist_protocol)
+                Path(folder): darsia.ImagingProtocol(
+                    protocol, blacklist_map.get(Path(folder))
+                )
                 for folder, protocol in imaging_protocol.items()
             }
             self._resolved_protocol_folders = sorted(
@@ -67,8 +73,11 @@ class ProtocolledExperiment:
                 reverse=True,
             )
         else:
+            single_blacklist = (
+                None if isinstance(blacklist_protocol, dict) else blacklist_protocol
+            )
             self.imaging_protocol = darsia.ImagingProtocol(
-                imaging_protocol, pad, blacklist_protocol
+                imaging_protocol, single_blacklist
             )
             self.imaging_protocols = None
             self._resolved_protocol_folders = []
@@ -113,7 +122,6 @@ class ProtocolledExperiment:
             injection_protocol=config.protocols.injection,
             pressure_temperature_protocol=config.protocols.pressure_temperature,
             blacklist_protocol=config.protocols.blacklist,
-            pad=config.data.pad,
         )
 
     def time_since_start(self, date: datetime) -> float:
