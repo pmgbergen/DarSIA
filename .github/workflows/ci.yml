@@ -75,13 +75,9 @@ jobs:
     # Advisory for now: reports NumPy-docstring-style issues without failing the
     # build. Config in pyproject.toml ([tool.numpydoc_validation]). Drop
     # continue-on-error to make it blocking once the backlog is cleared.
-    # Scoped to the code that backs the API reference (the GUI and the workflow
-    # presets are documented narratively, not per-object).
     - name: numpydoc lint
       continue-on-error: true
-      run: >
-        uv run numpydoc lint
-        $(git ls-files 'src/darsia/**/*.py' | grep -vE '/(gui|presets/workflows)/')
+      run: uv run numpydoc lint $(git ls-files 'src/darsia/**/*.py')
 
   build-without-petsc:
     runs-on: ubuntu-latest
