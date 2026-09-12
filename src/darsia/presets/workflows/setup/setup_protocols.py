@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Iterable
 
@@ -21,7 +21,7 @@ from darsia.presets.workflows.config.sections import (
 
 logger = logging.getLogger(__name__)
 
-_SUPPORTED_MODES = {"exif", "ctime"}
+_SUPPORTED_MODES = {"exif", "ctime", "interval", "detailed"}
 
 
 def get_modification_time(filepath: Path) -> datetime:
@@ -96,6 +96,33 @@ def _overwrite_conflicts(paths: Iterable[Path]) -> list[Path]:
     return [p for p in paths if p.exists()]
 
 
+def _generation_targets(
+    config: FluidFlowerConfig,
+    imaging_targets: dict[Path, Path],
+    injection_path: Path | None,
+    pressure_temperature_path: Path | None,
+) -> list[Path]:
+    """Targets that generation would actually write to, given the configured modes.
+
+    Excludes any target whose protocol type is set to 'detailed' (CSV already
+    authored / left to the user): those are never overwritten when they already
+    exist, so an existing file there is not an overwrite conflict. (A 'detailed'
+    injection target that doesn't exist yet still gets an empty template written,
+    but creating a new file is never an overwrite conflict either way.)
+    """
+    targets = []
+    if config.protocols.imaging_mode != "detailed":
+        targets.extend(imaging_targets.values())
+    if injection_path is not None and config.protocols.injection_mode != "detailed":
+        targets.append(injection_path)
+    if (
+        pressure_temperature_path is not None
+        and config.protocols.pressure_temperature_mode != "detailed"
+    ):
+        targets.append(pressure_temperature_path)
+    return targets
+
+
 def preview_protocol_setup_conflicts(path: Path | list[Path]) -> list[Path]:
     """Return protocol target files that already exist."""
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
@@ -105,16 +132,14 @@ def preview_protocol_setup_conflicts(path: Path | list[Path]) -> list[Path]:
     imaging_targets = _imaging_protocol_paths(
         config.protocols.imaging, config.data.folders
     )
-    targets = list(imaging_targets.values())
-    targets.extend(
-        [
-            _protocol_path(config.protocols.injection, "injection"),
-            _protocol_path(
-                config.protocols.pressure_temperature, "pressure_temperature"
-            ),
-        ]
+    injection_path = _protocol_path(config.protocols.injection, "injection")
+    pressure_temperature_path = _protocol_path(
+        config.protocols.pressure_temperature, "pressure_temperature"
     )
-    return _overwrite_conflicts([p for p in targets if p is not None])
+    targets = _generation_targets(
+        config, imaging_targets, injection_path, pressure_temperature_path
+    )
+    return _overwrite_conflicts(targets)
 
 
 def _extract_imaging_protocol_dataframe(
@@ -149,31 +174,148 @@ def _extract_imaging_protocol_dataframe(
     return pd.DataFrame({"path": file_paths, "datetime": date_times})
 
 
+def _build_interval_datetimes(
+    files: list[Path], start: datetime, interval_seconds: float
+) -> list[datetime]:
+    """Compute prescribed-cadence datetimes for a sorted file list.
+
+    No per-file I/O: each file's datetime is ``start + index * interval_seconds``.
+    """
+    return [start + timedelta(seconds=i * interval_seconds) for i in range(len(files))]
+
+
+def _resolve_start_reference(
+    config: FluidFlowerConfig, folder: Path, files: list[Path]
+) -> datetime:
+    """Resolve [protocols].start_reference to a concrete datetime for `folder`.
+
+    'first_image' resolves per folder (that folder's first sorted file). 'fixed'
+    resolves to the configured ISO datetime regardless of folder/files. 'baseline'
+    and 'image' resolve to the timestamp of a specific image, which must be found
+    within `files` (raises FileNotFoundError otherwise, letting a caller searching
+    across several folders try the next one).
+    """
+    choice = config.protocols.start_reference
+    mode = config.protocols.imaging_mode
+    extraction_mode = "ctime" if mode == "interval" else mode
+
+    if choice == "fixed":
+        fixed = config.protocols.start_reference_fixed
+        if not fixed:
+            raise ValueError(
+                "start_reference='fixed' requires [protocols].start_reference_fixed."
+            )
+        return datetime.fromisoformat(fixed)
+
+    if choice == "first_image":
+        if not files:
+            raise ValueError(f"No images found in {folder} to resolve start_reference.")
+        target = files[0]
+    elif choice == "baseline":
+        target = config.data.baseline
+    elif choice == "image":
+        if config.protocols.start_reference_image is None:
+            raise ValueError(
+                "start_reference='image' requires [protocols].start_reference_image."
+            )
+        target = config.protocols.start_reference_image
+    else:
+        raise ValueError(f"Unknown start_reference: {choice}")
+
+    if choice in {"baseline", "image"} and target not in files:
+        matches = [f for f in files if f.name == target.name]
+        if not matches:
+            raise FileNotFoundError(
+                f"Reference image {target} not found in folder {folder}."
+            )
+        target = matches[0]
+
+    if extraction_mode == "exif":
+        date_time = _extract_exif_datetime(target)
+        if date_time is None:
+            raise ValueError(f"Could not extract EXIF datetime from {target}.")
+        return date_time
+    return get_modification_time(target)
+
+
+def _resolve_global_start_reference(
+    config: FluidFlowerConfig, imaging_targets: dict[Path, Path]
+) -> datetime | None:
+    """Resolve the single, run-wide start_reference datetime, or None.
+
+    Returns None for 'first_image' (resolved per folder instead, by the caller).
+    For 'baseline'/'fixed'/'image', tries each folder in turn until the reference
+    resolves (the reference image need not live in every folder).
+    """
+    choice = config.protocols.start_reference
+    if choice == "first_image":
+        return None
+
+    suffix = config.data.baseline.suffix
+    last_error: Exception | None = None
+    for folder in imaging_targets:
+        files = natsorted(
+            (folder / name for name in os.listdir(folder) if name.endswith(suffix)),
+            alg=ns.IGNORECASE,
+        )
+        try:
+            return _resolve_start_reference(config, folder, files)
+        except FileNotFoundError as exc:
+            last_error = exc
+            continue
+    raise FileNotFoundError(
+        f"Could not resolve start_reference={choice!r} in any configured imaging "
+        "folder."
+    ) from last_error
+
+
 def _write_csv(df: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(path, index=False)
 
 
-def _write_injection_template(path: Path, start: datetime, end: datetime) -> None:
+def _write_injection_template(
+    path: Path,
+    start: datetime,
+    end: datetime,
+    rate: float,
+    coordinates: tuple[float, float],
+) -> None:
+    """Write a single-row injection protocol at a constant rate for the whole run."""
     df = pd.DataFrame(
         {
             "id": [1],
-            "location_x": [0.0],
-            "location_y": [0.0],
+            "location_x": [coordinates[0]],
+            "location_y": [coordinates[1]],
             "start": [start],
             "end": [end],
-            "rate_kg/s": [0.0],
+            "rate_kg/s": [rate],
         }
     )
     _write_csv(df, path)
 
 
-def _write_pressure_temperature_template(path: Path, start: datetime) -> None:
+def _write_empty_injection_template(path: Path) -> None:
+    """Write a header-only injection-protocol CSV, no guessed values.
+
+    Used for injection_mode='detailed' when no file exists yet: gives the user a
+    correctly-shaped file to fill in by hand, rather than plausible-looking
+    placeholder numbers (id=1, rate=0.0, etc.) that could be mistaken for real data.
+    """
+    df = pd.DataFrame(
+        columns=["id", "location_x", "location_y", "start", "end", "rate_kg/s"]
+    )
+    _write_csv(df, path)
+
+
+def _write_pressure_temperature_template(
+    path: Path, start: datetime, pressure_bar: float, temperature_celsius: float
+) -> None:
     df = pd.DataFrame(
         {
             "datetime": [start],
-            "pressure_bar": [1.013],
-            "temperature_celsius": [20.0],
+            "pressure_bar": [pressure_bar],
+            "temperature_celsius": [temperature_celsius],
             "pressure_gradient_bar": [0.0],
             "temperature_gradient_celsius": [0.0],
         }
@@ -214,10 +356,9 @@ def setup_imaging_protocol(
         _assert_csv(pressure_temperature_path, "pressure_temperature")
 
     conflicts = _overwrite_conflicts(
-        [
-            *imaging_targets.values(),
-            *[p for p in [injection_path, pressure_temperature_path] if p is not None],
-        ]
+        _generation_targets(
+            config, imaging_targets, injection_path, pressure_temperature_path
+        )
     )
     if conflicts and not force:
         conflict_text = ", ".join(str(path) for path in conflicts)
@@ -232,12 +373,11 @@ def setup_imaging_protocol(
             f"Supported values are: {sorted(_SUPPORTED_MODES)}."
         )
 
+    global_start_reference = _resolve_global_start_reference(config, imaging_targets)
+
     overall_start: datetime | None = None
     overall_end: datetime | None = None
     suffix = config.data.baseline.suffix
-    baseline_filename = (
-        config.data.baseline.name if config.data.baseline is not None else None
-    )
     for folder, imaging_path in imaging_targets.items():
         files = natsorted(
             (folder / name for name in os.listdir(folder) if name.endswith(suffix)),
@@ -247,44 +387,79 @@ def setup_imaging_protocol(
             raise FileNotFoundError(
                 f"No image files with suffix {suffix} found in {folder}."
             )
-        imaging_df = _extract_imaging_protocol_dataframe(files, mode, folder)
-        _write_csv(imaging_df, imaging_path)
-        logger.info("Saved imaging protocol CSV to %s", imaging_path)
 
-        # start = pd.to_datetime(imaging_df["datetime"]).min().to_pydatetime()
-        end = pd.to_datetime(imaging_df["datetime"]).max().to_pydatetime()
-        if folder / baseline_filename in files:
-            if overall_start is not None:
-                logger.warning(
-                    "Baseline image not unique - using the first occurrence."
+        folder_start = (
+            global_start_reference
+            if global_start_reference is not None
+            else _resolve_start_reference(config, folder, files)
+        )
+
+        if mode == "detailed":
+            if not imaging_path.exists():
+                raise FileNotFoundError(
+                    f"imaging_mode='detailed' but {imaging_path} does not exist. "
+                    "Author it by hand, or choose 'exif'/'ctime'/'interval' to "
+                    "generate it instead."
                 )
-                break
-            logger.info(
-                "Baseline image %s found in %s; using its timestamp as overall start time.",
-                baseline_filename,
-                folder,
-            )
-            baseline_time = (
-                pd.to_datetime(
-                    imaging_df.loc[imaging_df["path"] == baseline_filename, "datetime"]
+            end = pd.to_datetime(pd.read_csv(imaging_path)["datetime"]).max()
+            end = end.to_pydatetime()
+        else:
+            if mode == "interval":
+                interval_map = config.protocols.imaging_interval_seconds or {}
+                if folder not in interval_map:
+                    raise ValueError(
+                        f"Missing imaging interval (seconds) for folder {folder}. Set "
+                        "it in [protocols.imaging_interval_seconds]."
+                    )
+                imaging_df = pd.DataFrame(
+                    {
+                        "path": [f.relative_to(folder).as_posix() for f in files],
+                        "datetime": _build_interval_datetimes(
+                            files, folder_start, interval_map[folder]
+                        ),
+                    }
                 )
-                .iloc[0]
-                .to_pydatetime()
-            )
-            overall_start = baseline_time
+            else:
+                imaging_df = _extract_imaging_protocol_dataframe(files, mode, folder)
+            _write_csv(imaging_df, imaging_path)
+            logger.info("Saved imaging protocol CSV to %s", imaging_path)
+            end = pd.to_datetime(imaging_df["datetime"]).max().to_pydatetime()
+
+        if overall_start is None:
+            overall_start = folder_start
         overall_end = end if overall_end is None else max(overall_end, end)
 
     assert (
         overall_start is not None
-    ), "No baseline image found; cannot determine overall start time."
+    ), "No imaging data found; cannot determine overall start time."
     assert (
         overall_end is not None
     ), "No imaging data found; cannot determine overall end time."
     if injection_path is not None:
-        _write_injection_template(injection_path, overall_start, overall_end)
-        logger.info("Saved injection protocol CSV template to %s", injection_path)
-    if pressure_temperature_path is not None:
-        _write_pressure_temperature_template(pressure_temperature_path, overall_start)
+        if config.protocols.injection_mode == "constant":
+            _write_injection_template(
+                injection_path,
+                overall_start,
+                overall_end,
+                config.protocols.injection_rate,
+                config.protocols.injection_coordinates,
+            )
+            logger.info("Saved injection protocol CSV template to %s", injection_path)
+        elif not injection_path.exists():
+            _write_empty_injection_template(injection_path)
+            logger.info(
+                "Saved empty injection protocol CSV template to %s", injection_path
+            )
+    if (
+        pressure_temperature_path is not None
+        and config.protocols.pressure_temperature_mode == "constant"
+    ):
+        _write_pressure_temperature_template(
+            pressure_temperature_path,
+            overall_start,
+            config.protocols.pressure_bar,
+            config.protocols.temperature_celsius,
+        )
         logger.info(
             "Saved pressure-temperature protocol CSV template to %s",
             pressure_temperature_path,
