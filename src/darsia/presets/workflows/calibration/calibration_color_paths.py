@@ -34,10 +34,8 @@ def calibration_color_paths_from_context(
 
     Parameters
     ----------
-    cls
-        Rig class.
-    path
-        The path to the configuration file.
+    ctx : AnalysisContext
+        Analysis context, providing the config, experiment, and rig.
     show : bool
         Whether to display plots during processing.
     """

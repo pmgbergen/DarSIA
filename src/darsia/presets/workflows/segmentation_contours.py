@@ -55,13 +55,14 @@ class SimpleSegmentation:
         ----------
         img : darsia.ScalarImage
             Signal to segment.
-        label
-            Label to extract.
+        thresholds : list of float
+            Increasing threshold values defining the bands to extract; the
+            last band extends to infinity.
 
         Returns
         -------
-        darsia.Image
-            Segmented phase (boolean) image.
+        list of darsia.ScalarImage
+            Segmented phase (boolean) images, one per threshold band.
         """
         masks = []
         for i in range(len(thresholds)):
@@ -157,13 +158,14 @@ class SegmentationContours:
         ----------
         img : darsia.ScalarImage
             Signal to segment.
-        label
-            Label to extract.
+        thresholds : list of float
+            Increasing threshold values defining the bands to extract; the
+            last band extends to infinity.
 
         Returns
         -------
-        darsia.Image
-            Segmented phase (boolean) image.
+        list of darsia.ScalarImage
+            Segmented phase (boolean) images, one per threshold band.
         """
         masks = []
         for i in range(len(thresholds)):
