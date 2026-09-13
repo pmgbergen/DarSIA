@@ -16,4 +16,6 @@ Workflow corrections are configured under `[corrections]`.
 - `active_corrections` is not implemented.
 - Relative color correction is currently limited in setup behavior; verify current rig warnings before enabling in production workflows.
 
-Use this together with [workflow setup](./workflow-setup.md).
+Use this together with [workflow setup](./workflow-setup.md). Interactive crop
+correction setup (`[corrections.curvature]`'s crop corners) is a
+[preprocessing](./workflow-preprocessing.md) step (`--crop`), run ahead of setup.

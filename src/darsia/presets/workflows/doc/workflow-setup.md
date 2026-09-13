@@ -2,21 +2,22 @@
 
 Module: `darsia.presets.workflows.user_interface_setup`
 
+Preprocessing (protocols, depth measurements, crop correction) is a separate,
+earlier step — see [Preprocessing workflow](./workflow-preprocessing.md).
+
 ## Main flags
 - `--all`
 - `--depth`
 - `--segmentation`
 - `--facies`
-- `--protocol`
 - `--rig`
-- `--force` (for protocol overwrite)
+- `--force`
 - `--delete`
 - `--show`
 
 ## Purpose
 - Build depth map artifacts
 - Generate/validate labels and facies mapping
-- Generate imaging/injection/pressure-temperature protocol CSV templates
 - Setup rig and correction pipeline artifacts
 
 ## Typical command
