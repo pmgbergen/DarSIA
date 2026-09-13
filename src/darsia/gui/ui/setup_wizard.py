@@ -122,9 +122,11 @@ STEPS = [
         (
             "'constant' writes a single row spanning the whole run at the rate and "
             "coordinates you give — right when the experiment injected steadily from "
-            "one port. For anything time-varying, choose 'detailed': an existing file "
-            "is left untouched, and if none exists yet you get an empty template with "
-            "just the column headers to fill in."
+            "one port. Rate is in kg/s, and coordinates (x, y) are in meters, in the "
+            "same physical frame as the rig's width/height. For anything "
+            "time-varying, choose 'detailed': an existing file is left untouched, "
+            "and if none exists yet you get an empty template with just the column "
+            "headers to fill in."
         ),
     ),
     (

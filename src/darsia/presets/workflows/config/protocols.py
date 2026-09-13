@@ -258,23 +258,32 @@ class InjectionProtocolConfig:
     injection_rate: float = field(
         default=0.0,
         metadata={
-            "name": "Injection rate",
-            "help": "Constant injection rate written to the injection template.",
+            "name": "Injection rate (kg/s)",
+            "help": (
+                "Constant mass injection rate written to the injection template, "
+                "in kilograms per second. Other units (sccm, mL/min, g/min, g/s) "
+                "are only accepted in a hand-authored 'detailed' protocol file, "
+                "where DarSIA converts them to kg/s on read."
+            ),
             "depends_on": {"field": "injection_mode", "value": "constant"},
             "group": "Operating conditions",
         },
     )
-    """Constant injection rate (injection_mode='constant' only)."""
+    """Constant injection rate in kg/s (injection_mode='constant' only)."""
     injection_coordinates: tuple[float, float] = field(
         default=(0.0, 0.0),
         metadata={
-            "name": "Injection coordinates",
-            "help": "Constant injection coordinates written to the injection template.",
+            "name": "Injection coordinates (m)",
+            "help": (
+                "Constant injection location (x, y) written to the injection "
+                "template, in meters — Cartesian coordinates in the same physical "
+                "frame as [rig].width/height, not pixels."
+            ),
             "depends_on": {"field": "injection_mode", "value": "constant"},
             "group": "Operating conditions",
         },
     )
-    """Constant injection coordinates (injection_mode='constant' only)."""
+    """Constant injection (x, y) in meters (injection_mode='constant' only)."""
 
     def load_injection(self, sec: dict) -> None:
         """Read the injection keys from a flat [protocols] section."""
