@@ -8,6 +8,7 @@ This section documents the maintained presets/workflows interface in DarSIA.
 - [Quickstart](./quickstart.md)
 
 ## Workflow guides
+- [Preprocessing workflow](./workflow-preprocessing.md)
 - [Setup workflow](./workflow-setup.md)
 - [Calibration workflow](./workflow-calibration.md)
 - [Analysis workflow](./workflow-analysis.md)

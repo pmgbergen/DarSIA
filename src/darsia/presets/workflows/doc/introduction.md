@@ -24,11 +24,12 @@ python -m darsia.presets.workflows.user_interface_analysis \
 - Keep calibration and analysis sections in dedicated files when possible.
 
 ## Typical end-to-end sequence
-1. Setup (`user_interface_setup`)
-2. Calibration (`user_interface_calibration`)
-3. Analysis (`user_interface_analysis`)
-4. Helper (`user_interface_helper`, optional)
-5. Comparison (`user_interface_comparison`, optional)
+1. Preprocessing (`user_interface_preprocessing`): protocols, depth measurements, crop correction
+2. Setup (`user_interface_setup`)
+3. Calibration (`user_interface_calibration`)
+4. Analysis (`user_interface_analysis`)
+5. Helper (`user_interface_helper`, optional)
+6. Comparison (`user_interface_comparison`, optional)
 
 ## Where to continue
 - [Overview](./overview.md)
