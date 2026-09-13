@@ -1,19 +1,21 @@
 # Experiment-series presets: which physical rig a run belongs to.
 #
-# A series does not restate geometry or crop corners — it references entries in
-# the rig and curvature catalogues by name, so those values live in exactly one
-# place. Depth measurements have no catalogue of their own, so that piece is
-# given inline here. Type/resize corrections are performance options, not
-# experiment-identity options, so they are never part of a series preset.
+# A series does not restate geometry, crop corners, or a depth profile — it
+# references entries in the rig, curvature and depth catalogues by name, so
+# those values live in exactly one place. Type/resize corrections are
+# performance options, not experiment-identity options, so they are never part
+# of a series preset.
 
 [[series_preset]]
 name = "BC0xx family"
 description = "Bilbo rig, BC0xx experiment series (and B033, same physical setup)."
 rig = "FF Bilbo"
 curvature = "FF Bilbo (BC0xx)"
+depth = "B0xx family"
 
 [[series_preset]]
 name = "B049"
 description = "Bilbo rig, B049 experiment series."
 rig = "FF Bilbo"
 curvature = "FF Bilbo (B049)"
+depth = "B0xx family"

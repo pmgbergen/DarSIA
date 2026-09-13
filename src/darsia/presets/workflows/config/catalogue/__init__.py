@@ -2,12 +2,14 @@
 
 from .base import ArrayOfTablesCatalogue, catalogue_path
 from .corrections import CurvatureCatalogue
+from .depth import DepthCatalogue, DepthPreset
 from .formats import FormatCatalogue
 from .rig import RigCatalogue
 from .series import PIECE_LABELS, SeriesCatalogue, SeriesPreset
 
 CATALOGUE_FILES = {
     "curvature": (CurvatureCatalogue, "corrections.toml"),
+    "depth": (DepthCatalogue, "depth.toml"),
     "format": (FormatCatalogue, "formats.toml"),
     "rig": (RigCatalogue, "rig.toml"),
     "series": (SeriesCatalogue, "series.toml"),
@@ -38,6 +40,8 @@ __all__ = [
     "ArrayOfTablesCatalogue",
     "CATALOGUE_FILES",
     "CurvatureCatalogue",
+    "DepthCatalogue",
+    "DepthPreset",
     "FormatCatalogue",
     "PIECE_LABELS",
     "RigCatalogue",

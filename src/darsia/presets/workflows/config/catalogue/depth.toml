@@ -1,0 +1,27 @@
+# Depth-measurement presets: known depth profiles for a physical rig or
+# experiment family, referenced by name from a series preset (see series.toml)
+# or applied directly to a run's [depth] section.
+#
+# 'constant' presets model the sand layer as a uniform depth -- a deliberate
+# simplification for setups where the physical variation is small enough (or
+# not separately measured) that a flat approximation is good enough, and lets
+# the wizard/CLI auto-generate the measurements csv. 'Load from CSV' presets
+# instead point at a hand-authored, spatially-varying measurements file.
+
+[[depth_preset]]
+name = "B0xx family"
+description = "FluidFlower Bilbo rig, B0xx/BC0xx experiment family: sand layer approximated as a uniform 0.01 m depth."
+measurements_mode = "constant"
+constant_depth = 0.01
+
+[[depth_preset]]
+name = "ACxx family"
+description = "AC-series rig (ff_ac project): sand layer approximated as a uniform 0.01 m depth. Real point measurements vary roughly 0.0097-0.0155 m across the rig; this preset trades that detail for a fast, constant approximation."
+measurements_mode = "constant"
+constant_depth = 0.01
+
+[[depth_preset]]
+name = "FFUM"
+description = "FluidFlower Museum rig (2.745 m x 1.5 m). Real point measurements: a 15x8 grid (x, y every 0.2 m) of mean sand-layer depth, ranging about 0.018-0.031 m, sourced from the project's own depth survey (std/var columns dropped -- only the mean is used)."
+bundled_measurements_file = "ffum_depth_measurements.csv"
+measurements_mode = "Load from CSV"

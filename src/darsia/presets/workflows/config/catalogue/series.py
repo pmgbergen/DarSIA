@@ -1,21 +1,21 @@
 """Catalogue of experiment-series presets loaded from TOML array-of-tables.
 
 A series preset is the answer to "which physical rig is this run on?". It does not
-restate rig geometry or crop corners — those already live in the rig and curvature
-catalogues, so a series just *references* them by name. Depth measurements have no
-catalogue of their own, so that one piece is given inline. Type/resize corrections
-are deliberately not part of a series at all: they trade accuracy for processing
-speed and have nothing to do with which physical rig a run is on, so they are
-always set independently of any preset (see the wizard's "Type & resize" step).
+restate rig geometry, crop corners, or a depth profile — those already live in the
+rig, curvature and depth catalogues, so a series just *references* them by name.
+Type/resize corrections are deliberately not part of a series at all: they trade
+accuracy for processing speed and have nothing to do with which physical rig a run
+is on, so they are always set independently of any preset (see the wizard's
+"Type & resize" step).
 """
 
 import logging
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import ClassVar
 
 from .base import ArrayOfTablesCatalogue, catalogue_path
 from .corrections import CurvatureCatalogue
+from .depth import DepthCatalogue
 from .rig import RigCatalogue
 
 logger = logging.getLogger(__name__)
@@ -40,31 +40,21 @@ class SeriesPreset:
         Name of an entry in the rig catalogue, or None.
     curvature
         Name of an entry in the curvature catalogue, or None.
-    depth_measurements
-        Path to a depth-measurements CSV (no catalogue of its own), or None.
-    depth_resolution
-        Interpolation resolution for [depth], or None.
+    depth
+        Name of an entry in the depth catalogue, or None.
     """
 
     description: str = ""
     rig: str | None = None
     curvature: str | None = None
-    depth_measurements: Path | None = None
-    depth_resolution: tuple[int, int] | None = None
+    depth: str | None = None
 
     def load(self, entry: dict) -> "SeriesPreset":
         """Load one series preset from its [[series_preset]] entry dict."""
         self.description = str(entry.get("description", ""))
         self.rig = entry.get("rig")
         self.curvature = entry.get("curvature")
-
-        depth_section = entry.get("depth") or {}
-        measurements = depth_section.get("measurements")
-        self.depth_measurements = Path(measurements) if measurements else None
-        resolution = depth_section.get("resolution")
-        self.depth_resolution = (
-            tuple(int(value) for value in resolution) if resolution else None
-        )
+        self.depth = entry.get("depth")
         return self
 
     def pieces(self) -> dict[str, tuple[tuple[str, ...], dict]]:
@@ -103,11 +93,12 @@ class SeriesPreset:
                     section["active"] = stages
                 available["curvature"] = (("corrections", "curvature"), section)
 
-        if self.depth_measurements is not None:
-            depth_section: dict = {"measurements": self.depth_measurements.as_posix()}
-            if self.depth_resolution is not None:
-                depth_section["resolution"] = list(self.depth_resolution)
-            available["depth"] = (("depth",), depth_section)
+        if self.depth:
+            depth_config = self._resolve(
+                DepthCatalogue(), "depth.toml", self.depth, "depth"
+            )
+            if depth_config is not None:
+                available["depth"] = (("depth",), depth_config.to_dict())
 
         return available
 
