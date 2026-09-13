@@ -1,92 +1,11 @@
-"""Setup workflow tab for DarSIA GUI."""
+"""Setup workflow tab for DarSIA GUI: depth map, segmentation, facies, rig.
+
+Preprocessing (protocols, depth measurements, crop correction) is a separate
+tab/category — see :mod:`darsia.gui.ui.preprocessing`.
+"""
 
 import sys
 from pathlib import Path
-
-from PySide6.QtWidgets import QMessageBox
-
-CONFLICT_PREVIEW_LIMIT = 8
-
-
-def resolve_overwrite_conflicts(
-    main_window, conflicts: list[Path], noun: str
-) -> bool | None:
-    """Ask the user what to do about output files that already exist.
-
-    Shared by every setup routine that can overwrite an existing file
-    (protocols, depth measurements, ...), so they all ask the same way.
-
-    Parameters
-    ----------
-    conflicts : list[Path]
-        Files that would be overwritten. An empty list means nothing to ask.
-    noun : str
-        What to call the files in the dialog (e.g. "Protocol files").
-
-    Returns
-    -------
-        False if nothing would be overwritten, True if the user approved
-        overwriting (pass ``--force``), or None if they cancelled — in which
-        case the caller must not run setup.
-    """
-    if not conflicts:
-        return False
-
-    preview_text = "\n".join(str(p) for p in conflicts[:CONFLICT_PREVIEW_LIMIT])
-    if len(conflicts) > CONFLICT_PREVIEW_LIMIT:
-        preview_text += f"\n... and {len(conflicts) - CONFLICT_PREVIEW_LIMIT} more."
-
-    result = QMessageBox.question(
-        main_window,
-        f"{noun} exist",
-        f"{noun} already exist:\n\n{preview_text}\n\nOverwrite?",
-        QMessageBox.Yes | QMessageBox.No,
-        QMessageBox.No,
-    )
-    if result != QMessageBox.Yes:
-        main_window.print_log(
-            "Setup cancelled: user chose not to overwrite existing files."
-        )
-        return None
-    return True
-
-
-def resolve_protocol_conflicts(main_window, config_path: Path) -> bool | None:
-    """Ask the user what to do about protocol files that already exist.
-
-    Shared by the Setup tab and the setup wizard, so both answer the question
-    the same way. See :func:`resolve_overwrite_conflicts` for the return value.
-    """
-    try:
-        from darsia.presets.workflows.setup.setup_protocols import (
-            preview_protocol_setup_conflicts,
-        )
-
-        conflicts = preview_protocol_setup_conflicts([config_path])
-    except Exception as e:
-        main_window.print_log(f"Error checking protocol conflicts: {str(e)}")
-        return None
-    return resolve_overwrite_conflicts(main_window, conflicts, "Protocol files")
-
-
-def resolve_depth_measurements_conflict(main_window, config_path: Path) -> bool | None:
-    """Ask the user what to do if the depth-measurements target already exists.
-
-    No-op (returns False) unless [depth].measurements_mode is 'constant' — see
-    :func:`preview_depth_measurements_conflict`.
-    """
-    try:
-        from darsia.presets.workflows.setup.setup_depth import (
-            preview_depth_measurements_conflict,
-        )
-
-        conflicts = preview_depth_measurements_conflict([config_path])
-    except Exception as e:
-        main_window.print_log(f"Error checking depth-measurements conflicts: {str(e)}")
-        return None
-    return resolve_overwrite_conflicts(
-        main_window, conflicts, "Depth measurements file"
-    )
 
 
 class SetupTab:
@@ -129,12 +48,9 @@ class SetupTab:
         options = {
             "all": selected_id == "all",
             "depth": selected_id == "depth",
-            "depth_measurements": selected_id == "depth_measurements",
             "segmentation": selected_id == "segmentation",
             "facies": selected_id == "facies",
-            "protocols": selected_id == "protocols",
             "rig": selected_id == "rig",
-            "crop": selected_id == "crop",
             "show": show_plots,
             "force": False,
         }
@@ -143,21 +59,6 @@ class SetupTab:
             """Starting setup with options: """
             f"""{[k for k, v in options.items() if v and k != "force"]}"""
         )
-
-        # Check for output-file conflicts and ask user if overwrite is needed
-        config_paths = [Path(config_file)]
-        if options["protocols"]:
-            decision = resolve_protocol_conflicts(self.main_window, config_paths[0])
-            if decision is None:
-                return
-            options["force"] = decision
-        if options["depth_measurements"]:
-            decision = resolve_depth_measurements_conflict(
-                self.main_window, config_paths[0]
-            )
-            if decision is None:
-                return
-            options["force"] = decision
 
         # Build command-line arguments for subprocess
         argv = [
@@ -171,18 +72,12 @@ class SetupTab:
             argv.append("--all")
         if options["depth"]:
             argv.append("--depth")
-        if options["depth_measurements"]:
-            argv.append("--depth-measurements")
         if options["segmentation"]:
             argv.append("--segmentation")
         if options["facies"]:
             argv.append("--facies")
-        if options["protocols"]:
-            argv.append("--protocol")
         if options["rig"]:
             argv.append("--rig")
-        if options["crop"]:
-            argv.append("--crop")
         if options["force"]:
             argv.append("--force")
         if options["show"]:
@@ -199,7 +94,7 @@ class SetupTab:
             cwd=Path.cwd(),
             workflow="setup",
             actions=[selected_id],
-            config_path=config_paths[0],
+            config_path=Path(config_file),
         )
 
     def sidebar_items(self):
@@ -207,31 +102,6 @@ class SetupTab:
         from .help_text import get_help_text
 
         return [
-            (
-                "Preparation",
-                [
-                    (
-                        "Protocols",
-                        "protocols",
-                        "fa5s.circle",
-                        get_help_text("setup", "protocols", "Protocols"),
-                    ),
-                    (
-                        "Depth measurements",
-                        "depth_measurements",
-                        "fa5s.circle",
-                        get_help_text(
-                            "setup", "depth_measurements", "Depth measurements"
-                        ),
-                    ),
-                    (
-                        "Crop correction",
-                        "crop",
-                        "fa5s.circle",
-                        get_help_text("setup", "crop", "Crop correction"),
-                    ),
-                ],
-            ),
             (
                 "Full setup",
                 [
