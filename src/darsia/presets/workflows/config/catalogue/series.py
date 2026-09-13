@@ -2,8 +2,11 @@
 
 A series preset is the answer to "which physical rig is this run on?". It does not
 restate rig geometry or crop corners — those already live in the rig and curvature
-catalogues, so a series just *references* them by name. Only settings that have no
-catalogue of their own (type correction, depth measurements) are given inline.
+catalogues, so a series just *references* them by name. Depth measurements have no
+catalogue of their own, so that one piece is given inline. Type/resize corrections
+are deliberately not part of a series at all: they trade accuracy for processing
+speed and have nothing to do with which physical rig a run is on, so they are
+always set independently of any preset (see the wizard's "Type & resize" step).
 """
 
 import logging
@@ -19,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 PIECE_LABELS = {
     "rig": "Rig geometry",
-    "type": "Type correction",
     "curvature": "Curvature correction (crop)",
     "depth": "Depth measurements",
 }
@@ -38,8 +40,6 @@ class SeriesPreset:
         Name of an entry in the rig catalogue, or None.
     curvature
         Name of an entry in the curvature catalogue, or None.
-    target_type
-        Image dtype for [corrections.type] (no catalogue of its own), or None.
     depth_measurements
         Path to a depth-measurements CSV (no catalogue of its own), or None.
     depth_resolution
@@ -49,7 +49,6 @@ class SeriesPreset:
     description: str = ""
     rig: str | None = None
     curvature: str | None = None
-    target_type: str | None = None
     depth_measurements: Path | None = None
     depth_resolution: tuple[int, int] | None = None
 
@@ -58,7 +57,6 @@ class SeriesPreset:
         self.description = str(entry.get("description", ""))
         self.rig = entry.get("rig")
         self.curvature = entry.get("curvature")
-        self.target_type = entry.get("target_type")
 
         depth_section = entry.get("depth") or {}
         measurements = depth_section.get("measurements")
@@ -89,12 +87,6 @@ class SeriesPreset:
             rig_config = self._resolve(RigCatalogue(), "rig.toml", self.rig, "rig")
             if rig_config is not None:
                 available["rig"] = (("rig",), rig_config.to_dict())
-
-        if self.target_type:
-            available["type"] = (
-                ("corrections", "type"),
-                {"target_type": self.target_type},
-            )
 
         if self.curvature:
             curvature_config = self._resolve(

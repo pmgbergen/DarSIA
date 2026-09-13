@@ -65,7 +65,7 @@ def preview_depth_measurements_conflict(path: Path | list[Path]) -> list[Path]:
     """Return the depth-measurements target file if it exists and would be
     overwritten by :func:`setup_depth_measurements`.
 
-    Returns an empty list when the mode is 'detailed' (nothing is ever written
+    Returns an empty list when the mode is 'Load from CSV' (nothing is ever written
     in that mode), the target simply doesn't exist yet, or [depth] isn't
     configured at all — e.g. a wizard user who never visited the Depth step.
     That last case isn't an error here: there being nothing to preview is exactly
@@ -95,7 +95,7 @@ def setup_depth_measurements(
 ) -> None:
     """Generate a depth-measurements CSV from a constant value, if configured.
 
-    No-ops when [depth].measurements_mode is 'detailed' (the default) — that
+    No-ops when [depth].measurements_mode is 'Load from CSV' (the default) — that
     mode means the user provides the file themselves, so this step leaves it
     untouched whether or not it currently exists.
 
@@ -118,7 +118,7 @@ def setup_depth_measurements(
 
     if config.depth.measurements_mode != "constant":
         logger.info(
-            "Depth measurements mode is 'detailed'; leaving %s untouched.",
+            "Depth measurements mode is 'Load from CSV'; leaving %s untouched.",
             config.depth.measurements,
         )
         return
