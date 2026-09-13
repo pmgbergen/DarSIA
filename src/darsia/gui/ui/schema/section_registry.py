@@ -19,12 +19,16 @@ logger = logging.getLogger(__name__)
 # Composite entries: list of (action, checkbox_id) keys — union of those checkboxes'
 #   sections (in order, deduplicated)
 CHECKBOX_TO_SECTIONS = {
-    # Setup leaf mappings — preparation steps (protocols, crop).
-    ("setup", "protocols"): (
+    # Preprocessing leaf mappings — protocols, depth measurements, crop.
+    ("preprocessing", "protocols"): (
         "darsia.presets.workflows.setup.setup_protocols",
         "setup_imaging_protocol",
     ),
-    ("setup", "crop"): (
+    ("preprocessing", "depth_measurements"): (
+        "darsia.presets.workflows.setup.setup_depth",
+        "setup_depth_measurements",
+    ),
+    ("preprocessing", "crop"): (
         "darsia.presets.workflows.setup.setup_crop",
         "setup_crop_correction",
     ),
@@ -141,9 +145,10 @@ CHECKBOX_TO_SECTIONS = {
 # Used for workflows where some required sections are always pre-populated by
 # an earlier step (e.g., Setup) and would just add visual clutter here.
 TAB_VISIBILITY = {
-    # Setup > Preparation
-    ("setup", "protocols"): ("data", "protocols"),
-    ("setup", "crop"): ("rig", "corrections", "options"),
+    # Preprocessing
+    ("preprocessing", "protocols"): ("data", "protocols"),
+    ("preprocessing", "depth_measurements"): ("depth", "options"),
+    ("preprocessing", "crop"): ("rig", "corrections", "options"),
     # Setup > Full setup
     ("setup", "all"): (
         "rig",

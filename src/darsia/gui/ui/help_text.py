@@ -4,18 +4,26 @@ HELP_TEXT_SETUP = {
     "depth": "Analyze depth images to create depth maps from a baseline.",
     "segmentation": "Segment colored images to identify fluid phases and interfaces.",
     "facies": "Define and configure geological layers (facies) for analysis.",
+    "rig": "Initialize experimental rig geometry and hardware parameters.",
+    "all": "Execute all setup steps in sequence.",
+    "show_plots": "Display visualization plots during setup execution.",
+}
+
+HELP_TEXT_PREPROCESSING = {
     "protocols": "Configure imaging protocols, timing, and data collection schedules.",
     "depth_measurements": (
         "Generate a depth-measurements CSV from a constant value, or point to "
         "one you authored yourself."
     ),
-    "rig": "Initialize experimental rig geometry and hardware parameters.",
     "crop": (
         "Interactively select the four corners of the FluidFlower region "
         "for crop correction using matplotlib point-picker."
     ),
-    "all": "Execute all setup steps in sequence.",
-    "show_plots": "Display visualization plots during setup execution.",
+    "all": (
+        "Generate protocol CSV files and depth measurements (not crop "
+        "correction, which is always interactive and opt-in)."
+    ),
+    "show_plots": "Display visualization plots during preprocessing execution.",
 }
 
 HELP_TEXT_CALIBRATION = {
@@ -61,6 +69,7 @@ HELP_TEXT_COMPARISON = {
 # Mapping of action -> help text dictionary
 _HELP_TEXT_BY_ACTION = {
     "setup": HELP_TEXT_SETUP,
+    "preprocessing": HELP_TEXT_PREPROCESSING,
     "calibration": HELP_TEXT_CALIBRATION,
     "analysis": HELP_TEXT_ANALYSIS,
     "helper": HELP_TEXT_HELPER,
@@ -75,7 +84,7 @@ def get_help_text(action: str, checkbox_id: str, label: str = "") -> str:
     Parameters
     ----------
     action : str
-        The category/action (e.g. "setup", "calibration", "analysis").
+        The category/action (e.g. "setup", "preprocessing", "calibration").
     checkbox_id : str
         The checkbox identifier key.
     label : str

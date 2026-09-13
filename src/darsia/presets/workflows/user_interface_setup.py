@@ -3,8 +3,11 @@
 Setup routines:
 - depth map setup
 - labeling setup
-- protocol setup
+- facies setup
 - rig setup
+
+Preprocessing (protocols, depth measurements, crop correction) is a separate,
+earlier step — see ``user_interface_preprocessing`` instead.
 
 Usage (for more information run with --help and/or --info flag):
     python setup.py --all
@@ -13,7 +16,6 @@ Advanced usage (activate specific steps):
     python setup.py --depth
     python setup.py --segmentation
     python setup.py --facies
-    python setup.py --protocol
     python setup.py --rig
 
 """
@@ -23,14 +25,9 @@ import logging
 import sys
 
 from darsia.presets.workflows.rig import Rig
-from darsia.presets.workflows.setup.setup_crop import setup_crop_correction
-from darsia.presets.workflows.setup.setup_depth import (
-    setup_depth_map,
-    setup_depth_measurements,
-)
+from darsia.presets.workflows.setup.setup_depth import setup_depth_map
 from darsia.presets.workflows.setup.setup_facies import setup_facies
 from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
-from darsia.presets.workflows.setup.setup_protocols import setup_imaging_protocol
 from darsia.presets.workflows.setup.setup_rig import delete_rig, setup_rig
 
 # Set logging level
@@ -50,34 +47,16 @@ def build_parser_for_setup():
     parser.add_argument("--all", action="store_true", help="Activate all setup steps.")
     parser.add_argument("--depth", action="store_true", help="Activate setup of depth.")
     parser.add_argument(
-        "--depth-measurements",
-        action="store_true",
-        help=(
-            "Generate a depth-measurements CSV from a constant value, if "
-            "[depth].measurements_mode is 'constant'."
-        ),
-    )
-    parser.add_argument(
         "--segmentation", action="store_true", help="Activate labeling."
     )
     parser.add_argument(
         "--facies", action="store_true", help="Activate setup of facies."
     )
-    parser.add_argument(
-        "--protocol",
-        action="store_true",
-        help="Generate imaging/injection/pressure-temperature protocol CSV files.",
-    )
     parser.add_argument("--rig", action="store_true", help="Activate setup of rig.")
-    parser.add_argument(
-        "--crop",
-        action="store_true",
-        help="Activate interactive setup of crop correction.",
-    )
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Force overwrite when generating protocol CSV files.",
+        help="Force overwrite when generating setup artifacts.",
     )
     parser.add_argument(
         "--delete",
@@ -99,9 +78,6 @@ def preset_setup(rig=Rig):
     parser = build_parser_for_setup()
     args = parser.parse_args()
 
-    if args.depth_measurements:
-        print("Running depth-measurements setup...", flush=True)
-        setup_depth_measurements(args.config, force=args.force, show=args.show)
     if args.all or args.depth:
         print("Running depth map setup...", flush=True)
         setup_depth_map(args.config, key="depth", show=args.show)
@@ -114,12 +90,6 @@ def preset_setup(rig=Rig):
     if args.all or args.rig:
         print("Running rig setup...", flush=True)
         setup_rig(rig, args.config, args.show)
-    if args.crop:
-        print("Running crop correction setup...", flush=True)
-        setup_crop_correction(args.config, show=args.show)
-    if args.protocol:
-        print("Running protocol setup...", flush=True)
-        setup_imaging_protocol(args.config, force=args.force, show=args.show)
     if args.delete:
         delete_rig(rig, args.config, args.show)
 

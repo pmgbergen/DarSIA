@@ -29,6 +29,7 @@ from .comparison import ComparisonTab
 from .config_controller import ConfigController
 from .helper import HelperTab
 from .menu import MenuBuilder
+from .preprocessing import PreprocessingTab
 from .process_runner import ProcessRunner
 from .settings import SettingsFactory
 from .setup import SetupTab
@@ -161,6 +162,7 @@ class MainWindow(QMainWindow):
 
         # Setting up the middle upper layout with sidebar
         # Initialize tab managers
+        self.preprocessing_tab = PreprocessingTab(self)
         self.setup_tab = SetupTab(self)
         self.calibration_tab = CalibrationTab(self)
         self.analysis_tab = AnalysisTab(self)
@@ -170,6 +172,7 @@ class MainWindow(QMainWindow):
 
         # Build action dispatch dict (needed by toolbar Play/Stop)
         self.action_dispatch = {
+            "preprocessing": self.preprocessing_tab,
             "setup": self.setup_tab,
             "calibration": self.calibration_tab,
             "analysis": self.analysis_tab,
@@ -180,6 +183,11 @@ class MainWindow(QMainWindow):
 
         # Build sidebar from tab-manager declarative data
         sidebar_data = {
+            "preprocessing": (
+                "Preprocessing",
+                "fa5s.tasks",
+                self.preprocessing_tab.sidebar_items(),
+            ),
             "setup": ("Setup", "fa5s.cogs", self.setup_tab.sidebar_items()),
             "calibration": (
                 "Calibration",
@@ -503,8 +511,8 @@ class MainWindow(QMainWindow):
 
         Best-effort and skipped without a loaded config. Coverage matches
         what results_folder.suggested_workflow_results_folder understands
-        per category/step; a step outside that coverage (e.g. Setup's Crop
-        correction, which has no known output folder at all) simply keeps
+        per category/step; a step outside that coverage (e.g. Preprocessing's
+        Crop correction, which has no known output folder at all) simply keeps
         its default, uninformative dot rather than showing a wrong one.
         Helper's items are inspection tools, not one-time pipeline steps, so
         they're intentionally left out of scope.
@@ -513,6 +521,7 @@ class MainWindow(QMainWindow):
             return
         config_path = Path(self.config_file)
         tab_managers = {
+            "preprocessing": self.preprocessing_tab,
             "setup": self.setup_tab,
             "calibration": self.calibration_tab,
             "analysis": self.analysis_tab,
