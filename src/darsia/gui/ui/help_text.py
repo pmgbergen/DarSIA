@@ -5,6 +5,10 @@ HELP_TEXT_SETUP = {
     "segmentation": "Segment colored images to identify fluid phases and interfaces.",
     "facies": "Define and configure geological layers (facies) for analysis.",
     "protocols": "Configure imaging protocols, timing, and data collection schedules.",
+    "depth_measurements": (
+        "Generate a depth-measurements CSV from a constant value, or point to "
+        "one you authored yourself."
+    ),
     "rig": "Initialize experimental rig geometry and hardware parameters.",
     "crop": (
         "Interactively select the four corners of the FluidFlower region "
