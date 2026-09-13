@@ -8,6 +8,7 @@ series-catalogue step is wizard-specific, and it writes plain config sections to
 """
 
 import sys
+from dataclasses import fields as dataclass_fields
 from pathlib import Path
 
 from PySide6.QtCore import Qt
@@ -32,19 +33,48 @@ from darsia.presets.workflows.config.catalogue import (
     SeriesCatalogue,
     load_catalogue,
 )
+from darsia.presets.workflows.config.protocols import (
+    ImagingProtocolConfig,
+    InjectionProtocolConfig,
+    PressureTemperatureProtocolConfig,
+)
 
 from .schema.dataclass_introspection import get_section_fields
-from .settings import unwrap_composite_widget
+from .setup import resolve_protocol_conflicts
 from .theme import muted_text_color, success_color, theme_signal
 
 ASSETS_DIR = Path(__file__).parent / "assets" / "setup_wizard"
 NO_SERIES = "None — start blank"
 
-PROTOCOL_MODE_KEYS = (
-    "protocols.imaging_mode",
-    "protocols.injection_mode",
-    "protocols.pressure_temperature_mode",
-)
+PROTOCOL_STEP_CONFIGS = {
+    "imaging": ImagingProtocolConfig,
+    "injection": InjectionProtocolConfig,
+    "pressure_temperature": PressureTemperatureProtocolConfig,
+}
+"""Wizard step id -> the protocol sub-config whose fields that step edits."""
+
+
+def _protocol_fields(config_class) -> list[dict]:
+    """Schema for only the [protocols] fields declared by one sub-config.
+
+    The three protocol configs are mixed into a single flat ProtocolsConfig (so the
+    TOML stays flat), which means the generic schema is flat too. Filtering by the
+    declaring class is what gives each wizard step its own fields, and keeps the
+    split honest: add a field to a sub-config and it appears on that step.
+
+    Group boxes are dropped, since the step's own page title already names the
+    protocol; expert mode keeps its grouping untouched.
+    """
+    own_names = {f.name for f in dataclass_fields(config_class)}
+    selected = []
+    for setting in get_section_fields("protocols") or []:
+        if setting["key"].rsplit(".", 1)[-1] not in own_names:
+            continue
+        setting = dict(setting)
+        setting.pop("group_name", None)
+        selected.append(setting)
+    return selected
+
 
 STEPS = [
     (
@@ -72,16 +102,39 @@ STEPS = [
         ),
     ),
     (
-        "protocols",
-        "Protocols",
-        "Tell DarSIA when each image was taken, and what happened when.",
+        "imaging",
+        "Imaging protocol",
+        "Which image was taken when.",
         (
-            "The protocol CSVs are the reference DarSIA reads: which image belongs to "
-            "which point in time, when injection ran, and the pressure/temperature "
-            "conditions. If you already wrote them, say so and they are left alone. "
-            "Otherwise pick how they should be generated: read each image's own "
-            "timestamp (EXIF or file time), or compute timestamps from a cadence you "
-            "declare — useful when the camera fired every N seconds."
+            "This is the timeline everything else hangs off. Pick how it should be "
+            "built: read each image's own timestamp ('exif' from the camera, 'ctime' "
+            "from the file), or compute timestamps from a cadence you declare "
+            "('interval') — useful when the camera fired every N seconds and the "
+            "metadata is unreliable. Choose 'detailed' if you already wrote the CSV "
+            "yourself, and it will be left untouched. The start reference is what "
+            "counts as time zero, and anchors the other two protocols as well."
+        ),
+    ),
+    (
+        "injection",
+        "Injection protocol",
+        "When injection ran, where, and at what rate.",
+        (
+            "'constant' writes a single row spanning the whole run at the rate and "
+            "coordinates you give — right when the experiment injected steadily from "
+            "one port. For anything time-varying, choose 'detailed': an existing file "
+            "is left untouched, and if none exists yet you get an empty template with "
+            "just the column headers to fill in."
+        ),
+    ),
+    (
+        "pressure_temperature",
+        "Pressure & temperature",
+        "The conditions the experiment ran under.",
+        (
+            "'constant' writes a single row from the values below — fine when the rig "
+            "held steady conditions throughout. Choose 'detailed' to keep a full "
+            "time-resolved CSV you maintain yourself; the file is then left untouched."
         ),
     ),
     (
@@ -215,8 +268,8 @@ class SetupWizardDialog(QDialog):
         self._index = 0
         self._selected_preset = None
         self._piece_checkboxes: dict[str, QCheckBox] = {}
-        self._saved_modes: dict[str, str] = {}
         self._built_pages: set[int] = set()
+        self._run_protocols_checkbox: QCheckBox | None = None
         self._run_depth_checkbox: QCheckBox | None = None
         self._catalogue = self._load_catalogue()
 
@@ -360,15 +413,14 @@ class SetupWizardDialog(QDialog):
                 widget.setParent(None)
                 widget.deleteLater()
 
-    def _drop_settings_keys(self, prefix: str) -> None:
-        """Forget widgets we are about to destroy, so a later save never reads them."""
-        stale = [
-            key
-            for key in self.main_window.settings_inputs
-            if key == prefix.rstrip(".") or key.startswith(prefix)
-        ]
-        for key in stale:
-            del self.main_window.settings_inputs[key]
+    def _forget_fields(self, settings_list: list[dict]) -> None:
+        """Forget widgets we are about to destroy, so a later save never reads them.
+
+        Keyed on the exact fields being rebuilt, so sibling protocol steps that are
+        still alive keep their own registered widgets.
+        """
+        for setting in settings_list:
+            self.main_window.settings_inputs.pop(setting["key"], None)
 
     # ------------------------------------------------------------------ pages
 
@@ -378,11 +430,15 @@ class SetupWizardDialog(QDialog):
 
         # Data and series are built once; protocols and review are rebuilt on every
         # visit because they read state the earlier steps may just have changed.
-        if step_id in ("data", "series") and index in self._built_pages:
+        # Only the imaging step has to be rebuilt: its per-folder rows are keyed off
+        # [data].folders, which an earlier step may have changed. The review step is
+        # rebuilt because it summarises everything.
+        rebuild_always = step_id in ("imaging", "review")
+        if not rebuild_always and index in self._built_pages:
             return
 
-        if step_id == "protocols":
-            self._drop_settings_keys("protocols.")
+        if step_id == "imaging":
+            self._forget_fields(_protocol_fields(ImagingProtocolConfig))
         self._clear_layout(layout)
 
         self._page_header(layout, index)
@@ -390,8 +446,8 @@ class SetupWizardDialog(QDialog):
             self._build_section_form(layout, "data")
         elif step_id == "series":
             self._fill_series_page(layout)
-        elif step_id == "protocols":
-            self._fill_protocols_page(layout)
+        elif step_id in PROTOCOL_STEP_CONFIGS:
+            self._fill_protocol_page(layout, step_id)
         else:
             self._fill_review_page(layout)
         layout.addStretch(1)
@@ -451,48 +507,17 @@ class SetupWizardDialog(QDialog):
             self._pieces_layout.addWidget(checkbox)
             self._piece_checkboxes[piece] = checkbox
 
-    def _fill_protocols_page(self, layout) -> None:
-        have_csv = QCheckBox(
-            "I already have all my protocol CSV files — don't generate anything"
-        )
-        have_csv.setToolTip(
-            "Sets every protocol to 'detailed', so setup leaves your files untouched."
-        )
-        layout.addWidget(have_csv)
-        self._have_csv_checkbox = have_csv
-
-        self._build_section_form(layout, "protocols")
-
-        protocols = self.main_window.config_dict.get("protocols", {})
-        already_detailed = all(
-            protocols.get(key.split(".", 1)[1], "") == "detailed"
-            for key in PROTOCOL_MODE_KEYS
-        )
-        have_csv.blockSignals(True)
-        have_csv.setChecked(already_detailed)
-        have_csv.blockSignals(False)
-        have_csv.toggled.connect(self._on_have_csv_toggled)
-
-    def _mode_combo(self, key: str) -> QComboBox | None:
-        widget = unwrap_composite_widget(self.main_window.settings_inputs.get(key))
-        return widget if isinstance(widget, QComboBox) else None
-
-    def _on_have_csv_toggled(self, checked: bool) -> None:
-        if checked:
-            self._saved_modes = {}
-            for key in PROTOCOL_MODE_KEYS:
-                combo = self._mode_combo(key)
-                if combo is None:
-                    continue
-                self._saved_modes[key] = combo.currentText()
-                combo.setCurrentText("detailed")
+    def _fill_protocol_page(self, layout, step_id: str) -> None:
+        """Render just one protocol's fields, straight from its sub-config."""
+        settings_list = _protocol_fields(PROTOCOL_STEP_CONFIGS[step_id])
+        if not settings_list:
+            layout.addWidget(QLabel("No settings found for this protocol."))
             return
-
-        for key, previous in self._saved_modes.items():
-            combo = self._mode_combo(key)
-            if combo is not None and previous:
-                combo.setCurrentText(previous)
-        self._saved_modes = {}
+        holder = QWidget()
+        form = QFormLayout(holder)
+        form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        layout.addWidget(holder)
+        self.main_window.settings_factory.build_tab_form(form, settings_list)
 
     def _fill_review_page(self, layout) -> None:
         config = self.main_window.config_dict
@@ -538,6 +563,18 @@ class SetupWizardDialog(QDialog):
         holder.setLayout(summary)
         layout.addWidget(holder)
 
+        run_box = QGroupBox("Run after finishing")
+        run_layout = QVBoxLayout(run_box)
+
+        self._run_protocols_checkbox = QCheckBox("Generate the protocol CSV files")
+        self._run_protocols_checkbox.setToolTip(
+            "Runs protocol setup with the modes chosen above. Protocols set to "
+            "'detailed' are left untouched; you are asked before anything is "
+            "overwritten."
+        )
+        self._run_protocols_checkbox.setChecked(True)
+        run_layout.addWidget(self._run_protocols_checkbox)
+
         depth_configured = bool(
             config.get("depth", {}).get("measurements")
         ) or "depth" in {
@@ -545,15 +582,14 @@ class SetupWizardDialog(QDialog):
             for piece, checkbox in self._piece_checkboxes.items()
             if checkbox.isChecked()
         }
-        self._run_depth_checkbox = QCheckBox(
-            "Compute the depth map now after finishing"
-        )
+        self._run_depth_checkbox = QCheckBox("Compute the depth map")
         self._run_depth_checkbox.setEnabled(depth_configured)
         if not depth_configured:
             self._run_depth_checkbox.setToolTip(
                 "Needs depth measurements — set them in the Depth tab first."
             )
-        layout.addWidget(self._run_depth_checkbox)
+        run_layout.addWidget(self._run_depth_checkbox)
+        layout.addWidget(run_box)
 
         note = QLabel(
             "Rig setup itself is not run here: it is slow and partly interactive "
@@ -610,40 +646,73 @@ class SetupWizardDialog(QDialog):
                     f"'{self._series_combo.currentText()}': {', '.join(applied)}."
                 )
 
-        # Writes config_dict to the TOML the main window has open.
+        # Writes config_dict to the TOML the main window has open. Setup runs as a
+        # subprocess reading that file, so it has to land on disk first.
         factory.save_settings()
 
-        run_depth = (
-            self._run_depth_checkbox is not None
-            and self._run_depth_checkbox.isChecked()
-            and self._run_depth_checkbox.isEnabled()
-        )
-        self.accept()
-        if run_depth:
-            self._start_depth_setup()
+        actions = []
+        if self._checked(self._run_protocols_checkbox):
+            actions.append("protocol")
+        if self._checked(self._run_depth_checkbox):
+            actions.append("depth")
 
-    def _start_depth_setup(self) -> None:
+        config_file = self.main_window.config_file
+        force = False
+        if "protocol" in actions and config_file:
+            decision = resolve_protocol_conflicts(self.main_window, Path(config_file))
+            if decision is None:
+                # Cancelled at the overwrite prompt: stay open so the choice can be
+                # revised rather than silently finishing without generating.
+                return
+            force = decision
+
+        self.accept()
+        if actions:
+            self._start_setup(actions, force)
+
+    @staticmethod
+    def _checked(checkbox: QCheckBox | None) -> bool:
+        return checkbox is not None and checkbox.isEnabled() and checkbox.isChecked()
+
+    def _start_setup(self, actions: list[str], force: bool) -> None:
+        """Run the requested setup steps in one subprocess, as the Setup tab does.
+
+        Out of process on purpose: a protocol run scans every image's metadata and
+        would otherwise freeze the GUI, and this way it is abortable and streams
+        into the log dock.
+        """
         config_file = self.main_window.config_file
         if not config_file or not Path(config_file).exists():
             self.main_window.print_log(
-                "Skipping depth map: no config file on disk to run against."
+                "Skipping setup: no config file on disk to run against."
             )
             return
+
         argv = [
             sys.executable,
             "-m",
             "darsia.presets.workflows.user_interface_setup",
             "--config",
             str(Path(config_file).resolve()),
-            "--depth",
         ]
+        if "protocol" in actions:
+            argv.append("--protocol")
+        if "depth" in actions:
+            argv.append("--depth")
+        if force:
+            argv.append("--force")
+
+        self.main_window.print_log(
+            f"Wizard starting setup: {', '.join(actions)}"
+            f"{' (overwriting existing files)' if force else ''}."
+        )
         self.main_window.process_runner.start_workflow_process(
             argv,
             self.main_window.toolbar_builder.play_action,
             self.main_window.toolbar_builder.stop_action,
             cwd=Path.cwd(),
             workflow="setup",
-            actions=["depth"],
+            actions=actions,
             config_path=Path(config_file),
         )
 
