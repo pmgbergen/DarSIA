@@ -553,11 +553,27 @@ class InjectionProtocol:
             rate = df["rate_ml/min"].astype(float)
             density = df["density kg/m3"].astype(float)
             mass_rate_kg_s = rate * density * 1e-6 / 60.0  # kg/s
+        elif "rate_ml/s" in df.columns:
+            assert (
+                "density kg/m3" in df.columns
+            ), "Column 'Density kg/m3' not found in the protocol file."
+            rate = df["rate_ml/s"].astype(float)
+            density = df["density kg/m3"].astype(float)
+            mass_rate_kg_s = rate * density * 1e-6  # kg/s
+        elif "rate_ml/hr" in df.columns:
+            assert (
+                "density kg/m3" in df.columns
+            ), "Column 'Density kg/m3' not found in the protocol file."
+            rate = df["rate_ml/hr"].astype(float)
+            density = df["density kg/m3"].astype(float)
+            mass_rate_kg_s = rate * density * 1e-6 / 3600.0  # kg/s
         elif "rate_g/min" in df.columns:
             rate = df["rate_g/min"].astype(float)
             mass_rate_kg_s = rate * 1e-3 / 60.0  # kg/s
         elif "rate_g/s" in df.columns:
             mass_rate_kg_s = df["rate_g/s"].astype(float) * 1e-3  # kg/s
+        elif "rate_g/hr" in df.columns:
+            mass_rate_kg_s = df["rate_g/hr"].astype(float) * 1e-3 / 3600.0  # kg/s
         else:
             assert (
                 "rate_kg/s" in df.columns
