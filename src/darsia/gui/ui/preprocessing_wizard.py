@@ -1,10 +1,15 @@
-"""Guided setup wizard: a linear, explanatory view over the same config TOML.
+"""Guided preprocessing wizard: a linear, explanatory view over the same config TOML.
 
 The wizard holds no state of its own. Every field it shows is one of the standard
 settings widgets bound to ``main_window.config_dict``, so setting something here is
 identical to setting it in the expert-mode Settings tabs, or by editing the TOML by
 hand — the three are just different speeds of the same editor. Only the
 series-catalogue step is wizard-specific, and it writes plain config sections too.
+
+Scoped to preprocessing: it configures rig/corrections/depth values and can launch
+the preprocessing CLI (protocols, depth measurements, crop correction), but never
+the remaining Setup routines (depth map, segmentation, facies, computed rig) —
+those stay in the flat Setup tab, run separately once preprocessing is done.
 """
 
 import sys
@@ -39,11 +44,11 @@ from darsia.presets.workflows.config.protocols import (
     PressureTemperatureProtocolConfig,
 )
 
+from .preprocessing import resolve_overwrite_conflicts
 from .schema.dataclass_introspection import get_section_fields
-from .setup import resolve_overwrite_conflicts
 from .theme import muted_text_color, success_color, theme_signal
 
-ASSETS_DIR = Path(__file__).parent / "assets" / "setup_wizard"
+ASSETS_DIR = Path(__file__).parent / "assets" / "preprocessing_wizard"
 NO_SERIES = "None — start blank"
 
 PROTOCOL_STEP_CONFIGS = {
@@ -224,8 +229,8 @@ STEPS = [
 def _build_illustration(step_id: str) -> QLabel | None:
     """Return a label showing this step's bundled image/GIF, or None if there is none.
 
-    Drop ``<step_id>.gif`` / ``.png`` / ``.jpg`` into ``assets/setup_wizard/`` and it
-    is picked up here automatically; no other wiring is needed.
+    Drop ``<step_id>.gif`` / ``.png`` / ``.jpg`` into ``assets/preprocessing_wizard/``
+    and it is picked up here automatically; no other wiring is needed.
     """
     for suffix in (".gif", ".png", ".jpg"):
         path = ASSETS_DIR / f"{step_id}{suffix}"
@@ -326,13 +331,13 @@ class _StepRail(QWidget):
             )
 
 
-class SetupWizardDialog(QDialog):
-    """Guided, step-by-step editor for the setup part of a run config."""
+class PreprocessingWizardDialog(QDialog):
+    """Guided, step-by-step editor for the preprocessing part of a run config."""
 
     def __init__(self, main_window):
         super().__init__(main_window)
         self.main_window = main_window
-        self.setWindowTitle("Setup Wizard")
+        self.setWindowTitle("Preprocessing Wizard")
         self.setModal(True)
         self.resize(1060, 740)
 
@@ -713,7 +718,7 @@ class SetupWizardDialog(QDialog):
         argv = [
             sys.executable,
             "-m",
-            "darsia.presets.workflows.user_interface_setup",
+            "darsia.presets.workflows.user_interface_preprocessing",
             "--config",
             str(Path(config_file).resolve()),
             "--crop",
@@ -848,8 +853,8 @@ class SetupWizardDialog(QDialog):
         factory = self.main_window.settings_factory
         factory._sync_settings_inputs_to_config_dict()
 
-        # Writes config_dict to the TOML the main window has open. Setup runs as a
-        # subprocess reading that file, so it has to land on disk first.
+        # Writes config_dict to the TOML the main window has open. Preprocessing runs
+        # as a subprocess reading that file, so it has to land on disk first.
         factory.save_settings()
 
         actions = []
@@ -866,7 +871,7 @@ class SetupWizardDialog(QDialog):
                 # A conflict check itself failed; already logged, stay open.
                 return
             decision = resolve_overwrite_conflicts(
-                self.main_window, conflicts, "Setup output files"
+                self.main_window, conflicts, "Preprocessing output files"
             )
             if decision is None:
                 # Cancelled at the overwrite prompt: stay open so the choice can be
@@ -876,7 +881,7 @@ class SetupWizardDialog(QDialog):
 
         self.accept()
         if actions:
-            self._start_setup(actions, force)
+            self._start_preprocessing(actions, force)
 
     def _collect_conflicts(
         self, actions: list[str], config_path: Path
@@ -919,13 +924,14 @@ class SetupWizardDialog(QDialog):
     def _run_subprocess(
         self, argv: list[str], actions: list[str], config_path: Path
     ) -> None:
-        """Launch a setup subprocess the same way the flat Setup sidebar does."""
+        """Launch a preprocessing subprocess the same way the flat Preprocessing
+        sidebar does."""
         process = self.main_window.process_runner.start_workflow_process(
             argv,
             self.main_window.toolbar_builder.play_action,
             self.main_window.toolbar_builder.stop_action,
             cwd=Path.cwd(),
-            workflow="setup",
+            workflow="preprocessing",
             actions=actions,
             config_path=config_path,
         )
@@ -947,8 +953,9 @@ class SetupWizardDialog(QDialog):
         if self.isVisible():
             self._ensure_page(self._index)
 
-    def _start_setup(self, actions: list[str], force: bool) -> None:
-        """Run the requested setup steps in one subprocess, as the Setup tab does.
+    def _start_preprocessing(self, actions: list[str], force: bool) -> None:
+        """Run the requested preprocessing steps in one subprocess, as the
+        Preprocessing tab does.
 
         Out of process on purpose: a protocol run scans every image's metadata and
         would otherwise freeze the GUI, and this way it is abortable and streams
@@ -957,14 +964,14 @@ class SetupWizardDialog(QDialog):
         config_file = self.main_window.config_file
         if not config_file or not Path(config_file).exists():
             self.main_window.print_log(
-                "Skipping setup: no config file on disk to run against."
+                "Skipping preprocessing: no config file on disk to run against."
             )
             return
 
         argv = [
             sys.executable,
             "-m",
-            "darsia.presets.workflows.user_interface_setup",
+            "darsia.presets.workflows.user_interface_preprocessing",
             "--config",
             str(Path(config_file).resolve()),
         ]
@@ -976,7 +983,7 @@ class SetupWizardDialog(QDialog):
             argv.append("--force")
 
         self.main_window.print_log(
-            f"Wizard starting setup: {', '.join(actions)}"
+            f"Wizard starting preprocessing: {', '.join(actions)}"
             f"{' (overwriting existing files)' if force else ''}."
         )
         self._run_subprocess(argv, actions, Path(config_file))
