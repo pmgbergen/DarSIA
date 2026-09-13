@@ -76,20 +76,19 @@ def _protocol_fields(config_class) -> list[dict]:
     return selected
 
 
-_SERIES_CORRECTIONS_KEYS = {"type", "curvature"}
-"""[corrections] pieces a series preset can provide — matches PIECE_LABELS."""
+def _corrections_fields(*keys: str) -> list[dict]:
+    """Schema for just the given [corrections] sub-sections (e.g. "curvature").
 
-
-def _filtered_corrections_fields() -> list[dict]:
-    """Schema for just the [corrections] pieces a series preset can provide.
-
-    Drift/color/illumination/etc. stay expert-mode only, matching what the
-    series step's explanation text already says.
+    Each of type/resize/curvature is its own nested group in the underlying
+    schema; this picks out only the ones named, so each wizard step can render
+    exactly its own piece without pulling in drift/color/illumination/etc.
+    (those stay expert-mode only).
     """
+    wanted = set(keys)
     return [
         setting
         for setting in get_section_fields("corrections") or []
-        if setting["key"].rsplit(".", 1)[-1] in _SERIES_CORRECTIONS_KEYS
+        if setting["key"].rsplit(".", 1)[-1] in wanted
     ]
 
 
@@ -108,19 +107,66 @@ STEPS = [
     ),
     (
         "series",
-        "Rig & corrections",
-        "Reuse a known rig setup, or fill in the geometry yourself.",
+        "Experiment series",
+        "Reuse a known rig setup, or start from scratch.",
         (
-            "Experiments run on the same physical rig share their geometry and "
-            "image corrections. Pick a matching series to copy those in — the "
-            "fields below update immediately and stay fully editable either way, "
-            "so you can also just fill them in from scratch with no preset picked. "
-            "Uncheck a piece to leave that field alone. Curvature correction's "
-            "corner points come from the actual baseline image, so picking them "
-            "interactively with the button below is usually easier than typing "
-            "pixel coordinates by hand — the fields are still there to review or "
-            "fine-tune afterwards. Illumination and colour corrections are not "
-            "part of these presets yet — set those in the Corrections tab."
+            "Experiments run on the same physical rig share their geometry, "
+            "depth measurements and curvature correction. Pick a matching series "
+            "to copy those in, or leave it as 'None' to set everything up "
+            "yourself on the next few steps. Uncheck a piece here to keep setting "
+            "just that one up manually, even if you picked a series for the rest "
+            "— the next few steps update to match. Illumination and colour "
+            "corrections are not part of these presets yet — set those in the "
+            "Corrections tab."
+        ),
+    ),
+    (
+        "rig",
+        "Rig geometry",
+        "The physical size of the FluidFlower cell.",
+        (
+            "Width, height and dimensionality of the rig, in meters — used "
+            "everywhere downstream to relate pixels to physical coordinates. "
+            "Copied automatically if the series you picked provides it; "
+            "otherwise type it in here."
+        ),
+    ),
+    (
+        "depth",
+        "Depth measurements",
+        "Where the sand is deep, and where it isn't — part of the rig's geometry.",
+        (
+            "'constant' generates a uniform-depth CSV automatically from the value "
+            "below, in meters — right when the sand layer is (approximately) flat. "
+            "Choose 'Load from CSV' if you already have, or will hand-author, a real "
+            "scattered-point measurements CSV; it is then left untouched. Copied "
+            "automatically if the series you picked provides it."
+        ),
+    ),
+    (
+        "type_resize",
+        "Type & resize",
+        "Two corrections that trade a little accuracy for speed.",
+        (
+            "These are performance options, not experiment ones, so they are "
+            "always set here directly — never copied from a series preset. "
+            "Converting images to float32 instead of float64 roughly halves "
+            "memory use and speeds up every later processing step, usually with "
+            "no visible cost. Resizing (downsampling) trades resolution for a "
+            "faster turnaround — handy for a quick first pass before committing "
+            "to a full-resolution run."
+        ),
+    ),
+    (
+        "curvature",
+        "Curvature correction",
+        "Straightening the image and cropping to the rig's four corners.",
+        (
+            "Corner points come from the actual baseline image, so the button "
+            "above is usually easier than typing pixel coordinates by hand. "
+            "Copied automatically if the series you picked provides it; "
+            "otherwise launch the interactive picker or type the corners in "
+            "below."
         ),
     ),
     (
@@ -132,7 +178,7 @@ STEPS = [
             "built: read each image's own timestamp ('exif' from the camera, 'ctime' "
             "from the file), or compute timestamps from a cadence you declare "
             "('interval') — useful when the camera fired every N seconds and the "
-            "metadata is unreliable. Choose 'detailed' if you already wrote the CSV "
+            "metadata is unreliable. Choose 'Load from CSV' if you already wrote the CSV "
             "yourself, and it will be left untouched. The start reference is what "
             "counts as time zero, and anchors the other two protocols as well."
         ),
@@ -144,11 +190,12 @@ STEPS = [
         (
             "'constant' writes a single row spanning the whole run at the rate and "
             "coordinates you give — right when the experiment injected steadily from "
-            "one port. Rate is in kg/s, and coordinates (x, y) are in meters, in the "
-            "same physical frame as the rig's width/height. For anything "
-            "time-varying, choose 'detailed': an existing file is left untouched, "
-            "and if none exists yet you get an empty template with just the column "
-            "headers to fill in."
+            "one port. Pick the rate's unit alongside it; if it's mL/s, mL/min or "
+            "mL/hr, also give the fluid density so it can be converted to kg/s. "
+            "Coordinates (x, y) are in meters, in the same physical frame as the "
+            "rig's width/height. For anything time-varying, choose 'Load from CSV': "
+            "an existing file is left untouched, and if none exists yet you get an "
+            "empty template with just the column headers to fill in."
         ),
     ),
     (
@@ -157,19 +204,8 @@ STEPS = [
         "The conditions the experiment ran under.",
         (
             "'constant' writes a single row from the values below — fine when the rig "
-            "held steady conditions throughout. Choose 'detailed' to keep a full "
+            "held steady conditions throughout. Choose 'Load from CSV' to keep a full "
             "time-resolved CSV you maintain yourself; the file is then left untouched."
-        ),
-    ),
-    (
-        "depth",
-        "Depth measurements",
-        "Where the sand is deep, and where it isn't.",
-        (
-            "'constant' generates a uniform-depth CSV automatically from the value "
-            "below, in meters — right when the sand layer is (approximately) flat. "
-            "Choose 'detailed' if you already have, or will hand-author, a real "
-            "scattered-point measurements CSV; it is then left untouched."
         ),
     ),
     (
@@ -302,6 +338,7 @@ class SetupWizardDialog(QDialog):
 
         self._index = 0
         self._selected_preset = None
+        self._series_name: str = NO_SERIES
         self._piece_checkboxes: dict[str, QCheckBox] = {}
         self._built_pages: set[int] = set()
         self._run_protocols_checkbox: QCheckBox | None = None
@@ -460,21 +497,29 @@ class SetupWizardDialog(QDialog):
 
     # ------------------------------------------------------------------ pages
 
+    # Steps whose fields must be forgotten + rebuilt on every visit, because
+    # they either read state an earlier step may have changed (imaging's
+    # per-folder rows), summarise everything (review), or their lock state
+    # depends on the series step's checkboxes (rig/depth/type_resize/curvature).
+    _LOCKABLE_STEP_FIELDS = {
+        "rig": lambda: get_section_fields("rig") or [],
+        "depth": lambda: get_section_fields("depth") or [],
+        "type_resize": lambda: _corrections_fields("type", "resize"),
+        "curvature": lambda: _corrections_fields("curvature"),
+    }
+
     def _ensure_page(self, index: int) -> None:
         _scroll, layout = self._page_containers[index]
         step_id = STEPS[index][0]
 
-        # Data and series are built once; protocols and review are rebuilt on every
-        # visit because they read state the earlier steps may just have changed.
-        # Only the imaging step has to be rebuilt: its per-folder rows are keyed off
-        # [data].folders, which an earlier step may have changed. The review step is
-        # rebuilt because it summarises everything.
-        rebuild_always = step_id in ("imaging", "review")
+        rebuild_always = step_id in ("imaging", "review", *self._LOCKABLE_STEP_FIELDS)
         if not rebuild_always and index in self._built_pages:
             return
 
         if step_id == "imaging":
             self._forget_fields(_protocol_fields(ImagingProtocolConfig))
+        elif step_id in self._LOCKABLE_STEP_FIELDS:
+            self._forget_fields(self._LOCKABLE_STEP_FIELDS[step_id]())
         self._clear_layout(layout)
 
         self._page_header(layout, index)
@@ -482,10 +527,16 @@ class SetupWizardDialog(QDialog):
             self._build_section_form(layout, "data")
         elif step_id == "series":
             self._fill_series_page(layout)
+        elif step_id == "rig":
+            self._fill_rig_page(layout)
+        elif step_id == "depth":
+            self._fill_depth_page(layout)
+        elif step_id == "type_resize":
+            self._fill_type_resize_page(layout)
+        elif step_id == "curvature":
+            self._fill_curvature_page(layout)
         elif step_id in PROTOCOL_STEP_CONFIGS:
             self._fill_protocol_page(layout, step_id)
-        elif step_id == "depth":
-            self._build_section_form(layout, "depth")
         else:
             self._fill_review_page(layout)
         layout.addStretch(1)
@@ -514,19 +565,6 @@ class SetupWizardDialog(QDialog):
         self._pieces_layout = QVBoxLayout(self._pieces_box)
         layout.addWidget(self._pieces_box)
 
-        self._rig_corrections_box = QGroupBox("Rig && corrections")
-        self._rig_corrections_layout = QVBoxLayout(self._rig_corrections_box)
-        layout.addWidget(self._rig_corrections_box)
-
-        crop_button = QPushButton("Launch interactive crop correction…")
-        crop_button.setToolTip(
-            "Opens a separate window to click the four corners of the rig on "
-            "your baseline image. Saves your config first — fill in the Data "
-            "step before using this."
-        )
-        crop_button.clicked.connect(self._launch_crop_correction)
-        layout.addWidget(crop_button)
-
         self._series_combo = combo
         combo.currentTextChanged.connect(self._on_series_changed)
         self._on_series_changed(combo.currentText())
@@ -534,14 +572,15 @@ class SetupWizardDialog(QDialog):
     def _on_series_changed(self, name: str) -> None:
         self._clear_layout(self._pieces_layout)
         self._piece_checkboxes = {}
+        self._series_name = name
 
         if name == NO_SERIES or name not in self._catalogue.presets:
             self._selected_preset = None
             self._series_description.setText(
-                "Nothing will be copied — the fields below are fully manual."
+                "Nothing will be copied — set rig, depth and curvature correction "
+                "yourself on the next few steps."
             )
             self._pieces_box.setEnabled(False)
-            self._refresh_rig_corrections_fields()
             return
 
         preset = self._catalogue.get(name)
@@ -560,18 +599,17 @@ class SetupWizardDialog(QDialog):
             self._piece_checkboxes[piece] = checkbox
 
         self._apply_live()
-        self._refresh_rig_corrections_fields()
 
     def _on_piece_toggled(self, _checked: bool) -> None:
         self._apply_live()
-        self._refresh_rig_corrections_fields()
 
     def _apply_live(self) -> None:
         """Write the currently-checked preset pieces into config_dict right away.
 
-        Unlike the old Finish-time application, this runs the moment the preset
-        or a piece checkbox changes, so the Rig/Corrections fields below always
-        show what is actually about to be saved — not a promise kept until Finish.
+        Runs the moment the preset or a piece checkbox changes, so the Rig/
+        Depth/Curvature steps — built fresh on every visit, see
+        _LOCKABLE_STEP_FIELDS — always show what is actually about to be saved,
+        locked or not, rather than a promise kept until Finish.
         """
         if self._selected_preset is None or not self._piece_checkboxes:
             return
@@ -588,26 +626,74 @@ class SetupWizardDialog(QDialog):
                 f"'{self._series_combo.currentText()}': {', '.join(applied)}."
             )
 
-    def _refresh_rig_corrections_fields(self) -> None:
-        """Rebuild the Rig/Corrections form from current config_dict state.
+    def _is_piece_locked(self, piece: str) -> bool:
+        """Whether `piece` is currently supplied by a checked series-preset box.
 
-        Always reflects live reality: called once when the page is built, and
-        again after every live-apply, so picking/unpicking a preset or piece is
-        immediately visible and editable here, not just promised for later.
+        A locked piece's step shows its values read-only, with a note pointing
+        back to the Experiment series step — unchecking that box there is what
+        unlocks manual editing again (see the confirmed per-piece design).
         """
-        rig_fields = get_section_fields("rig") or []
-        corrections_fields = _filtered_corrections_fields()
-        self._forget_fields(rig_fields)
-        self._forget_fields(corrections_fields)
-        self._clear_layout(self._rig_corrections_layout)
+        checkbox = self._piece_checkboxes.get(piece)
+        return checkbox is not None and checkbox.isChecked()
+
+    def _build_piece_form(self, layout, fields: list[dict], piece: str | None) -> None:
+        """Render `fields` as a form, disabled with an explanatory note if the
+        given series-preset `piece` is currently locked (piece=None means this
+        content is never preset-provided, so it is always editable)."""
+        locked = piece is not None and self._is_piece_locked(piece)
+        if locked:
+            label = PIECE_LABELS.get(piece, piece)
+            note = QLabel(
+                f"{label} is copied from the '{self._series_name}' series. "
+                "Uncheck it on the Experiment series step to edit it here instead."
+            )
+            note.setWordWrap(True)
+            note.setStyleSheet(f"color: {muted_text_color(self.palette()).name()};")
+            layout.addWidget(note)
 
         holder = QWidget()
         form = QFormLayout(holder)
         form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
-        self._rig_corrections_layout.addWidget(holder)
-        self.main_window.settings_factory.build_tab_form(
-            form, rig_fields + corrections_fields
-        )
+        layout.addWidget(holder)
+        if fields:
+            self.main_window.settings_factory.build_tab_form(form, fields)
+        holder.setEnabled(not locked)
+
+    def _fill_rig_page(self, layout) -> None:
+        self._build_piece_form(layout, get_section_fields("rig") or [], "rig")
+
+    def _fill_depth_page(self, layout) -> None:
+        self._build_piece_form(layout, get_section_fields("depth") or [], "depth")
+
+    def _fill_type_resize_page(self, layout) -> None:
+        layout.addWidget(QLabel("Type correction"))
+        self._build_piece_form(layout, _corrections_fields("type"), None)
+        layout.addSpacing(10)
+        layout.addWidget(QLabel("Resize correction"))
+        self._build_piece_form(layout, _corrections_fields("resize"), None)
+
+    def _fill_curvature_page(self, layout) -> None:
+        locked = self._is_piece_locked("curvature")
+
+        crop_button = QPushButton("Launch interactive crop correction…")
+        if locked:
+            crop_button.setEnabled(False)
+            crop_button.setToolTip(
+                f"Curvature correction is copied from the '{self._series_name}' "
+                "series. Uncheck it on the Experiment series step to set it up "
+                "interactively instead."
+            )
+        else:
+            crop_button.setToolTip(
+                "Opens a separate window to click the four corners of the rig on "
+                "your baseline image. Saves your config first — fill in the Data "
+                "step before using this."
+            )
+            crop_button.clicked.connect(self._launch_crop_correction)
+        layout.addWidget(crop_button)
+        layout.addSpacing(8)
+
+        self._build_piece_form(layout, _corrections_fields("curvature"), "curvature")
 
     def _launch_crop_correction(self) -> None:
         """Save the config, then spawn the existing interactive crop assistant.
@@ -689,7 +775,7 @@ class SetupWizardDialog(QDialog):
         )
         add(
             "Depth measurements",
-            str(config.get("depth", {}).get("measurements_mode", "detailed")),
+            str(config.get("depth", {}).get("measurements_mode", "Load from CSV")),
         )
 
         holder = QWidget()
@@ -702,7 +788,7 @@ class SetupWizardDialog(QDialog):
         self._run_protocols_checkbox = QCheckBox("Generate the protocol CSV files")
         self._run_protocols_checkbox.setToolTip(
             "Runs protocol setup with the modes chosen above. Protocols set to "
-            "'detailed' are left untouched; you are asked before anything is "
+            "'Load from CSV' are left untouched; you are asked before anything is "
             "overwritten."
         )
         self._run_protocols_checkbox.setChecked(True)
@@ -711,7 +797,7 @@ class SetupWizardDialog(QDialog):
         self._run_depth_measurements_checkbox = QCheckBox("Generate depth measurements")
         self._run_depth_measurements_checkbox.setToolTip(
             "Runs depth-measurements setup with the mode chosen on the Depth "
-            "measurements step. No-op if that mode is 'detailed'; you are asked "
+            "measurements step. No-op if that mode is 'Load from CSV'; you are asked "
             "before an existing 'constant'-mode file is overwritten."
         )
         self._run_depth_measurements_checkbox.setChecked(True)
@@ -851,7 +937,7 @@ class SetupWizardDialog(QDialog):
         self, argv: list[str], actions: list[str], config_path: Path
     ) -> None:
         """Launch a setup subprocess the same way the flat Setup sidebar does."""
-        self.main_window.process_runner.start_workflow_process(
+        process = self.main_window.process_runner.start_workflow_process(
             argv,
             self.main_window.toolbar_builder.play_action,
             self.main_window.toolbar_builder.stop_action,
@@ -860,6 +946,23 @@ class SetupWizardDialog(QDialog):
             actions=actions,
             config_path=config_path,
         )
+        if process is not None:
+            process.finished.connect(self._refresh_after_subprocess)
+
+    def _refresh_after_subprocess(self, *_args) -> None:
+        """Re-render the page we're on, now that the subprocess has finished.
+
+        Interactive crop correction (launched from the Curvature step while the
+        wizard stays open) writes straight to the config file on disk. On
+        success, process_runner's own finished-handler — connected before this
+        one, so it runs first — already reloads main_window.config_dict from
+        that file. Lockable steps already rebuild unconditionally in
+        _ensure_page, so simply re-running it here is enough to pick up
+        whatever changed; a no-op if we've since navigated elsewhere or the
+        wizard has already closed (e.g. after the Review step's Finish).
+        """
+        if self.isVisible():
+            self._ensure_page(self._index)
 
     def _start_setup(self, actions: list[str], force: bool) -> None:
         """Run the requested setup steps in one subprocess, as the Setup tab does.
