@@ -343,7 +343,6 @@ class SetupWizardDialog(QDialog):
         self._built_pages: set[int] = set()
         self._run_protocols_checkbox: QCheckBox | None = None
         self._run_depth_measurements_checkbox: QCheckBox | None = None
-        self._run_depth_checkbox: QCheckBox | None = None
         self._catalogue = self._load_catalogue()
 
         # The wizard takes over the shared widget registry while it is open: flush
@@ -802,27 +801,13 @@ class SetupWizardDialog(QDialog):
         )
         self._run_depth_measurements_checkbox.setChecked(True)
         run_layout.addWidget(self._run_depth_measurements_checkbox)
-
-        depth_configured = bool(
-            config.get("depth", {}).get("measurements")
-        ) or "depth" in {
-            piece
-            for piece, checkbox in self._piece_checkboxes.items()
-            if checkbox.isChecked()
-        }
-        self._run_depth_checkbox = QCheckBox("Compute the depth map")
-        self._run_depth_checkbox.setEnabled(depth_configured)
-        if not depth_configured:
-            self._run_depth_checkbox.setToolTip(
-                "Needs depth measurements — set them in the Depth tab first."
-            )
-        run_layout.addWidget(self._run_depth_checkbox)
         layout.addWidget(run_box)
 
         note = QLabel(
-            "Rig setup itself (baseline correction, depth map, image porosity) is "
-            "not run here — it's slow and best run once everything above is "
-            "correct. Run it from the Setup sidebar when you are ready."
+            "The wizard only covers preparation — computing the depth map, "
+            "baseline correction, and image porosity are not run here — it's "
+            "slow and best run once everything above is correct. Run those "
+            "from the Setup sidebar when you are ready."
         )
         note.setWordWrap(True)
         note.setStyleSheet(f"color: {muted_text_color(self.palette()).name()};")
@@ -872,8 +857,6 @@ class SetupWizardDialog(QDialog):
             actions.append("protocol")
         if self._checked(self._run_depth_measurements_checkbox):
             actions.append("depth_measurements")
-        if self._checked(self._run_depth_checkbox):
-            actions.append("depth")
 
         config_file = self.main_window.config_file
         force = False
@@ -989,8 +972,6 @@ class SetupWizardDialog(QDialog):
             argv.append("--protocol")
         if "depth_measurements" in actions:
             argv.append("--depth-measurements")
-        if "depth" in actions:
-            argv.append("--depth")
         if force:
             argv.append("--force")
 
