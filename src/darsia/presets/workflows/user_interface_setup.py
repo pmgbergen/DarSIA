@@ -24,7 +24,10 @@ import sys
 
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.setup.setup_crop import setup_crop_correction
-from darsia.presets.workflows.setup.setup_depth import setup_depth_map
+from darsia.presets.workflows.setup.setup_depth import (
+    setup_depth_map,
+    setup_depth_measurements,
+)
 from darsia.presets.workflows.setup.setup_facies import setup_facies
 from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
 from darsia.presets.workflows.setup.setup_protocols import setup_imaging_protocol
@@ -46,6 +49,14 @@ def build_parser_for_setup():
     )
     parser.add_argument("--all", action="store_true", help="Activate all setup steps.")
     parser.add_argument("--depth", action="store_true", help="Activate setup of depth.")
+    parser.add_argument(
+        "--depth-measurements",
+        action="store_true",
+        help=(
+            "Generate a depth-measurements CSV from a constant value, if "
+            "[depth].measurements_mode is 'constant'."
+        ),
+    )
     parser.add_argument(
         "--segmentation", action="store_true", help="Activate labeling."
     )
@@ -88,6 +99,9 @@ def preset_setup(rig=Rig):
     parser = build_parser_for_setup()
     args = parser.parse_args()
 
+    if args.depth_measurements:
+        print("Running depth-measurements setup...", flush=True)
+        setup_depth_measurements(args.config, force=args.force, show=args.show)
     if args.all or args.depth:
         print("Running depth map setup...", flush=True)
         setup_depth_map(args.config, key="depth", show=args.show)
