@@ -40,7 +40,7 @@ from darsia.presets.workflows.config.protocols import (
 )
 
 from .schema.dataclass_introspection import get_section_fields
-from .setup import resolve_protocol_conflicts
+from .setup import resolve_overwrite_conflicts
 from .theme import muted_text_color, success_color, theme_signal
 
 ASSETS_DIR = Path(__file__).parent / "assets" / "setup_wizard"
@@ -76,6 +76,23 @@ def _protocol_fields(config_class) -> list[dict]:
     return selected
 
 
+_SERIES_CORRECTIONS_KEYS = {"type", "curvature"}
+"""[corrections] pieces a series preset can provide — matches PIECE_LABELS."""
+
+
+def _filtered_corrections_fields() -> list[dict]:
+    """Schema for just the [corrections] pieces a series preset can provide.
+
+    Drift/color/illumination/etc. stay expert-mode only, matching what the
+    series step's explanation text already says.
+    """
+    return [
+        setting
+        for setting in get_section_fields("corrections") or []
+        if setting["key"].rsplit(".", 1)[-1] in _SERIES_CORRECTIONS_KEYS
+    ]
+
+
 STEPS = [
     (
         "data",
@@ -92,13 +109,18 @@ STEPS = [
     (
         "series",
         "Rig & corrections",
-        "Reuse a known rig setup instead of re-entering its geometry.",
+        "Reuse a known rig setup, or fill in the geometry yourself.",
         (
-            "Experiments run on the same physical rig share their geometry, image "
-            "corrections and depth measurements. Pick the matching series and those "
-            "settings are copied into your config; uncheck anything you would rather "
-            "set yourself. Illumination and colour corrections are not part of these "
-            "presets yet — set those in the Corrections tab."
+            "Experiments run on the same physical rig share their geometry and "
+            "image corrections. Pick a matching series to copy those in — the "
+            "fields below update immediately and stay fully editable either way, "
+            "so you can also just fill them in from scratch with no preset picked. "
+            "Uncheck a piece to leave that field alone. Curvature correction's "
+            "corner points come from the actual baseline image, so picking them "
+            "interactively with the button below is usually easier than typing "
+            "pixel coordinates by hand — the fields are still there to review or "
+            "fine-tune afterwards. Illumination and colour corrections are not "
+            "part of these presets yet — set those in the Corrections tab."
         ),
     ),
     (
@@ -137,6 +159,17 @@ STEPS = [
             "'constant' writes a single row from the values below — fine when the rig "
             "held steady conditions throughout. Choose 'detailed' to keep a full "
             "time-resolved CSV you maintain yourself; the file is then left untouched."
+        ),
+    ),
+    (
+        "depth",
+        "Depth measurements",
+        "Where the sand is deep, and where it isn't.",
+        (
+            "'constant' generates a uniform-depth CSV automatically from the value "
+            "below, in meters — right when the sand layer is (approximately) flat. "
+            "Choose 'detailed' if you already have, or will hand-author, a real "
+            "scattered-point measurements CSV; it is then left untouched."
         ),
     ),
     (
@@ -272,6 +305,7 @@ class SetupWizardDialog(QDialog):
         self._piece_checkboxes: dict[str, QCheckBox] = {}
         self._built_pages: set[int] = set()
         self._run_protocols_checkbox: QCheckBox | None = None
+        self._run_depth_measurements_checkbox: QCheckBox | None = None
         self._run_depth_checkbox: QCheckBox | None = None
         self._catalogue = self._load_catalogue()
 
@@ -450,6 +484,8 @@ class SetupWizardDialog(QDialog):
             self._fill_series_page(layout)
         elif step_id in PROTOCOL_STEP_CONFIGS:
             self._fill_protocol_page(layout, step_id)
+        elif step_id == "depth":
+            self._build_section_form(layout, "depth")
         else:
             self._fill_review_page(layout)
         layout.addStretch(1)
@@ -478,6 +514,19 @@ class SetupWizardDialog(QDialog):
         self._pieces_layout = QVBoxLayout(self._pieces_box)
         layout.addWidget(self._pieces_box)
 
+        self._rig_corrections_box = QGroupBox("Rig && corrections")
+        self._rig_corrections_layout = QVBoxLayout(self._rig_corrections_box)
+        layout.addWidget(self._rig_corrections_box)
+
+        crop_button = QPushButton("Launch interactive crop correction…")
+        crop_button.setToolTip(
+            "Opens a separate window to click the four corners of the rig on "
+            "your baseline image. Saves your config first — fill in the Data "
+            "step before using this."
+        )
+        crop_button.clicked.connect(self._launch_crop_correction)
+        layout.addWidget(crop_button)
+
         self._series_combo = combo
         combo.currentTextChanged.connect(self._on_series_changed)
         self._on_series_changed(combo.currentText())
@@ -489,10 +538,10 @@ class SetupWizardDialog(QDialog):
         if name == NO_SERIES or name not in self._catalogue.presets:
             self._selected_preset = None
             self._series_description.setText(
-                "Nothing will be copied — fill in rig, corrections and depth yourself "
-                "in the Settings tabs."
+                "Nothing will be copied — the fields below are fully manual."
             )
             self._pieces_box.setEnabled(False)
+            self._refresh_rig_corrections_fields()
             return
 
         preset = self._catalogue.get(name)
@@ -506,8 +555,86 @@ class SetupWizardDialog(QDialog):
                 continue
             checkbox = QCheckBox(label)
             checkbox.setChecked(True)
+            checkbox.toggled.connect(self._on_piece_toggled)
             self._pieces_layout.addWidget(checkbox)
             self._piece_checkboxes[piece] = checkbox
+
+        self._apply_live()
+        self._refresh_rig_corrections_fields()
+
+    def _on_piece_toggled(self, _checked: bool) -> None:
+        self._apply_live()
+        self._refresh_rig_corrections_fields()
+
+    def _apply_live(self) -> None:
+        """Write the currently-checked preset pieces into config_dict right away.
+
+        Unlike the old Finish-time application, this runs the moment the preset
+        or a piece checkbox changes, so the Rig/Corrections fields below always
+        show what is actually about to be saved — not a promise kept until Finish.
+        """
+        if self._selected_preset is None or not self._piece_checkboxes:
+            return
+        enabled = {
+            piece: checkbox.isChecked()
+            for piece, checkbox in self._piece_checkboxes.items()
+        }
+        applied = self.main_window.config_controller.apply_series_preset(
+            self._selected_preset, enabled
+        )
+        if applied:
+            self.main_window.print_log(
+                f"Wizard applied series preset "
+                f"'{self._series_combo.currentText()}': {', '.join(applied)}."
+            )
+
+    def _refresh_rig_corrections_fields(self) -> None:
+        """Rebuild the Rig/Corrections form from current config_dict state.
+
+        Always reflects live reality: called once when the page is built, and
+        again after every live-apply, so picking/unpicking a preset or piece is
+        immediately visible and editable here, not just promised for later.
+        """
+        rig_fields = get_section_fields("rig") or []
+        corrections_fields = _filtered_corrections_fields()
+        self._forget_fields(rig_fields)
+        self._forget_fields(corrections_fields)
+        self._clear_layout(self._rig_corrections_layout)
+
+        holder = QWidget()
+        form = QFormLayout(holder)
+        form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        self._rig_corrections_layout.addWidget(holder)
+        self.main_window.settings_factory.build_tab_form(
+            form, rig_fields + corrections_fields
+        )
+
+    def _launch_crop_correction(self) -> None:
+        """Save the config, then spawn the existing interactive crop assistant.
+
+        Crop correction reads [data]/[corrections]/[rig] from the TOML file on
+        disk (not from config_dict) and writes its result straight back to that
+        file, so it needs a real, current config file to run against.
+        """
+        self.main_window.settings_factory._sync_settings_inputs_to_config_dict()
+        config_file = self.main_window.config_file
+        if not config_file:
+            self.main_window.print_log(
+                "Crop correction: create or open a config file first."
+            )
+            return
+        self.main_window.settings_factory.save_settings()
+
+        argv = [
+            sys.executable,
+            "-m",
+            "darsia.presets.workflows.user_interface_setup",
+            "--config",
+            str(Path(config_file).resolve()),
+            "--crop",
+        ]
+        self.main_window.print_log("Wizard launching interactive crop correction…")
+        self._run_subprocess(argv, ["crop"], Path(config_file))
 
     def _fill_protocol_page(self, layout, step_id: str) -> None:
         """Render just one protocol's fields, straight from its sub-config."""
@@ -560,6 +687,10 @@ class SetupWizardDialog(QDialog):
             "Pressure/temperature",
             str(protocols.get("pressure_temperature_mode", "constant")),
         )
+        add(
+            "Depth measurements",
+            str(config.get("depth", {}).get("measurements_mode", "detailed")),
+        )
 
         holder = QWidget()
         holder.setLayout(summary)
@@ -576,6 +707,15 @@ class SetupWizardDialog(QDialog):
         )
         self._run_protocols_checkbox.setChecked(True)
         run_layout.addWidget(self._run_protocols_checkbox)
+
+        self._run_depth_measurements_checkbox = QCheckBox("Generate depth measurements")
+        self._run_depth_measurements_checkbox.setToolTip(
+            "Runs depth-measurements setup with the mode chosen on the Depth "
+            "measurements step. No-op if that mode is 'detailed'; you are asked "
+            "before an existing 'constant'-mode file is overwritten."
+        )
+        self._run_depth_measurements_checkbox.setChecked(True)
+        run_layout.addWidget(self._run_depth_measurements_checkbox)
 
         depth_configured = bool(
             config.get("depth", {}).get("measurements")
@@ -594,8 +734,9 @@ class SetupWizardDialog(QDialog):
         layout.addWidget(run_box)
 
         note = QLabel(
-            "Rig setup itself is not run here: it is slow and partly interactive "
-            "(crop correction). Run it from the Setup sidebar when you are ready."
+            "Rig setup itself (baseline correction, depth map, image porosity) is "
+            "not run here — it's slow and best run once everything above is "
+            "correct. Run it from the Setup sidebar when you are ready."
         )
         note.setWordWrap(True)
         note.setStyleSheet(f"color: {muted_text_color(self.palette()).name()};")
@@ -631,22 +772,10 @@ class SetupWizardDialog(QDialog):
     # ----------------------------------------------------------------- finish
 
     def _finish(self) -> None:
+        # The series preset (if any) was already applied live as it was picked/
+        # toggled (see _apply_live) — nothing deferred to do with it here.
         factory = self.main_window.settings_factory
         factory._sync_settings_inputs_to_config_dict()
-
-        if self._selected_preset is not None and self._piece_checkboxes:
-            enabled = {
-                piece: checkbox.isChecked()
-                for piece, checkbox in self._piece_checkboxes.items()
-            }
-            applied = self.main_window.config_controller.apply_series_preset(
-                self._selected_preset, enabled
-            )
-            if applied:
-                self.main_window.print_log(
-                    f"Wizard applied series preset "
-                    f"'{self._series_combo.currentText()}': {', '.join(applied)}."
-                )
 
         # Writes config_dict to the TOML the main window has open. Setup runs as a
         # subprocess reading that file, so it has to land on disk first.
@@ -655,13 +784,21 @@ class SetupWizardDialog(QDialog):
         actions = []
         if self._checked(self._run_protocols_checkbox):
             actions.append("protocol")
+        if self._checked(self._run_depth_measurements_checkbox):
+            actions.append("depth_measurements")
         if self._checked(self._run_depth_checkbox):
             actions.append("depth")
 
         config_file = self.main_window.config_file
         force = False
-        if "protocol" in actions and config_file:
-            decision = resolve_protocol_conflicts(self.main_window, Path(config_file))
+        if config_file and ("protocol" in actions or "depth_measurements" in actions):
+            conflicts = self._collect_conflicts(actions, Path(config_file))
+            if conflicts is None:
+                # A conflict check itself failed; already logged, stay open.
+                return
+            decision = resolve_overwrite_conflicts(
+                self.main_window, conflicts, "Setup output files"
+            )
             if decision is None:
                 # Cancelled at the overwrite prompt: stay open so the choice can be
                 # revised rather than silently finishing without generating.
@@ -672,9 +809,57 @@ class SetupWizardDialog(QDialog):
         if actions:
             self._start_setup(actions, force)
 
+    def _collect_conflicts(
+        self, actions: list[str], config_path: Path
+    ) -> list[Path] | None:
+        """Gather overwrite conflicts across whichever checked actions can cause
+        one, so Finish asks about all of them in a single combined prompt (they
+        share one `--force` flag on the subprocess either way).
+
+        Returns None if a check itself failed (already logged to the user).
+        """
+        conflicts: list[Path] = []
+        if "protocol" in actions:
+            try:
+                from darsia.presets.workflows.setup.setup_protocols import (
+                    preview_protocol_setup_conflicts,
+                )
+
+                conflicts += preview_protocol_setup_conflicts([config_path])
+            except Exception as exc:
+                self.main_window.print_log(f"Error checking protocol conflicts: {exc}")
+                return None
+        if "depth_measurements" in actions:
+            try:
+                from darsia.presets.workflows.setup.setup_depth import (
+                    preview_depth_measurements_conflict,
+                )
+
+                conflicts += preview_depth_measurements_conflict([config_path])
+            except Exception as exc:
+                self.main_window.print_log(
+                    f"Error checking depth-measurements conflicts: {exc}"
+                )
+                return None
+        return conflicts
+
     @staticmethod
     def _checked(checkbox: QCheckBox | None) -> bool:
         return checkbox is not None and checkbox.isEnabled() and checkbox.isChecked()
+
+    def _run_subprocess(
+        self, argv: list[str], actions: list[str], config_path: Path
+    ) -> None:
+        """Launch a setup subprocess the same way the flat Setup sidebar does."""
+        self.main_window.process_runner.start_workflow_process(
+            argv,
+            self.main_window.toolbar_builder.play_action,
+            self.main_window.toolbar_builder.stop_action,
+            cwd=Path.cwd(),
+            workflow="setup",
+            actions=actions,
+            config_path=config_path,
+        )
 
     def _start_setup(self, actions: list[str], force: bool) -> None:
         """Run the requested setup steps in one subprocess, as the Setup tab does.
@@ -699,6 +884,8 @@ class SetupWizardDialog(QDialog):
         ]
         if "protocol" in actions:
             argv.append("--protocol")
+        if "depth_measurements" in actions:
+            argv.append("--depth-measurements")
         if "depth" in actions:
             argv.append("--depth")
         if force:
@@ -708,15 +895,7 @@ class SetupWizardDialog(QDialog):
             f"Wizard starting setup: {', '.join(actions)}"
             f"{' (overwriting existing files)' if force else ''}."
         )
-        self.main_window.process_runner.start_workflow_process(
-            argv,
-            self.main_window.toolbar_builder.play_action,
-            self.main_window.toolbar_builder.stop_action,
-            cwd=Path.cwd(),
-            workflow="setup",
-            actions=actions,
-            config_path=Path(config_file),
-        )
+        self._run_subprocess(argv, actions, Path(config_file))
 
     def done(self, result: int) -> None:
         # Hand the widget registry back to the Settings tabs: ours are about to be
