@@ -154,6 +154,29 @@ def _convert_none(v):
     return None if ((isinstance(v, str) and v.lower() == "none") or v is None) else v
 
 
+def _normalize_mode(value: str, canonical: set[str], *, key: str) -> str:
+    """Case-insensitively match `value` against `canonical`, returning the
+    canonically-cased option.
+
+    Some option values are plain lowercase identifiers ("exif", "constant"), but
+    others carry a specific display casing meant to read naturally in the GUI
+    dropdown (e.g. "Load from CSV") — case-folding those with a blanket
+    ``.lower()`` on load would silently break round-tripping with the dropdown's
+    own (exact-case) option list. This tolerates a hand-typed TOML value in any
+    case while always storing/returning the one canonical spelling.
+
+    Raises
+    ------
+    ValueError
+        If `value` doesn't case-insensitively match any entry in `canonical`.
+    """
+    text = str(value)
+    for option in canonical:
+        if option.lower() == text.lower():
+            return option
+    raise ValueError(f"{key} must be one of {sorted(canonical)}, got {value!r}.")
+
+
 def _validate_choice(value: str, *, allowed: set[str], context: str, key: str) -> str:
     if value not in allowed:
         raise ValueError(

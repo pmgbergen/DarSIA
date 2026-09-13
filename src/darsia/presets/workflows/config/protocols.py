@@ -16,14 +16,25 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .utils import _get_section_from_toml
+from .utils import _get_section_from_toml, _normalize_mode
 
 logger = logging.getLogger(__name__)
 
-_SUPPORTED_IMAGING_MODES = {"exif", "ctime", "interval", "detailed"}
+_SUPPORTED_IMAGING_MODES = {"exif", "ctime", "interval", "Load from CSV"}
 _SUPPORTED_START_REFERENCES = {"first_image", "baseline", "fixed", "image"}
-_SUPPORTED_PRESSURE_TEMPERATURE_MODES = {"constant", "detailed"}
-_SUPPORTED_INJECTION_MODES = {"constant", "detailed"}
+_SUPPORTED_PRESSURE_TEMPERATURE_MODES = {"constant", "Load from CSV"}
+_SUPPORTED_INJECTION_MODES = {"constant", "Load from CSV"}
+_SUPPORTED_INJECTION_RATE_UNITS = {
+    "kg/s",
+    "g/s",
+    "g/min",
+    "g/hr",
+    "mL/s",
+    "mL/min",
+    "mL/hr",
+}
+# Volumetric units need a fluid density to convert to the kg/s DarSIA uses internally.
+_VOLUMETRIC_INJECTION_RATE_UNITS = ["mL/s", "mL/min", "mL/hr"]
 
 
 def _parse_protocol_value(
@@ -90,15 +101,15 @@ class ImagingProtocolConfig:
                 "Datetime extraction mode for imaging protocol setup. 'exif'/"
                 "'ctime' read each image's real timestamp (auto from metadata); "
                 "'interval' computes timestamps from a prescribed cadence instead "
-                "(see 'Imaging interval'); 'detailed' leaves an existing imaging "
-                "protocol file alone (author it by hand instead)."
+                "(see 'Imaging interval'); 'Load from CSV' leaves an existing "
+                "imaging protocol file alone (author it by hand instead)."
             ),
-            "options": ["exif", "ctime", "interval", "detailed"],
+            "options": ["exif", "ctime", "interval", "Load from CSV"],
             "group": "Image registry",
         },
     )
     """Datetime extraction mode for imaging protocol setup: 'exif', 'ctime',
-    'interval' (prescribed time increments, no per-file reads), or 'detailed'."""
+    'interval' (prescribed time increments, no per-file reads), or 'Load from CSV'."""
     imaging_interval_seconds: dict[Path, float] | None = field(
         default=None,
         metadata={
@@ -185,14 +196,11 @@ class ImagingProtocolConfig:
         except KeyError:
             self.blacklist = None
 
-        self.imaging_mode = str(
-            sec.get("imaging_mode", sec.get("mode", "exif"))
-        ).lower()
-        if self.imaging_mode not in _SUPPORTED_IMAGING_MODES:
-            raise ValueError(
-                "Imaging mode must be one of "
-                f"{sorted(_SUPPORTED_IMAGING_MODES)} via [protocols].imaging_mode."
-            )
+        self.imaging_mode = _normalize_mode(
+            sec.get("imaging_mode", sec.get("mode", "exif")),
+            _SUPPORTED_IMAGING_MODES,
+            key="[protocols].imaging_mode",
+        )
 
         imaging_interval_seconds = sec.get("imaging_interval_seconds")
         if isinstance(imaging_interval_seconds, dict) and imaging_interval_seconds:
@@ -246,30 +254,64 @@ class InjectionProtocolConfig:
             "name": "Injection mode",
             "help": (
                 "'constant' writes a single-row protocol from the rate and "
-                "coordinates below, spanning the whole run; 'detailed' leaves an "
-                "existing injection-protocol file alone, or writes an empty "
+                "coordinates below, spanning the whole run; 'Load from CSV' leaves "
+                "an existing injection-protocol file alone, or writes an empty "
                 "(header-only) template if none exists yet."
             ),
-            "options": ["constant", "detailed"],
+            "options": ["constant", "Load from CSV"],
             "group": "Operating conditions",
         },
     )
-    """Injection template mode: 'constant' or 'detailed'."""
+    """Injection template mode: 'constant' or 'Load from CSV'."""
+    injection_rate_unit: str = field(
+        default="kg/s",
+        metadata={
+            "name": "Injection rate unit",
+            "help": (
+                "Unit the rate below is entered in; picks the matching csv "
+                "column for the constant template. mL/s, mL/min and mL/hr are "
+                "volumetric and need the fluid density below to convert to "
+                "kg/s. sccm is only accepted in a hand-authored 'Load from "
+                "CSV' protocol file, where DarSIA converts any supported unit "
+                "to kg/s on read."
+            ),
+            "options": sorted(_SUPPORTED_INJECTION_RATE_UNITS),
+            "depends_on": {"field": "injection_mode", "value": "constant"},
+            "group": "Operating conditions",
+        },
+    )
+    """Unit injection_rate is entered in."""
     injection_rate: float = field(
         default=0.0,
         metadata={
-            "name": "Injection rate (kg/s)",
+            "name": "Injection rate",
             "help": (
-                "Constant mass injection rate written to the injection template, "
-                "in kilograms per second. Other units (sccm, mL/min, g/min, g/s) "
-                "are only accepted in a hand-authored 'detailed' protocol file, "
-                "where DarSIA converts them to kg/s on read."
+                "Constant mass injection rate written to the injection "
+                "template, in the unit selected above."
             ),
             "depends_on": {"field": "injection_mode", "value": "constant"},
             "group": "Operating conditions",
         },
     )
-    """Constant injection rate in kg/s (injection_mode='constant' only)."""
+    """Constant injection rate, in injection_rate_unit (injection_mode='constant' only)."""
+    injection_density: float = field(
+        default=0.0,
+        metadata={
+            "name": "Injection fluid density (kg/m3)",
+            "help": (
+                "Density of the injected fluid, used to convert a volumetric "
+                "injection rate (mL/s, mL/min or mL/hr) to the kg/s DarSIA "
+                "uses internally. Ignored for mass-based units (kg/s, g/s, "
+                "g/min, g/hr)."
+            ),
+            "depends_on": {
+                "field": "injection_rate_unit",
+                "value": _VOLUMETRIC_INJECTION_RATE_UNITS,
+            },
+            "group": "Operating conditions",
+        },
+    )
+    """Injected fluid density in kg/m3 (only used for volumetric rate units)."""
     injection_coordinates: tuple[float, float] = field(
         default=(0.0, 0.0),
         metadata={
@@ -296,14 +338,19 @@ class InjectionProtocolConfig:
         except KeyError:
             self.injection = None
 
-        self.injection_mode = str(sec.get("injection_mode", "constant")).lower()
-        if self.injection_mode not in _SUPPORTED_INJECTION_MODES:
-            raise ValueError(
-                "Injection mode must be one of "
-                f"{sorted(_SUPPORTED_INJECTION_MODES)} via [protocols].injection_mode."
-            )
+        self.injection_mode = _normalize_mode(
+            sec.get("injection_mode", "constant"),
+            _SUPPORTED_INJECTION_MODES,
+            key="[protocols].injection_mode",
+        )
 
+        self.injection_rate_unit = _normalize_mode(
+            sec.get("injection_rate_unit", "kg/s"),
+            _SUPPORTED_INJECTION_RATE_UNITS,
+            key="[protocols].injection_rate_unit",
+        )
         self.injection_rate = float(sec.get("injection_rate", 0.0))
+        self.injection_density = float(sec.get("injection_density", 0.0))
 
         injection_coordinates = sec.get("injection_coordinates", (0.0, 0.0))
         if len(injection_coordinates) != 2:
@@ -337,14 +384,14 @@ class PressureTemperatureProtocolConfig:
             "name": "Pressure/Temperature mode",
             "help": (
                 "'constant' writes a single-row template from the values below; "
-                "'detailed' leaves the pressure-temperature protocol file alone "
-                "(author/point to a full custom CSV instead)."
+                "'Load from CSV' leaves the pressure-temperature protocol file "
+                "alone (author/point to a full custom CSV instead)."
             ),
-            "options": ["constant", "detailed"],
+            "options": ["constant", "Load from CSV"],
             "group": "Experimental conditions",
         },
     )
-    """Pressure/temperature template mode: 'constant' or 'detailed'."""
+    """Pressure/temperature template mode: 'constant' or 'Load from CSV'."""
     pressure_bar: float = field(
         default=1.013,
         metadata={
@@ -382,15 +429,11 @@ class PressureTemperatureProtocolConfig:
         except KeyError:
             self.pressure_temperature = None
 
-        self.pressure_temperature_mode = str(
-            sec.get("pressure_temperature_mode", "constant")
-        ).lower()
-        if self.pressure_temperature_mode not in _SUPPORTED_PRESSURE_TEMPERATURE_MODES:
-            raise ValueError(
-                "Pressure/temperature mode must be one of "
-                f"{sorted(_SUPPORTED_PRESSURE_TEMPERATURE_MODES)} via "
-                "[protocols].pressure_temperature_mode."
-            )
+        self.pressure_temperature_mode = _normalize_mode(
+            sec.get("pressure_temperature_mode", "constant"),
+            _SUPPORTED_PRESSURE_TEMPERATURE_MODES,
+            key="[protocols].pressure_temperature_mode",
+        )
 
         self.pressure_bar = float(sec.get("pressure_bar", 1.013))
         self.temperature_celsius = float(sec.get("temperature_celsius", 20.0))

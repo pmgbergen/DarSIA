@@ -2,8 +2,9 @@
 #
 # A series does not restate geometry or crop corners — it references entries in
 # the rig and curvature catalogues by name, so those values live in exactly one
-# place. Only settings with no catalogue of their own (target_type, depth) are
-# given inline here.
+# place. Depth measurements have no catalogue of their own, so that piece is
+# given inline here. Type/resize corrections are performance options, not
+# experiment-identity options, so they are never part of a series preset.
 
 [[series_preset]]
 name = "BC0xx family"

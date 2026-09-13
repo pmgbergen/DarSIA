@@ -21,7 +21,7 @@ from darsia.presets.workflows.config.sections import (
 
 logger = logging.getLogger(__name__)
 
-_SUPPORTED_MODES = {"exif", "ctime", "interval", "detailed"}
+_SUPPORTED_MODES = {"exif", "ctime", "interval", "Load from CSV"}
 
 
 def get_modification_time(filepath: Path) -> datetime:
@@ -104,20 +104,23 @@ def _generation_targets(
 ) -> list[Path]:
     """Targets that generation would actually write to, given the configured modes.
 
-    Excludes any target whose protocol type is set to 'detailed' (CSV already
+    Excludes any target whose protocol type is set to 'Load from CSV' (already
     authored / left to the user): those are never overwritten when they already
-    exist, so an existing file there is not an overwrite conflict. (A 'detailed'
-    injection target that doesn't exist yet still gets an empty template written,
-    but creating a new file is never an overwrite conflict either way.)
+    exist, so an existing file there is not an overwrite conflict. (A 'Load from
+    CSV' injection target that doesn't exist yet still gets an empty template
+    written, but creating a new file is never an overwrite conflict either way.)
     """
     targets = []
-    if config.protocols.imaging_mode != "detailed":
+    if config.protocols.imaging_mode != "Load from CSV":
         targets.extend(imaging_targets.values())
-    if injection_path is not None and config.protocols.injection_mode != "detailed":
+    if (
+        injection_path is not None
+        and config.protocols.injection_mode != "Load from CSV"
+    ):
         targets.append(injection_path)
     if (
         pressure_temperature_path is not None
-        and config.protocols.pressure_temperature_mode != "detailed"
+        and config.protocols.pressure_temperature_mode != "Load from CSV"
     ):
         targets.append(pressure_temperature_path)
     return targets
@@ -274,31 +277,47 @@ def _write_csv(df: pd.DataFrame, path: Path) -> None:
     df.to_csv(path, index=False)
 
 
+# Volumetric rate units whose csv column needs a paired "density kg/m3" column
+# for DarSIA's read side to convert to kg/s (see InjectionProtocol._load_protocol
+# in experiment/protocols.py).
+_VOLUMETRIC_INJECTION_RATE_UNITS = ("mL/s", "mL/min", "mL/hr")
+
+
 def _write_injection_template(
     path: Path,
     start: datetime,
     end: datetime,
     rate: float,
     coordinates: tuple[float, float],
+    rate_unit: str = "kg/s",
+    density: float = 0.0,
 ) -> None:
-    """Write a single-row injection protocol at a constant rate for the whole run."""
-    df = pd.DataFrame(
-        {
-            "id": [1],
-            "location_x": [coordinates[0]],
-            "location_y": [coordinates[1]],
-            "start": [start],
-            "end": [end],
-            "rate_kg/s": [rate],
-        }
-    )
+    """Write a single-row injection protocol at a constant rate for the whole run.
+
+    `rate_unit` selects the csv column DarSIA's read side expects for that unit;
+    the raw value is written as entered, unconverted. `density` (kg/m3) is only
+    written when `rate_unit` is volumetric (mL/s, mL/min, mL/hr), which need it
+    to convert to kg/s on read.
+    """
+    rate_column = f"rate_{rate_unit}"
+    columns = {
+        "id": [1],
+        "location_x": [coordinates[0]],
+        "location_y": [coordinates[1]],
+        "start": [start],
+        "end": [end],
+        rate_column: [rate],
+    }
+    if rate_unit in _VOLUMETRIC_INJECTION_RATE_UNITS:
+        columns["density kg/m3"] = [density]
+    df = pd.DataFrame(columns)
     _write_csv(df, path)
 
 
 def _write_empty_injection_template(path: Path) -> None:
     """Write a header-only injection-protocol CSV, no guessed values.
 
-    Used for injection_mode='detailed' when no file exists yet: gives the user a
+    Used for injection_mode='Load from CSV' when no file exists yet: gives the user a
     correctly-shaped file to fill in by hand, rather than plausible-looking
     placeholder numbers (id=1, rate=0.0, etc.) that could be mistaken for real data.
     """
@@ -394,10 +413,11 @@ def setup_imaging_protocol(
             else _resolve_start_reference(config, folder, files)
         )
 
-        if mode == "detailed":
+        if mode == "Load from CSV":
             if not imaging_path.exists():
                 raise FileNotFoundError(
-                    f"imaging_mode='detailed' but {imaging_path} does not exist. "
+                    f"imaging_mode='Load from CSV' but {imaging_path} does not "
+                    "exist. "
                     "Author it by hand, or choose 'exif'/'ctime'/'interval' to "
                     "generate it instead."
                 )
@@ -443,6 +463,8 @@ def setup_imaging_protocol(
                 overall_end,
                 config.protocols.injection_rate,
                 config.protocols.injection_coordinates,
+                config.protocols.injection_rate_unit,
+                config.protocols.injection_density,
             )
             logger.info("Saved injection protocol CSV template to %s", injection_path)
         elif not injection_path.exists():
