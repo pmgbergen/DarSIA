@@ -28,6 +28,25 @@ class SetupOptions:
 
 
 @dataclass
+class PreprocessingOptions:
+    """Options for preprocessing workflows (protocols, depth measurements, crop)."""
+
+    show_plots: bool = field(
+        default=False,
+        metadata={
+            "name": "Show plots",
+            "help": "Display plots during preprocessing execution.",
+        },
+    )
+
+    def load(self, sec: dict) -> "PreprocessingOptions":
+        self.show_plots = _get_key(
+            sec, "show_plots", required=False, default=False, type_=bool
+        )
+        return self
+
+
+@dataclass
 class CalibrationOptions:
     """Options for calibration workflows."""
 
@@ -112,6 +131,10 @@ class OptionsConfig:
         default_factory=SetupOptions,
         metadata={"name": "Setup"},
     )
+    preprocessing: PreprocessingOptions = field(
+        default_factory=PreprocessingOptions,
+        metadata={"name": "Preprocessing"},
+    )
     calibration: CalibrationOptions = field(
         default_factory=CalibrationOptions,
         metadata={"name": "Calibration"},
@@ -134,6 +157,11 @@ class OptionsConfig:
 
         setup_sec = _get_section(sec, "setup") if "setup" in sec else {}
         self.setup = SetupOptions().load(setup_sec)
+
+        preprocessing_sec = (
+            _get_section(sec, "preprocessing") if "preprocessing" in sec else {}
+        )
+        self.preprocessing = PreprocessingOptions().load(preprocessing_sec)
 
         calibration_sec = (
             _get_section(sec, "calibration") if "calibration" in sec else {}
