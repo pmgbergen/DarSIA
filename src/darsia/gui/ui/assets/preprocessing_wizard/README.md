@@ -1,4 +1,4 @@
-# Setup wizard illustrations
+# Preprocessing wizard illustrations
 
 Drop an image here named after a wizard step and it is shown on that step
 automatically — no code change needed.
