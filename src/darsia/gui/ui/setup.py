@@ -5,6 +5,53 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QMessageBox
 
+CONFLICT_PREVIEW_LIMIT = 8
+
+
+def resolve_protocol_conflicts(main_window, config_path: Path) -> bool | None:
+    """Ask the user what to do about protocol files that already exist.
+
+    Shared by the Setup tab and the setup wizard, so both answer the question the
+    same way.
+
+    Returns
+    -------
+        False if nothing would be overwritten, True if the user approved
+        overwriting (pass ``--force``), or None if they cancelled or the check
+        itself failed — in which case the caller must not run setup.
+    """
+    try:
+        from darsia.presets.workflows.setup.setup_protocols import (
+            preview_protocol_setup_conflicts,
+        )
+
+        conflicts = preview_protocol_setup_conflicts([config_path])
+    except Exception as e:
+        main_window.print_log(f"Error checking protocol conflicts: {str(e)}")
+        return None
+
+    if not conflicts:
+        return False
+
+    preview_text = "\n".join(str(p) for p in conflicts[:CONFLICT_PREVIEW_LIMIT])
+    if len(conflicts) > CONFLICT_PREVIEW_LIMIT:
+        preview_text += f"\n... and {len(conflicts) - CONFLICT_PREVIEW_LIMIT} more."
+
+    result = QMessageBox.question(
+        main_window,
+        "Protocol files exist",
+        f"Protocol files already exist:\n\n{preview_text}\n\n"
+        "Overwrite existing protocol files?",
+        QMessageBox.Yes | QMessageBox.No,
+        QMessageBox.No,
+    )
+    if result != QMessageBox.Yes:
+        main_window.print_log(
+            "Protocol setup cancelled: user chose not to overwrite existing files."
+        )
+        return None
+    return True
+
 
 class SetupTab:
     """Manages the setup tab UI and workflow execution."""
@@ -63,49 +110,10 @@ class SetupTab:
         # Check for protocol file conflicts and ask user if overwrite is needed
         config_paths = [Path(config_file)]
         if options["protocols"]:
-            try:
-                from darsia.presets.workflows.setup.setup_protocols import (
-                    preview_protocol_setup_conflicts,
-                )
-
-                conflicts = preview_protocol_setup_conflicts(config_paths)
-                if conflicts:
-                    # Truncate to 8 items max; show remainder count if needed
-                    CONFLICT_PREVIEW_LIMIT = 8
-                    preview_paths = conflicts[:CONFLICT_PREVIEW_LIMIT]
-                    preview_text = "\n".join(str(p) for p in preview_paths)
-                    if len(conflicts) > CONFLICT_PREVIEW_LIMIT:
-                        preview_text += (
-                            f"\n... and {len(conflicts) - CONFLICT_PREVIEW_LIMIT} more."
-                        )
-
-                    message = (
-                        "Protocol files already exist:\n\n"
-                        f"{preview_text}\n\n"
-                        "Overwrite existing protocol files?"
-                    )
-
-                    result = QMessageBox.question(
-                        self.main_window,
-                        "Protocol files exist",
-                        message,
-                        QMessageBox.Yes | QMessageBox.No,
-                        QMessageBox.No,
-                    )
-
-                    if result != QMessageBox.Yes:
-                        self.main_window.print_log(
-                            """Protocol setup cancelled: user chose not to """
-                            """overwrite existing files."""
-                        )
-                        return
-
-                    options["force"] = True
-            except Exception as e:
-                self.main_window.print_log(
-                    f"Error checking protocol conflicts: {str(e)}"
-                )
+            decision = resolve_protocol_conflicts(self.main_window, config_paths[0])
+            if decision is None:
                 return
+            options["force"] = decision
 
         # Build command-line arguments for subprocess
         argv = [
