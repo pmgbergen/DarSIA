@@ -8,6 +8,8 @@ from .utils import _get_key, _get_section_from_toml
 
 logger = logging.getLogger(__name__)
 
+_SUPPORTED_MEASUREMENTS_MODES = {"constant", "detailed"}
+
 
 @dataclass
 class DepthConfig:
@@ -22,6 +24,31 @@ class DepthConfig:
         },
     )
     """Path to the csv file containing the depth measurements."""
+    measurements_mode: str = field(
+        default="detailed",
+        metadata={
+            "name": "Measurements mode",
+            "help": (
+                "'detailed' points to a hand-authored depth-measurements CSV "
+                "(default, unchanged behavior). 'constant' generates a uniform-"
+                "depth CSV automatically from the value below."
+            ),
+            "options": ["constant", "detailed"],
+        },
+    )
+    """Depth-measurements mode: 'constant' or 'detailed'."""
+    constant_depth: float = field(
+        default=0.0,
+        metadata={
+            "name": "Constant depth (m)",
+            "help": (
+                "Uniform depth, in meters, written across a covering grid when "
+                "Measurements mode is 'constant'."
+            ),
+            "depends_on": {"field": "measurements_mode", "value": "constant"},
+        },
+    )
+    """Constant depth in meters (measurements_mode='constant' only)."""
     depth_map: Path | None = field(
         default=None,
         metadata={
@@ -50,6 +77,15 @@ class DepthConfig:
         """Load depth config from a toml file from [section]."""
         sec = _get_section_from_toml(path, "depth")
         self.measurements = _get_key(sec, "measurements", required=True, type_=Path)
+
+        self.measurements_mode = str(sec.get("measurements_mode", "detailed")).lower()
+        if self.measurements_mode not in _SUPPORTED_MEASUREMENTS_MODES:
+            raise ValueError(
+                "Measurements mode must be one of "
+                f"{sorted(_SUPPORTED_MEASUREMENTS_MODES)} via [depth].measurements_mode."
+            )
+        self.constant_depth = float(sec.get("constant_depth", 0.0))
+
         default_depth_map = (
             results / "setup" / "depth" / "depth_map.npz" if results else None
         )
