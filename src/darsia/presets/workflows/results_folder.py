@@ -98,7 +98,11 @@ def _color_path_embedding_root(
 def suggested_workflow_results_folder(
     workflow: str, config_path: Path, actions: list[str]
 ) -> Path | None:
-    """Return suggested output folder for successful GUI workflow runs."""
+    """Return suggested output folder for successful GUI workflow runs.
+
+    NOTE: No "preprocessing" branch here, as all preprocessing steps currently
+    have no default output.
+    """
     merged = _load_workflow_config(config_path)
     results = _results_folder_from_merged_config(merged)
     if results is None:
@@ -214,6 +218,85 @@ def suggested_workflow_results_folder(
     return None
 
 
+def _protocol_target_path(value: Any) -> Path | None:
+    """Resolve one [protocols] entry to its target file path, or None.
+
+    Mirrors protocols.py's _parse_protocol_value value-shape handling (a plain
+    string, or a [file, sheet] pair) without importing that heavier module,
+    matching this file's existing light, dependency-free TOML introspection
+    (see _color_path_embedding_root).
+    """
+    if isinstance(value, (list, tuple)) and value:
+        return Path(str(value[0])).expanduser()
+    if isinstance(value, str) and value.strip():
+        return Path(value).expanduser()
+    return None
+
+
+def _has_configured_protocol_files(merged: dict[str, Any]) -> bool:
+    """Whether every configured protocol file (imaging/injection/pressure-
+    temperature) already exists on disk, regardless of mode.
+
+    Protocol paths are arbitrary user-configured locations, not necessarily
+    anywhere near <results>/setup, so this checks the actual configured paths
+    directly rather than guessing a subfolder and looking for "any" file in it.
+    """
+    protocols = merged.get("protocols")
+    if not isinstance(protocols, dict):
+        return False
+
+    targets: list[Path] = []
+    imaging = protocols.get("imaging")
+    if isinstance(imaging, dict):
+        for value in imaging.values():
+            target = _protocol_target_path(value)
+            if target is not None:
+                targets.append(target)
+    for key in ("injection", "pressure_temperature"):
+        target = _protocol_target_path(protocols.get(key))
+        if target is not None:
+            targets.append(target)
+
+    if not targets:
+        return False
+    return all(target.exists() for target in targets)
+
+
+def _has_configured_depth_measurements(merged: dict[str, Any]) -> bool:
+    """Whether the configured [depth].measurements file already exists on disk."""
+    depth = merged.get("depth")
+    if not isinstance(depth, dict):
+        return False
+    measurements = depth.get("measurements")
+    if not isinstance(measurements, str) or not measurements.strip():
+        return False
+    return Path(measurements).expanduser().exists()
+
+
+def _has_preprocessing_output(config_path: Path, actions: list[str]) -> bool:
+    """Whether the preprocessing action(s) already produced their configured
+    output file(s). See _has_configured_protocol_files/_has_configured_depth_measurements
+    for why this checks actual file paths instead of a guessed subfolder.
+
+    "crop" has no single known output file (it writes crop corners straight
+    into [corrections.curvature] in the config, not a separate artifact), so
+    it always reports "not done" here — same as before this file distinguished
+    preprocessing from setup at all.
+    """
+    merged = _load_workflow_config(config_path)
+    selected = {action.strip().lower().replace("_", " ") for action in actions}
+
+    checks = []
+    if "protocols" in selected or "all" in selected:
+        checks.append(_has_configured_protocol_files(merged))
+    if "depth measurements" in selected or "all" in selected:
+        checks.append(_has_configured_depth_measurements(merged))
+
+    if not checks:
+        return False
+    return all(checks)
+
+
 def has_workflow_output(workflow: str, config_path: Path, actions: list[str]) -> bool:
     """Return whether a workflow step already has non-empty output on disk.
 
@@ -221,6 +304,12 @@ def has_workflow_output(workflow: str, config_path: Path, actions: list[str]) ->
     to resolve or read the config is treated as "not started" rather than
     raised, since this powers a passive visual hint, not a gate.
     """
+    if workflow == "preprocessing":
+        try:
+            return _has_preprocessing_output(config_path, actions)
+        except (OSError, ValueError, tomllib.TOMLDecodeError):
+            return False
+
     try:
         folder = suggested_workflow_results_folder(workflow, config_path, actions)
     except (OSError, ValueError, tomllib.TOMLDecodeError):
