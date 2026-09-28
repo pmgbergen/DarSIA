@@ -663,9 +663,37 @@ class LabelColorPathMapRegression:
             )
 
         # Step 2: Reduce to 1D using Locally Linear Embedding
+        #
+        # The candidate points are bin centers of a regular color-range grid,
+        # so for sparse/degenerate spectra (e.g. near-collinear or clustered
+        # colors) the local reconstruction weight matrix can be rank-deficient.
+        # sklearn's default eigen_solver="auto" tends to pick "arpack" for
+        # this problem size, and arpack's shift-invert factorization at
+        # sigma=0 raises "Factor is exactly singular" on such degenerate
+        # inputs. "dense" avoids that factorization and is cheap at this
+        # scale, so we prefer it and only fall back to arpack's default
+        # behavior if dense itself fails for some other reason.
         n_neighbors = min(10, num_points - 1)
-        lle = LocallyLinearEmbedding(n_neighbors=n_neighbors, n_components=1)
-        embedding = lle.fit_transform(relative_colors).flatten()
+        try:
+            lle = LocallyLinearEmbedding(
+                n_neighbors=n_neighbors, n_components=1, eigen_solver="dense"
+            )
+            embedding = lle.fit_transform(relative_colors).flatten()
+        except (ValueError, np.linalg.LinAlgError) as err:
+            logger.warning(
+                "LLE embedding failed for label %s (%s active points): %s. "
+                "Returning default (zero) color path for this label.",
+                label,
+                num_points,
+                err,
+            )
+            return darsia.ColorPath(
+                colors=None,
+                base_color=spectrum.base_color,
+                relative_colors=num_dofs * [np.zeros(3)],
+                mode="rgb",
+                name=name,
+            )
 
         if verbose:
             # Visualization 1: Original 3D colors vs 1D embedding
