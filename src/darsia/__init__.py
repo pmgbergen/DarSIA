@@ -25,6 +25,7 @@ from darsia.measure.beckmann_newton_solver import *
 from darsia.measure.beckmann_bregman_solver import *
 from darsia.measure.beckmann_gprox_solver import *
 from darsia.measure.wasserstein import *
+from darsia.measure.norms import *
 from darsia.utils.timings import *
 
 # Analysis | Needed by utilities (augmented_plotting)
