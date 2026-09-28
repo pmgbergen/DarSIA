@@ -925,7 +925,16 @@ class PreprocessingWizardDialog(QDialog):
         self, argv: list[str], actions: list[str], config_path: Path
     ) -> None:
         """Launch a preprocessing subprocess the same way the flat Preprocessing
-        sidebar does."""
+        sidebar does.
+
+        Registers the process with the Preprocessing tab manager and marks
+        "preprocessing" as the active sidebar selection, so the toolbar/Run-menu
+        Stop button — which dispatches via main_window.selected_action to
+        action_dispatch[...].on_abort_clicked() — can actually find and abort a
+        run started from here, exactly as it would one started from the flat
+        Preprocessing sidebar. Without this, a wizard-launched run has no
+        tab-tracked process at all and Stop silently does nothing.
+        """
         process = self.main_window.process_runner.start_workflow_process(
             argv,
             self.main_window.toolbar_builder.play_action,
@@ -936,6 +945,9 @@ class PreprocessingWizardDialog(QDialog):
             config_path=config_path,
         )
         if process is not None:
+            self.main_window.selected_action = "preprocessing"
+            self.main_window.preprocessing_tab.process = process
+            self.main_window._sync_wizard_action_state()
             process.finished.connect(self._refresh_after_subprocess)
 
     def _refresh_after_subprocess(self, *_args) -> None:

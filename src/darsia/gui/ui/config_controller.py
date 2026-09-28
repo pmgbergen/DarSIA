@@ -36,6 +36,7 @@ class ConfigController:
         add_recent_config(file)
         self.main_window.print_log(f"New config created and opened: {file}")
         self.main_window.sidebar.deselect_all()
+        self.main_window.clear_selection()
         self.main_window.settings_factory.display_full_settings()
         self.main_window.refresh_sidebar_progress()
 
@@ -90,6 +91,7 @@ class ConfigController:
             add_recent_config(file)
             self.main_window.print_log(f"Config loaded: {file}")
             self.main_window.sidebar.deselect_all()
+            self.main_window.clear_selection()
             self.main_window.settings_inputs.clear()
             self.main_window.settings_factory.display_full_settings()
             self.main_window.refresh_sidebar_progress()
