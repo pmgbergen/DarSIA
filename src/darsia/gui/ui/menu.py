@@ -4,6 +4,7 @@ from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 
 from .recent_files import clear_recent_configs, get_recent_configs
 from .theme import get_theme
+from .wizards import WIZARD_REGISTRY
 
 
 class MenuBuilder:
@@ -54,19 +55,26 @@ class MenuBuilder:
         self.main_window.addAction(quit_action)
 
         settings_menu = menu_bar.addMenu("&Settings")
-        # Two views of the same config: guided first, then the full expert editor.
-        self.preprocessing_wizard_action = self._add_action(
-            settings_menu,
-            "Preprocessing &Wizard...",
-            self.main_window.open_preprocessing_wizard,
-        )
-        settings_menu.addSeparator()
+        # Expert-mode view of the config; the guided view is the Wizard menu below.
         self.open_full_config_action = self._add_action(
             settings_menu,
             "Open &Full Config",
             self.main_window._on_open_full_config,
             "Ctrl+E",
         )
+
+        # One action per registered wizard (see wizards.py) — adding a wizard for
+        # a new category needs no change here, it just appears the next time the
+        # menu is built.
+        wizard_menu = menu_bar.addMenu("&Wizard")
+        self.wizard_actions: dict[str, QAction] = {}
+        for category, (_module, _cls, label) in WIZARD_REGISTRY.items():
+            action = self._add_action(
+                wizard_menu,
+                f"Run {label} Wizard...",
+                partial(self.main_window.open_wizard_for, category),
+            )
+            self.wizard_actions[category] = action
 
         run_menu = menu_bar.addMenu("&Run")
         self.play_action = self._add_action(
@@ -85,6 +93,15 @@ class MenuBuilder:
             "Ctrl+Escape",
         )
         self.stop_action.setEnabled(False)
+        # Opens the wizard for whichever sidebar category is currently selected
+        # (companion to Run/Stop above) — enabled only while that category
+        # actually has one registered; see main_window._sync_wizard_action_state.
+        self.current_wizard_action = self._add_action(
+            run_menu,
+            "Run &Category Wizard",
+            self.main_window.open_current_wizard,
+        )
+        self.current_wizard_action.setEnabled(False)
 
         view_menu = menu_bar.addMenu("&View")
         theme_menu = view_menu.addMenu("Switch &Theme")

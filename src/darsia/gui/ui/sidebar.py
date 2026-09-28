@@ -351,6 +351,7 @@ class Sidebar(QWidget):
     """Main sidebar widget: accordion of categories, single-select items."""
 
     selection_changed = Signal(str, str)  # (action, checkbox_id)
+    expanded_changed = Signal(str, bool)  # (action, is_expanded)
 
     def __init__(self, categories_data: dict):
         """
@@ -411,12 +412,18 @@ class Sidebar(QWidget):
             self.selection_changed.emit(action, checkbox_id)
 
     def _on_expanded_changed(self, action: str, is_expanded: bool):
-        """Accordion behavior: expanding one section collapses all others."""
-        if not is_expanded:
-            return
-        for other_action, section in self._sections.items():
-            if other_action != action:
-                section.set_expanded(False)
+        """Accordion behavior: expanding one section collapses all others.
+
+        Also re-emits outward (same pattern as _on_selection_changed) so
+        external wiring can treat opening a category's header alone -- with no
+        item picked yet -- as enough to make it "active" (e.g. unlocking the
+        wizard button for that category).
+        """
+        if is_expanded:
+            for other_action, section in self._sections.items():
+                if other_action != action:
+                    section.set_expanded(False)
+        self.expanded_changed.emit(action, is_expanded)
 
     def select(self, action: str, checkbox_id: str):
         """Public API: programmatically select a row."""

@@ -15,6 +15,7 @@ _QTA_ICONS = {
     "open": "fa5s.folder-open",
     "save": "fa5s.save",
     "settings": "fa5s.sliders-h",
+    "wizard": "fa5s.magic",
     "play": "fa5s.play",
     "stop": "fa5s.stop",
     "stream": "fa5s.stream",
@@ -55,6 +56,14 @@ class ToolbarBuilder:
         toolbar.addAction(self.menu_builder.open_action)
         toolbar.addAction(self.menu_builder.save_action)
         toolbar.addAction(self.menu_builder.open_full_config_action)
+
+        # Wizard-wand button: opens the guided wizard for whichever sidebar
+        # category is currently selected. Greyed out (see icons.themed_icon's
+        # baked-in disabled color) whenever that category has none registered.
+        toolbar.addSeparator()
+        self.wizard_action = self.menu_builder.current_wizard_action
+        self._configure(self.wizard_action, "wizard", "Run Wizard for Current Category")
+        toolbar.addAction(self.wizard_action)
 
         # Add separator and Play/Stop actions for workflow control (created by
         # MenuBuilder so they also appear, with shortcuts, in the Run menu).
