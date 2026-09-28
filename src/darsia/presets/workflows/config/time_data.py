@@ -22,6 +22,7 @@ class TimeInterval:
             "placeholder": "Start time HH:MM:SS",
             "group": "Interval",
             "widget": "time",
+            "required": True,
         },
     )
     """Start time of the interval, relative to experiment start, in HH:MM:SS format."""
@@ -33,6 +34,7 @@ class TimeInterval:
             "placeholder": "End time HH:MM:SS",
             "group": "Interval",
             "widget": "time",
+            "required": True,
         },
     )
     """End time of the interval, relative to experiment start, in HH:MM:SS format."""
@@ -138,6 +140,7 @@ class TimeWindow:
             "help": "Start time of window (HH:MM:SS format or hours).",
             "group": "Window",
             "widget": "time",
+            "required": True,
         },
     )
     """Start time of the window, relative to experiment start, in HH:MM:SS format."""
@@ -148,6 +151,7 @@ class TimeWindow:
             "help": "End time of window (HH:MM:SS format or hours).",
             "group": "Window",
             "widget": "time",
+            "required": True,
         },
     )
     """End time of the window, relative to experiment start, in HH:MM:SS format."""
@@ -261,28 +265,35 @@ class ImageTimeIntervalData:
         """Load time intervals from config section."""
         try:
             intervals_sec = _get_section(sec, "interval")
-            for interval_key in intervals_sec.keys():
-                interval_data = intervals_sec[interval_key]
+        except KeyError:
+            return self
 
+        for interval_key in intervals_sec.keys():
+            interval_data = intervals_sec[interval_key]
+
+            try:
                 start = _get_key(interval_data, "start", required=True)
                 end = _get_key(interval_data, "end", required=True)
                 step = _get_key(interval_data, "step", required=False)
                 num = _get_key(interval_data, "num", required=False, type_=int)
                 tol = _get_key(interval_data, "tol", required=False)
+            except KeyError as e:
+                logger.warning(
+                    "Skipping malformed [interval] entry '%s': %s", interval_key, e
+                )
+                continue
 
-                # Route to TimeWindow only if both num and step are absent
-                if num is None and step is None:
-                    self.windows[interval_key] = TimeWindow(
-                        start=start,
-                        end=end,
-                    )
-                else:
-                    # Create TimeInterval; resolved_num will derive from step if needed
-                    self.intervals[interval_key] = TimeInterval(
-                        start=start, end=end, step=step, num=num, tol=tol
-                    )
-        except KeyError:
-            pass
+            # Route to TimeWindow only if both num and step are absent
+            if num is None and step is None:
+                self.windows[interval_key] = TimeWindow(
+                    start=start,
+                    end=end,
+                )
+            else:
+                # Create TimeInterval; resolved_num will derive from step if needed
+                self.intervals[interval_key] = TimeInterval(
+                    start=start, end=end, step=step, num=num, tol=tol
+                )
 
         return self
 

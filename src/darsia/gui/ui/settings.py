@@ -1440,11 +1440,19 @@ class SettingsFactory:
         if placeholder:
             setting_edit.setPlaceholderText(placeholder)
 
+        required = bool(setting_dict.get("required"))
+
         # Wire normalization on blur
         def normalize_time():
             text = setting_edit.text().strip()
             if not text:
-                return  # Allow blank for optional fields
+                if required:
+                    setting_edit.setStyleSheet("border: 1px solid #d32f2f;")
+                    setting_edit.setToolTip(f"{display_name} is required.")
+                else:
+                    setting_edit.setStyleSheet("")
+                    setting_edit.setToolTip("")
+                return
             try:
                 normalized = _normalize_time_string(text)
                 setting_edit.setText(normalized)
@@ -2574,7 +2582,11 @@ class SettingsFactory:
                                     except (ValueError, SyntaxError):
                                         pass
                                 elif field_type == "time":
-                                    # Time fields: normalize and store as canonical string
+                                    # Time fields: normalize and store as canonical string.
+                                    # Required fields are always written, even when the
+                                    # entered value equals the schema default (e.g. a
+                                    # start time of "00:00:00") — omitting it here would
+                                    # silently drop a value the user explicitly set.
                                     try:
                                         from darsia.presets.workflows.config.utils import (
                                             _normalize_time_string,
@@ -2583,9 +2595,9 @@ class SettingsFactory:
                                         extracted_value = _normalize_time_string(
                                             text_value
                                         )
-                                        should_include = (
-                                            extracted_value != field_default
-                                        )
+                                        should_include = field_schema.get(
+                                            "required"
+                                        ) or (extracted_value != field_default)
                                     except (ValueError, AssertionError):
                                         pass
                                 else:

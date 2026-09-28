@@ -204,6 +204,12 @@ class DataRegistry:
                     self.interval_registry[entry_name] = next(
                         iter(interval_data.intervals.values())
                     )
+                else:
+                    logger.warning(
+                        "DataRegistry: [[data_interval]] entry '%s' did not resolve "
+                        "to a usable interval and was not registered.",
+                        entry_name,
+                    )
 
             # --- data_window array ---
             window_entries = toml_data.get("data_window", [])
@@ -235,6 +241,12 @@ class DataRegistry:
                 if window_data.windows:
                     self.window_registry[entry_name] = next(
                         iter(window_data.windows.values())
+                    )
+                else:
+                    logger.warning(
+                        "DataRegistry: [[data_window]] entry '%s' did not resolve "
+                        "to a usable window and was not registered.",
+                        entry_name,
                     )
 
             # --- data_time array ---
