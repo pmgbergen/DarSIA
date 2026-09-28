@@ -715,3 +715,30 @@ class SimpleFluidFlower:
         return img.subregion(
             roi=darsia.CoordinateArray([[0, 0], [self.width, self.water_height]])
         )
+
+    def to_image(self, array: np.ndarray, restricted: bool = False) -> darsia.Image:
+        """Wrap a raw array as a darsia.ScalarImage using this rig's own geometry.
+
+        Uses self.baseline's geometry (or its water-height-restricted counterpart),
+        so any array sharing the corresponding pixel grid -- e.g. a concentration
+        field or a simulation result reprojected onto the same grid -- is tagged
+        with physically consistent metadata.
+
+        Parameters
+        ----------
+        array : np.ndarray
+            Raw array, on the same pixel grid as self.baseline (or its restriction).
+        restricted : bool
+            Whether array is on the water-height-restricted grid.
+
+        Returns
+        -------
+        darsia.ScalarImage
+            array wrapped with this rig's geometry.
+        """
+        reference = (
+            self.restrict_to_water_height(self.baseline)
+            if restricted
+            else self.baseline
+        )
+        return darsia.ScalarImage(array, **reference.metadata())
