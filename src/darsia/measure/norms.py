@@ -10,7 +10,9 @@ import scipy.sparse as sps
 import darsia
 
 
-def _difference(img_1: darsia.Image, img_2: darsia.Image) -> tuple[darsia.Grid, np.ndarray]:
+def _difference(
+    img_1: darsia.Image, img_2: darsia.Image
+) -> tuple[darsia.Grid, np.ndarray]:
     """Common setup for the norm-based distances below.
 
     Parameters
@@ -36,7 +38,9 @@ def _difference(img_1: darsia.Image, img_2: darsia.Image) -> tuple[darsia.Grid, 
     return grid, diff
 
 
-def _weighted_cell_mass(grid: darsia.Grid, weight: Optional[darsia.Image]) -> sps.spmatrix:
+def _weighted_cell_mass(
+    grid: darsia.Grid, weight: Optional[darsia.Image]
+) -> sps.spmatrix:
     """Cell mass matrix, optionally scaled by a cell-wise weight."""
     mass_matrix_cells = darsia.FVMass(grid).mat
     if weight is None:
