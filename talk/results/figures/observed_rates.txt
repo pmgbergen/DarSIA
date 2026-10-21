@@ -1,0 +1,40 @@
+box_axis  N       -0.01 -0.03 -0.05
+box_axis  F       -0.00 -0.01 -0.00
+box_axis  C       -0.94  0.04  0.02
+box_axis  RT/cell -0.25 -2.01 -3.52
+box_diag  N        0.00 -0.00 -0.00
+box_diag  F        0.08  0.34  0.95
+box_diag  C       -0.96 -0.01 -0.03
+box_diag  RT/cell  1.81  1.75  1.69
+wall      N        0.02  0.03  0.06
+wall      F        0.90  0.96  1.00
+wall      C       -0.86  0.83  0.92
+wall      RT/cell  1.01  1.02
+eps N: W(eps_min=1.0e-05) = 0.500006, exact 0.353553
+eps F: W(eps_min=1.0e-05) = 0.353566, exact 0.353553
+eps C: W(eps_min=9.8e-04) = 0.353924, exact 0.353553
+box_diag N: L-scheme observed slope eps^-1.79
+box_diag F: L-scheme observed slope eps^-1.47
+box_diag C: L-scheme observed slope eps^-1.67
+wall N: L-scheme observed slope eps^-1.78
+wall F: L-scheme observed slope eps^-1.38
+wall C: L-scheme observed slope eps^-0.86
+balance wall F n=40: error at eps_min=1.0e-04: 9.06e-02; eps* (eps-error = h-error) = 6.1e-02
+balance wall F n=80: error at eps_min=1.0e-04: 4.45e-02; eps* (eps-error = h-error) = 2.8e-02
+balance wall F n=160: error at eps_min=1.0e-04: 2.20e-02; eps* (eps-error = h-error) = 1.3e-02
+balance wall C n=40: error at eps_min=1.0e-04: 2.35e-02; eps* (eps-error = h-error) = 1.5e-02
+balance wall C n=80: error at eps_min=1.0e-04: 1.17e-02; eps* (eps-error = h-error) = 6.9e-03
+balance wall C n=160: error at eps_min=1.0e-04: 5.87e-03; eps* (eps-error = h-error) = 3.4e-03
+balance box_diag F n=32: error at eps_min=1.0e-04: 1.94e-03; eps* (eps-error = h-error) = 2.0e-03
+balance box_diag F n=64: error at eps_min=1.0e-04: 5.31e-04; eps* (eps-error = h-error) = 6.0e-04
+balance box_diag F n=128: error at eps_min: 2.06e-04; no plateau (eps-limited down to eps_min)
+balance box_diag C n=32: error at eps_min: 1.05e-04; no plateau (eps-limited down to eps_min)
+balance box_diag C n=64: error at eps_min: 1.07e-04; no plateau (eps-limited down to eps_min)
+balance box_diag C n=128: error at eps_min: 1.08e-04; no plateau (eps-limited down to eps_min)
+workprec F n=40: err=9.060e-02 time=2s it=76 conv=True
+workprec F n=80: err=4.449e-02 time=8s it=163 conv=True
+workprec F n=160: err=2.202e-02 time=44s it=341 conv=True
+workprec F n=320: err=1.102e-02 time=291s it=495 conv=True
+workprec C n=40: err=2.353e-02 time=5s it=142 conv=True
+workprec C n=80: err=1.166e-02 time=26s it=244 conv=True
+workprec C n=160: err=5.870e-03 time=191s it=454 conv=True

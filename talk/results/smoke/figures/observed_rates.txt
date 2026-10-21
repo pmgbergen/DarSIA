@@ -1,0 +1,6 @@
+balance wall F n=40: error at eps_min=1.0e-02: 1.08e-01; eps* (eps-error = h-error) = 9.3e-02
+balance wall C n=40: error at eps_min=1.0e-02: 3.97e-02; eps* (eps-error = h-error) = 3.8e-02
+balance box_diag F n=32: error at eps_min=1.0e-02: 1.16e-02; eps* (eps-error = h-error) = 2.2e-02
+balance box_diag C n=32: error at eps_min=1.0e-02: 1.02e-02; eps* (eps-error = h-error) = 2.1e-02
+workprec F n=40: err=1.077e-01 time=1s it=43 conv=True
+workprec C n=40: err=3.975e-02 time=5s it=58 conv=True
