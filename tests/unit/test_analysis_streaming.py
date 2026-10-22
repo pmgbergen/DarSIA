@@ -7,7 +7,6 @@ from types import SimpleNamespace
 import numpy as np
 
 import darsia
-from darsia import make_coordinate
 from darsia.presets.workflows.analysis.analysis_thresholding import (
     analysis_thresholding_from_context,
 )
@@ -19,6 +18,18 @@ from darsia.presets.workflows.analysis.streaming import (
 from darsia.presets.workflows.config.analysis import AnalysisThresholdingConfig
 from darsia.presets.workflows.config.roi import RoiConfig
 from darsia.presets.workflows.user_interface_analysis import run_analysis
+
+
+class _FakeCoordinateSystem:
+    """Minimal coordinatesystem stub for thresholding-extent tests.
+
+    Thresholding's extent tracking only needs `.coordinate(voxel)` to return
+    something array-like with the same number of rows; these tests assert on
+    exported files, not extent values, so an identity mapping suffices.
+    """
+
+    def coordinate(self, voxel: np.ndarray) -> np.ndarray:
+        return np.asarray(voxel, dtype=float)
 
 
 def test_encode_low_resolution_png_handles_scalar_and_color_arrays() -> None:
@@ -183,15 +194,16 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
         sec={
             "thresholding": {
                 "formats": ["jpg", "npz"],
-                "layer": {
-                    "gas": {
+                "layers": [
+                    {
+                        "name": "gas",
                         "mode": "saturation_g",
                         "threshold_min": 0.2,
                         "label": "Gas plume",
                         "fill": [255, 0, 0],
                         "stroke": [255, 255, 255],
                     }
-                },
+                ],
             }
         },
         results=tmp_path,
@@ -203,6 +215,9 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
     class _FakeImage:
         def __init__(self, img: np.ndarray) -> None:
             self.img = img
+            self.time = 0.0
+            self.date = None
+            self.coordinatesystem = _FakeCoordinateSystem()
 
     class _FakeFluidFlower:
         def read_image(self, path: Path) -> _FakeImage:
@@ -271,13 +286,14 @@ def test_thresholding_supports_rescaled_layer_modes(
         sec={
             "thresholding": {
                 "formats": ["npz"],
-                "layer": {
-                    "rescaled": {
+                "layers": [
+                    {
+                        "name": "rescaled",
                         "mode": "rescaled_mass",
                         "threshold_min": 0.2,
                         "label": "Rescaled mass plume",
                     }
-                },
+                ],
             }
         },
         results=tmp_path,
@@ -288,7 +304,9 @@ def test_thresholding_supports_rescaled_layer_modes(
     class _FakeImage:
         def __init__(self) -> None:
             self.img = np.zeros((16, 24, 3), dtype=np.uint8)
+            self.time = 0.0
             self.date = None
+            self.coordinatesystem = _FakeCoordinateSystem()
 
     class _FakeFluidFlower:
         def __init__(self) -> None:
@@ -358,13 +376,14 @@ def test_thresholding_applies_expert_knowledge_constraints(
         sec={
             "thresholding": {
                 "formats": ["npz"],
-                "layer": {
-                    "gas": {
+                "layers": [
+                    {
+                        "name": "gas",
                         "mode": "saturation_g",
                         "threshold_min": 0.1,
                         "label": "Gas plume",
                     }
-                },
+                ],
             }
         },
         results=tmp_path,
@@ -380,7 +399,9 @@ def test_thresholding_applies_expert_knowledge_constraints(
     class _FakeImage:
         def __init__(self) -> None:
             self.img = np.zeros((16, 24, 3), dtype=np.uint8)
+            self.time = 0.0
             self.date = None
+            self.coordinatesystem = _FakeCoordinateSystem()
 
     class _FakeFluidFlower:
         def read_image(self, path: Path) -> _FakeImage:
