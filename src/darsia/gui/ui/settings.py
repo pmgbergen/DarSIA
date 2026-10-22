@@ -1517,6 +1517,12 @@ class SettingsFactory:
     def create_dropdown_input(self, setting_dict):
         """Create a combobox input with predefined options.
 
+        By default the combobox is a closed choice (not editable). Fields that also
+        accept values outside the fixed `options` list (e.g. a mode field that offers
+        common presets but also accepts a free-form registry reference) can opt in via
+        `metadata={"editable": True}`, which lets the user type a custom value while
+        still offering the preset list as suggestions.
+
         Returns (label_text, field_widget) where field_widget is a composite HBox:
         [setting_combo (stretch=1), help_button_or_spacer (fixed 40px)]
         """
@@ -1529,12 +1535,18 @@ class SettingsFactory:
         options = setting_dict["options"]
         setting_combo = QComboBox()
         setting_combo.addItems([str(option) for option in options])
+        setting_combo.setEditable(bool(setting_dict.get("editable")))
 
         if value is not None:
             value = str(value)
             index = setting_combo.findText(value)
             if index >= 0:
                 setting_combo.setCurrentIndex(index)
+            elif setting_combo.isEditable():
+                # Not one of the preset options, but the field accepts free-form
+                # values (e.g. a custom "color.<id>" reference) — show it as-is
+                # rather than silently falling back to the first preset.
+                setting_combo.setCurrentText(value)
 
         # Build composite field widget with help button
         field_widget = QWidget()
@@ -2553,8 +2565,12 @@ class SettingsFactory:
                             text_value = unwrapped_widget.currentText().strip()
                             if text_value:
                                 extracted_value = text_value
-                                # Omit if equals default
-                                should_include = extracted_value != field_default
+                                # Required fields are always written, even when the
+                                # selected/typed value equals the schema default (see
+                                # the "time" branch above for the same issue/fix).
+                                should_include = field_schema.get("required") or (
+                                    extracted_value != field_default
+                                )
                         elif isinstance(unwrapped_widget, QLineEdit):
                             text_value = unwrapped_widget.text().strip()
                             if text_value:
@@ -2601,9 +2617,15 @@ class SettingsFactory:
                                     except (ValueError, AssertionError):
                                         pass
                                 else:
-                                    # String fields: store as string, omit if equals default
+                                    # String fields: store as string. Required fields are
+                                    # always written, even when the entered value equals
+                                    # the schema default — omitting it here would silently
+                                    # drop a value the user explicitly set (see the "time"
+                                    # branch above for the same issue/fix).
                                     extracted_value = text_value
-                                    should_include = extracted_value != field_default
+                                    should_include = field_schema.get("required") or (
+                                        extracted_value != field_default
+                                    )
 
                         if should_include and extracted_value is not None:
                             entry_dict[field_name] = extracted_value
