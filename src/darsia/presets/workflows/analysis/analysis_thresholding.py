@@ -11,6 +11,7 @@ from typing import Any
 
 import cv2
 import numpy as np
+import pandas as pd
 
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import (
@@ -192,6 +193,19 @@ def analysis_thresholding_from_context(
     need_rescaled = requires_rescaled_modes(requested_modes)
     exporter = ImageExportFormats(config, thresholding_config.formats)
 
+    # Extent tracking: one combined CSV for all layers' x/y mask extent, under
+    # <results>/sparse_data/, following the same sparse-CSV pattern as mass/volume.
+    extent_enabled = thresholding_config.compute_extent and len(layer_names) > 0
+    if extent_enabled:
+        extent_columns = ["time", "datetime", "image_stem"]
+        for layer_name in layer_names:
+            extent_columns += [f"{layer_name}_extent_x", f"{layer_name}_extent_y"]
+        extent_df = pd.DataFrame(columns=extent_columns)
+        extent_csv_path = (
+            config.data.results / "sparse_data" / "thresholding_extent.csv"
+        )
+        extent_csv_path.parent.mkdir(parents=True, exist_ok=True)
+
     # Loop over images and apply thresholding for each layer.
     step_started_at = time.monotonic()
     image_total = len(image_paths)
@@ -237,6 +251,13 @@ def analysis_thresholding_from_context(
         img_bgr = _to_bgr_array(img)
         master_preview = img_bgr.copy()
 
+        if extent_enabled:
+            extent_row: dict[str, Any] = {
+                "time": img.time,
+                "datetime": img.date,
+                "image_stem": path.stem,
+            }
+
         for layer_name, layer in thresholding_config.layers.items():
             mode_image = resolve_mode_image(
                 layer.mode,
@@ -257,6 +278,42 @@ def analysis_thresholding_from_context(
                 mask = (scalar >= threshold_min).astype(np.uint8)
             elif threshold_max is not None:
                 mask = (scalar <= threshold_max).astype(np.uint8)
+
+            if extent_enabled:
+                # Measure only the largest connected component of the mask, not every
+                # thresholded pixel — a single stray/noisy pixel far from the real
+                # plume would otherwise dominate a plain min/max bounding box. Mirrors
+                # ContourAnalysis.reduce_to_main_contour's "largest area wins" logic
+                # (single_image_analysis/contouranalysis.py), adapted for a dense mask
+                # via connected-component labeling instead of contour extraction.
+                num_cc, cc_labels, cc_stats, _ = cv2.connectedComponentsWithStats(
+                    mask, connectivity=8
+                )
+                main_label = None
+                if num_cc > 1:
+                    # Label 0 is background; pick the largest foreground component.
+                    areas = cc_stats[1:, cv2.CC_STAT_AREA]
+                    main_label = 1 + int(np.argmax(areas))
+
+                if main_label is not None:
+                    pixels = np.argwhere(cc_labels == main_label)
+                    # argwhere already gives (row, col), which is exactly what
+                    # coordinatesystem.coordinate() expects (see its docstring:
+                    # "from (row,col) to (x,y)") — no flip here. (Unlike
+                    # analysis_fingers.py's contour-derived points, which come from
+                    # cv2 in (x, y)/(col, row) order and genuinely need flipping
+                    # first; argwhere's native order needs no such correction.)
+                    coords = img.coordinatesystem.coordinate(darsia.Voxel(pixels))
+                    extent_row[f"{layer_name}_extent_x"] = float(
+                        coords[:, 0].max() - coords[:, 0].min()
+                    )
+                    extent_row[f"{layer_name}_extent_y"] = float(
+                        coords[:, 1].max() - coords[:, 1].min()
+                    )
+                else:
+                    # No (meaningfully sized) region detected: zero extent, not NaN.
+                    extent_row[f"{layer_name}_extent_x"] = 0.0
+                    extent_row[f"{layer_name}_extent_y"] = 0.0
 
             mask_image = darsia.ScalarImage(img=mask)
             exporter.export_image(
@@ -311,6 +368,12 @@ def analysis_thresholding_from_context(
                 fill_alpha=layer.fill_alpha,
                 stroke_width=layer.stroke_width,
             )
+
+        if extent_enabled:
+            new_row = pd.DataFrame([extent_row])
+            extent_df = pd.concat([extent_df, new_row], ignore_index=True)
+            extent_df.sort_values(by="time", inplace=True)
+            extent_df.to_csv(extent_csv_path, index=False)
 
         master_preview = _apply_legend(
             master_preview,

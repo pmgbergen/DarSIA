@@ -313,6 +313,18 @@ class AnalysisThresholdingConfig:
         default_factory=dict,
         metadata={"name": "Layers", "widget": "dataclass_group_map"},
     )
+    compute_extent: bool = field(
+        default=True,
+        metadata={
+            "name": "Compute extent",
+            "help": (
+                "Track each layer's mask extent (bounding-box length in x and y, "
+                "restricted to the largest connected region to ignore noise) and "
+                "append it to a combined CSV under <results>/sparse_data/."
+            ),
+        },
+    )
+    """Whether to track and export per-layer mask extent (x/y) as a sparse CSV."""
     legend: AnalysisThresholdingLegendConfig = field(
         default_factory=AnalysisThresholdingLegendConfig, metadata={"name": "Legend"}
     )
@@ -371,6 +383,10 @@ class AnalysisThresholdingConfig:
                 for entry in raw_layers
                 if entry.get("name")
             }
+        self.compute_extent = _get_key(
+            sub_sec, "compute_extent", required=False, default=True, type_=bool
+        )
+
         legend = _get_key(sub_sec, "legend", required=False, default={})
         if not isinstance(legend, dict):
             raise ValueError("analysis.thresholding.legend must be a table/dict.")
