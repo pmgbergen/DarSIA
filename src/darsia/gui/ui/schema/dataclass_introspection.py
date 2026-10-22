@@ -344,6 +344,7 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "help": field.metadata.get("help", None),
                 "link": field.metadata.get("link", None),
                 "options": field.metadata.get("options", None),
+                "editable": field.metadata.get("editable", None),
                 "placeholder": field.metadata.get("placeholder", None),
                 "default": _field_default(field),
                 "required": field.metadata.get("required", False),
