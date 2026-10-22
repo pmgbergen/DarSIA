@@ -73,13 +73,15 @@ def test_analysis_thresholding_layers_and_formats_are_loaded(tmp_path: Path) -> 
 [analysis]
 [analysis.thresholding]
 formats = ["jpg", "npz"]
-[analysis.thresholding.layer.gas]
+[[analysis.thresholding.layers]]
+name = "gas"
 mode = "saturation_g"
 threshold_min = 0.15
 label = "Gas plume"
 fill = [255, 0, 0]
 stroke = [255, 255, 255]
-[analysis.thresholding.layer.aq]
+[[analysis.thresholding.layers]]
+name = "aq"
 mode = "concentration_aq"
 threshold_max = 0.05
 label = "Aqueous plume"
@@ -119,7 +121,8 @@ def test_analysis_thresholding_rejects_invalid_layer_mode(tmp_path: Path) -> Non
         """
 [analysis]
 [analysis.thresholding]
-[analysis.thresholding.layer.bad]
+[[analysis.thresholding.layers]]
+name = "bad"
 mode = "not_supported"
 threshold_min = 0.1
 """.strip(),
@@ -147,7 +150,8 @@ def test_analysis_thresholding_rejects_invalid_formats(tmp_path: Path) -> None:
 [analysis]
 [analysis.thresholding]
 formats = ["jpg", "xyz"]
-[analysis.thresholding.layer.gas]
+[[analysis.thresholding.layers]]
+name = "gas"
 mode = "saturation_g"
 threshold_min = 0.1
 """.strip(),
@@ -184,19 +188,24 @@ range = [[0.0, 1.0], [0.2, 0.8], [0.0, 1.0]]
 [analysis]
 
 [analysis.thresholding]
-[analysis.thresholding.layer.mass_rescaled]
+[[analysis.thresholding.layers]]
+name = "mass_rescaled"
 mode = "rescaled_mass"
 threshold_min = 0.1
-[analysis.thresholding.layer.gas_rescaled]
+[[analysis.thresholding.layers]]
+name = "gas_rescaled"
 mode = "rescaled_saturation_g"
 threshold_min = 0.1
-[analysis.thresholding.layer.aq_rescaled]
+[[analysis.thresholding.layers]]
+name = "aq_rescaled"
 mode = "rescaled_concentration_aq"
 threshold_min = 0.1
-[analysis.thresholding.layer.red]
+[[analysis.thresholding.layers]]
+name = "red"
 mode = "red_channel"
 threshold_min = 0.2
-[analysis.thresholding.layer.green_band]
+[[analysis.thresholding.layers]]
+name = "green_band"
 mode = "green_band"
 threshold_min = 0.5
 """.strip(),
@@ -236,7 +245,8 @@ channel = "r"
 
 [analysis]
 [analysis.thresholding]
-[analysis.thresholding.layer.bad]
+[[analysis.thresholding.layers]]
+name = "bad"
 mode = "red_channel"
 threshold_min = 0.1
 """.strip(),
