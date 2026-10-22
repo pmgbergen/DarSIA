@@ -9,7 +9,11 @@ from typing import TYPE_CHECKING
 from warnings import warn
 
 import darsia
-from darsia.presets.workflows.mode_resolution import validate_mode_syntax
+from darsia.presets.workflows.mode_resolution import (
+    LEGACY_COLOR_TO_MASS_MODES,
+    SCALAR_PRODUCT_MODES,
+    validate_mode_syntax,
+)
 
 from ._key_list_sources import (
     COLOR_EMBEDDING_SOURCES,
@@ -171,95 +175,116 @@ class AnalysisThresholdingLegendConfig:
 
 
 @dataclass
+class ThresholdingLayerConfig:
+    """Configuration for a single thresholding layer.
+
+    Module-level (not nested in AnalysisThresholdingConfig) so the GUI schema
+    builder's forward-ref resolution (which evals annotations against the
+    defining module's globals) can find it for the `dict[str, ThresholdingLayerConfig]`
+    `layers` field below.
+    """
+
+    mode: str = field(
+        default="concentration_aq",
+        metadata={
+            "name": "Mode",
+            "help": (
+                "A fixed mass/concentration/saturation mode, or a custom 'color.<id>' "
+                "embedding defined under [color.*] (type it in if not listed)."
+            ),
+            "required": True,
+            "options": sorted(LEGACY_COLOR_TO_MASS_MODES | SCALAR_PRODUCT_MODES),
+            "editable": True,
+        },
+    )
+    threshold_min: float | None = field(
+        default=None, metadata={"name": "Min threshold"}
+    )
+    threshold_max: float | None = field(
+        default=None, metadata={"name": "Max threshold"}
+    )
+    label: str = field(
+        default="",
+        metadata={"name": "Label", "help": "Display name for this layer."},
+    )
+    fill: tuple[int, int, int] = field(
+        default=(255, 255, 255), metadata={"name": "Fill color"}
+    )
+    stroke: tuple[int, int, int] = field(
+        default=(0, 0, 0), metadata={"name": "Stroke color"}
+    )
+    fill_alpha: float = field(
+        default=0.35,
+        metadata={"name": "Fill opacity", "help": "Fill transparency [0-1]."},
+    )
+    stroke_width: int = field(
+        default=2,
+        metadata={"name": "Stroke width", "help": "Contour line thickness."},
+    )
+
+    def load(
+        self,
+        sec: dict,
+        *,
+        key: str,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
+    ) -> "ThresholdingLayerConfig":
+        self.mode = _get_key(sec, "mode", required=True, type_=str).strip()
+        validate_mode_syntax(
+            self.mode,
+            color_embedding_registry,
+            "analysis.thresholding.layer.{key}.mode",
+        )
+        self.threshold_min = _get_key(sec, "threshold_min", required=False)
+        self.threshold_max = _get_key(sec, "threshold_max", required=False)
+        if self.threshold_min is not None:
+            self.threshold_min = float(self.threshold_min)
+        if self.threshold_max is not None:
+            self.threshold_max = float(self.threshold_max)
+        if (
+            self.threshold_min is not None
+            and self.threshold_max is not None
+            and self.threshold_min > self.threshold_max
+        ):
+            raise ValueError(
+                f"analysis.thresholding.layer.{key} has threshold_min > threshold_max."
+            )
+        if self.threshold_min is None and self.threshold_max is None:
+            raise ValueError(
+                f"analysis.thresholding.layer.{key} must have at least one of "
+                "threshold_min or threshold_max."
+            )
+
+        self.label = _get_key(sec, "label", required=False, default=key, type_=str)
+        self.fill = _to_rgb(
+            _get_key(sec, "fill", required=False, default=self.fill),
+            f"analysis.thresholding.layer.{key}.fill",
+        )
+        self.stroke = _to_rgb(
+            _get_key(sec, "stroke", required=False, default=self.stroke),
+            f"analysis.thresholding.layer.{key}.stroke",
+        )
+        self.fill_alpha = float(
+            _get_key(sec, "fill_alpha", required=False, default=self.fill_alpha)
+        )
+        if not (0.0 <= self.fill_alpha <= 1.0):
+            raise ValueError(
+                f"analysis.thresholding.layer.{key}.fill_alpha must be in [0, 1]."
+            )
+        self.stroke_width = int(
+            _get_key(sec, "stroke_width", required=False, default=self.stroke_width)
+        )
+        if self.stroke_width < 0:
+            raise ValueError(
+                f"analysis.thresholding.layer.{key}.stroke_width must be >= 0."
+            )
+
+        return self
+
+
+@dataclass
 class AnalysisThresholdingConfig:
     """Configuration for thresholding analysis."""
-
-    @dataclass
-    class LayerConfig:
-        mode: str = field(default="concentration_aq", metadata={"name": "Mode"})
-        threshold_min: float | None = field(
-            default=None, metadata={"name": "Min threshold"}
-        )
-        threshold_max: float | None = field(
-            default=None, metadata={"name": "Max threshold"}
-        )
-        label: str = field(
-            default="",
-            metadata={"name": "Label", "help": "Display name for this layer."},
-        )
-        fill: tuple[int, int, int] = field(
-            default=(255, 255, 255), metadata={"name": "Fill color"}
-        )
-        stroke: tuple[int, int, int] = field(
-            default=(0, 0, 0), metadata={"name": "Stroke color"}
-        )
-        fill_alpha: float = field(
-            default=0.35,
-            metadata={"name": "Fill opacity", "help": "Fill transparency [0-1]."},
-        )
-        stroke_width: int = field(
-            default=2,
-            metadata={"name": "Stroke width", "help": "Contour line thickness."},
-        )
-
-        def load(
-            self,
-            sec: dict,
-            *,
-            key: str,
-            color_embedding_registry: ColorEmbeddingRegistry | None = None,
-        ) -> "AnalysisThresholdingConfig.LayerConfig":
-            self.mode = _get_key(sec, "mode", required=True, type_=str).strip()
-            validate_mode_syntax(
-                self.mode,
-                color_embedding_registry,
-                "analysis.thresholding.layer.{key}.mode",
-            )
-            self.threshold_min = _get_key(sec, "threshold_min", required=False)
-            self.threshold_max = _get_key(sec, "threshold_max", required=False)
-            if self.threshold_min is not None:
-                self.threshold_min = float(self.threshold_min)
-            if self.threshold_max is not None:
-                self.threshold_max = float(self.threshold_max)
-            if (
-                self.threshold_min is not None
-                and self.threshold_max is not None
-                and self.threshold_min > self.threshold_max
-            ):
-                raise ValueError(
-                    f"analysis.thresholding.layer.{key} has threshold_min > threshold_max."
-                )
-            if self.threshold_min is None and self.threshold_max is None:
-                raise ValueError(
-                    f"analysis.thresholding.layer.{key} must have at least one of "
-                    "threshold_min or threshold_max."
-                )
-
-            self.label = _get_key(sec, "label", required=False, default=key, type_=str)
-            self.fill = _to_rgb(
-                _get_key(sec, "fill", required=False, default=self.fill),
-                f"analysis.thresholding.layer.{key}.fill",
-            )
-            self.stroke = _to_rgb(
-                _get_key(sec, "stroke", required=False, default=self.stroke),
-                f"analysis.thresholding.layer.{key}.stroke",
-            )
-            self.fill_alpha = float(
-                _get_key(sec, "fill_alpha", required=False, default=self.fill_alpha)
-            )
-            if not (0.0 <= self.fill_alpha <= 1.0):
-                raise ValueError(
-                    f"analysis.thresholding.layer.{key}.fill_alpha must be in [0, 1]."
-                )
-            self.stroke_width = int(
-                _get_key(sec, "stroke_width", required=False, default=self.stroke_width)
-            )
-            if self.stroke_width < 0:
-                raise ValueError(
-                    f"analysis.thresholding.layer.{key}.stroke_width must be >= 0."
-                )
-
-            return self
 
     data_selection: str | list[str] | None = field(
         default=None,
@@ -284,8 +309,9 @@ class AnalysisThresholdingConfig:
             "format_types": {"jpg", "png", "npz", "npy", "csv"},
         },
     )
-    layers: dict[str, LayerConfig] = field(
-        default_factory=dict, metadata={"name": "Layers"}
+    layers: dict[str, ThresholdingLayerConfig] = field(
+        default_factory=dict,
+        metadata={"name": "Layers", "widget": "dataclass_group_map"},
     )
     legend: AnalysisThresholdingLegendConfig = field(
         default_factory=AnalysisThresholdingLegendConfig, metadata={"name": "Legend"}
@@ -328,18 +354,23 @@ class AnalysisThresholdingConfig:
             "[analysis.thresholding].formats",
         )
 
-        raw_layers = _get_key(sub_sec, "layer", required=False, default={})
-        if not isinstance(raw_layers, dict):
-            raise ValueError("analysis.thresholding.layer must be a table/dict.")
+        raw_layers = _get_key(sub_sec, "layers", required=False, default=None)
         self.layers = {}
-        if len(raw_layers) > 0:
-            for key in raw_layers.keys():
-                layer_sec = _get_section(raw_layers, key)
-                self.layers[key] = self.LayerConfig().load(
-                    layer_sec,
-                    key=key,
+        if raw_layers:
+            if not isinstance(raw_layers, list):
+                raise ValueError(
+                    "analysis.thresholding.layers must be an array of tables "
+                    "(use [[analysis.thresholding.layers]])."
+                )
+            self.layers = {
+                entry.get("name", ""): ThresholdingLayerConfig().load(
+                    entry,
+                    key=entry.get("name", ""),
                     color_embedding_registry=color_embedding_registry,
                 )
+                for entry in raw_layers
+                if entry.get("name")
+            }
         legend = _get_key(sub_sec, "legend", required=False, default={})
         if not isinstance(legend, dict):
             raise ValueError("analysis.thresholding.legend must be a table/dict.")
