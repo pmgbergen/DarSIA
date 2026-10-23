@@ -74,7 +74,7 @@ def _scalar_image_for_mode(
 
 def format_roi_template(corner_1: np.ndarray, corner_2: np.ndarray) -> str:
     return (
-        "[roi.roi_name]\n"
+        "[[roi]]\n"
         'name = "roi_name"\n'
         f"corner_1 = [{float(corner_1[0]):.8g}, {float(corner_1[1]):.8g}]\n"
         f"corner_2 = [{float(corner_2[0]):.8g}, {float(corner_2[1]):.8g}]\n"

@@ -21,7 +21,7 @@ helper_roi_module = importlib.import_module(
 
 def test_format_roi_template_contains_corner_values() -> None:
     template = format_roi_template(np.array([1.0, 2.0]), np.array([3.0, 4.0]))
-    assert "[roi.roi_name]" in template
+    assert "[[roi]]" in template
     assert 'name = "roi_name"' in template
     assert "corner_1 = [1, 2]" in template
     assert "corner_2 = [3, 4]" in template
