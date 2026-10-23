@@ -1,7 +1,8 @@
 """Unit tests for CorrectionsConfig and sub-config validation.
 
-Focuses specifically on the ResizeCorrectionConfig mode/scale/target_shape refactor
-and TOML round-trip loading. GUI schema metadata tests are in test_metadata_keywords.py.
+Focuses specifically on the ResizeCorrectionConfig mode/scale/target_shape refactor,
+the DriftCorrectionConfig/ColorCorrectionConfig colorchecker/roi mode selection, and
+TOML round-trip loading. GUI schema metadata tests are in test_metadata_keywords.py.
 """
 
 from pathlib import Path
@@ -9,9 +10,22 @@ from pathlib import Path
 import pytest
 
 from darsia.presets.workflows.config.corrections import (
+    ColorCorrectionConfig,
     CorrectionsConfig,
+    DriftCorrectionConfig,
     ResizeCorrectionConfig,
 )
+from darsia.presets.workflows.config.roi import RoiConfig
+from darsia.presets.workflows.config.roi_registry import RoiRegistry
+
+
+def _roi_registry_with(name: str) -> RoiRegistry:
+    """Helper: build a RoiRegistry with a single named entry."""
+    registry = RoiRegistry()
+    registry.register(
+        name, RoiConfig().load({"name": name, "corner_1": [0.0, 0.0], "corner_2": [1.0, 1.0]})
+    )
+    return registry
 
 
 def _write_toml(tmp_path: Path, content: str) -> Path:
@@ -115,6 +129,140 @@ class TestResizeCorrectionConfigLoad:
         # This should fail because mode defaults to 'scale' which requires scale to be set
         with pytest.raises(ValueError, match="mode='scale' requires 'scale' to be set"):
             CorrectionsConfig().load(cfg_path)
+
+
+class TestDriftCorrectionConfigLoad:
+    """Test DriftCorrectionConfig mode/colorchecker/roi validation in load()."""
+
+    def test_mode_colorchecker_with_value_valid(self):
+        """mode='colorchecker' with colorchecker set should load successfully."""
+        cfg = DriftCorrectionConfig().load(
+            {"mode": "colorchecker", "colorchecker": "upper_right"}
+        )
+        assert cfg.mode == "colorchecker"
+        assert cfg.colorchecker == "upper_right"
+        assert cfg.roi is None
+
+    def test_mode_defaults_to_colorchecker(self):
+        """Omitting mode should default to 'colorchecker'."""
+        cfg = DriftCorrectionConfig().load({"colorchecker": "upper_left"})
+        assert cfg.mode == "colorchecker"
+
+    def test_mode_colorchecker_without_value_raises(self):
+        """mode='colorchecker' without colorchecker set should raise ValueError."""
+        with pytest.raises(
+            ValueError, match="mode='colorchecker' requires 'colorchecker' to be set"
+        ):
+            DriftCorrectionConfig().load({"mode": "colorchecker"})
+
+    def test_mode_roi_with_value_valid(self):
+        """mode='roi' with a resolvable roi key should load successfully."""
+        cfg = DriftCorrectionConfig().load(
+            {"mode": "roi", "roi": "calibration"},
+            roi_registry=_roi_registry_with("calibration"),
+        )
+        assert cfg.mode == "roi"
+        assert cfg.roi == "calibration"
+        assert cfg.colorchecker is None
+
+    def test_mode_roi_without_value_raises(self):
+        """mode='roi' without roi set should raise ValueError."""
+        with pytest.raises(ValueError, match="mode='roi' requires 'roi' to be set"):
+            DriftCorrectionConfig().load({"mode": "roi"})
+
+    def test_invalid_mode_raises(self):
+        """Invalid mode value should raise ValueError."""
+        with pytest.raises(ValueError, match="mode must be 'colorchecker' or 'roi'"):
+            DriftCorrectionConfig().load({"mode": "invalid"})
+
+    def test_toml_defaults_to_colorchecker_mode(self, tmp_path):
+        """Old-style TOML with only colorchecker set (no mode key) should still load."""
+        cfg_path = _write_toml(
+            tmp_path, '[corrections.drift]\ncolorchecker = "upper_right"\n'
+        )
+        cfg = CorrectionsConfig().load(cfg_path)
+        assert cfg.drift is not None
+        assert cfg.drift.mode == "colorchecker"
+        assert cfg.drift.colorchecker == "upper_right"
+
+    def test_toml_round_trip_roi_mode(self, tmp_path):
+        """Full TOML load round-trip for roi mode."""
+        cfg_path = _write_toml(
+            tmp_path, '[corrections.drift]\nmode = "roi"\nroi = "calibration"\n'
+        )
+        cfg = CorrectionsConfig().load(
+            cfg_path, roi_registry=_roi_registry_with("calibration")
+        )
+        assert cfg.drift is not None
+        assert cfg.drift.mode == "roi"
+        assert cfg.drift.roi == "calibration"
+
+
+class TestColorCorrectionConfigLoad:
+    """Test ColorCorrectionConfig mode/colorchecker/roi validation in load()."""
+
+    def test_mode_colorchecker_with_value_valid(self):
+        """mode='colorchecker' with colorchecker set should load successfully."""
+        cfg = ColorCorrectionConfig().load(
+            {"mode": "colorchecker", "colorchecker": "upper_right"}
+        )
+        assert cfg.mode == "colorchecker"
+        assert cfg.colorchecker == "upper_right"
+        assert cfg.roi is None
+
+    def test_mode_defaults_to_colorchecker(self):
+        """Omitting mode should default to 'colorchecker'."""
+        cfg = ColorCorrectionConfig().load({"colorchecker": "upper_left"})
+        assert cfg.mode == "colorchecker"
+
+    def test_mode_colorchecker_without_value_raises(self):
+        """mode='colorchecker' without colorchecker set should raise ValueError."""
+        with pytest.raises(
+            ValueError, match="mode='colorchecker' requires 'colorchecker' to be set"
+        ):
+            ColorCorrectionConfig().load({"mode": "colorchecker"})
+
+    def test_mode_roi_with_value_valid(self):
+        """mode='roi' with a resolvable roi key should load successfully."""
+        cfg = ColorCorrectionConfig().load(
+            {"mode": "roi", "roi": "calibration"},
+            roi_registry=_roi_registry_with("calibration"),
+        )
+        assert cfg.mode == "roi"
+        assert cfg.roi == "calibration"
+        assert cfg.colorchecker is None
+
+    def test_mode_roi_without_value_raises(self):
+        """mode='roi' without roi set should raise ValueError."""
+        with pytest.raises(ValueError, match="mode='roi' requires 'roi' to be set"):
+            ColorCorrectionConfig().load({"mode": "roi"})
+
+    def test_invalid_mode_raises(self):
+        """Invalid mode value should raise ValueError."""
+        with pytest.raises(ValueError, match="mode must be 'colorchecker' or 'roi'"):
+            ColorCorrectionConfig().load({"mode": "invalid"})
+
+    def test_toml_defaults_to_colorchecker_mode(self, tmp_path):
+        """Old-style TOML with only colorchecker set (no mode key) should still load."""
+        cfg_path = _write_toml(
+            tmp_path, '[corrections.color]\ncolorchecker = "upper_left"\n'
+        )
+        cfg = CorrectionsConfig().load(cfg_path)
+        assert cfg.color is not None
+        assert cfg.color.mode == "colorchecker"
+        assert cfg.color.colorchecker == "upper_left"
+
+    def test_toml_round_trip_roi_mode(self, tmp_path):
+        """Full TOML load round-trip for roi mode."""
+        cfg_path = _write_toml(
+            tmp_path, '[corrections.color]\nmode = "roi"\nroi = "calibration"\n'
+        )
+        cfg = CorrectionsConfig().load(
+            cfg_path, roi_registry=_roi_registry_with("calibration")
+        )
+        assert cfg.color is not None
+        assert cfg.color.mode == "roi"
+        assert cfg.color.roi == "calibration"
 
 
 class TestCurvatureCorrectionConfigLoad:
