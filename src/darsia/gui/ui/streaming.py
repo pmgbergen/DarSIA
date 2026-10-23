@@ -32,7 +32,6 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QComboBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -46,6 +45,7 @@ from darsia.presets.workflows.analysis.streaming import try_decode_stream_notify
 from darsia.presets.workflows.results_folder import list_workflow_output_images
 
 from .image_canvas import ImageCanvas
+from .widgets import NoScrollComboBox
 
 _NO_SELECTION_TEXT = "Select a step to see its results."
 _NO_IMAGE_TEXT = "No image output yet for this step."
@@ -77,7 +77,7 @@ class StreamingPanel(QWidget):
         # (below, once the rest of the widgets exist): its handler calls
         # refresh_results(), which reads main_window state not yet set up
         # this early in MainWindow.__init__.
-        self.mode_selector = QComboBox()
+        self.mode_selector = NoScrollComboBox()
         self.mode_selector.addItems(["Streaming", "Results"])
         self.mode_selector.blockSignals(True)
         self.mode_selector.setCurrentText("Results")
@@ -87,7 +87,7 @@ class StreamingPanel(QWidget):
         self.status_label = QLabel("Streaming disabled.")
         layout.addWidget(self.status_label)
 
-        self.key_selector = QComboBox()
+        self.key_selector = NoScrollComboBox()
         self.key_selector.currentTextChanged.connect(self._on_key_changed)
         layout.addWidget(self.key_selector)
 

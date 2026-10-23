@@ -20,7 +20,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QMovie, QPalette, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QDialog,
     QFormLayout,
     QFrame,
@@ -47,6 +46,7 @@ from darsia.presets.workflows.config.protocols import (
 from .preprocessing import resolve_overwrite_conflicts
 from .schema.dataclass_introspection import get_section_fields
 from .theme import muted_text_color, success_color, theme_signal
+from .widgets import NoScrollComboBox
 
 ASSETS_DIR = Path(__file__).parent / "assets" / "preprocessing_wizard"
 NO_SERIES = "None — start blank"
@@ -548,7 +548,7 @@ class PreprocessingWizardDialog(QDialog):
         self._built_pages.add(index)
 
     def _fill_series_page(self, layout) -> None:
-        combo = QComboBox()
+        combo = NoScrollComboBox()
         combo.addItem(NO_SERIES)
         for name in self._catalogue.names():
             combo.addItem(name)
