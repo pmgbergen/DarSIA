@@ -135,7 +135,10 @@ def _format_list_text(value):
 class SettingsFactory:
     """Factory for creating settings input widgets and managing settings."""
 
-    # Multi-row widget types that need special handling (auto-grouped into their own box)
+    # Multi-row widget types that need special handling (auto-grouped into their own
+    # box). Exception: a "key_list" field with max_rows == 1 has nothing to add/remove,
+    # so every call site below explicitly excludes that case and renders it as a plain
+    # labeled row instead (see the "is_compact_key_list" checks).
     MULTI_ROW_TYPES = {
         "multi_file",
         "multi_folder",
@@ -406,8 +409,13 @@ class SettingsFactory:
         for setting in settings_list:
             setting_type = setting["type"]
             explicit_group = setting.get("group_name")
+            # A fixed single-selection key_list has nothing to add/remove, so render
+            # it as a plain labeled row like any scalar field instead of its own box.
+            is_compact_key_list = (
+                setting_type == "key_list" and setting.get("max_rows") == 1
+            )
 
-            if setting_type in self.MULTI_ROW_TYPES:
+            if setting_type in self.MULTI_ROW_TYPES and not is_compact_key_list:
                 own_name = setting.get("name", setting["key"].rsplit(".", 1)[-1])
                 auto_grouped = True
                 if explicit_group:
@@ -461,6 +469,21 @@ class SettingsFactory:
                     self.main_window.settings_inputs[sub_key] = sub_widget
                 # Track this group for depends_on wiring
                 unqualified_key = setting["key"].rsplit(".", 1)[-1]
+                field_row_map[unqualified_key] = (
+                    row_index,
+                    field_or_result,
+                    setting,
+                    target_form,
+                )
+            elif is_compact_key_list and isinstance(field_or_result, dict):
+                # Compact (max_rows=1) key_list field: no box wrapper, rendered as a
+                # normal labeled row, but still save-tagged like other multi-row
+                # results (it carries "rows"/"key_list" for _sync_settings_inputs...).
+                target_form.addRow(label_text, field_or_result["widget"])
+                wrapped = self._wrap_multi_row_result(field_or_result)
+                self.main_window.settings_inputs[setting["key"]] = wrapped
+                unqualified_key = setting["key"].rsplit(".", 1)[-1]
+                row_index = target_form.rowCount() - 1
                 field_row_map[unqualified_key] = (
                     row_index,
                     field_or_result,
@@ -878,10 +901,17 @@ class SettingsFactory:
                     # Handle multi-row key-list fields — need form_context to render
                     # the header/add-row UI
                     if field_schema.get("type") == "key_list":
-                        own_name = field_schema.get("name", field_name)
-                        target_form = self._get_or_create_group_form(
-                            group_forms, group_layout, own_name, own_name
-                        )
+                        # A fixed single-selection key_list has nothing to add/remove,
+                        # so render it as a plain labeled row like any scalar field
+                        # instead of its own box.
+                        is_compact_key_list = field_schema.get("max_rows") == 1
+                        if is_compact_key_list:
+                            target_form = group_layout
+                        else:
+                            own_name = field_schema.get("name", field_name)
+                            target_form = self._get_or_create_group_form(
+                                group_forms, group_layout, own_name, own_name
+                            )
                         # Temporarily inject entry value into config_dict so the widget's
                         # create_setting_edit can read it via get_value()
                         injected = (
@@ -903,7 +933,8 @@ class SettingsFactory:
                                 self.main_window.config_dict.pop("entry", None)
 
                         if isinstance(field_widget, dict) and "widget" in field_widget:
-                            target_form.addRow("", field_widget["widget"])
+                            row_label = label_text if is_compact_key_list else ""
+                            target_form.addRow(row_label, field_widget["widget"])
                             field_widgets[field_name] = self._wrap_multi_row_result(
                                 field_widget
                             )
@@ -1176,7 +1207,12 @@ class SettingsFactory:
         their ``type``. On save the selected names become a ``list[str]`` (or a bare
         ``str`` / ``None`` when ``max_rows == 1``).
 
-        Returns ``(display_name, {"widget": header, "key_list": True,
+        When ``max_rows == 1``, there is nothing to add or remove, so the widget is a
+        single compact row (dropdown + help button) instead of the usual header row
+        (Add button + help button) plus separate data row(s) with per-row Remove
+        buttons.
+
+        Returns ``(display_name, {"widget": header_or_row, "key_list": True,
         "rows": [combo, ...], "source_type_map": {name: section}, ["max_rows": n]})``.
         """
         key = setting_dict["key"]
@@ -1211,9 +1247,41 @@ class SettingsFactory:
         else:
             current_keys = []
 
-        # For single-value fields (max_rows=1), cap the selection
         if max_rows == 1:
-            current_keys = current_keys[:1]
+            # Compact single-row layout: a fixed selection of exactly one entry has
+            # nothing to add or remove, so skip the separate header/Add-button row and
+            # the per-row Remove button entirely, and put the help button directly next
+            # to the dropdown instead of alone in its own row.
+            selected_key = current_keys[0] if current_keys else ""
+            combo = NoScrollComboBox()
+            combo.setEditable(False)
+            all_options = list(available_keys)
+            if selected_key and selected_key not in all_options:
+                all_options.append(selected_key)
+                all_options.sort()
+            combo.addItems(all_options)
+            if selected_key:
+                combo.setCurrentText(selected_key)
+            elif all_options:
+                combo.setCurrentIndex(0)
+
+            row_widget = QWidget()
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(4)
+            row_layout.addWidget(combo, 1)
+            row_layout.addWidget(build_help_column(setting_dict))
+
+            return (
+                display_name,
+                {
+                    "widget": row_widget,
+                    "key_list": True,
+                    "rows": [combo],
+                    "source_type_map": source_type_map,
+                    "max_rows": 1,
+                },
+            )
 
         row_data_list = []
         row_combos = []  # List of QComboBox widgets for save_settings
@@ -1231,8 +1299,7 @@ class SettingsFactory:
         header_layout = QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.setSpacing(4)
-        if max_rows != 1:
-            header_layout.addWidget(add_button, stretch=1)
+        header_layout.addWidget(add_button, stretch=1)
         header_layout.addWidget(build_help_column(setting_dict))
         # The header row is inserted into the form by the caller (build_tab_form /
         # create_group_input / create_dataclass_group_map_input), so prefill is
@@ -1290,9 +1357,7 @@ class SettingsFactory:
             row_combos.append(combo)
             refresh_remove_buttons()
 
-        # Connect add button if not a single-value field
-        if max_rows != 1:
-            add_button.clicked.connect(lambda: add_row())
+        add_button.clicked.connect(lambda: add_row())
 
         # Defer pre-fill until after the caller inserts the header row, so
         # getWidgetPosition(header_widget) resolves.
@@ -2054,14 +2119,23 @@ class SettingsFactory:
         for sub_setting in setting_dict["fields"]:
             sub_setting_type = sub_setting.get("type")
             own_name = sub_setting.get("name", sub_setting["key"].rsplit(".", 1)[-1])
+            # A fixed single-selection key_list has nothing to add/remove, so render
+            # it as a plain labeled row like any scalar field instead of its own box.
+            is_compact_key_list = (
+                sub_setting_type == "key_list" and sub_setting.get("max_rows") == 1
+            )
 
             # Handle multi-row fields (multi_file, path_map, etc.) — create a sub-box inside
             # this group
-            if sub_setting_type in self.MULTI_ROW_TYPES:
-                # Create a sub-group box for this multi-row field inside the parent group
+            if sub_setting_type in self.MULTI_ROW_TYPES and not is_compact_key_list:
+                # Create a sub-group box for this multi-row field inside the parent group.
+                # _get_or_create_group_form adds this box as a single spanning row in
+                # group_form (not multi_row_form) — capture that row index now, since
+                # depends_on visibility toggling below always acts on group_form.
                 multi_row_form = self._get_or_create_group_form(
                     group_forms, group_form, own_name, own_name
                 )
+                group_form_row_index = group_form.rowCount() - 1
                 local_form_context = {"form": multi_row_form}
                 label_text, field_or_result = self.create_setting_edit(
                     sub_setting, local_form_context
@@ -2077,11 +2151,13 @@ class SettingsFactory:
                     )
                     # Track for depends_on wiring — lets other fields use this as a driver
                     # (store raw result_or_field, not the stripped _wrap_multi_row_result,
-                    # so source_type_map and rows stay accessible)
+                    # so source_type_map and rows stay accessible). Use the row index of
+                    # this field's own spanning row in group_form, not a row index inside
+                    # its nested multi_row_form - the visibility handler below always calls
+                    # group_form.setRowVisible(...).
                     unqualified_key = sub_setting["key"].rsplit(".", 1)[-1]
-                    row_index = multi_row_form.rowCount() - 1
                     field_row_map[unqualified_key] = (
-                        row_index,
+                        group_form_row_index,
                         field_or_result,
                         sub_setting,
                     )
@@ -2108,6 +2184,16 @@ class SettingsFactory:
                     sub_inputs[nested_key] = nested_widget_or_result
                 # Track nested groups for depends_on wiring (same as scalars)
                 unqualified_key = sub_setting["key"].rsplit(".", 1)[-1]
+                field_row_map[unqualified_key] = (row_index, field_widget, sub_setting)
+            elif is_compact_key_list and isinstance(field_widget, dict):
+                # Compact (max_rows=1) key_list field: no box wrapper, rendered as a
+                # normal labeled row, but still save-tagged like other multi-row
+                # results (it carries "rows"/"key_list" for _sync_settings_inputs...).
+                group_form.addRow(label_text, field_widget["widget"])
+                wrapped = self._wrap_multi_row_result(field_widget)
+                sub_inputs[sub_setting["key"]] = wrapped
+                unqualified_key = sub_setting["key"].rsplit(".", 1)[-1]
+                row_index = group_form.rowCount() - 1
                 field_row_map[unqualified_key] = (row_index, field_widget, sub_setting)
             else:
                 # Handle scalar fields normally
