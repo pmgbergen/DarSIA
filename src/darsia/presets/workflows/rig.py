@@ -5,6 +5,7 @@
 import json
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -22,7 +23,52 @@ from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.facies_props import FaciesProps
 from darsia.presets.workflows.setup.illustrations import save_scalar_map_illustration
 
+if TYPE_CHECKING:
+    from darsia.presets.workflows.config.roi_registry import RoiRegistry
+
 logger = logging.getLogger(__name__)
+
+
+def _resolve_named_roi_voxels(
+    roi_key: str | None,
+    roi_registry: "RoiRegistry | None",
+    image: darsia.Image,
+    as_landmarks: bool = False,
+) -> np.ndarray | None:
+    """Resolve a named ROI registry key to voxel coordinates for use as a
+    shape/color correction's 'roi' config value, as an alternative to
+    auto-detecting a color checker via :func:`darsia.find_colorchecker`.
+
+    Parameters
+    ----------
+    roi_key : str, optional
+        Registry key to resolve, or None to skip (caller falls back to
+        auto-detection).
+    roi_registry : RoiRegistry, optional
+        Registry to resolve `roi_key` against.
+    image : darsia.Image
+        Image providing the coordinate system for the physical-to-voxel
+        conversion (the registry stores ROIs in physical coordinates).
+    as_landmarks : bool
+        If True, return the box as 4 ordered corner voxels, anti-clockwise
+        from the top-left (row-min, col-min) corner - the convention
+        :class:`darsia.ColorCorrection` expects for its reference (brown
+        swatch) corner. If False, return the 2 box corners directly, which
+        is sufficient for :class:`darsia.DriftCorrection` (it collapses any
+        input to a bounding box anyway).
+
+    Returns
+    -------
+    np.ndarray or None
+        Voxel coordinates (matrix-indexed), or None if no key/registry given.
+    """
+    if roi_key is None or roi_registry is None:
+        return None
+    roi_config = roi_registry.resolve_rois([roi_key])[roi_key]
+    voxel_box = image.coordinatesystem.voxel(roi_config.roi)
+    if not as_landmarks:
+        return voxel_box
+    return darsia.bounding_box_inverse(darsia.bounding_box(voxel_box))
 
 # TODO keep log? or use results?
 
@@ -66,6 +112,7 @@ class Rig:
         baseline_path: Path,
         experiment: darsia.ProtocolledExperiment,
         corrections_config: CorrectionsConfig | None = None,
+        roi_registry: "RoiRegistry | None" = None,
         log: Path | None = None,
         show_plot: bool = False,
     ):
@@ -85,6 +132,7 @@ class Rig:
         self.setup_shape_corrections(
             pre_baseline=pre_baseline,
             corrections_config=corrections_config,
+            roi_registry=roi_registry,
         )
 
         # Define shape-corrected baseline.
@@ -168,6 +216,7 @@ class Rig:
         self,
         pre_baseline: darsia.Image,
         corrections_config: CorrectionsConfig | None = None,
+        roi_registry: "RoiRegistry | None" = None,
     ) -> None:
         """Setup shape corrections that do not depend on labels/porosity."""
         if corrections_config is None:
@@ -225,21 +274,32 @@ class Rig:
         """Resize for int data (labels/facies) before drift/curvature."""
 
         if corrections_config.drift:
-            # Define translation correction object based on color checker
-            try:
-                _, cc_voxels = darsia.find_colorchecker(
-                    baseline_for_setup, corrections_config.drift.colorchecker
+            # Define translation correction object, based on the configured
+            # reference mode: a named ROI, or auto-detected color checker.
+            if corrections_config.drift.mode == "roi":
+                roi_voxels = _resolve_named_roi_voxels(
+                    corrections_config.drift.roi, roi_registry, baseline_for_setup
                 )
                 self.drift_correction = darsia.DriftCorrection(
-                    baseline_for_setup, config={"roi": cc_voxels}
+                    baseline_for_setup, config={"roi": roi_voxels}
                 )
-                """Drift correction based on color checker alignment."""
-            except Exception as e:
-                warn(
-                    f"Color checker not found. Drift correction not setup. Error: {e}",
-                    UserWarning,
-                )
-                self.drift_correction = darsia.DriftCorrection(baseline_for_setup)
+                """Drift correction based on a named ROI."""
+            else:
+                try:
+                    _, cc_voxels = darsia.find_colorchecker(
+                        baseline_for_setup, corrections_config.drift.colorchecker
+                    )
+                    self.drift_correction = darsia.DriftCorrection(
+                        baseline_for_setup, config={"roi": cc_voxels}
+                    )
+                    """Drift correction based on color checker alignment."""
+                except Exception as e:
+                    warn(
+                        f"Color checker not found. Drift correction not setup. "
+                        f"Error: {e}",
+                        UserWarning,
+                    )
+                    self.drift_correction = darsia.DriftCorrection(baseline_for_setup)
 
             # Update baseline and corrections workflow
             ...  # baseline image does not need drift correction.
@@ -281,6 +341,7 @@ class Rig:
     def setup_color_corrections(
         self,
         corrections_config: CorrectionsConfig | None = None,
+        roi_registry: "RoiRegistry | None" = None,
         log: Path | None = None,
         show_plot: bool = False,
     ) -> None:
@@ -353,27 +414,47 @@ class Rig:
 
         # 3) Color correction.
         if corrections_config.color:
-            # Define color correction based on color checker on shape-corrected baseline.
-            try:
-                _, cc_voxels = darsia.find_colorchecker(
-                    self.shape_corrected_baseline, corrections_config.color.colorchecker
+            # Define color correction, based on the configured reference
+            # mode: a named ROI (as 4 ordered landmark corners), or
+            # auto-detected color checker.
+            if corrections_config.color.mode == "roi":
+                roi_voxels = _resolve_named_roi_voxels(
+                    corrections_config.color.roi,
+                    roi_registry,
+                    self.shape_corrected_baseline,
+                    as_landmarks=True,
                 )
                 self.color_correction = darsia.ColorCorrection(
                     self.shape_corrected_baseline,
                     config={
-                        "roi": cc_voxels,
+                        "roi": roi_voxels,
                         "clip": False,
                     },
                 )
-            except Exception as e:
-                warn(
-                    f"Color checker not found. Color correction not setup. Error: {e}",
-                    UserWarning,
-                )
-                self.color_correction = darsia.ColorCorrection(
-                    self.shape_corrected_baseline
-                )
-            """Color correction based on color checker alignment."""
+                """Color correction based on a named ROI."""
+            else:
+                try:
+                    _, cc_voxels = darsia.find_colorchecker(
+                        self.shape_corrected_baseline,
+                        corrections_config.color.colorchecker,
+                    )
+                    self.color_correction = darsia.ColorCorrection(
+                        self.shape_corrected_baseline,
+                        config={
+                            "roi": cc_voxels,
+                            "clip": False,
+                        },
+                    )
+                    """Color correction based on color checker alignment."""
+                except Exception as e:
+                    warn(
+                        f"Color checker not found. Color correction not setup. "
+                        f"Error: {e}",
+                        UserWarning,
+                    )
+                    self.color_correction = darsia.ColorCorrection(
+                        self.shape_corrected_baseline
+                    )
             self.color_corrections.append(self.color_correction)
 
         # Apply the configured color correction pipeline to the shape-corrected baseline.
@@ -842,6 +923,7 @@ class Rig:
         facies_path: Path | None = None,
         facies_props_path: Path | None = None,
         corrections_config: CorrectionsConfig | None = None,
+        roi_registry: "RoiRegistry | None" = None,
         image_porosity_config: ImagePorosityConfig | None = None,
         # ref_colorchecker_path: Path,
         log: Path | None = None,
@@ -864,6 +946,7 @@ class Rig:
             baseline_path,
             experiment,
             corrections_config=corrections_config,
+            roi_registry=roi_registry,
             log=log,
             show_plot=show_plot,
         )
@@ -912,6 +995,7 @@ class Rig:
         # Setup color corrections (wait until here to use label and porosity information)
         self.setup_color_corrections(
             corrections_config=corrections_config,
+            roi_registry=roi_registry,
             log=log,
             show_plot=show_plot,
         )
