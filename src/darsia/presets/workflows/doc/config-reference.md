@@ -14,6 +14,8 @@ This is the user-facing map of workflow TOML sections currently loaded by `Fluid
 - `[color]`: centralized color embedding registry (`[color.path.*]`, `[color.range.*]`, `[color.channel.*]`).
 - `[calibration]`: calibration entrypoints (`[calibration.color]`, `[calibration.mass]`).
 - `[analysis]`: analysis data and feature-specific subsections.
+- `[expert_knowledge]`: optional ROI constraints for saturation/concentration,
+  shared by both analysis and calibration.
 - `[format]`: named export-format presets for analysis image outputs.
 - `[helper]`: optional helper workflows (ROI, ROI viewer, results, color).
 - `[download]`: download utility config (optional).
@@ -92,8 +94,8 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `analysis.mass.roi = ["roi_key"]`
 - `analysis.volume.roi = ["roi_key"]`
 - `analysis.fingers.roi = ["roi_key"]`
-- `analysis.expert_knowledge.saturation_g = ["roi_key"]`
-- `analysis.expert_knowledge.concentration_aq = ["roi_key"]`
+- `expert_knowledge.saturation_g = ["roi_key"]`
+- `expert_knowledge.concentration_aq = ["roi_key"]`
 - `color.path.<id>.rois = ["roi_key"]`
 - `color_to_mass.rois = ["roi_key"]`
 
@@ -170,7 +172,6 @@ Each analysis mode owns its own `data_selection` and `formats`:
 - `[analysis.fingers]`: finger detection mode/threshold and optional ROIs
   - `data_selection`: image set to analyze
   - `formats`: output format identifiers
-- `[analysis.expert_knowledge]`: optional ROI constraints for saturation and concentration
 
 ## Helper subsections
 - `[helper.roi]`: interactive ROI assistant on selected data.
@@ -322,8 +323,9 @@ calibration_mode = "auto" # auto | manual (legacy alias: mode_calibration)
 - Use `"none"` for open bounds.
 - Hue wrap-around is supported in HSV/HLS by using `min > max`.
 ### Expert-knowledge options
-Use `[analysis.expert_knowledge]` to constrain where selected scalar products may be
-non-zero.
+Use the top-level `[expert_knowledge]` section to constrain where selected
+scalar products may be non-zero. It is not nested under `[analysis]` since it
+also governs calibration.
 
 Supported keys:
 - `saturation_g` (list of ROI registry keys)
@@ -331,7 +333,7 @@ Supported keys:
 
 Example:
 ```toml
-[analysis.expert_knowledge]
+[expert_knowledge]
 saturation_g = ["roi_key_1", "roi_key_2"]
 concentration_aq = ["roi_key_3"]
 ```

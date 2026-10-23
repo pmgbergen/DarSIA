@@ -16,6 +16,7 @@ from darsia.presets.workflows.config.data import DataConfig
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.depth import DepthConfig
 from darsia.presets.workflows.config.download import DownloadConfig
+from darsia.presets.workflows.config.expert_knowledge import ExpertKnowledgeConfig
 from darsia.presets.workflows.config.facies import FaciesConfig
 from darsia.presets.workflows.config.format_registry import FormatRegistry
 from darsia.presets.workflows.config.helper import HelperConfig
@@ -41,6 +42,7 @@ SECTION_TO_DATACLASS = {
     "depth": DepthConfig,
     "download": DownloadConfig,
     "events": EventsConfig,
+    "expert_knowledge": ExpertKnowledgeConfig,
     "facies": FaciesConfig,
     "format_registry": FormatRegistry,
     "helper": HelperConfig,
@@ -64,6 +66,7 @@ ALL_SECTIONS = [
     "registry",
     "format_registry",
     "roi",
+    "expert_knowledge",
     "color",
     "rig",
     "corrections",

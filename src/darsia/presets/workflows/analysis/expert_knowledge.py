@@ -11,7 +11,7 @@ import darsia
 from darsia.utils.standard_images import roi_to_mask
 
 if TYPE_CHECKING:
-    from darsia.presets.workflows.config.analysis import AnalysisExpertKnowledgeConfig
+    from darsia.presets.workflows.config.expert_knowledge import ExpertKnowledgeConfig
     from darsia.presets.workflows.config.roi import RoiConfig
     from darsia.presets.workflows.config.roi_registry import RoiRegistry
 
@@ -29,7 +29,7 @@ class ExpertKnowledgeAdapter:
     @classmethod
     def from_config(
         cls,
-        config: "AnalysisExpertKnowledgeConfig | None",
+        config: "ExpertKnowledgeConfig | None",
         roi_registry: "RoiRegistry | None",
     ) -> "ExpertKnowledgeAdapter":
         if config is None:

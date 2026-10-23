@@ -341,11 +341,9 @@ def prepare_analysis_context(
     # ! ---- RESTORATION ----
     restoration = build_restoration(config.restoration, fluidflower)
 
-    # ! ---- EXPERT KNOWLEDGE ADAPTER (for all analyses) ----
+    # ! ---- EXPERT KNOWLEDGE ADAPTER (for all analyses and calibration) ----
     expert_knowledge_adapter = ExpertKnowledgeAdapter.from_config(
-        config=(
-            config.analysis.expert_knowledge if config.analysis is not None else None
-        ),
+        config=config.expert_knowledge,
         roi_registry=config.roi_registry,
     )
 
