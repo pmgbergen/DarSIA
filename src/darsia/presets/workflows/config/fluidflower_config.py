@@ -140,9 +140,17 @@ class FluidFlowerConfig:
 
         _load_section(
             self,
+            "roi_registry",
+            RoiRegistry(),
+            lambda: self.roi_registry.load(path),
+            warn_on_missing=True,
+        )
+
+        _load_section(
+            self,
             "corrections",
             CorrectionsConfig(),
-            lambda: self.corrections.load(path=path),
+            lambda: self.corrections.load(path=path, roi_registry=self.roi_registry),
             warn_on_missing=True,
         )
 
@@ -188,14 +196,6 @@ class FluidFlowerConfig:
             "protocols",
             ProtocolsConfig(),
             lambda: self.protocols.load(path),
-            warn_on_missing=True,
-        )
-
-        _load_section(
-            self,
-            "roi_registry",
-            RoiRegistry(),
-            lambda: self.roi_registry.load(path),
             warn_on_missing=True,
         )
 

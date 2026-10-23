@@ -2,11 +2,16 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal, Type
+from typing import TYPE_CHECKING, Any, Literal, Type
 
 import numpy as np
 
+from ._key_list_sources import ROI_SOURCES
+from .roi_registry import _load_roi_key_list
 from .utils import _get_section_from_toml
+
+if TYPE_CHECKING:
+    from .roi_registry import RoiRegistry
 
 
 @dataclass
@@ -611,8 +616,26 @@ class CurvatureCorrectionConfig:
 
 @dataclass
 class DriftCorrectionConfig:
-    """Configuration for drift correction."""
+    """Configuration for drift correction.
 
+    Supports two modes for locating the reference region used for feature
+    detection and alignment: auto-detecting a color checker (``mode =
+    "colorchecker"``), or using a named ROI from the registry (``mode =
+    "roi"``). Exactly one mode's field must be set.
+    """
+
+    mode: Literal["colorchecker", "roi"] = field(
+        default="colorchecker",
+        metadata={
+            "name": "Reference mode",
+            "help": (
+                "How to locate the reference region: auto-detect a color "
+                "checker ('colorchecker'), or use a named ROI ('roi')."
+            ),
+            "options": ["colorchecker", "roi"],
+        },
+    )
+    """Reference mode: ``"colorchecker"`` (auto-detect) or ``"roi"`` (named ROI)."""
     colorchecker: (
         Literal["upper_left", "upper_right", "lower_left", "lower_right"] | None
     ) = field(
@@ -620,25 +643,59 @@ class DriftCorrectionConfig:
         metadata={
             "name": "Color checker position",
             "help": (
-                "Position of color checker (upper/lower, left/right). "
-                "Leave empty to disable drift correction."
+                "Position of color checker (upper/lower, left/right) "
+                "(mode='colorchecker' only). Leave empty to disable drift "
+                "correction."
             ),
             "options": ["upper_left", "upper_right", "lower_left", "lower_right"],
+            "depends_on": {"field": "mode", "value": "colorchecker"},
         },
     )
+    roi: str | None = field(
+        default=None,
+        metadata={
+            "name": "ROI",
+            "help": (
+                "Named ROI (from the top-level [[roi]] registry) to use for "
+                "feature detection and alignment (mode='roi' only)."
+            ),
+            "widget": "key_list",
+            "key_list_sources": ROI_SOURCES,
+            "max_rows": 1,
+            "depends_on": {"field": "mode", "value": "roi"},
+        },
+    )
+    """Named ROI registry key (mode='roi' only)."""
 
-    def load(self, sec: dict) -> "DriftCorrectionConfig":
+    def load(
+        self, sec: dict, roi_registry: "RoiRegistry | None" = None
+    ) -> "DriftCorrectionConfig":
         """Load drift correction configuration from a dictionary.
 
         Parameters
         ----------
         sec : dict
             Dictionary containing drift correction settings.
+        roi_registry : RoiRegistry, optional
+            ROI registry to resolve a named 'roi' key against.
 
         Returns
         -------
             Self with loaded configuration.
+
+        Raises
+        ------
+        ValueError
+            If mode is invalid, or if the required field for the mode is
+            missing.
         """
+        mode = sec.get("mode", self.mode)
+        if mode not in ("colorchecker", "roi"):
+            raise ValueError(
+                f"[corrections.drift] mode must be 'colorchecker' or 'roi', got {mode!r}"
+            )
+        self.mode = mode
+
         self.colorchecker = sec.get("colorchecker")
 
         # Sanity check.
@@ -652,6 +709,25 @@ class DriftCorrectionConfig:
                 """colorchecker must be one of 'upper_left', 'upper_right', """
                 """'lower_left', 'lower_right'"""
             )
+
+        roi_list = _load_roi_key_list(
+            sec,
+            "roi",
+            context="corrections.drift.roi",
+            roi_registry=roi_registry,
+            allow_str=True,
+            none_if_absent=True,
+        )
+        self.roi = roi_list[0] if isinstance(roi_list, list) and roi_list else roi_list
+
+        if mode == "colorchecker" and self.colorchecker is None:
+            raise ValueError(
+                "[corrections.drift] mode='colorchecker' requires 'colorchecker' "
+                "to be set."
+            )
+        if mode == "roi" and self.roi is None:
+            raise ValueError("[corrections.drift] mode='roi' requires 'roi' to be set.")
+
         return self
 
 
@@ -659,12 +735,31 @@ class DriftCorrectionConfig:
 class ColorCorrectionConfig:
     """Configuration for color correction.
 
+    Supports two modes for locating the color checker: auto-detecting it
+    (``mode = "colorchecker"``), or using a named ROI from the registry as
+    its 4 landmark corners (``mode = "roi"``). Exactly one mode's field must
+    be set.
+
     Attributes
     ----------
     colorchecker
-        Position of color checker for color correction.
+        Position of color checker for color correction (mode='colorchecker').
+    roi
+        Named ROI registry key (mode='roi').
     """
 
+    mode: Literal["colorchecker", "roi"] = field(
+        default="colorchecker",
+        metadata={
+            "name": "Reference mode",
+            "help": (
+                "How to locate the color checker: auto-detect it "
+                "('colorchecker'), or use a named ROI ('roi')."
+            ),
+            "options": ["colorchecker", "roi"],
+        },
+    )
+    """Reference mode: ``"colorchecker"`` (auto-detect) or ``"roi"`` (named ROI)."""
     colorchecker: (
         Literal["upper_left", "upper_right", "lower_left", "lower_right"] | None
     ) = field(
@@ -672,26 +767,64 @@ class ColorCorrectionConfig:
         metadata={
             "name": "Color checker position",
             "help": (
-                "Position of color checker (upper/lower, left/right). "
-                "Leave empty to disable color correction."
+                "Position of color checker (upper/lower, left/right) "
+                "(mode='colorchecker' only). Leave empty to disable color "
+                "correction."
             ),
             "options": ["upper_left", "upper_right", "lower_left", "lower_right"],
+            "depends_on": {"field": "mode", "value": "colorchecker"},
         },
     )
     """Position of color checker for color correction."""
+    roi: str | None = field(
+        default=None,
+        metadata={
+            "name": "ROI",
+            "help": (
+                "Named ROI (from the top-level [[roi]] registry) to use as "
+                "the 4 landmark corners of the color checker (mode='roi' "
+                "only). Only correct if the ROI's top-left corner coincides "
+                "with the color checker's reference (brown) swatch - best "
+                "suited to axis-aligned calibration crops, not a substitute "
+                "for real landmark detection."
+            ),
+            "widget": "key_list",
+            "key_list_sources": ROI_SOURCES,
+            "max_rows": 1,
+            "depends_on": {"field": "mode", "value": "roi"},
+        },
+    )
+    """Named ROI registry key (mode='roi' only)."""
 
-    def load(self, sec: dict) -> "ColorCorrectionConfig":
+    def load(
+        self, sec: dict, roi_registry: "RoiRegistry | None" = None
+    ) -> "ColorCorrectionConfig":
         """Load color correction configuration from a dictionary.
 
         Parameters
         ----------
         sec : dict
             Dictionary containing color correction settings.
+        roi_registry : RoiRegistry, optional
+            ROI registry to resolve a named 'roi' key against.
 
         Returns
         -------
             Self with loaded configuration.
+
+        Raises
+        ------
+        ValueError
+            If mode is invalid, or if the required field for the mode is
+            missing.
         """
+        mode = sec.get("mode", self.mode)
+        if mode not in ("colorchecker", "roi"):
+            raise ValueError(
+                f"[corrections.color] mode must be 'colorchecker' or 'roi', got {mode!r}"
+            )
+        self.mode = mode
+
         self.colorchecker = sec.get("colorchecker")
 
         # Sanity check.
@@ -705,6 +838,25 @@ class ColorCorrectionConfig:
                 """colorchecker must be one of 'upper_left', 'upper_right', """
                 """'lower_left', 'lower_right'"""
             )
+
+        roi_list = _load_roi_key_list(
+            sec,
+            "roi",
+            context="corrections.color.roi",
+            roi_registry=roi_registry,
+            allow_str=True,
+            none_if_absent=True,
+        )
+        self.roi = roi_list[0] if isinstance(roi_list, list) and roi_list else roi_list
+
+        if mode == "colorchecker" and self.colorchecker is None:
+            raise ValueError(
+                "[corrections.color] mode='colorchecker' requires 'colorchecker' "
+                "to be set."
+            )
+        if mode == "roi" and self.roi is None:
+            raise ValueError("[corrections.color] mode='roi' requires 'roi' to be set.")
+
         return self
 
 
@@ -1184,13 +1336,20 @@ class CorrectionsConfig:
         """Return the parsed sub-config for `name`, active or not (GUI use)."""
         return getattr(self, name, None) or self.inactive.get(name)
 
-    def load(self, path: Path | list[Path]) -> "CorrectionsConfig":
+    def load(
+        self,
+        path: Path | list[Path],
+        roi_registry: "RoiRegistry | None" = None,
+    ) -> "CorrectionsConfig":
         """Load correction configuration from TOML file.
 
         Parameters
         ----------
         path : Path | list[Path]
             Path to TOML config file.
+        roi_registry : RoiRegistry, optional
+            ROI registry to resolve a named 'roi' key against, for
+            corrections that support one (currently drift, color).
 
         Returns
         -------
@@ -1204,7 +1363,10 @@ class CorrectionsConfig:
             sub_sec = sec.get(name)
             if not sub_sec:
                 continue
-            parsed = cls().load(sub_sec)
+            if name in ("drift", "color"):
+                parsed = cls().load(sub_sec, roi_registry=roi_registry)
+            else:
+                parsed = cls().load(sub_sec)
             is_active = active is None or name in active
             if is_active:
                 setattr(self, name, parsed)
