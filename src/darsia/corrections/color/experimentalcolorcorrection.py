@@ -159,16 +159,17 @@ class ExperimentalColorCorrection(darsia.BaseCorrection):
         # Reference of the class color checker
         self.colorchecker = ClassicColorChecker()
 
-        # Define ROI
-        self.roi: Optional[Union[tuple, np.ndarray]] = None
+        # Define ROI. A tuple of slices is kept as a plain box (no orientation
+        # info to preserve); anything else is normalized to a darsia.VoxelArray
+        # of 4 ordered landmark points, matching darsia.ColorCorrection's
+        # convention. Landmarks here are documented as (col, row), i.e.
+        # reverse matrix indexing, hence matrix_indexing=False.
+        self.roi: Optional[Union[tuple, darsia.VoxelArray]] = None
         if "roi" in self.config:
-            self.roi = np.array(self.config["roi"])
-        elif isinstance(roi, np.ndarray):
-            self.roi = roi
-            self.config["roi"] = self.roi.tolist()
-        elif isinstance(roi, list):
-            self.roi = np.array(roi)
-            self.config["roi"] = roi
+            self.roi = darsia.make_voxel(self.config["roi"], matrix_indexing=False)
+        elif isinstance(roi, (np.ndarray, list)):
+            self.roi = darsia.make_voxel(roi, matrix_indexing=False)
+            self.config["roi"] = np.asarray(roi).tolist()
         elif isinstance(roi, tuple):
             warnings.warn(
                 "An array of corner points is preferred.\
@@ -339,11 +340,11 @@ class ExperimentalColorCorrection(darsia.BaseCorrection):
             return_img: np.ndarray = img
         elif isinstance(self.roi, tuple):
             return_img = img[self.roi]
-        elif isinstance(self.roi, np.ndarray):
+        else:
             assert self.roi.shape == (4, 2)
             # Use width and height (in cm - irrelevant) as provided by the manufacturer Xrite.
-            return_img = darsia.extract_quadrilateral_ROI(
-                img, pts_src=self.roi, width=27.3, height=17.8
+            return_img = darsia.restrict_image_to_landmarks(
+                img, self.roi, width=27.3, height=17.8, indexing="matrix"
             )
 
         # For debugging puposes provide the possibility to plot the extracted image.
