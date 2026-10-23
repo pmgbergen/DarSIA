@@ -7,7 +7,11 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import darsia
-from darsia.presets.workflows.mode_resolution import validate_mode_syntax
+from darsia.presets.workflows.mode_resolution import (
+    LEGACY_COLOR_TO_MASS_MODES,
+    SCALAR_PRODUCT_MODES,
+    validate_mode_syntax,
+)
 
 from .contour_smoother import ContourSmootherSelection
 from .utils import _get_key
@@ -162,8 +166,13 @@ class SegmentationConfig:
         default=None,
         metadata={
             "name": "Mode",
-            "help": "Segmentation mode (e.g., 'concentration_aq', 'saturation_g').",
+            "help": (
+                "A fixed mass/concentration/saturation mode, or a custom 'color.<id>' "
+                "embedding defined under [color.*] (type it in if not listed)."
+            ),
             "placeholder": "e.g., concentration_aq",
+            "options": sorted(LEGACY_COLOR_TO_MASS_MODES | SCALAR_PRODUCT_MODES),
+            "editable": True,
         },
     )
     """Type for segmentation."""
