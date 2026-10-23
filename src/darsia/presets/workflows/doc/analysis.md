@@ -33,7 +33,6 @@ Commonly used sections:
 - `[analysis.volume]`
 - `[analysis.fingers]`
 - `[analysis.thresholding]`
-- `[analysis.expert_knowledge]`
 
 ### Segmentation contour labels
 Segmentation contour plots can optionally print the contour threshold values directly
@@ -75,9 +74,11 @@ Supported `export` values:
 - `mass` remains a segmentation alias for total mass (`mass_total`).
 
 ### Expert knowledge ROI constraints
-Optionally constrain where selected scalar fields may be non-zero:
+Optionally constrain where selected scalar fields may be non-zero. This is a
+top-level section (not nested under `[analysis]`), since it also governs
+calibration, not just analysis:
 ```toml
-[analysis.expert_knowledge]
+[expert_knowledge]
 saturation_g = ["roi_key_1", "roi_key_2"]
 concentration_aq = ["roi_key_3"]
 ```

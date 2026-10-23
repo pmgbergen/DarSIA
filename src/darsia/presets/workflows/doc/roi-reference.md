@@ -1,13 +1,13 @@
 # ROI Reference
 
 ROIs are used in mass/volume/fingers workflows and optionally for color-path calibration.
-They can also be used by analysis expert knowledge to constrain saturation and
-concentration fields.
+They can also be used by `[expert_knowledge]` to constrain saturation and
+concentration fields (for both analysis and calibration).
 
 ## Global ROI registry
 ```toml
-[roi.storage]
-name = "Storage"
+[[roi]]
+name = "storage"
 corner_1 = [0.0, 0.0]
 corner_2 = [2.745, 1.05]
 ```
@@ -18,9 +18,10 @@ Then reference by key:
 roi = ["storage"]
 ```
 
-Expert-knowledge usage:
+Expert-knowledge usage (top-level `[expert_knowledge]`, not nested under
+`[analysis]`, since it also governs calibration):
 ```toml
-[analysis.expert_knowledge]
+[expert_knowledge]
 saturation_g = ["storage"]
 concentration_aq = ["storage"]
 ```

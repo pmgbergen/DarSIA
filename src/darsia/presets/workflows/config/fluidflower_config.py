@@ -12,6 +12,7 @@ from .data import DataConfig
 from .data_registry import DataRegistry
 from .depth import DepthConfig
 from .download import DownloadConfig
+from .expert_knowledge import ExpertKnowledgeConfig
 from .facies import FaciesConfig
 from .format_registry import FormatRegistry
 from .helper import HelperConfig
@@ -94,6 +95,7 @@ class FluidFlowerConfig:
         self.image_porosity: ImagePorosityConfig | None = None
         self.protocols: ProtocolsConfig | None = ProtocolsConfig()
         self.roi_registry: RoiRegistry | None = None
+        self.expert_knowledge: ExpertKnowledgeConfig | None = None
         self.color: ColorEmbeddingRegistry | None = None
         self.calibration: CalibrationConfig | None = None
         self.format_registry: FormatRegistry | None = None
@@ -144,6 +146,14 @@ class FluidFlowerConfig:
             RoiRegistry(),
             lambda: self.roi_registry.load(path),
             warn_on_missing=True,
+        )
+
+        _load_section(
+            self,
+            "expert_knowledge",
+            ExpertKnowledgeConfig(),
+            lambda: self.expert_knowledge.load(path, roi_registry=self.roi_registry),
+            warn_on_missing=False,
         )
 
         _load_section(
@@ -377,6 +387,7 @@ class FluidFlowerConfig:
                 "data",
                 "depth",
                 "download",
+                "expert_knowledge",
                 "facies",
                 "format_registry",
                 "helper",
