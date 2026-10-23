@@ -184,3 +184,72 @@ def extract_quadrilateral_ROI(
         img_dst = img_dst[:, :, 0]
 
     return img_dst
+
+
+def restrict_image_to_landmarks(
+    img: np.ndarray,
+    landmarks: "darsia.VoxelArray",
+    width: float,
+    height: float,
+    indexing: Literal["matrix", "reverse matrix"] = "matrix",
+) -> np.ndarray:
+    """Extract the image region spanned by 4 ordered landmark points.
+
+    The landmarks are assumed anti-clockwise oriented, starting at a known
+    reference corner (e.g. the brown swatch of a color checker). If they are
+    (approximately) axis-aligned, perform a plain crop and rotate so the
+    reference corner lands top-left. Otherwise fall back to a full
+    perspective extraction via :func:`extract_quadrilateral_ROI`.
+
+    Parameters
+    ----------
+    img : np.ndarray
+        Source image.
+    landmarks : darsia.VoxelArray
+        4 ordered corner landmark points, matrix-indexed.
+    width, height : float
+        Physical dimensions of the target object, used by the perspective
+        extraction fallback.
+    indexing : {"matrix", "reverse matrix"}
+        Forwarded to :func:`extract_quadrilateral_ROI`.
+
+    Returns
+    -------
+    np.ndarray
+        Restricted image.
+    """
+    row_pixels = np.sort(landmarks[:, 0])
+    col_pixels = np.sort(landmarks[:, 1])
+    row_diff = max(row_pixels[1] - row_pixels[0], row_pixels[3] - row_pixels[2])
+    col_diff = max(col_pixels[1] - col_pixels[0], col_pixels[3] - col_pixels[2])
+    roi_is_box = row_diff < 0.01 * img.shape[0] and col_diff < 0.01 * img.shape[1]
+    atol = max(0.01 * img.shape[0], 0.01 * img.shape[1])
+
+    if roi_is_box:
+        # landmarks are more or less a box
+        roi_slices = (
+            slice(row_pixels[0], row_pixels[3]),
+            slice(col_pixels[0], col_pixels[3]),
+        )
+        box_img = img[roi_slices]
+        # need to extract a box with the reference landmark first - assume
+        # the first point in landmarks is the reference corner
+        if np.allclose([row_pixels[0], col_pixels[0]], [landmarks[0]], atol=atol):
+            # reference corner is in the upper left corner
+            return box_img
+        elif np.allclose([row_pixels[0], col_pixels[3]], [landmarks[0]], atol=atol):
+            # reference corner is in the upper right corner - rotate 90 degrees clockwise
+            return np.rot90(box_img, 1)
+        elif np.allclose([row_pixels[3], col_pixels[3]], [landmarks[0]], atol=atol):
+            # reference corner is in the lower right corner - rotate 180 degrees
+            return np.rot90(box_img, -2)
+        elif np.allclose([row_pixels[3], col_pixels[0]], [landmarks[0]], atol=atol):
+            # reference corner is lower left - rotate 90 degrees counterclockwise
+            return np.rot90(box_img, -1)
+        else:
+            raise ValueError("The reference landmark is not in the corner of the ROI.")
+
+    else:
+        return extract_quadrilateral_ROI(
+            img, pts_src=landmarks, width=width, height=height, indexing=indexing
+        )
