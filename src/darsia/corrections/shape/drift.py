@@ -71,7 +71,7 @@ class DriftCorrection(darsia.BaseCorrection):
                 roi
                 if isinstance(roi, tuple)
                 else darsia.bounding_box(
-                    np.array(roi),
+                    darsia.make_voxel(roi),
                     padding=round(self.relative_padding * np.min(self.base.shape[:2])),
                     max_size=self.base.shape[:2],
                 )
