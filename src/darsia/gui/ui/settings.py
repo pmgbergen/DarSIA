@@ -28,6 +28,7 @@ from .schema.dataclass_introspection import (
     get_section_fields,
 )
 from .schema.section_registry import filter_visible_sections, get_required_sections
+from .widgets import NoScrollComboBox
 
 
 def unwrap_composite_widget(value):
@@ -1246,7 +1247,7 @@ class SettingsFactory:
             row_widget.setMinimumHeight(28)
 
             # Dropdown with available keys + any stale current selection
-            combo = QComboBox()
+            combo = NoScrollComboBox()
             combo.setEditable(False)
             all_options = list(available_keys)
             # Add selected_key if not already listed (stale/deleted/filtered-out entry)
@@ -1533,7 +1534,7 @@ class SettingsFactory:
             value = setting_dict.get("default")
 
         options = setting_dict["options"]
-        setting_combo = QComboBox()
+        setting_combo = NoScrollComboBox()
         setting_combo.addItems([str(option) for option in options])
         setting_combo.setEditable(bool(setting_dict.get("editable")))
 
