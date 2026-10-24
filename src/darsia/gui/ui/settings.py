@@ -1262,8 +1262,11 @@ class SettingsFactory:
             combo.addItems(all_options)
             if selected_key:
                 combo.setCurrentText(selected_key)
-            elif all_options:
-                combo.setCurrentIndex(0)
+            else:
+                # No stored selection -> genuinely no selection, not an
+                # auto-picked first option (which would be indistinguishable
+                # from a real choice once saved).
+                combo.setCurrentIndex(-1)
 
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
@@ -1364,11 +1367,12 @@ class SettingsFactory:
         from PySide6.QtCore import QTimer
 
         def deferred_prefill():
-            if current_keys:
-                for key_name in current_keys:
-                    add_row(key_name)
-            else:
-                add_row()
+            # No stored selections -> start with zero rows, not one row
+            # auto-selecting the first available option (that auto-selection
+            # is indistinguishable from a real choice once saved). The user
+            # adds a row explicitly via "Add selection" if they want one.
+            for key_name in current_keys:
+                add_row(key_name)
 
         QTimer.singleShot(0, deferred_prefill)
 

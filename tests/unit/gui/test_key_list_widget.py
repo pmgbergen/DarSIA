@@ -101,7 +101,10 @@ def test_key_list_widget_end_to_end(qapp):
     }
     _, fmt = _build(factory, format_setting, keepalive, qapp)
     assert list(fmt["source_type_map"]) == ["png_hi"]  # csv_out filtered out
-    assert _options(fmt["rows"][0]) == ["png_hi"]
+    # No prior selection -> no row is auto-created (previously this auto-picked
+    # the sole filtered option, which is indistinguishable from a real choice
+    # once saved); filtering itself is already proven via source_type_map above.
+    assert fmt["rows"] == []
 
     # 3. max_rows == 1 caps the pre-fill to a single row
     max_rows_setting = {
@@ -125,7 +128,7 @@ def test_key_list_widget_end_to_end(qapp):
     }
     _, empty = _build(factory, empty_setting, keepalive, qapp)
     assert empty["source_type_map"] == {}
-    assert _options(empty["rows"][0]) == []
+    assert empty["rows"] == []
 
     # 5. save round-trip through the real unified ``key_list`` save pass
     reg["rows"][0].setCurrentText("interval_a")  # row 2 stays "path_x"
@@ -143,8 +146,8 @@ def test_key_list_widget_end_to_end(qapp):
         "interval_a",
         "path_x",
     ]
-    # single available option was auto-selected
-    assert config_dict["analysis"]["thresholding"]["formats"] == ["png_hi"]
+    # no prior selection and no row added -> None, not an auto-selected option
+    assert config_dict["analysis"]["thresholding"]["formats"] is None
     # max_rows == 1 -> bare string, not a list
     assert config_dict["mass"]["color"] == "interval_a"
     # nothing selectable -> None
