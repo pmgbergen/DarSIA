@@ -59,6 +59,14 @@ def analysis_volume_from_context(
             roi_registry=config.roi_registry,
         )
 
+    # Respect this consumer's expert-knowledge toggle. Not restored afterwards,
+    # so if color_to_mass_analysis/ctx are shared with other analysis types in one
+    # run (--all path), disabling here can leak into the next consumer - acceptable
+    # known limitation.
+    if not config.analysis.volume.expert_knowledge:
+        color_to_mass_analysis.expert_knowledge_adapter = None
+        ctx.expert_knowledge_adapter = None
+
     # Select image paths based on volume config's data_selection
     image_paths = select_image_paths(
         config,

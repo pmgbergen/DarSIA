@@ -309,6 +309,17 @@ class CalibrationMassConfig:
             "key_list_sources": ROI_SOURCES,
         },
     )
+    expert_knowledge: bool = field(
+        default=True,
+        metadata={
+            "name": "Use expert knowledge",
+            "help": (
+                "Apply expert-knowledge ROI masking to this calibration's "
+                "saturation_g/concentration_aq fields."
+            ),
+        },
+    )
+    """Whether to apply expert-knowledge ROI masking for this calibration."""
 
     def load(
         self,
@@ -351,6 +362,9 @@ class CalibrationMassConfig:
         # Load data selection
         self.data_selection = _get_key(
             sec, "data_selection", required=False, default=None
+        )
+        self.expert_knowledge = _get_key(
+            sec, "expert_knowledge", required=False, default=True, type_=bool
         )
         return self
 

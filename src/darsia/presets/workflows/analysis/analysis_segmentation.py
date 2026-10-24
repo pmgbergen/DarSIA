@@ -75,6 +75,15 @@ def analysis_segmentation_from_context(
         )
     color_to_mass_analysis = ctx.color_to_mass_analysis
 
+    # Respect this consumer's expert-knowledge toggle. Not restored afterwards,
+    # so if color_to_mass_analysis/ctx are shared with other analysis types in one
+    # run (--all path), disabling here can leak into the next consumer - acceptable
+    # known limitation.
+    if not segmentation_config.expert_knowledge:
+        if color_to_mass_analysis is not None:
+            color_to_mass_analysis.expert_knowledge_adapter = None
+        ctx.expert_knowledge_adapter = None
+
     # ! ---- CONTOUR PLOTTING ----
     segmentation_contours = SegmentationContours(segmentation_config.config)
     requested_modes = segmentation_contours.requested_modes()

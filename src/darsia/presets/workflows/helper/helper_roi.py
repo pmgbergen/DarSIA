@@ -18,6 +18,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     _build_color_to_mass_analysis,
     select_image_paths,
 )
+from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.analysis.scalar_products import (
     analysis_scalar_products,
     requires_rescaled_modes,
@@ -27,6 +28,7 @@ from darsia.presets.workflows.config.sections import required_sections
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
+from darsia.presets.workflows.restoration import build_restoration
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.utils.images import load_images_with_cache
 
@@ -263,8 +265,12 @@ def helper_roi(cls: type[Rig], path: Path | list[Path], show: bool = False) -> N
                 "helper.roi.mode requires [analysis.mass] with a color embedding "
                 "when mode != 'none'."
             )
+        restoration = build_restoration(config.restoration, fluidflower)
+        expert_knowledge_adapter = ExpertKnowledgeAdapter.from_config(
+            config.expert_knowledge, config.roi_registry
+        )
         color_to_mass_analysis = _build_color_to_mass_analysis(
-            config, experiment, fluidflower
+            config, experiment, fluidflower, restoration, expert_knowledge_adapter
         )
         display_images = []
         for img in source_images:
