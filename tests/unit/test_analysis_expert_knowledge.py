@@ -63,3 +63,61 @@ def test_adapter_unions_multiple_rois() -> None:
     assert np.allclose(constrained.img[expected], 1.0)
     assert np.allclose(constrained.img[~expected], 0.0)
     assert np.allclose(constrained.img[gap], 0.0)
+
+
+def test_adapter_negative_only_zeroes_inside_keeps_outside() -> None:
+    """A no_saturation_g-style exclusion with no positive ROI configured should
+    zero the field inside the named region and leave it untouched outside."""
+    img = _make_scalar_image()
+    exclude_roi = _make_roi([1.1, 0.0], [2.0, 1.0], "exclude")
+    adapter = ExpertKnowledgeAdapter(no_saturation_g_rois={"exclude": exclude_roi})
+
+    constrained = adapter.apply(img, "saturation_g")
+    excluded = roi_to_mask(exclude_roi.roi, img).img
+
+    assert constrained is not None
+    assert np.allclose(constrained.img[excluded], 0.0)
+    assert np.allclose(constrained.img[~excluded], 1.0)
+
+
+def test_adapter_positive_and_negative_apply_independently_without_overlap() -> None:
+    """A positive ROI covering the whole domain plus a disjoint negative ROI
+    should zero only the negative region, keeping the rest of the positive
+    region untouched."""
+    img = _make_scalar_image()
+    whole_domain = _make_roi([0.0, 0.0], [2.0, 1.0], "whole")
+    exclude_roi = _make_roi([1.1, 0.0], [2.0, 1.0], "exclude")
+    adapter = ExpertKnowledgeAdapter(
+        saturation_g_rois={"whole": whole_domain},
+        no_saturation_g_rois={"exclude": exclude_roi},
+    )
+
+    constrained = adapter.apply(img, "saturation_g")
+    excluded = roi_to_mask(exclude_roi.roi, img).img
+
+    assert constrained is not None
+    assert np.allclose(constrained.img[excluded], 0.0)
+    assert np.allclose(constrained.img[~excluded], 1.0)
+
+
+def test_adapter_negative_wins_on_overlap_with_positive() -> None:
+    """Where a positive and a negative ROI overlap, the negative rule wins:
+    the overlapping sub-region is zeroed even though it's inside the
+    positive ROI too."""
+    img = _make_scalar_image()
+    positive_roi = _make_roi([0.0, 0.0], [0.9, 1.0], "left")
+    overlap_roi = _make_roi([0.3, 0.0], [0.6, 1.0], "overlap")
+    adapter = ExpertKnowledgeAdapter(
+        saturation_g_rois={"left": positive_roi},
+        no_saturation_g_rois={"overlap": overlap_roi},
+    )
+
+    constrained = adapter.apply(img, "saturation_g")
+    positive_mask = roi_to_mask(positive_roi.roi, img).img
+    overlap_mask = roi_to_mask(overlap_roi.roi, img).img
+    kept = positive_mask & ~overlap_mask
+
+    assert constrained is not None
+    assert np.allclose(constrained.img[kept], 1.0)
+    assert np.allclose(constrained.img[overlap_mask], 0.0)
+    assert np.allclose(constrained.img[~positive_mask], 0.0)
