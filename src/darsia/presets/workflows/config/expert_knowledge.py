@@ -42,6 +42,26 @@ class ExpertKnowledgeConfig:
         },
     )
     """ROI registry keys constraining where concentration_aq may be non-zero."""
+    no_saturation_g: list[str] = field(
+        default_factory=list,
+        metadata={
+            "name": "No-Saturation ROIs",
+            "help": "ROI keys where saturation_g is forced to zero.",
+            "widget": "key_list",
+            "key_list_sources": ROI_SOURCES,
+        },
+    )
+    """ROI registry keys where saturation_g is forced to zero (exclusion)."""
+    no_concentration_aq: list[str] = field(
+        default_factory=list,
+        metadata={
+            "name": "No-Concentration ROIs",
+            "help": "ROI keys where concentration_aq is forced to zero.",
+            "widget": "key_list",
+            "key_list_sources": ROI_SOURCES,
+        },
+    )
+    """ROI registry keys where concentration_aq is forced to zero (exclusion)."""
 
     def load(
         self, path: Path | list[Path], roi_registry: "RoiRegistry | None" = None
@@ -52,26 +72,36 @@ class ExpertKnowledgeConfig:
         self.concentration_aq = _get_key(
             sec, "concentration_aq", required=False, default=[]
         )
+        self.no_saturation_g = _get_key(
+            sec, "no_saturation_g", required=False, default=[]
+        )
+        self.no_concentration_aq = _get_key(
+            sec, "no_concentration_aq", required=False, default=[]
+        )
 
-        if not isinstance(self.saturation_g, list) or not all(
-            isinstance(key, str) for key in self.saturation_g
-        ):
-            raise ValueError("expert_knowledge.saturation_g must be a list[str].")
-        if not isinstance(self.concentration_aq, list) or not all(
-            isinstance(key, str) for key in self.concentration_aq
-        ):
-            raise ValueError("expert_knowledge.concentration_aq must be a list[str].")
+        roi_key_fields = (
+            ("saturation_g", self.saturation_g),
+            ("concentration_aq", self.concentration_aq),
+            ("no_saturation_g", self.no_saturation_g),
+            ("no_concentration_aq", self.no_concentration_aq),
+        )
+        for name, value in roi_key_fields:
+            if not isinstance(value, list) or not all(
+                isinstance(key, str) for key in value
+            ):
+                raise ValueError(f"expert_knowledge.{name} must be a list[str].")
 
         # Validate registry references eagerly when provided.
+        any_keys_provided = any(len(value) > 0 for _, value in roi_key_fields)
         if roi_registry is not None:
-            if len(self.saturation_g) > 0:
-                roi_registry.resolve_rois(self.saturation_g)
-            if len(self.concentration_aq) > 0:
-                roi_registry.resolve_rois(self.concentration_aq)
-        elif len(self.saturation_g) > 0 or len(self.concentration_aq) > 0:
+            for _, value in roi_key_fields:
+                if len(value) > 0:
+                    roi_registry.resolve_rois(value)
+        elif any_keys_provided:
             raise ValueError(
                 "expert_knowledge requires a loaded ROI registry when "
-                "saturation_g or concentration_aq keys are provided."
+                "saturation_g, concentration_aq, no_saturation_g, or "
+                "no_concentration_aq keys are provided."
             )
 
         return self
