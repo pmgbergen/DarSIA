@@ -325,6 +325,17 @@ class AnalysisThresholdingConfig:
         },
     )
     """Whether to track and export per-layer mask extent (x/y) as a sparse CSV."""
+    expert_knowledge: bool = field(
+        default=True,
+        metadata={
+            "name": "Use expert knowledge",
+            "help": (
+                "Apply expert-knowledge ROI masking to this analysis's "
+                "saturation_g/concentration_aq fields."
+            ),
+        },
+    )
+    """Whether to apply expert-knowledge ROI masking for this analysis."""
     legend: AnalysisThresholdingLegendConfig = field(
         default_factory=AnalysisThresholdingLegendConfig, metadata={"name": "Legend"}
     )
@@ -385,6 +396,9 @@ class AnalysisThresholdingConfig:
             }
         self.compute_extent = _get_key(
             sub_sec, "compute_extent", required=False, default=True, type_=bool
+        )
+        self.expert_knowledge = _get_key(
+            sub_sec, "expert_knowledge", required=False, default=True, type_=bool
         )
 
         legend = _get_key(sub_sec, "legend", required=False, default={})
@@ -449,6 +463,17 @@ class AnalysisSegmentationConfig:
         },
     )
     """Path to the results folder for segmentation."""
+    expert_knowledge: bool = field(
+        default=True,
+        metadata={
+            "name": "Use expert knowledge",
+            "help": (
+                "Apply expert-knowledge ROI masking to this analysis's "
+                "saturation_g/concentration_aq fields."
+            ),
+        },
+    )
+    """Whether to apply expert-knowledge ROI masking for this analysis."""
 
     def load(
         self,
@@ -505,6 +530,9 @@ class AnalysisSegmentationConfig:
         if not folder:
             assert results is not None
             self.folder = results / "segmentation"
+        self.expert_knowledge = _get_key(
+            sub_sec, "expert_knowledge", required=False, default=True, type_=bool
+        )
         return self
 
     def error(self):
@@ -589,6 +617,17 @@ class AnalysisMassConfig:
         },
     )
     """Contour smoother selection and options."""
+    expert_knowledge: bool = field(
+        default=True,
+        metadata={
+            "name": "Use expert knowledge",
+            "help": (
+                "Apply expert-knowledge ROI masking to this analysis's "
+                "saturation_g/concentration_aq fields."
+            ),
+        },
+    )
+    """Whether to apply expert-knowledge ROI masking for this analysis."""
 
     @property
     def contour_smoother(self) -> darsia.ContourSmoother | None:
@@ -682,6 +721,10 @@ class AnalysisMassConfig:
         # Load contour smoother
         self.contour_smoother_selection = ContourSmootherSelection().load(sub_sec)
 
+        self.expert_knowledge = _get_key(
+            sub_sec, "expert_knowledge", required=False, default=True, type_=bool
+        )
+
         return self
 
 
@@ -729,6 +772,17 @@ class AnalysisVolumeConfig:
         },
     )
     """Path to the results folder for volume analysis."""
+    expert_knowledge: bool = field(
+        default=True,
+        metadata={
+            "name": "Use expert knowledge",
+            "help": (
+                "Apply expert-knowledge ROI masking to this analysis's "
+                "saturation_g/concentration_aq fields."
+            ),
+        },
+    )
+    """Whether to apply expert-knowledge ROI masking for this analysis."""
 
     def load(
         self,
@@ -771,6 +825,9 @@ class AnalysisVolumeConfig:
         if not folder:
             assert results is not None
             self.folder = results / "volume"
+        self.expert_knowledge = _get_key(
+            sub_sec, "expert_knowledge", required=False, default=True, type_=bool
+        )
         return self
 
 
@@ -816,6 +873,17 @@ class AnalysisFingersConfig:
         },
     )
     """Path to the results folder for fingers analysis."""
+    expert_knowledge: bool = field(
+        default=True,
+        metadata={
+            "name": "Use expert knowledge",
+            "help": (
+                "Apply expert-knowledge ROI masking to this analysis's "
+                "saturation_g/concentration_aq fields."
+            ),
+        },
+    )
+    """Whether to apply expert-knowledge ROI masking for this analysis."""
 
     def load(
         self,
@@ -872,6 +940,9 @@ class AnalysisFingersConfig:
         if not folder:
             assert results is not None
             self.folder = results / "fingers"
+        self.expert_knowledge = _get_key(
+            sub_sec, "expert_knowledge", required=False, default=True, type_=bool
+        )
         return self
 
     def error(self):

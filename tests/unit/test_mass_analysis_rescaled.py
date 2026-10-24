@@ -117,7 +117,9 @@ def test_analysis_mass_writes_default_artifacts_only(
     ctx = SimpleNamespace(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
-            analysis=SimpleNamespace(mass=SimpleNamespace(roi=[], formats=None)),
+            analysis=SimpleNamespace(
+                mass=SimpleNamespace(roi=[], formats=None, expert_knowledge=True)
+            ),
             options=SimpleNamespace(analysis=SimpleNamespace(random_traverse=False)),
             roi_registry=RoiRegistry(),
         ),
@@ -225,7 +227,12 @@ def test_analysis_mass_writes_configured_export_subset_with_extensive_modes(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
             analysis=SimpleNamespace(
-                mass=SimpleNamespace(roi=[], export=configured_export, formats=None),
+                mass=SimpleNamespace(
+                    roi=[],
+                    export=configured_export,
+                    formats=None,
+                    expert_knowledge=True,
+                ),
             ),
             options=SimpleNamespace(analysis=SimpleNamespace(random_traverse=False)),
             roi_registry=RoiRegistry(),
@@ -330,6 +337,7 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
                     roi=[],
                     export=["rescaled_saturation_g", "rescaled_concentration_aq"],
                     formats=None,
+                    expert_knowledge=True,
                 ),
             ),
             options=SimpleNamespace(analysis=SimpleNamespace(random_traverse=False)),
@@ -429,7 +437,12 @@ def test_analysis_mass_passes_natural_scalar_write_bounds(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
             analysis=SimpleNamespace(
-                mass=SimpleNamespace(roi=[], export=configured_export, formats=None),
+                mass=SimpleNamespace(
+                    roi=[],
+                    export=configured_export,
+                    formats=None,
+                    expert_knowledge=True,
+                ),
             ),
             options=SimpleNamespace(analysis=SimpleNamespace(random_traverse=False)),
             roi_registry=RoiRegistry(),

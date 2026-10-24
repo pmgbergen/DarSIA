@@ -342,6 +342,15 @@ def prepare_analysis_context(
     restoration = build_restoration(config.restoration, fluidflower)
 
     # ! ---- EXPERT KNOWLEDGE ADAPTER (for all analyses and calibration) ----
+    # Built once, globally, regardless of any single consumer's own
+    # expert_knowledge toggle: this adapter/the color_to_mass_analysis it
+    # feeds can be SHARED across multiple analysis types in one run (see
+    # user_interface_analysis.py's --all path, which builds one ctx and
+    # reuses it for mass/volume/segmentation/fingers/thresholding
+    # sequentially). Per-consumer opt-out is therefore applied by each
+    # consumer's own *_from_context function (temporarily clearing
+    # color_to_mass_analysis.expert_knowledge_adapter for the duration of
+    # its own processing), not here.
     expert_knowledge_adapter = ExpertKnowledgeAdapter.from_config(
         config=config.expert_knowledge,
         roi_registry=config.roi_registry,
