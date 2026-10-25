@@ -154,5 +154,42 @@ def test_key_list_widget_end_to_end(qapp):
     assert config_dict["misc"]["selection"] is None
 
 
+def test_key_list_widget_facies_source_reads_flat_dict(qapp):
+    """The [facies] section is a flat dict keyed by facies ID (plus "props"/
+    "path" input-output fields), not an array-of-tables like [[roi]]/
+    [[format]] - create_key_list_input special-cases it to read those IDs
+    directly, with no file I/O, so facies_id can offer a real dropdown."""
+    config_dict = {
+        "facies": {
+            "props": "some/path.xlsx",
+            "path": "some/path.npz",
+            7: {"labels": [1, 2]},
+            12: {"labels": [3]},
+        },
+    }
+    factory = SettingsFactory(_MockMainWindow(config_dict))
+    keepalive: list = []
+
+    facies_setting = {
+        "key": "roi.0.facies_id",
+        "name": "Facies",
+        "type": "key_list",
+        "key_list_sources": ("facies",),
+        "max_rows": 1,
+    }
+    _, result = _build(factory, facies_setting, keepalive, qapp)
+
+    assert sorted(result["source_type_map"]) == ["12", "7"]
+    assert "props" not in result["source_type_map"]
+    assert "path" not in result["source_type_map"]
+
+    result["rows"][0].setCurrentText("7")
+    factory.main_window.settings_inputs = {
+        facies_setting["key"]: factory._wrap_multi_row_result(result)
+    }
+    factory._sync_settings_inputs_to_config_dict()
+    assert config_dict["roi"]["0"]["facies_id"] == "7"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
