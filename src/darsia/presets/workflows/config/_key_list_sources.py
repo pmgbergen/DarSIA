@@ -15,3 +15,7 @@ REGISTRY_SOURCES = ("data_interval", "data_window", "data_time", "data_path")
 FORMAT_SOURCES = ("format",)
 ROI_SOURCES = ("roi",)
 COLOR_EMBEDDING_SOURCES = ("color_path", "color_range", "color_channel")
+
+# "facies" is a flat dict keyed by facies ID (not an array-of-tables), special-
+# cased in SettingsFactory.create_key_list_input - see the comment there.
+FACIES_SOURCES = ("facies",)

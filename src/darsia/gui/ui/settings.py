@@ -912,6 +912,12 @@ class SettingsFactory:
                             target_form = self._get_or_create_group_form(
                                 group_forms, group_layout, own_name, own_name
                             )
+                            # _get_or_create_group_form adds this box as a single
+                            # spanning row in group_layout (not target_form) — capture
+                            # that row index now, since depends_on visibility toggling
+                            # below always acts on group_layout, not the box's own
+                            # inner form.
+                            own_box_row_index = group_layout.rowCount() - 1
                         # Temporarily inject entry value into config_dict so the widget's
                         # create_setting_edit can read it via get_value()
                         injected = (
@@ -938,7 +944,15 @@ class SettingsFactory:
                             field_widgets[field_name] = self._wrap_multi_row_result(
                                 field_widget
                             )
-                            row_index = target_form.rowCount() - 1
+                            if is_compact_key_list:
+                                row_index = target_form.rowCount() - 1
+                            else:
+                                # Use this field's own spanning row in group_layout,
+                                # not a row index inside its nested box form - the
+                                # visibility handler below always calls
+                                # group_layout.setRowVisible(...).
+                                row_index = own_box_row_index
+                                target_form = group_layout
                             field_row_map[field_name] = (
                                 row_index,
                                 field_widget,
@@ -1225,6 +1239,18 @@ class SettingsFactory:
         # section each name came from (used by type-based depends_on visibility).
         source_type_map = {}
         for section in sources:
+            # TODO: too hardcoded?
+            if section == "facies":
+                # [facies] is a flat dict keyed by facies ID (plus "props"/"path"
+                # input-output fields), not an array-of-tables like [[roi]]/
+                # [[format]] - special-cased here rather than normalized to that
+                # shape, since it's the only such section referenced by a
+                # key_list field so far.
+                facies_sec = self.main_window.config_dict.get("facies", {})
+                if isinstance(facies_sec, dict):
+                    for facies_id in facies_sec.keys() - {"props", "path"}:
+                        source_type_map[str(facies_id)] = section
+                continue
             for entry in self.main_window.config_dict.get(section, []):
                 if not isinstance(entry, dict):
                     continue
@@ -1254,7 +1280,12 @@ class SettingsFactory:
             # to the dropdown instead of alone in its own row.
             selected_key = current_keys[0] if current_keys else ""
             combo = NoScrollComboBox()
-            combo.setEditable(False)
+            # Most key_list sources are registries (ROI/format/etc.) where only a
+            # listed key is ever valid, so the combo stays a strict dropdown by
+            # default. A field can opt into free typing via "editable": True when
+            # its source list is known to be incomplete/unvalidated (e.g. facies
+            # IDs that may come from an external CSV the GUI never reads).
+            combo.setEditable(bool(setting_dict.get("editable", False)))
             all_options = list(available_keys)
             if selected_key and selected_key not in all_options:
                 all_options.append(selected_key)
@@ -2097,9 +2128,7 @@ class SettingsFactory:
         group_form.setContentsMargins(8, 10, 8, 8)  # Padding: left, top, right, bottom
         sub_inputs = {}
         field_row_map = {}  # Map unqualified_key -> (row_index, field_widget)
-        group_forms = (
-            {}
-        )  # For nested multi-row fields, reuse _get_or_create_group_form helper
+        group_forms = {}  # For nested multi-row fields, reuse _get_or_create_group_form helper
 
         # Add Load button if this group is loadable (e.g., curvature correction)
         key_path = setting_dict["key"]  # e.g. "corrections.curvature"
