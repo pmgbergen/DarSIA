@@ -197,4 +197,3 @@ class MultiRoiConfig:
         for key in roi_sec.keys():
             self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
         return self
-
