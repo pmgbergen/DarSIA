@@ -65,16 +65,24 @@ def _resolve_named_roi_voxels(
     if roi_key is None or roi_registry is None:
         return None
     roi_config = roi_registry.resolve_rois([roi_key])[roi_key]
-    if roi_config.shape not in ("box", "polygon"):
+    # RoiConfig.roi itself raises for shapes with no plain geometric
+    # representation (label/facies/intersection/union) - re-raise with
+    # context specific to this call site (which of those two config
+    # fields was involved, and that those shapes have no well-defined
+    # bounding box at this point in setup, before any labels/facies image
+    # exists).
+    try:
+        geometry = roi_config.roi
+    except ValueError as exc:
         raise ValueError(
             f"ROI '{roi_key}' has shape={roi_config.shape!r}, but "
             "corrections.color.roi/corrections.drift.roi only support "
             "shape='box'/'polygon' (label/facies/intersection/union ROIs "
             "have no well-defined bounding box at this point in setup)."
-        )
+        ) from exc
     # 'box' gives 2 corners, 'polygon' gives >= 3 vertices - both reduce to a
     # bounding box the same way below, so no shape-specific branching needed.
-    voxels = image.coordinatesystem.voxel(roi_config.roi)
+    voxels = image.coordinatesystem.voxel(geometry)
     if not as_landmarks:
         return voxels
     return darsia.bounding_box_inverse(darsia.bounding_box(voxels))

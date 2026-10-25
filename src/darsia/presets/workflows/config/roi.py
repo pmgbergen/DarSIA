@@ -125,12 +125,22 @@ class RoiConfig:
         """Computed ROI coordinates from the configured shape.
 
         Only meaningful for shape='box'/'polygon' - the other shapes have
-        no geometry and must be dispatched before this property is
-        accessed (see ExpertKnowledgeAdapter._mask_for_roi).
+        no plain geometric representation (no corners/vertices) and must
+        be resolved via a shape-aware consumer instead (e.g.
+        ExpertKnowledgeAdapter._mask_for_roi, which dispatches on `.shape`
+        before ever reaching this property).
         """
         if self.shape == "polygon":
             return CoordinateArray(self.vertices)
-        return CoordinateArray([self.corner_1, self.corner_2])
+        elif self.shape == "box":
+            return CoordinateArray([self.corner_1, self.corner_2])
+        else:
+            raise ValueError(
+                f"ROI '{self.name}' has shape={self.shape!r}, which has no "
+                "plain geometric representation - use a shape-aware "
+                "consumer (e.g. ExpertKnowledgeAdapter) instead of "
+                "RoiConfig.roi."
+            )
 
     def load(self, sec: dict) -> "RoiConfig":
         self.name = _get_key(sec, "name", required=True, type_=str)
