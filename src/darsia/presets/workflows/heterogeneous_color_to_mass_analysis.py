@@ -345,6 +345,9 @@ class HeterogeneousColorToMassAnalysis:
             # TODO:color_interpretation: darsia.Image restrivuted to the separate boxes
             pH = self.call_pH_analysis(color_interpretation)
             c_aq, s_g = self.flash(pH)
+            if self.expert_knowledge_adapter is not None:
+                c_aq = self.expert_knowledge_adapter.apply(c_aq, "concentration_aq")
+                s_g = self.expert_knowledge_adapter.apply(s_g, "saturation_g")
             mass_analysis_result: SimpleMassAnalysisResults = (
                 self.co2_mass_analysis.mass_analysis(
                     c_aq=c_aq,
