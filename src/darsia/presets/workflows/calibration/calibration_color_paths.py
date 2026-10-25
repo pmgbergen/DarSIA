@@ -133,6 +133,23 @@ def calibration_color_paths_from_context(
             )
             calibration_mask = fluidflower.boolean_porosity.copy()
 
+    # Always exclude the union of no_rois, regardless of the positive selection
+    # above - e.g. a known-contaminated sub-region that happens to share a label
+    # with porous rock, which would otherwise pollute that label's fitted color
+    # path even when it is included in 'rois'.
+    if color_cfg.no_rois and config.roi_registry is not None:
+        no_roi_entries = config.roi_registry.resolve_rois(color_cfg.no_rois)
+        no_rois = [roi_cfg.roi for roi_cfg in no_roi_entries.values()]
+        exclude_mask = roi_to_mask(no_rois, calibration_mask, mode="voxels")
+        calibration_mask.img &= ~exclude_mask.img
+        if not np.any(calibration_mask.img):
+            logger.warning(
+                "The union of 'no_rois' excludes the entire calibration mask "
+                "(porosity intersected with 'rois', if any). Colour-path "
+                "calibration will proceed with an empty mask - check for "
+                "overlapping 'rois'/'no_rois' configuration."
+            )
+
     if show:
         # Plot the calibration mask for sanity check with contours of the ROIs if provided.
         _, ax = plt.subplots(num="calibration mask")
