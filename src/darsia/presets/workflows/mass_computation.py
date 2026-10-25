@@ -11,6 +11,14 @@ from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
 )
+from darsia.utils.units import (
+    choose_mass_unit,
+    choose_time_unit,
+    convert_mass,
+    convert_time,
+    mass_label,
+    time_label,
+)
 
 # from darsia.presets.workflows.heterogeneous_color_analysis import (
 #    HeterogeneousColorAnalysis,
@@ -61,6 +69,8 @@ class MassComputation:
         self,
         untransformed_images: list[darsia.Image],
         experiment: darsia.ProtocolledExperiment,
+        mass_unit: str = "auto",
+        time_unit: str = "auto",
     ) -> None:
         # Check expected status
         times = [experiment.time_since_start(img.date) for img in untransformed_images]
@@ -278,51 +288,60 @@ class MassComputation:
         # Combine plot and scatter for integrated mass over time.
         # Decompose into total, gas, and aqueous mass, and add
         # expected mass using a dashed line.
-        ax[1].set_xlabel("Time (h)")
-        ax[1].set_ylabel("Mass (g)")
+        max_expected = max(expected_mass) if len(expected_mass) > 0 else 0
+        mass_unit_resolved = (
+            choose_mass_unit(max_expected) if mass_unit == "auto" else mass_unit
+        )
+        time_unit_resolved = (
+            choose_time_unit(max(times))
+            if time_unit == "auto" and len(times) > 0
+            else "h" if time_unit == "auto" else time_unit
+        )
+        ax[1].set_xlabel(time_label(time_unit_resolved))
+        ax[1].set_ylabel(mass_label(mass_unit_resolved))
+        plot_times = convert_time(times, time_unit_resolved)
         [integrated_mass_plot] = ax[1].plot(
-            times,
-            integrated_mass,
+            plot_times,
+            convert_mass(integrated_mass, mass_unit_resolved),
             color="blue",
             label="total",
         )
         [integrated_mass_plot_g] = ax[1].plot(
-            times,
-            integrated_mass_g,
+            plot_times,
+            convert_mass(integrated_mass_g, mass_unit_resolved),
             color="green",
             label="gas",
         )
         [integrated_mass_plot_aq] = ax[1].plot(
-            times,
-            integrated_mass_aq,
+            plot_times,
+            convert_mass(integrated_mass_aq, mass_unit_resolved),
             color="orange",
             label="aqueous",
         )
         ax[1].plot(
-            times,
-            expected_mass,
+            plot_times,
+            convert_mass(expected_mass, mass_unit_resolved),
             linestyle="--",
             color="red",
             label="injected",
         )
         integrated_mass_scatter = ax[1].scatter(
-            times,
-            integrated_mass,
+            plot_times,
+            convert_mass(integrated_mass, mass_unit_resolved),
             color="blue",
         )
         integrated_mass_scatter_g = ax[1].scatter(
-            times,
-            integrated_mass_g,
+            plot_times,
+            convert_mass(integrated_mass_g, mass_unit_resolved),
             color="green",
         )
         integrated_mass_scatter_aq = ax[1].scatter(
-            times,
-            integrated_mass_aq,
+            plot_times,
+            convert_mass(integrated_mass_aq, mass_unit_resolved),
             color="orange",
         )
-        max_expected = max(expected_mass) if len(expected_mass) > 0 else 0
         if max_expected > 0:
-            ax[1].set_ylim(0.0, 2.0 * max_expected)
+            ax[1].set_ylim(0.0, convert_mass(2.0 * max_expected, mass_unit_resolved))
         else:
             ax[1].autoscale()
         ax[1].legend()
@@ -364,13 +383,14 @@ class MassComputation:
             nonlocal log_calibration_iteration
             log_calibration_iteration += 1
 
-            # Show 'Loading...' on mass plot
+            # Show 'Loading...' on mass plot (axes-fraction coordinates so this
+            # stays centered regardless of the currently chosen unit's scale)
             loading_txt = ax[1].text(
-                np.max(times) // 2,
-                0.008,
+                0.5,
+                0.5,
                 "Loading...",
                 horizontalalignment="center",
-                # color="r",
+                transform=ax[1].transAxes,
             )
             fig.canvas.draw_idle()
 
@@ -378,13 +398,36 @@ class MassComputation:
             update_analysis()
 
             # Update the mass plots (Plot 3)
-            integrated_mass_plot.set_ydata(integrated_mass)
-            integrated_mass_plot_g.set_ydata(integrated_mass_g)
-            integrated_mass_plot_aq.set_ydata(integrated_mass_aq)
+            max_expected = max(expected_mass) if len(expected_mass) > 0 else 0
+            mass_unit_resolved = (
+                choose_mass_unit(max_expected) if mass_unit == "auto" else mass_unit
+            )
+            integrated_mass_plot.set_ydata(
+                convert_mass(integrated_mass, mass_unit_resolved)
+            )
+            integrated_mass_plot_g.set_ydata(
+                convert_mass(integrated_mass_g, mass_unit_resolved)
+            )
+            integrated_mass_plot_aq.set_ydata(
+                convert_mass(integrated_mass_aq, mass_unit_resolved)
+            )
 
-            integrated_mass_scatter.set_offsets(np.c_[times, integrated_mass])
-            integrated_mass_scatter_g.set_offsets(np.c_[times, integrated_mass_g])
-            integrated_mass_scatter_aq.set_offsets(np.c_[times, integrated_mass_aq])
+            integrated_mass_scatter.set_offsets(
+                np.c_[plot_times, convert_mass(integrated_mass, mass_unit_resolved)]
+            )
+            integrated_mass_scatter_g.set_offsets(
+                np.c_[plot_times, convert_mass(integrated_mass_g, mass_unit_resolved)]
+            )
+            integrated_mass_scatter_aq.set_offsets(
+                np.c_[plot_times, convert_mass(integrated_mass_aq, mass_unit_resolved)]
+            )
+            if max_expected > 0:
+                ax[1].set_ylim(
+                    0.0, convert_mass(2.0 * max_expected, mass_unit_resolved)
+                )
+            else:
+                ax[1].autoscale()
+            ax[1].set_ylabel(mass_label(mass_unit_resolved))
 
             # Log the results
             log_iteration()
