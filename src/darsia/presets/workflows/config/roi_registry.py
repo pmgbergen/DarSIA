@@ -231,7 +231,11 @@ class RoiRegistry:
         return result
 
     def resolve_rois(self, keys: str | list[str]) -> dict[str, RoiConfig]:
-        """Return ROI entries with no label restriction for the given keys.
+        """Return the requested ROI entries, keyed by their registry name.
+
+        Historically filtered out entries with a (since-removed) `label`
+        restriction field; now a plain alias for `resolve`, kept so
+        existing call sites don't need to change.
 
         Parameters
         ----------
@@ -240,12 +244,6 @@ class RoiRegistry:
 
         Returns
         -------
-            Dict containing only the entries with ``label is None``, i.e. not.
-            Label-restricted entries.
+            Dict mapping each requested key to its loaded ROI config object.
         """
-        resolved = self.resolve(keys)
-        return {
-            k: v
-            for k, v in resolved.items()
-            if isinstance(v, RoiConfig) and v.label is None
-        }
+        return self.resolve(keys)

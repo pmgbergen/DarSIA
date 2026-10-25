@@ -141,6 +141,86 @@ class TestRoiConfigToMaskUnion:
         assert np.sum(union.img) >= np.sum(mask_b.img)
 
 
+class TestRoiConfigPolygon:
+    def test_default_shape_is_box_unchanged(self):
+        """shape='box' (the default) is byte-identical to pre-polygon behavior."""
+        img = _make_scalar_image()
+        roi = _make_roi([0.5, 0.3], [1.5, 0.7])
+        assert roi.shape == "box"
+        mask = roi_to_mask(roi.roi, img)
+        assert np.sum(mask.img) > 0
+
+    def test_polygon_masks_true_footprint_not_bounding_box(self):
+        """A triangle's mask must be a strict subset of its bounding box."""
+        img = _make_scalar_image()
+        triangle = RoiConfig(
+            shape="polygon",
+            vertices=[(0.0, 0.0), (2.0, 0.0), (0.0, 1.0)],
+            name="triangle",
+        )
+        bbox = _make_roi([0.0, 0.0], [2.0, 1.0], name="bbox")
+
+        triangle_mask = roi_to_mask(triangle.roi, img).img
+        bbox_mask = roi_to_mask(bbox.roi, img).img
+
+        assert np.sum(triangle_mask) > 0
+        assert np.sum(triangle_mask) < np.sum(bbox_mask)
+        assert np.all(bbox_mask[triangle_mask])  # triangle subset of bbox
+
+    def test_polygon_requires_at_least_three_vertices(self):
+        with pytest.raises(ValueError, match="polygon"):
+            RoiConfig().load(
+                {"name": "bad", "shape": "polygon", "vertices": [[0, 0], [1, 1]]}
+            )
+
+    def test_invalid_shape_rejected(self):
+        with pytest.raises(ValueError, match="shape"):
+            RoiConfig().load({"name": "bad", "shape": "triangle"})
+
+    def test_load_round_trip_box_default(self):
+        roi = RoiConfig().load({"name": "b", "corner_1": [0, 0], "corner_2": [1, 1]})
+        assert roi.shape == "box"
+
+    def test_load_round_trip_polygon(self):
+        roi = RoiConfig().load(
+            {"name": "p", "shape": "polygon", "vertices": [[0, 0], [1, 0], [0, 1]]}
+        )
+        assert roi.shape == "polygon"
+        assert roi.vertices == [(0, 0), (1, 0), (0, 1)]
+
+    def test_load_round_trip_label(self):
+        roi = RoiConfig().load({"name": "l", "shape": "label", "label_index": 3})
+        assert roi.shape == "label"
+        assert roi.label_index == 3
+
+    def test_load_round_trip_facies(self):
+        roi = RoiConfig().load({"name": "f", "shape": "facies", "facies_id": 7})
+        assert roi.shape == "facies"
+        assert roi.facies_id == 7
+
+    def test_load_round_trip_intersection(self):
+        roi = RoiConfig().load(
+            {"name": "i", "shape": "intersection", "members": ["a", "b"]}
+        )
+        assert roi.shape == "intersection"
+        assert roi.members == ["a", "b"]
+
+    def test_load_round_trip_union(self):
+        roi = RoiConfig().load({"name": "u", "shape": "union", "members": ["a", "b"]})
+        assert roi.shape == "union"
+        assert roi.members == ["a", "b"]
+
+    def test_intersection_requires_at_least_two_members(self):
+        with pytest.raises(ValueError, match="members"):
+            RoiConfig().load({"name": "bad", "shape": "intersection", "members": ["a"]})
+
+    def test_label_field_no_longer_exists(self):
+        """The dead AND-restriction field was removed in favor of shape=
+        'intersection' (see test_adapter_intersection_shape_combines_box_and_label
+        in test_analysis_expert_knowledge.py for its replacement)."""
+        assert not hasattr(RoiConfig(), "label")
+
+
 class TestRoiToMaskList:
     def test_list_of_two_non_overlapping_rois_matches_manual_union(self):
         """roi_to_mask with a list returns the same union as calling it twice."""

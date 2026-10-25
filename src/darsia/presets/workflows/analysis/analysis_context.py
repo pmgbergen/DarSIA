@@ -354,6 +354,8 @@ def prepare_analysis_context(
     expert_knowledge_adapter = ExpertKnowledgeAdapter.from_config(
         config=config.expert_knowledge,
         roi_registry=config.roi_registry,
+        labels_image=fluidflower.labels,
+        facies_image=fluidflower.facies,
     )
 
     # ! ---- COLOR EMBEDDING RUNTIME CONTEXT (for all analyses) ----

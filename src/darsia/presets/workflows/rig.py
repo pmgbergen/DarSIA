@@ -53,9 +53,9 @@ def _resolve_named_roi_voxels(
         If True, return the box as 4 ordered corner voxels, anti-clockwise
         from the top-left (row-min, col-min) corner - the convention
         :class:`darsia.ColorCorrection` expects for its reference (brown
-        swatch) corner. If False, return the 2 box corners directly, which
-        is sufficient for :class:`darsia.DriftCorrection` (it collapses any
-        input to a bounding box anyway).
+        swatch) corner. If False, return the box corners/polygon vertices
+        directly, which is sufficient for :class:`darsia.DriftCorrection`
+        (it collapses any input to a bounding box anyway).
 
     Returns
     -------
@@ -65,10 +65,20 @@ def _resolve_named_roi_voxels(
     if roi_key is None or roi_registry is None:
         return None
     roi_config = roi_registry.resolve_rois([roi_key])[roi_key]
-    voxel_box = image.coordinatesystem.voxel(roi_config.roi)
+    if roi_config.shape not in ("box", "polygon"):
+        raise ValueError(
+            f"ROI '{roi_key}' has shape={roi_config.shape!r}, but "
+            "corrections.color.roi/corrections.drift.roi only support "
+            "shape='box'/'polygon' (label/facies/intersection/union ROIs "
+            "have no well-defined bounding box at this point in setup)."
+        )
+    # 'box' gives 2 corners, 'polygon' gives >= 3 vertices - both reduce to a
+    # bounding box the same way below, so no shape-specific branching needed.
+    voxels = image.coordinatesystem.voxel(roi_config.roi)
     if not as_landmarks:
-        return voxel_box
-    return darsia.bounding_box_inverse(darsia.bounding_box(voxel_box))
+        return voxels
+    return darsia.bounding_box_inverse(darsia.bounding_box(voxels))
+
 
 # TODO keep log? or use results?
 

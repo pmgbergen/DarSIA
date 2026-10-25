@@ -81,13 +81,21 @@ calibration, not just analysis:
 [expert_knowledge]
 saturation_g = ["roi_key_1", "roi_key_2"]
 concentration_aq = ["roi_key_3"]
+no_saturation_g = ["sand_layer"]
+no_concentration_aq = []
 ```
 
-- Keys reference ROIs from the global ROI registry (`[roi.*]`).
-- Both lists default to empty (no-op).
-- When configured, values outside the union ROI are forced to zero for:
-  - `saturation_g` and `rescaled_saturation_g`
-  - `concentration_aq` and `rescaled_concentration_aq`
+- Keys reference ROIs from the global ROI registry (`[[roi]]`; see
+  `roi-reference.md` for the `box`/`polygon`/`label`/`facies` shapes a ROI
+  may take).
+- All four lists default to empty (no-op).
+- `saturation_g`/`concentration_aq` are positive constraints: values
+  outside the union of their ROIs are forced to zero, for the field and
+  its `rescaled_*` variant.
+- `no_saturation_g`/`no_concentration_aq` are negative constraints: values
+  inside the union of their ROIs are forced to zero, regardless of the
+  positive constraint. Where a positive and a negative ROI overlap, the
+  negative rule wins.
 
 ## Output expectations
 Depending on enabled tasks, analysis typically produces derived crops, plots/maps, and result artifacts in the configured results directory.
