@@ -9,7 +9,7 @@ from darsia.presets.workflows.config.color_embedding_registry import (
     ColorEmbeddingRegistry,
 )
 from darsia.presets.workflows.config.data_registry import DataRegistry
-from darsia.presets.workflows.config.roi import RoiAndLabelConfig, RoiConfig
+from darsia.presets.workflows.config.roi import RoiConfig
 from darsia.presets.workflows.config.roi_registry import RoiRegistry
 
 # ---------------------------------------------------------------------------
