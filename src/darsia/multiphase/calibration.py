@@ -10,6 +10,14 @@ import pandas as pd
 from matplotlib.widgets import Button, Slider
 
 import darsia
+from darsia.utils.units import (
+    choose_mass_unit,
+    choose_time_unit,
+    convert_mass,
+    convert_time,
+    mass_label,
+    time_label,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +32,8 @@ def calibrate_transformations(
     pre_mass_analysis: Callable[[darsia.Image], dict],
     mass_analysis_from_pre: Callable[[dict], darsia.MassAnalysisResults],
     log: Path,
+    mass_unit: str = "auto",
+    time_unit: str = "auto",
 ) -> None:
     """Interactive calibration of multiphase transformations for mass analysis.
 
@@ -328,51 +338,60 @@ def calibrate_transformations(
     # Combine plot and scatter for integrated mass over time.
     # Decompose into total, gas, and aqueous mass, and add
     # expected mass using a dashed line.
-    ax[2].set_xlabel("Time (h)")
-    ax[2].set_ylabel("Mass (g)")
+    max_expected = max(expected_mass) if len(expected_mass) > 0 else 0
+    mass_unit_full = (
+        choose_mass_unit(max_expected) if mass_unit == "auto" else mass_unit
+    )
+    time_unit_full = (
+        choose_time_unit(max(run_time))
+        if time_unit == "auto" and len(run_time) > 0
+        else "h" if time_unit == "auto" else time_unit
+    )
+    ax[2].set_xlabel(time_label(time_unit_full))
+    ax[2].set_ylabel(mass_label(mass_unit_full))
+    plot_run_time = convert_time(run_time, time_unit_full)
     [integrated_mass_plot] = ax[2].plot(
-        run_time,
-        integrated_mass,
+        plot_run_time,
+        convert_mass(integrated_mass, mass_unit_full),
         color="blue",
         label="total",
     )
     [integrated_mass_plot_g] = ax[2].plot(
-        run_time,
-        integrated_mass_g,
+        plot_run_time,
+        convert_mass(integrated_mass_g, mass_unit_full),
         color="green",
         label="gas",
     )
     [integrated_mass_plot_aq] = ax[2].plot(
-        run_time,
-        integrated_mass_aq,
+        plot_run_time,
+        convert_mass(integrated_mass_aq, mass_unit_full),
         color="orange",
         label="aqueous",
     )
     ax[2].plot(
-        run_time,
-        expected_mass,
+        plot_run_time,
+        convert_mass(expected_mass, mass_unit_full),
         linestyle="--",
         color="red",
         label="injected",
     )
     integrated_mass_scatter = ax[2].scatter(
-        run_time,
-        integrated_mass,
+        plot_run_time,
+        convert_mass(integrated_mass, mass_unit_full),
         color="blue",
     )
     integrated_mass_scatter_g = ax[2].scatter(
-        run_time,
-        integrated_mass_g,
+        plot_run_time,
+        convert_mass(integrated_mass_g, mass_unit_full),
         color="green",
     )
     integrated_mass_scatter_aq = ax[2].scatter(
-        run_time,
-        integrated_mass_aq,
+        plot_run_time,
+        convert_mass(integrated_mass_aq, mass_unit_full),
         color="orange",
     )
-    max_expected = max(expected_mass) if len(expected_mass) > 0 else 0
     if max_expected > 0:
-        ax[2].set_ylim(0.0, 2.0 * max_expected)
+        ax[2].set_ylim(0.0, convert_mass(2.0 * max_expected, mass_unit_full))
     else:
         ax[2].autoscale()
     ax[2].legend()
@@ -381,51 +400,60 @@ def calibrate_transformations(
     # ! ---- PLOT 4: INTEGRATED MASS OVER TIME, FIRST 12 HOURS ----
 
     # Same as plot 3, but only for the first 12 hours.
-    ax[3].set_xlabel("Time (h)")
-    ax[3].set_ylabel("Mass (g)")
+    max_expected_early = max(expected_mass[:ind]) if len(expected_mass[:ind]) > 0 else 0
+    mass_unit_early = (
+        choose_mass_unit(max_expected_early) if mass_unit == "auto" else mass_unit
+    )
+    time_unit_early = (
+        choose_time_unit(max(run_time[:ind]))
+        if time_unit == "auto" and len(run_time[:ind]) > 0
+        else "h" if time_unit == "auto" else time_unit
+    )
+    ax[3].set_xlabel(time_label(time_unit_early))
+    ax[3].set_ylabel(mass_label(mass_unit_early))
+    plot_run_time_early = convert_time(run_time[:ind], time_unit_early)
     [early_integrated_mass_plot] = ax[3].plot(
-        run_time[:ind],
-        integrated_mass[:ind],
+        plot_run_time_early,
+        convert_mass(integrated_mass[:ind], mass_unit_early),
         color="blue",
         label="total",
     )
     [early_integrated_mass_plot_g] = ax[3].plot(
-        run_time[:ind],
-        integrated_mass_g[:ind],
+        plot_run_time_early,
+        convert_mass(integrated_mass_g[:ind], mass_unit_early),
         color="green",
         label="gas",
     )
     [early_integrated_mass_plot_aq] = ax[3].plot(
-        run_time[:ind],
-        integrated_mass_aq[:ind],
+        plot_run_time_early,
+        convert_mass(integrated_mass_aq[:ind], mass_unit_early),
         color="orange",
         label="aqueous",
     )
     ax[3].plot(
-        run_time[:ind],
-        expected_mass[:ind],
+        plot_run_time_early,
+        convert_mass(expected_mass[:ind], mass_unit_early),
         linestyle="--",
         color="red",
         label="injected",
     )
     early_integrated_mass_scatter = ax[3].scatter(
-        run_time[:ind],
-        integrated_mass[:ind],
+        plot_run_time_early,
+        convert_mass(integrated_mass[:ind], mass_unit_early),
         color="blue",
     )
     early_integrated_mass_scatter_g = ax[3].scatter(
-        run_time[:ind],
-        integrated_mass_g[:ind],
+        plot_run_time_early,
+        convert_mass(integrated_mass_g[:ind], mass_unit_early),
         color="green",
     )
     early_integrated_mass_scatter_aq = ax[3].scatter(
-        run_time[:ind],
-        integrated_mass_aq[:ind],
+        plot_run_time_early,
+        convert_mass(integrated_mass_aq[:ind], mass_unit_early),
         color="orange",
     )
-    max_expected_early = max(expected_mass[:ind]) if len(expected_mass[:ind]) > 0 else 0
     if max_expected_early > 0:
-        ax[3].set_ylim(0.0, 2.0 * max_expected_early)
+        ax[3].set_ylim(0.0, convert_mass(2.0 * max_expected_early, mass_unit_early))
     else:
         ax[3].autoscale()
     ax[3].legend()
@@ -448,20 +476,21 @@ def calibrate_transformations(
         log_calibration_iteration += 1
 
         # Deactivate the mass plots by plotting additional text 'Loading...' in the center of
-        # the plot
+        # the plot (axes-fraction coordinates so this stays centered regardless of the
+        # currently chosen mass/time unit's scale)
         loading_txt = ax[2].text(
-            np.max(run_time) // 2,
-            0.008,
+            0.5,
+            0.5,
             "Loading...",
             horizontalalignment="center",
-            # color="r",
+            transform=ax[2].transAxes,
         )
         early_loading_txt = ax[3].text(
-            np.max(run_time[:ind]) // 2,
-            0.008,
+            0.5,
+            0.5,
             "Loading...",
-            # color="r",
             horizontalalignment="center",
+            transform=ax[3].transAxes,
         )
         fig.canvas.draw_idle()
 
@@ -469,28 +498,73 @@ def calibrate_transformations(
         update_multiphase_time_series_analysis()
 
         # Update the mass plots (Plot 3)
-        integrated_mass_plot.set_ydata(integrated_mass)
-        integrated_mass_plot_g.set_ydata(integrated_mass_g)
-        integrated_mass_plot_aq.set_ydata(integrated_mass_aq)
+        max_expected = max(expected_mass) if len(expected_mass) > 0 else 0
+        mass_unit_full = (
+            choose_mass_unit(max_expected) if mass_unit == "auto" else mass_unit
+        )
+        integrated_mass_plot.set_ydata(convert_mass(integrated_mass, mass_unit_full))
+        integrated_mass_plot_g.set_ydata(
+            convert_mass(integrated_mass_g, mass_unit_full)
+        )
+        integrated_mass_plot_aq.set_ydata(
+            convert_mass(integrated_mass_aq, mass_unit_full)
+        )
 
-        integrated_mass_scatter.set_offsets(np.c_[run_time, integrated_mass])
-        integrated_mass_scatter_g.set_offsets(np.c_[run_time, integrated_mass_g])
-        integrated_mass_scatter_aq.set_offsets(np.c_[run_time, integrated_mass_aq])
+        integrated_mass_scatter.set_offsets(
+            np.c_[plot_run_time, convert_mass(integrated_mass, mass_unit_full)]
+        )
+        integrated_mass_scatter_g.set_offsets(
+            np.c_[plot_run_time, convert_mass(integrated_mass_g, mass_unit_full)]
+        )
+        integrated_mass_scatter_aq.set_offsets(
+            np.c_[plot_run_time, convert_mass(integrated_mass_aq, mass_unit_full)]
+        )
+        if max_expected > 0:
+            ax[2].set_ylim(0.0, convert_mass(2.0 * max_expected, mass_unit_full))
+        else:
+            ax[2].autoscale()
+        ax[2].set_ylabel(mass_label(mass_unit_full))
 
         # Update the mass plots (Plot 4)
-        early_integrated_mass_plot.set_ydata(integrated_mass[:ind])
-        early_integrated_mass_plot_g.set_ydata(integrated_mass_g[:ind])
-        early_integrated_mass_plot_aq.set_ydata(integrated_mass_aq[:ind])
+        max_expected_early = (
+            max(expected_mass[:ind]) if len(expected_mass[:ind]) > 0 else 0
+        )
+        mass_unit_early = (
+            choose_mass_unit(max_expected_early) if mass_unit == "auto" else mass_unit
+        )
+        early_integrated_mass_plot.set_ydata(
+            convert_mass(integrated_mass[:ind], mass_unit_early)
+        )
+        early_integrated_mass_plot_g.set_ydata(
+            convert_mass(integrated_mass_g[:ind], mass_unit_early)
+        )
+        early_integrated_mass_plot_aq.set_ydata(
+            convert_mass(integrated_mass_aq[:ind], mass_unit_early)
+        )
 
         early_integrated_mass_scatter.set_offsets(
-            np.c_[run_time[:ind], integrated_mass[:ind]]
+            np.c_[
+                plot_run_time_early,
+                convert_mass(integrated_mass[:ind], mass_unit_early),
+            ]
         )
         early_integrated_mass_scatter_g.set_offsets(
-            np.c_[run_time[:ind], integrated_mass_g[:ind]]
+            np.c_[
+                plot_run_time_early,
+                convert_mass(integrated_mass_g[:ind], mass_unit_early),
+            ]
         )
         early_integrated_mass_scatter_aq.set_offsets(
-            np.c_[run_time[:ind], integrated_mass_aq[:ind]]
+            np.c_[
+                plot_run_time_early,
+                convert_mass(integrated_mass_aq[:ind], mass_unit_early),
+            ]
         )
+        if max_expected_early > 0:
+            ax[3].set_ylim(0.0, convert_mass(2.0 * max_expected_early, mass_unit_early))
+        else:
+            ax[3].autoscale()
+        ax[3].set_ylabel(mass_label(mass_unit_early))
 
         # Log the results
         log_iteration()

@@ -15,6 +15,14 @@ from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
 )
+from darsia.utils.units import (
+    choose_mass_unit,
+    choose_time_unit,
+    convert_mass,
+    convert_time,
+    mass_label,
+    time_label,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -443,6 +451,8 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
         experiment: darsia.ProtocolledExperiment,
         cmap=None,
         show: bool = False,
+        mass_unit: str = "auto",
+        time_unit: str = "auto",
     ) -> None:
         """Coarse tuning of the color signal analysis."""
 
@@ -573,51 +583,60 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
         # Combine plot and scatter for integrated mass over time.
         # Decompose into total, gas, and aqueous mass, and add
         # expected mass using a dashed line.
-        ax[1].set_xlabel("Time (h)")
-        ax[1].set_ylabel("Mass (g)")
+        max_expected = max(expected_mass) if len(expected_mass) > 0 else 0
+        mass_unit_resolved = (
+            choose_mass_unit(max_expected) if mass_unit == "auto" else mass_unit
+        )
+        time_unit_resolved = (
+            choose_time_unit(max(times))
+            if time_unit == "auto" and len(times) > 0
+            else "h" if time_unit == "auto" else time_unit
+        )
+        ax[1].set_xlabel(time_label(time_unit_resolved))
+        ax[1].set_ylabel(mass_label(mass_unit_resolved))
+        plot_times = convert_time(times, time_unit_resolved)
         ax[1].plot(
-            times,
-            integrated_mass,
+            plot_times,
+            convert_mass(integrated_mass, mass_unit_resolved),
             color="blue",
             label="total",
         )
         ax[1].plot(
-            times,
-            integrated_mass_g,
+            plot_times,
+            convert_mass(integrated_mass_g, mass_unit_resolved),
             color="green",
             label="gas",
         )
         ax[1].plot(
-            times,
-            integrated_mass_aq,
+            plot_times,
+            convert_mass(integrated_mass_aq, mass_unit_resolved),
             color="orange",
             label="aqueous",
         )
         ax[1].plot(
-            times,
-            expected_mass,
+            plot_times,
+            convert_mass(expected_mass, mass_unit_resolved),
             linestyle="--",
             color="red",
             label="injected",
         )
         ax[1].scatter(
-            times,
-            integrated_mass,
+            plot_times,
+            convert_mass(integrated_mass, mass_unit_resolved),
             color="blue",
         )
         ax[1].scatter(
-            times,
-            integrated_mass_g,
+            plot_times,
+            convert_mass(integrated_mass_g, mass_unit_resolved),
             color="green",
         )
         ax[1].scatter(
-            times,
-            integrated_mass_aq,
+            plot_times,
+            convert_mass(integrated_mass_aq, mass_unit_resolved),
             color="orange",
         )
-        max_expected = max(expected_mass) if len(expected_mass) > 0 else 0
         if max_expected > 0:
-            ax[1].set_ylim(0.0, 2.0 * max_expected)
+            ax[1].set_ylim(0.0, convert_mass(2.0 * max_expected, mass_unit_resolved))
         else:
             ax[1].autoscale()
         ax[1].legend()
