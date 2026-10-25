@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, Optional
 
+import cv2
 import numpy as np
 
 import darsia
@@ -93,17 +94,18 @@ def roi_to_mask(
     pixels are ``False``.
 
     When *roi* is a **list**, the returned mask is the element-wise **union**
-    (logical OR) of the individual bounding-box masks.
+    (logical OR) of the individual masks.
 
     Parameters
     ----------
     roi : _SingleRoi | list[_SingleRoi]
         A single :class:`~darsia.ROI`, :class:`~darsia.CoordinateArray`,
-        or :class:`~darsia.VoxelArray` defining the bounding-box corners,
-        **or** a list of such objects whose union is returned.  If a pair
-        of coordinates is provided, it must be in the form of a 2-D array
-        with shape ``(2, 2)``, where the first row is the minimum corner
-        and the second row is the maximum corner.
+        or :class:`~darsia.VoxelArray`, **or** a list of such objects whose
+        union is returned. A pair of coordinates (shape ``(2, 2)``, first
+        row the minimum corner, second row the maximum corner) is treated
+        as an axis-aligned box. More than two, ordered points are treated
+        as a polygon and rasterized to their true footprint, not their
+        bounding box.
     reference_image : darsia.Image
         A :class:`~darsia.Image` used to define the output
         shape, metadata and coordinate system.
@@ -127,19 +129,25 @@ def roi_to_mask(
 
     mask = darsia.zeros_like(reference_image, mode=mode, dtype=np.bool_)
 
-    # Convert the two bounding-box corners from physical to voxel coordinates.
+    # Convert from physical to voxel coordinates.
     if isinstance(roi, (darsia.ROI, darsia.CoordinateArray)):
-        voxels_box = reference_image.coordinatesystem.voxel(roi)
+        voxels = reference_image.coordinatesystem.voxel(roi)
     elif isinstance(roi, darsia.VoxelArray):
-        voxels_box = roi
+        voxels = roi
     else:
         raise TypeError(f"Unsupported ROI type: {type(roi)}")
 
+    if len(voxels) > 2:
+        # More than 2 ordered points define a polygon, not a 2-corner box -
+        # rasterize the true footprint, not its bounding box.
+        mask.img[_polygon_mask(voxels, mask.img.shape[:2])] = True
+        return mask
+
     num_voxels = reference_image.num_voxels
-    row_min = int(max(0, np.min(voxels_box[:, 0])))
-    row_max = min(int(np.max(voxels_box[:, 0])), num_voxels[0])
-    col_min = int(max(0, np.min(voxels_box[:, 1])))
-    col_max = min(int(np.max(voxels_box[:, 1])), num_voxels[1])
+    row_min = int(max(0, np.min(voxels[:, 0])))
+    row_max = min(int(np.max(voxels[:, 0])), num_voxels[0])
+    col_min = int(max(0, np.min(voxels[:, 1])))
+    col_max = min(int(np.max(voxels[:, 1])), num_voxels[1])
 
     # Guard: skip if the bounding box maps to an empty region after clipping.
     # This can happen when the ROI is entirely outside the image domain (e.g.
@@ -149,6 +157,18 @@ def roi_to_mask(
     if row_max > row_min and col_max > col_min:
         mask.img[row_min:row_max, col_min:col_max] = True
     return mask
+
+
+def _polygon_mask(voxels: "darsia.VoxelArray", shape: tuple[int, int]) -> np.ndarray:
+    """Rasterize an ordered polygon of (row, col) voxel points to its true footprint.
+
+    cv2.fillPoly expects (x, y) = (col, row) ordered points, so the row/col
+    columns of `voxels` are swapped before filling.
+    """
+    points_xy = np.asarray(voxels)[:, [1, 0]].astype(np.int32)
+    raster = np.zeros(shape, dtype=np.uint8)
+    cv2.fillPoly(raster, [points_xy], color=1)
+    return raster.astype(bool)
 
 
 def full_like(

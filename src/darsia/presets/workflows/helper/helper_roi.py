@@ -267,7 +267,10 @@ def helper_roi(cls: type[Rig], path: Path | list[Path], show: bool = False) -> N
             )
         restoration = build_restoration(config.restoration, fluidflower)
         expert_knowledge_adapter = ExpertKnowledgeAdapter.from_config(
-            config.expert_knowledge, config.roi_registry
+            config.expert_knowledge,
+            config.roi_registry,
+            labels_image=fluidflower.labels,
+            facies_image=fluidflower.facies,
         )
         color_to_mass_analysis = _build_color_to_mass_analysis(
             config, experiment, fluidflower, restoration, expert_knowledge_adapter

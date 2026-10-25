@@ -14,8 +14,8 @@ This is the user-facing map of workflow TOML sections currently loaded by `Fluid
 - `[color]`: centralized color embedding registry (`[color.path.*]`, `[color.range.*]`, `[color.channel.*]`).
 - `[calibration]`: calibration entrypoints (`[calibration.color]`, `[calibration.mass]`).
 - `[analysis]`: analysis data and feature-specific subsections.
-- `[expert_knowledge]`: optional ROI constraints for saturation/concentration,
-  shared by both analysis and calibration.
+- `[expert_knowledge]`: optional positive/negative ROI constraints for
+  saturation/concentration, shared by both analysis and calibration.
 - `[format]`: named export-format presets for analysis image outputs.
 - `[helper]`: optional helper workflows (ROI, ROI viewer, results, color).
 - `[download]`: download utility config (optional).
@@ -327,15 +327,29 @@ Use the top-level `[expert_knowledge]` section to constrain where selected
 scalar products may be non-zero. It is not nested under `[analysis]` since it
 also governs calibration.
 
-Supported keys:
-- `saturation_g` (list of ROI registry keys)
-- `concentration_aq` (list of ROI registry keys)
+Supported keys (all lists of ROI registry keys, any ROI shape):
+- `saturation_g`: positive constraint - only trust `saturation_g` inside
+  the union of these ROIs.
+- `concentration_aq`: positive constraint - only trust `concentration_aq`
+  inside the union of these ROIs.
+- `no_saturation_g`: negative constraint - always zero `saturation_g`
+  inside the union of these ROIs.
+- `no_concentration_aq`: negative constraint - always zero
+  `concentration_aq` inside the union of these ROIs.
+
+Any list left empty (the default) applies no constraint for that field. A
+single named ROI may appear in both a positive and a negative list; where
+a positive and a negative ROI overlap, the negative rule wins. See
+`roi-reference.md` for the `shape` options (`box`/`polygon`/`label`/
+`facies`) each referenced ROI may take.
 
 Example:
 ```toml
 [expert_knowledge]
 saturation_g = ["roi_key_1", "roi_key_2"]
 concentration_aq = ["roi_key_3"]
+no_saturation_g = ["sand_layer"]
+no_concentration_aq = []
 ```
 
 Notes:
