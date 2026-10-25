@@ -22,6 +22,10 @@ from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
 )
+from darsia.signals.color.color_embedding import (
+    ColorEmbeddingBasis,
+    parse_color_embedding_basis,
+)
 from darsia.utils.units import (
     choose_mass_unit,
     choose_time_unit,
@@ -29,10 +33,6 @@ from darsia.utils.units import (
     convert_time,
     mass_label,
     time_label,
-)
-from darsia.signals.color.color_embedding import (
-    ColorEmbeddingBasis,
-    parse_color_embedding_basis,
 )
 
 logger = logging.getLogger(__name__)
