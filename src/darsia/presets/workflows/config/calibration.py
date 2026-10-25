@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from darsia.utils.units import MASS_UNIT_FACTORS, TIME_UNIT_FACTORS
+
 from ._key_list_sources import COLOR_EMBEDDING_SOURCES, REGISTRY_SOURCES, ROI_SOURCES
 from .roi_registry import _load_roi_key_list
 from .utils import _get_key, _get_section, _get_section_from_toml
@@ -338,6 +340,25 @@ class CalibrationMassConfig:
         },
     )
     """Whether to apply expert-knowledge ROI masking for this calibration."""
+    mass_unit: str = field(
+        default="auto",
+        metadata={
+            "name": "Mass unit",
+            "help": "Unit for mass axes/values in calibration plots. 'auto' "
+            "rescales dynamically to keep displayed numbers readable; or pin "
+            "a fixed unit.",
+            "options": ["auto"] + list(MASS_UNIT_FACTORS),
+        },
+    )
+    time_unit: str = field(
+        default="auto",
+        metadata={
+            "name": "Time unit",
+            "help": "Unit for time axes/values in calibration plots. 'auto' "
+            "rescales dynamically; or pin a fixed unit.",
+            "options": ["auto"] + list(TIME_UNIT_FACTORS),
+        },
+    )
 
     def load(
         self,
@@ -384,6 +405,22 @@ class CalibrationMassConfig:
         self.expert_knowledge = _get_key(
             sec, "expert_knowledge", required=False, default=True, type_=bool
         )
+        self.mass_unit = _get_key(
+            sec, "mass_unit", required=False, default="auto", type_=str
+        )
+        if self.mass_unit not in {"auto", *MASS_UNIT_FACTORS}:
+            raise ValueError(
+                "calibration.mass.mass_unit must be 'auto' or one of "
+                f"{sorted(MASS_UNIT_FACTORS)}."
+            )
+        self.time_unit = _get_key(
+            sec, "time_unit", required=False, default="auto", type_=str
+        )
+        if self.time_unit not in {"auto", *TIME_UNIT_FACTORS}:
+            raise ValueError(
+                "calibration.mass.time_unit must be 'auto' or one of "
+                f"{sorted(TIME_UNIT_FACTORS)}."
+            )
         return self
 
 

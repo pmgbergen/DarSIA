@@ -22,6 +22,14 @@ from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
 )
+from darsia.utils.units import (
+    choose_mass_unit,
+    choose_time_unit,
+    convert_mass,
+    convert_time,
+    mass_label,
+    time_label,
+)
 from darsia.signals.color.color_embedding import (
     ColorEmbeddingBasis,
     parse_color_embedding_basis,
@@ -48,7 +56,14 @@ class HeterogeneousColorToMassAnalysis:
         basis: ColorEmbeddingBasis = ColorEmbeddingBasis.LABELS,
         expert_knowledge_adapter: ExpertKnowledgeAdapter | None = None,
         contour_smoother: darsia.ContourSmoother | None = None,
+        mass_unit: str = "auto",
+        time_unit: str = "auto",
     ):
+        self.mass_unit = mass_unit
+        """Unit for mass axes/values in calibration plots ('auto' or a fixed unit)."""
+        self.time_unit = time_unit
+        """Unit for time axes/values in calibration plots ('auto' or a fixed unit)."""
+
         base_model = darsia.CombinedModel(
             [
                 darsia.HeterogeneousModel(
@@ -781,8 +796,29 @@ class HeterogeneousColorToMassAnalysis:
                 )  # Combine plot and scatter for integrated mass over time.
             # Decompose into total, gas, and aqueous mass, and add
             # expected mass using a dashed line.
-            ax_mass.set_xlabel("Time (h)")
-            ax_mass.set_ylabel("Mass (g)")
+
+            # Determine a representative mass/time magnitude up front, so the
+            # unit (fixed, or auto-chosen to keep displayed numbers readable)
+            # is known before any series is drawn.
+            max_expected = max(
+                (max(expected_mass[k]) for k in rois if len(expected_mass[k]) > 0),
+                default=0.0,
+            )
+            max_time = max(
+                (max(times[k]) for k in rois if len(times[k]) > 0), default=0.0
+            )
+            mass_unit = (
+                choose_mass_unit(max_expected)
+                if self.mass_unit == "auto"
+                else self.mass_unit
+            )
+            time_unit = (
+                choose_time_unit(max_time)
+                if self.time_unit == "auto"
+                else self.time_unit
+            )
+            ax_mass.set_xlabel(time_label(time_unit))
+            ax_mass.set_ylabel(mass_label(mass_unit))
 
             # Store plot objects for updates
             integrated_mass_plots = {}
@@ -801,39 +837,39 @@ class HeterogeneousColorToMassAnalysis:
             roi_colors = [_cmap(i / max(1, num_rois - 1)) for i in range(num_rois)]
 
             # Plot each ROI as separate series
-            max_expected = 0
             for i, (roi_key, roi_times) in enumerate(times.items()):
                 if len(roi_times) > 0:
                     color = roi_colors[i % len(roi_colors)]
                     roi_label = roi_key if roi_key else "entire_frame"
+                    plot_times = convert_time(roi_times, time_unit)
 
                     # Plot lines
                     [integrated_mass_plots[roi_key]] = ax_mass.plot(
-                        roi_times,
-                        integrated_mass[roi_key],
+                        plot_times,
+                        convert_mass(integrated_mass[roi_key], mass_unit),
                         color=color,
                         label=f"total ({roi_label})",
                         linewidth=2,
                     )
                     [integrated_mass_plots_g[roi_key]] = ax_mass.plot(
-                        roi_times,
-                        integrated_mass_g[roi_key],
+                        plot_times,
+                        convert_mass(integrated_mass_g[roi_key], mass_unit),
                         color=color,
                         label=f"gas ({roi_label})",
                         linestyle=":",
                         linewidth=2,
                     )
                     [integrated_mass_plots_aq[roi_key]] = ax_mass.plot(
-                        roi_times,
-                        integrated_mass_aq[roi_key],
+                        plot_times,
+                        convert_mass(integrated_mass_aq[roi_key], mass_unit),
                         color=color,
                         label=f"aqueous ({roi_label})",
                         linestyle="-.",
                         linewidth=2,
                     )
                     [expected_mass_plots[roi_key]] = ax_mass.plot(
-                        roi_times,
-                        expected_mass[roi_key],
+                        plot_times,
+                        convert_mass(expected_mass[roi_key], mass_unit),
                         linestyle="--",
                         color=color,
                         label=f"injected ({roi_label})",
@@ -842,36 +878,32 @@ class HeterogeneousColorToMassAnalysis:
 
                     # Plot scatter points
                     integrated_mass_scatters[roi_key] = ax_mass.scatter(
-                        roi_times,
-                        integrated_mass[roi_key],
+                        plot_times,
+                        convert_mass(integrated_mass[roi_key], mass_unit),
                         color=color,
                         s=20,
                         alpha=0.8,
                     )
                     integrated_mass_scatters_g[roi_key] = ax_mass.scatter(
-                        roi_times,
-                        integrated_mass_g[roi_key],
+                        plot_times,
+                        convert_mass(integrated_mass_g[roi_key], mass_unit),
                         color=color,
                         s=15,
                         alpha=0.6,
                         marker="^",
                     )
                     integrated_mass_scatters_aq[roi_key] = ax_mass.scatter(
-                        roi_times,
-                        integrated_mass_aq[roi_key],
+                        plot_times,
+                        convert_mass(integrated_mass_aq[roi_key], mass_unit),
                         color=color,
                         s=15,
                         alpha=0.6,
                         marker="s",
                     )
 
-                    # Track maximum for y-axis scaling
-                    if len(expected_mass[roi_key]) > 0:
-                        max_expected = max(max_expected, max(expected_mass[roi_key]))
-
             # Set y-axis limits based on maximum expected mass across all ROIs
             if max_expected > 0:
-                ax_mass.set_ylim(0.0, 2.0 * max_expected)
+                ax_mass.set_ylim(0.0, convert_mass(2.0 * max_expected, mass_unit))
             else:
                 ax_mass.autoscale()
             ax_mass.legend()
@@ -1116,25 +1148,68 @@ class HeterogeneousColorToMassAnalysis:
                     coarse_signal_colorbar.update_normal(coarse_signal_img)
 
                     # Update mass plots
+                    max_expected = max(
+                        (
+                            max(expected_mass[k])
+                            for k in rois
+                            if len(expected_mass[k]) > 0
+                        ),
+                        default=0.0,
+                    )
+                    max_time = max(
+                        (max(times[k]) for k in rois if len(times[k]) > 0),
+                        default=0.0,
+                    )
+                    mass_unit = (
+                        choose_mass_unit(max_expected)
+                        if self.mass_unit == "auto"
+                        else self.mass_unit
+                    )
+                    time_unit = (
+                        choose_time_unit(max_time)
+                        if self.time_unit == "auto"
+                        else self.time_unit
+                    )
                     for roi_key in rois:
+                        plot_times = convert_time(times[roi_key], time_unit)
                         integrated_mass_plots[roi_key].set_data(
-                            times[roi_key], integrated_mass[roi_key]
+                            plot_times,
+                            convert_mass(integrated_mass[roi_key], mass_unit),
                         )
                         integrated_mass_plots_g[roi_key].set_data(
-                            times[roi_key], integrated_mass_g[roi_key]
+                            plot_times,
+                            convert_mass(integrated_mass_g[roi_key], mass_unit),
                         )
                         integrated_mass_plots_aq[roi_key].set_data(
-                            times[roi_key], integrated_mass_aq[roi_key]
+                            plot_times,
+                            convert_mass(integrated_mass_aq[roi_key], mass_unit),
                         )
                         integrated_mass_scatters[roi_key].set_offsets(
-                            np.c_[times[roi_key], integrated_mass[roi_key]]
+                            np.c_[
+                                plot_times,
+                                convert_mass(integrated_mass[roi_key], mass_unit),
+                            ]
                         )
                         integrated_mass_scatters_g[roi_key].set_offsets(
-                            np.c_[times[roi_key], integrated_mass_g[roi_key]]
+                            np.c_[
+                                plot_times,
+                                convert_mass(integrated_mass_g[roi_key], mass_unit),
+                            ]
                         )
                         integrated_mass_scatters_aq[roi_key].set_offsets(
-                            np.c_[times[roi_key], integrated_mass_aq[roi_key]]
+                            np.c_[
+                                plot_times,
+                                convert_mass(integrated_mass_aq[roi_key], mass_unit),
+                            ]
                         )
+                    if max_expected > 0:
+                        ax_mass.set_ylim(
+                            0.0, convert_mass(2.0 * max_expected, mass_unit)
+                        )
+                    else:
+                        ax_mass.autoscale()
+                    ax_mass.set_xlabel(time_label(time_unit))
+                    ax_mass.set_ylabel(mass_label(mass_unit))
 
                     # Redraw
                     fig.canvas.draw_idle()
@@ -1305,25 +1380,68 @@ class HeterogeneousColorToMassAnalysis:
                     coarse_signal_colorbar.update_normal(coarse_signal_img)
 
                     # Update mass plots
+                    max_expected = max(
+                        (
+                            max(expected_mass[k])
+                            for k in rois
+                            if len(expected_mass[k]) > 0
+                        ),
+                        default=0.0,
+                    )
+                    max_time = max(
+                        (max(times[k]) for k in rois if len(times[k]) > 0),
+                        default=0.0,
+                    )
+                    mass_unit = (
+                        choose_mass_unit(max_expected)
+                        if self.mass_unit == "auto"
+                        else self.mass_unit
+                    )
+                    time_unit = (
+                        choose_time_unit(max_time)
+                        if self.time_unit == "auto"
+                        else self.time_unit
+                    )
                     for roi_key in rois:
+                        plot_times = convert_time(times[roi_key], time_unit)
                         integrated_mass_plots[roi_key].set_data(
-                            times[roi_key], integrated_mass[roi_key]
+                            plot_times,
+                            convert_mass(integrated_mass[roi_key], mass_unit),
                         )
                         integrated_mass_plots_g[roi_key].set_data(
-                            times[roi_key], integrated_mass_g[roi_key]
+                            plot_times,
+                            convert_mass(integrated_mass_g[roi_key], mass_unit),
                         )
                         integrated_mass_plots_aq[roi_key].set_data(
-                            times[roi_key], integrated_mass_aq[roi_key]
+                            plot_times,
+                            convert_mass(integrated_mass_aq[roi_key], mass_unit),
                         )
                         integrated_mass_scatters[roi_key].set_offsets(
-                            np.c_[times[roi_key], integrated_mass[roi_key]]
+                            np.c_[
+                                plot_times,
+                                convert_mass(integrated_mass[roi_key], mass_unit),
+                            ]
                         )
                         integrated_mass_scatters_g[roi_key].set_offsets(
-                            np.c_[times[roi_key], integrated_mass_g[roi_key]]
+                            np.c_[
+                                plot_times,
+                                convert_mass(integrated_mass_g[roi_key], mass_unit),
+                            ]
                         )
                         integrated_mass_scatters_aq[roi_key].set_offsets(
-                            np.c_[times[roi_key], integrated_mass_aq[roi_key]]
+                            np.c_[
+                                plot_times,
+                                convert_mass(integrated_mass_aq[roi_key], mass_unit),
+                            ]
                         )
+                    if max_expected > 0:
+                        ax_mass.set_ylim(
+                            0.0, convert_mass(2.0 * max_expected, mass_unit)
+                        )
+                    else:
+                        ax_mass.autoscale()
+                    ax_mass.set_xlabel(time_label(time_unit))
+                    ax_mass.set_ylabel(mass_label(mass_unit))
 
                     # Redraw
                     fig.canvas.draw_idle()
@@ -2107,25 +2225,70 @@ class HeterogeneousColorToMassAnalysis:
                         coarse_signal_colorbar.update_normal(coarse_signal_img)
 
                         # Update mass plots
+                        max_expected = max(
+                            (
+                                max(expected_mass[k])
+                                for k in rois
+                                if len(expected_mass[k]) > 0
+                            ),
+                            default=0.0,
+                        )
+                        max_time = max(
+                            (max(times[k]) for k in rois if len(times[k]) > 0),
+                            default=0.0,
+                        )
+                        mass_unit = (
+                            choose_mass_unit(max_expected)
+                            if self.mass_unit == "auto"
+                            else self.mass_unit
+                        )
+                        time_unit = (
+                            choose_time_unit(max_time)
+                            if self.time_unit == "auto"
+                            else self.time_unit
+                        )
                         for roi_key in rois:
+                            plot_times = convert_time(times[roi_key], time_unit)
                             integrated_mass_plots[roi_key].set_data(
-                                times[roi_key], integrated_mass[roi_key]
+                                plot_times,
+                                convert_mass(integrated_mass[roi_key], mass_unit),
                             )
                             integrated_mass_plots_g[roi_key].set_data(
-                                times[roi_key], integrated_mass_g[roi_key]
+                                plot_times,
+                                convert_mass(integrated_mass_g[roi_key], mass_unit),
                             )
                             integrated_mass_plots_aq[roi_key].set_data(
-                                times[roi_key], integrated_mass_aq[roi_key]
+                                plot_times,
+                                convert_mass(integrated_mass_aq[roi_key], mass_unit),
                             )
                             integrated_mass_scatters[roi_key].set_offsets(
-                                np.c_[times[roi_key], integrated_mass[roi_key]]
+                                np.c_[
+                                    plot_times,
+                                    convert_mass(integrated_mass[roi_key], mass_unit),
+                                ]
                             )
                             integrated_mass_scatters_g[roi_key].set_offsets(
-                                np.c_[times[roi_key], integrated_mass_g[roi_key]]
+                                np.c_[
+                                    plot_times,
+                                    convert_mass(integrated_mass_g[roi_key], mass_unit),
+                                ]
                             )
                             integrated_mass_scatters_aq[roi_key].set_offsets(
-                                np.c_[times[roi_key], integrated_mass_aq[roi_key]]
+                                np.c_[
+                                    plot_times,
+                                    convert_mass(
+                                        integrated_mass_aq[roi_key], mass_unit
+                                    ),
+                                ]
                             )
+                        if max_expected > 0:
+                            ax_mass.set_ylim(
+                                0.0, convert_mass(2.0 * max_expected, mass_unit)
+                            )
+                        else:
+                            ax_mass.autoscale()
+                        ax_mass.set_xlabel(time_label(time_unit))
+                        ax_mass.set_ylabel(mass_label(mass_unit))
 
                         # Redraw
                         fig.canvas.draw_idle()
@@ -2920,6 +3083,8 @@ class HeterogeneousColorToMassAnalysis:
         basis: ColorEmbeddingBasis = ColorEmbeddingBasis.LABELS,
         expert_knowledge_adapter: ExpertKnowledgeAdapter | None = None,
         contour_smoother: darsia.ContourSmoother | None = None,
+        mass_unit: str = "auto",
+        time_unit: str = "auto",
     ) -> "HeterogeneousColorToMassAnalysis":
         """Load the calibration data from json file.
 
@@ -2995,4 +3160,6 @@ class HeterogeneousColorToMassAnalysis:
             basis=parsed_basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
             contour_smoother=contour_smoother,
+            mass_unit=mass_unit,
+            time_unit=time_unit,
         )
