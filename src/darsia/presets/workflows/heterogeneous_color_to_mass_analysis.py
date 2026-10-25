@@ -1073,6 +1073,15 @@ class HeterogeneousColorToMassAnalysis:
                         signal_function_line.set_data(x_vals, y_vals)
                         signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
 
+                        # Rescale y-axis to fit the curve, floored at the current
+                        # flash max (never zoom in tighter than the flash
+                        # thresholds, but grow if the curve exceeds them)
+                        flash_max = max(self.flash.max_value_aq, self.flash.max_value_g)
+                        ax_signal_function.set_ylim(
+                            self.signal_model_extents[1][0],
+                            max(flash_max, float(np.max(y_vals))),
+                        )
+
                     # Update flash cut-off and max value lines
                     signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
                     signal_function_aq_min_y.set_ydata(self.flash.min_value_aq)
@@ -1252,6 +1261,15 @@ class HeterogeneousColorToMassAnalysis:
                         y_vals = signal_func.values.copy()
                         signal_function_line.set_data(x_vals, y_vals)
                         signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
+
+                        # Rescale y-axis to fit the curve, floored at the current
+                        # flash max (never zoom in tighter than the flash
+                        # thresholds, but grow if the curve exceeds them)
+                        flash_max = max(self.flash.max_value_aq, self.flash.max_value_g)
+                        ax_signal_function.set_ylim(
+                            self.signal_model_extents[1][0],
+                            max(flash_max, float(np.max(y_vals))),
+                        )
 
                     # Update flash cut-off and max value lines
                     signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
@@ -2040,6 +2058,18 @@ class HeterogeneousColorToMassAnalysis:
                             signal_function_line.set_data(x_vals, y_vals)
                             signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
 
+                            # Rescale y-axis to fit the curve, floored at the
+                            # current flash max (never zoom in tighter than the
+                            # flash thresholds, but grow if the curve exceeds
+                            # them)
+                            flash_max = max(
+                                self.flash.max_value_aq, self.flash.max_value_g
+                            )
+                            ax_signal_function.set_ylim(
+                                self.signal_model_extents[1][0],
+                                max(flash_max, float(np.max(y_vals))),
+                            )
+
                         # Update flash cut-off and max value lines
                         signal_function_aq_max_y.set_ydata([self.flash.max_value_aq])
                         signal_function_g_max_y.set_ydata([self.flash.max_value_g])
@@ -2179,6 +2209,18 @@ class HeterogeneousColorToMassAnalysis:
                             y_vals = signal_func.values.copy()
                             signal_function_line.set_data(x_vals, y_vals)
                             signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
+
+                            # Rescale y-axis to fit the curve, floored at the
+                            # current flash max (never zoom in tighter than the
+                            # flash thresholds, but grow if the curve exceeds
+                            # them)
+                            flash_max = max(
+                                self.flash.max_value_aq, self.flash.max_value_g
+                            )
+                            ax_signal_function.set_ylim(
+                                self.signal_model_extents[1][0],
+                                max(flash_max, float(np.max(y_vals))),
+                            )
 
                         # Update flash cut-off and max value lines
                         signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
