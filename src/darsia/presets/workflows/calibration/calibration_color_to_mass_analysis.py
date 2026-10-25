@@ -300,6 +300,8 @@ def calibration_color_to_mass_analysis_from_context(
             basis=selected_basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
             contour_smoother=contour_smoother,
+            mass_unit=mass_cfg.mass_unit,
+            time_unit=mass_cfg.time_unit,
         )
         color_analysis.color_path_interpretation = color_path_interpretation
 
@@ -315,6 +317,8 @@ def calibration_color_to_mass_analysis_from_context(
             basis=selected_basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
             contour_smoother=contour_smoother,
+            mass_unit=mass_cfg.mass_unit,
+            time_unit=mass_cfg.time_unit,
         )
     else:
         # Start from scratch
@@ -359,6 +363,8 @@ def calibration_color_to_mass_analysis_from_context(
             basis=selected_basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
             contour_smoother=contour_smoother,
+            mass_unit=mass_cfg.mass_unit,
+            time_unit=mass_cfg.time_unit,
         )
 
     # ! ---- INTERACTIVE CALIBRATION ---- ! #
