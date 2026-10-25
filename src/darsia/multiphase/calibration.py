@@ -370,7 +370,11 @@ def calibrate_transformations(
         integrated_mass_aq,
         color="orange",
     )
-    ax[2].set_ylim(0.0, 0.01)
+    max_expected = max(expected_mass) if len(expected_mass) > 0 else 0
+    if max_expected > 0:
+        ax[2].set_ylim(0.0, 2.0 * max_expected)
+    else:
+        ax[2].autoscale()
     ax[2].legend()
     ax[2].set_title("Integrated mass over time, entire run")
 
@@ -419,7 +423,11 @@ def calibrate_transformations(
         integrated_mass_aq[:ind],
         color="orange",
     )
-    ax[3].set_ylim(0.0, 0.01)
+    max_expected_early = max(expected_mass[:ind]) if len(expected_mass[:ind]) > 0 else 0
+    if max_expected_early > 0:
+        ax[3].set_ylim(0.0, 2.0 * max_expected_early)
+    else:
+        ax[3].autoscale()
     ax[3].legend()
     ax[3].set_title("Integrated mass over time, first 12 hours")
 

@@ -224,7 +224,7 @@ class MassComputation:
         ax[0].set_xlabel("Signal")
         ax[0].set_ylabel("Converted signal")
         ax[0].set_title("PWTransformation")
-        ax[0].set_xlim(0, 1)
+        ax[0].set_xlim(0, 2)
         ax[0].set_ylim(0, 2)
         ax[0].legend()
 
@@ -320,7 +320,11 @@ class MassComputation:
             integrated_mass_aq,
             color="orange",
         )
-        ax[1].set_ylim(0.0, 0.01)
+        max_expected = max(expected_mass) if len(expected_mass) > 0 else 0
+        if max_expected > 0:
+            ax[1].set_ylim(0.0, 2.0 * max_expected)
+        else:
+            ax[1].autoscale()
         ax[1].legend()
         ax[1].set_title("Integrated mass over time, entire run")
 

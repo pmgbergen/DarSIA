@@ -873,7 +873,7 @@ class HeterogeneousColorToMassAnalysis:
             if max_expected > 0:
                 ax_mass.set_ylim(0.0, 2.0 * max_expected)
             else:
-                ax_mass.set_ylim(0.0, 1.0)
+                ax_mass.autoscale()
             ax_mass.legend()
             ax_mass.grid(True, alpha=0.3)
 

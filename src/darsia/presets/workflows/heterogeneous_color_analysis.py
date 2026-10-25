@@ -615,7 +615,11 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
             integrated_mass_aq,
             color="orange",
         )
-        ax[1].set_ylim(0.0, 0.01)
+        max_expected = max(expected_mass) if len(expected_mass) > 0 else 0
+        if max_expected > 0:
+            ax[1].set_ylim(0.0, 2.0 * max_expected)
+        else:
+            ax[1].autoscale()
         ax[1].legend()
         ax[1].set_title("Integrated mass over time, entire run")
 
