@@ -82,6 +82,55 @@ class TestCalibrationColorConfig:
         )
         assert cfg.rois == ["my_roi"]
 
+    def test_no_rois_absent_defaults_to_empty_list(self, tmp_path):
+        """``no_rois`` defaults to an empty list when absent."""
+        color_registry = _make_color_embedding_registry(tmp_path)
+        sec = {"embedding": "color_path"}
+        cfg = CalibrationColorConfig().load(
+            sec,
+            color_embedding_registry=color_registry,
+            roi_registry=None,
+        )
+        assert cfg.no_rois == []
+
+    def test_no_rois_list_is_stored(self, tmp_path):
+        """A ``no_rois`` list is stored in the config, independent of ``rois``."""
+        color_registry = _make_color_embedding_registry(tmp_path)
+        roi_registry = _make_registry_with_roi("my_roi")
+        roi_registry.register(
+            "water_pocket",
+            RoiConfig().load(
+                {"name": "water_pocket", "corner_1": [0.0, 0.0], "corner_2": [0.1, 0.1]}
+            ),
+        )
+        sec = {
+            "embedding": "color_path",
+            "rois": ["my_roi"],
+            "no_rois": ["water_pocket"],
+        }
+        cfg = CalibrationColorConfig().load(
+            sec,
+            color_embedding_registry=color_registry,
+            roi_registry=roi_registry,
+        )
+        assert cfg.rois == ["my_roi"]
+        assert cfg.no_rois == ["water_pocket"]
+
+    def test_unknown_no_roi_key_raises_at_load_time(self, tmp_path):
+        """Unknown ROI key in 'no_rois' list raises KeyError at .load()."""
+        color_registry = _make_color_embedding_registry(tmp_path)
+        roi_registry = _make_registry_with_roi("valid_roi")
+        sec = {
+            "embedding": "color_path",
+            "no_rois": ["unknown_roi"],
+        }
+        with pytest.raises(KeyError, match="unknown_roi.*not found"):
+            CalibrationColorConfig().load(
+                sec,
+                color_embedding_registry=color_registry,
+                roi_registry=roi_registry,
+            )
+
 
 class TestCalibrationMassConfig:
     """Test CalibrationMassConfig.load() and eager ROI validation."""

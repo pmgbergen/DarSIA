@@ -123,6 +123,18 @@ class CalibrationColorConfig:
             "key_list_sources": ROI_SOURCES,
         },
     )
+    no_rois: list[str] = field(
+        default_factory=list,
+        metadata={
+            "name": "No-ROIs (exclude)",
+            "help": "ROI names always excluded from color-path calibration, "
+            "regardless of 'rois' - e.g. a known-contaminated sub-region "
+            "(a water pocket sharing a label with porous rock) that would "
+            "otherwise pollute that label's fitted color path.",
+            "widget": "key_list",
+            "key_list_sources": ROI_SOURCES,
+        },
+    )
     color_path: ColorPathCalibrationConfig | None = field(
         default_factory=ColorPathCalibrationConfig,
         metadata={
@@ -162,6 +174,12 @@ class CalibrationColorConfig:
             sec,
             "rois",
             context="calibration.color.rois",
+            roi_registry=roi_registry,
+        )
+        self.no_rois = _load_roi_key_list(
+            sec,
+            "no_rois",
+            context="calibration.color.no_rois",
             roi_registry=roi_registry,
         )
 
