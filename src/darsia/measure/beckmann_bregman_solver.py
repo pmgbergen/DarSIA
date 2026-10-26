@@ -139,32 +139,43 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         """
         _, face_weights_inv = self._compute_face_weight(flux)
         transport_density_faces = self.transport_density_faces(flux)
+        # Floor the transport density so faces with (near-)zero flux still
+        # yield a well-defined Laplacian (mirrors beckmann_gprox_solver.py's
+        # compute_kantorovich_potential; otherwise cg/hypre can see an
+        # indefinite / disconnected operator).
+        min_tdens = 1e-8
         Laplacian_matrix = (
                     self.div
-                    * sps.diags(transport_density_faces)
+                    * sps.diags(transport_density_faces + min_tdens)
                     * self.inverse_weighted_mass_matrix_faces
                     * self.div.T
                 )
         rhs = self.mass_matrix_cells.dot(flat_mass_diff)
 
-        # detect the class of self.linear_solve and instantiate the appropriate linear solver for the Poisson problem
-        solver_class = self.linear_solve.__self__.__class__
-        if self.options.get("linear_solver") == "ksp" or self.options.get("linear_solver") == "kspfieldsplit":
-            unit_kernel = np.ones(self.grid.num_cells) / np.sqrt(self.grid.num_cells)
-            weighted_Poisson_solver = darsia.linalg.KSP(
-                Laplacian_matrix,
-                nullspace = [unit_kernel],
-                solver_prefix = "kantorovich_potential_solver_")
-            weighted_Poisson_solver.setup({
-                "ksp_type": "minres",
-                "ksp_rtol": tol,
-                "pc_type": "hypre",
-            })
-        else:
-            weighted_Poisson_solver = darsia.linalg.CG(
-                Laplacian_matrix,
-                tol=tol)
-            weighted_Poisson_solver.setup(rtol=tol)
+        # This is always a space-varying (transport-density-weighted)
+        # Poisson problem -- always solved via KSP/hypre here (same backend
+        # used everywhere else in this codebase), never "dct", regardless of
+        # the main linear_solver option. DCTSolver's kernel is fixed at
+        # construction from grid geometry alone and structurally cannot
+        # represent a heterogeneous coefficient. This method is only called
+        # (see solve_beckmann_problem below) when the main linear_solver_type
+        # is "dct", for which self.linear_solve's "single Newton iteration"
+        # can't be trusted (beckmann_problem.py skips rebuilding the dct
+        # solver from the actual matrix) -- root cause of bregman_plain_dct's
+        # flat, non-shrinking Kantorovich-potential error (found 2026-09-29).
+        # ksp/kspfieldsplit variants never reach this method: their potential
+        # is already computed correctly via that same single-Newton-iteration
+        # path, since beckmann_problem.py *does* rebuild the ksp solver.
+        unit_kernel = np.ones(self.grid.num_cells) / np.sqrt(self.grid.num_cells)
+        weighted_Poisson_solver = darsia.linalg.KSP(
+            Laplacian_matrix,
+            nullspace = [unit_kernel],
+            solver_prefix = "kantorovich_potential_solver_")
+        weighted_Poisson_solver.setup({
+            "ksp_type": "minres",
+            "ksp_rtol": tol,
+            "pc_type": "hypre",
+        })
 
         # solve for the pressure
         solution = weighted_Poisson_solver.solve(
@@ -436,16 +447,50 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
             old_force = new_force.copy()
             old_distance = distance
 
-        # Solve for the pressure by solving a single Newton iteration
-        newton_jacobian, _, _ = self._compute_heterogeneous_bregman_regularization(flux)
+        # Solve for the pressure by solving a single Newton iteration.
+        # NOTE: the residual must be negated before the linear solve, exactly
+        # as beckmann_newton_solver.py's main loop does (`self.linear_solve(
+        # jacobian, -residual, solution)` then `solution += increment`). This
+        # was missing here, giving a sign-flipped, garbage pressure that
+        # doesn't improve even once the Bregman flux itself has fully
+        # converged (traced 2026-08-21: e.g. pressure*forcing came out with
+        # the wrong sign relative to the true W1 distance).
+        #
+        # This path is correct whenever self.linear_solve actually rebuilds
+        # its solver from the true (weighted) Jacobian each call -- true for
+        # ksp/kspfieldsplit/direct. For linear_solver_type == "dct" it is
+        # NOT: beckmann_problem.py unconditionally skips the rebuild step for
+        # "dct", and DCTSolver's kernel is fixed at construction from grid
+        # geometry alone, so it silently applies the wrong (constant-
+        # coefficient) operator here -- root cause of bregman_plain_dct's
+        # flat, non-shrinking Kantorovich-potential error under refinement
+        # (found 2026-09-29). For that case only, fall back to the dedicated
+        # weighted-Poisson solve (KSP/hypre, always built from the true
+        # transport-density weighting) instead.
+        # NOTE: called once here, after convergence -- do not call the dct
+        # fallback per iteration from test callbacks, it's a full solve.
+        # Timed separately (mirrors beckmann_gprox_solver.py's
+        # time_kantorovich_potential) and folded into total_timings["total"]
+        # below -- this finalization solve used to be untimed entirely, which
+        # was invisible while the dct fallback was a near-free (and wrong)
+        # DCT solve, but now matters for fair cpu comparisons across solvers.
+        tic_kp = time.time()
         solution = np.zeros_like(rhs)
         solution[self.flux_slice] = flux.copy()
-        newton_residual = self.optimality_conditions(solution, rhs)
-        newton_update, _ = self.linear_solve(newton_jacobian, newton_residual, solution)
-        solution[self.pressure_slice] = self.pressure_view(newton_update)
+        if self.linear_solver_type == "dct":
+            self.compute_kantorovich_potential(flat_mass_diff, flux, self.kantorovich_potential)
+            solution[self.pressure_slice] = self.kantorovich_potential
+        else:
+            newton_jacobian, _, _ = self._compute_heterogeneous_bregman_regularization(flux)
+            newton_residual = self.optimality_conditions(solution, rhs)
+            newton_update, _ = self.linear_solve(newton_jacobian, -newton_residual, solution)
+            solution[self.pressure_slice] = self.pressure_view(newton_update)
+        time_kantorovich_potential = time.time() - tic_kp
 
         # Summarize profiling (time in seconds, memory in GB)
         total_timings = self._sum_timings(convergence_history.timings)
+        total_timings["kantorovich_potential"] = time_kantorovich_potential
+        total_timings["total"] += time_kantorovich_potential
         peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
 
         # Compute l1 norm of the flux
