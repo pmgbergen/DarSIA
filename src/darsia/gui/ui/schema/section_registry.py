@@ -166,7 +166,7 @@ TAB_VISIBILITY = {
     ("setup", "rig"): ("rig", "corrections", "image_porosity", "options"),
     # Calibration > Color & Mass
     ("calibration", "color"): ("color", "calibration", "options"),
-    ("calibration", "mass"): ("color", "calibration", "options"),
+    ("calibration", "mass"): ("calibration", "options"),
     # Analysis
     ("analysis", "cropping"): ("analysis", "options"),
     ("analysis", "fingers"): ("analysis", "options"),

@@ -416,7 +416,7 @@ def analysis_cropping_entry(
     )
 
 
-@required_sections("rig", "data", "color", "analysis.mass")
+@required_sections("analysis.mass")
 def analysis_mass_entry(
     cls: type[Rig],
     path: Path | list[Path],
@@ -441,7 +441,7 @@ def analysis_mass_entry(
     )
 
 
-@required_sections("rig", "data", "color", "analysis.volume")
+@required_sections("analysis.volume")
 def analysis_volume_entry(
     cls: type[Rig],
     path: Path | list[Path],
@@ -466,7 +466,7 @@ def analysis_volume_entry(
     )
 
 
-@required_sections("rig", "data", "color", "analysis.segmentation")
+@required_sections("analysis.segmentation")
 def analysis_segmentation_entry(
     cls: type[Rig],
     path: Path | list[Path],
@@ -489,7 +489,7 @@ def analysis_segmentation_entry(
     )
 
 
-@required_sections("rig", "data", "color", "analysis.thresholding")
+@required_sections("analysis.thresholding")
 def analysis_thresholding_entry(
     cls: type[Rig],
     path: Path | list[Path],
@@ -512,7 +512,7 @@ def analysis_thresholding_entry(
     )
 
 
-@required_sections("rig", "data", "color", "analysis.fingers")
+@required_sections("analysis.fingers")
 def analysis_fingers_entry(
     cls: type[Rig],
     path: Path | list[Path],
