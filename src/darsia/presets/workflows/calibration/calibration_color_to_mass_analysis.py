@@ -241,6 +241,12 @@ def calibration_color_to_mass_analysis_from_context(
 
     # ! ---- COLOR PATH INTERPRETATION ---- ! #
 
+    # The nodes of each interpretation are the selected key colors of the label's
+    # color path. Their abscissas are merely numbered uniformly on [0, 1]
+    # (equidistant_distances), independent of the number of key colors. All labels
+    # thereby share one domain, which the clip model of the signal functions relies on.
+    # Arc-length distances (relative_distances) are only used for initial value guesses.
+
     color_path_interpretation = {
         label: darsia.ColorPathInterpolation(
             color_path=color_path,
@@ -297,8 +303,8 @@ def calibration_color_to_mass_analysis_from_context(
             contour_smoother=contour_smoother,
             mass_unit=mass_cfg.mass_unit,
             time_unit=mass_cfg.time_unit,
+            color_path_interpretation=color_path_interpretation,
         )
-        color_analysis.color_path_interpretation = color_path_interpretation
 
     elif not reset and embedding.color_to_mass_folder.exists():
         # Start from existing calibration if available
@@ -314,15 +320,17 @@ def calibration_color_to_mass_analysis_from_context(
             contour_smoother=contour_smoother,
             mass_unit=mass_cfg.mass_unit,
             time_unit=mass_cfg.time_unit,
+            color_path_interpretation=color_path_interpretation,
         )
     else:
-        # Start from scratch
+        # Start from scratch. Signal functions live on the same abscissas as the
+        # color path interpretation (selected key colors as nodes, see above).
         signal_functions = {}
         for label in color_path_interpolation:
             if label in calibration_ignore_labels or label in ignore_labels:
                 signal_functions[label] = darsia.PWTransformation(
-                    color_paths[reference_label].equidistant_distances,
-                    np.zeros(len(color_paths[reference_label].equidistant_distances)),
+                    color_paths[label].equidistant_distances,
+                    np.zeros(len(color_paths[label].equidistant_distances)),
                 )
                 continue
             try:
@@ -332,8 +340,8 @@ def calibration_color_to_mass_analysis_from_context(
                 )
             except Exception as e:
                 signal_functions[label] = darsia.PWTransformation(
-                    color_paths[reference_label].equidistant_distances,
-                    np.zeros(len(color_paths[reference_label].equidistant_distances)),
+                    color_paths[label].equidistant_distances,
+                    np.zeros(len(color_paths[label].equidistant_distances)),
                 )
                 ignore_labels.append(label)
                 logger.warning(f"Error processing label {label}: {e}")
