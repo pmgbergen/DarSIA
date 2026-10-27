@@ -12,7 +12,11 @@ from darsia.presets.workflows.analysis.analysis_context import (
     select_image_paths,
 )
 from darsia.presets.workflows.basis import label_ids_from_image
-from darsia.presets.workflows.calibration.metadata import write_calibration_metadata
+from darsia.presets.workflows.calibration.metadata import (
+    read_calibration_metadata,
+    validate_basis_metadata,
+    write_calibration_metadata,
+)
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.sections import (
     list_required_sections,
@@ -24,6 +28,39 @@ from darsia.signals.color import ColorPathEmbedding
 from darsia.utils.standard_images import roi_to_mask
 
 logger = logging.getLogger(__name__)
+
+
+def _load_initial_paths(
+    embedding: ColorPathEmbedding, label_ids: list[int]
+) -> dict[int, list[np.ndarray]]:
+    """Load relative key colors of a previous calibration, if compatible.
+
+    Returns an empty dict if no calibration exists or it does not match the
+    current basis and labels.
+
+    """
+    csv_file = Path(embedding.color_paths_csv_file)
+    if not csv_file.exists():
+        return {}
+    try:
+        validate_basis_metadata(
+            metadata=read_calibration_metadata(Path(embedding.metadata_file)),
+            expected_basis=embedding.basis,
+            expected_label_ids=label_ids,
+            artifact="color path",
+        )
+    except ValueError as error:
+        logger.warning("Not using existing color paths as initialization: %s", error)
+        return {}
+    color_path_map = darsia.LabelColorPathMap.load_csv(csv_file)
+    initial_paths = {
+        label: [c - path.base_color for c in path.colors]
+        for label, path in color_path_map.items()
+    }
+    logger.info(
+        "Initializing from existing color paths for labels %s", list(initial_paths)
+    )
+    return initial_paths
 
 
 @required_sections("rig", "data", "protocols", "color", "calibration.color")
@@ -228,6 +265,13 @@ def calibration_color_paths_from_context(
     )
     preview_calibration_image = calibration_images[0] if calibration_images else None
 
+    # Initialize manual calibration from a previous calibration, if available
+    initial_paths = (
+        _load_initial_paths(embedding, label_ids_from_image(selected_labels))
+        if calibration_cfg.calibration_mode == "manual"
+        else {}
+    )
+
     # Find a relative color path through the significant boxes
     label_color_path_map: darsia.LabelColorPathMap = (
         color_path_regression.find_color_path(
@@ -238,6 +282,7 @@ def calibration_color_paths_from_context(
             weighting=calibration_cfg.histogram_weighting,
             mode=calibration_cfg.calibration_mode,
             ignore_labels=calibration_cfg.ignore_labels,
+            initial_paths=initial_paths,
             preview_image=preview_calibration_image,
             preview_images=calibration_images,
             preview_baseline=fluidflower.baseline,
