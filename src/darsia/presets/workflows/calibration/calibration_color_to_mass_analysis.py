@@ -268,12 +268,7 @@ def calibration_color_to_mass_analysis_from_context(
         atmospheric_temperature_gradient=gradient.temperature,
     )
 
-    # Use contour_smoother from analysis config if available, otherwise use default
-    contour_smoother = (
-        config.analysis.mass.contour_smoother
-        if config.analysis and config.analysis.mass
-        else None
-    )
+    contour_smoother = mass_cfg.contour_smoother
 
     # Fetch signal functions from reference calibration.
     if not reset and ref_path is not None:

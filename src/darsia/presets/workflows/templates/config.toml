@@ -121,6 +121,7 @@ color = "my_colorpath"
 mode = "manual" # manual | auto
 threshold = 0.2
 data = "calibration_imgs"
+contour_smoother = "savitzky_golay" # If chosen (default), contours are smoothed.
 
 [analysis]
 data = "analysis_imgs"
@@ -144,7 +145,6 @@ data = "analysis_imgs"
 
 [analysis.mass]
 color = "my_colorpath"
-contour_smoother = "savitzky_golay" # If chosen (default), contours are smoothed.
 
 [analysis.expert_knowledge]
 # Optional ROI constraints (keys from top-level [roi.*]).

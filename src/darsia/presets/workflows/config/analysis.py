@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from warnings import warn
 
-import darsia
 from darsia.presets.workflows.mode_resolution import (
     LEGACY_COLOR_TO_MASS_MODES,
     SCALAR_PRODUCT_MODES,
@@ -21,7 +20,6 @@ from ._key_list_sources import (
     REGISTRY_SOURCES,
     ROI_SOURCES,
 )
-from .contour_smoother import ContourSmootherSelection
 from .fingers import FingersConfig
 from .roi_registry import _load_roi_key_list
 from .segmentation import SegmentationConfig
@@ -609,14 +607,6 @@ class AnalysisMassConfig:
         },
     )
     """Path to the results folder for mass analysis."""
-    contour_smoother_selection: ContourSmootherSelection = field(
-        default_factory=ContourSmootherSelection,
-        metadata={
-            "name": "Contour smoother",
-            "help": "Contour smoothing algorithm.",
-        },
-    )
-    """Contour smoother selection and options."""
     expert_knowledge: bool = field(
         default=True,
         metadata={
@@ -628,11 +618,6 @@ class AnalysisMassConfig:
         },
     )
     """Whether to apply expert-knowledge ROI masking for this analysis."""
-
-    @property
-    def contour_smoother(self) -> darsia.ContourSmoother | None:
-        """Backward-compatible property: returns the built contour smoother."""
-        return self.contour_smoother_selection.build()
 
     def load(
         self,
@@ -717,9 +702,6 @@ class AnalysisMassConfig:
             assert results is not None
             folder = results / "mass"
         self.folder = folder
-
-        # Load contour smoother
-        self.contour_smoother_selection = ContourSmootherSelection().load(sub_sec)
 
         self.expert_knowledge = _get_key(
             sub_sec, "expert_knowledge", required=False, default=True, type_=bool

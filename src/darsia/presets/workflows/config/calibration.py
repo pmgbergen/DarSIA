@@ -6,9 +6,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import darsia
 from darsia.utils.units import MASS_UNIT_FACTORS, TIME_UNIT_FACTORS
 
 from ._key_list_sources import COLOR_EMBEDDING_SOURCES, REGISTRY_SOURCES, ROI_SOURCES
+from .contour_smoother import ContourSmootherSelection
 from .roi_registry import _load_roi_key_list
 from .utils import _get_key, _get_section, _get_section_from_toml
 
@@ -359,6 +361,19 @@ class CalibrationMassConfig:
             "options": ["auto"] + list(TIME_UNIT_FACTORS),
         },
     )
+    contour_smoother_selection: ContourSmootherSelection = field(
+        default_factory=ContourSmootherSelection,
+        metadata={
+            "name": "Contour smoother",
+            "help": "Contour smoothing algorithm.",
+        },
+    )
+    """Contour smoother selection and options."""
+
+    @property
+    def contour_smoother(self) -> darsia.ContourSmoother | None:
+        """Built contour smoother for manual-calibration contour plots."""
+        return self.contour_smoother_selection.build()
 
     def load(
         self,
@@ -421,6 +436,7 @@ class CalibrationMassConfig:
                 "calibration.mass.time_unit must be 'auto' or one of "
                 f"{sorted(TIME_UNIT_FACTORS)}."
             )
+        self.contour_smoother_selection = ContourSmootherSelection().load(sec)
         return self
 
 
