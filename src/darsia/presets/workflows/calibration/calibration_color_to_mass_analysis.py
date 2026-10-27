@@ -23,6 +23,7 @@ from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
 )
 from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.signals.color import ColorPathEmbedding
+from darsia.utils.figure_window import ask_yes_no
 
 logger = logging.getLogger(__name__)
 
@@ -415,8 +416,16 @@ def calibration_color_to_mass_analysis_from_context(
     # Store calibration
     color_analysis.save(embedding.color_to_mass_folder)
 
-    # Test run
-    if show:
+    # Test run on the calibration images; after the interactive calibration, ask
+    run_test = show
+    if show and not default:
+        answer = ask_yes_no(
+            "Analyze calibration images",
+            "The calibration has been saved.\n\n"
+            "Analyze the calibration images with it now?",
+        )
+        run_test = run_test if answer is None else answer
+    if run_test:
         for img in calibration_images:
             mass = color_analysis(img).mass
             mass.show(title=f"Mass image {img.time}", cmap=custom_cmap, delay=False)

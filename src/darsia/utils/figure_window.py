@@ -37,3 +37,39 @@ def maximize_figure_window(fig: plt.Figure) -> None:
             window.Maximize(True)  # wx
         except Exception:
             logger.debug("Could not maximize the figure window.")
+
+
+def ask_yes_no(title: str, question: str, default: bool = True) -> bool | None:
+    """Ask a yes/no question in a dialog (Qt backends only).
+
+    Parameters
+    ----------
+    title : str
+        Title of the dialog.
+    question : str
+        Text of the question.
+    default : bool
+        Preselected answer.
+
+    Returns
+    -------
+    bool | None
+        The answer, or None if no dialog could be shown (e.g. non-interactive backend).
+
+    """
+    try:
+        from matplotlib.backends.qt_compat import QtWidgets
+
+        if QtWidgets.QApplication.instance() is None:
+            return None
+        buttons = QtWidgets.QMessageBox.StandardButton
+        box = QtWidgets.QMessageBox()
+        box.setIcon(QtWidgets.QMessageBox.Icon.Question)
+        box.setWindowTitle(title)
+        box.setText(question)
+        box.setStandardButtons(buttons.Yes | buttons.No)
+        box.setDefaultButton(buttons.Yes if default else buttons.No)
+        return box.exec() == buttons.Yes
+    except Exception:
+        logger.debug("Could not show the dialog.")
+        return None
