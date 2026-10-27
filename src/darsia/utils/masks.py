@@ -37,29 +37,14 @@ class Masks:
         """
         return self.num_labels
 
-    def __iter__(self):
-        """Iterator."""
-        self.counter = 0
-        return self
+    def __iter__(self) -> "MasksIterator":
+        """Return a fresh, independent iterator.
 
-    def __next__(self) -> darsia.Image:
-        """Next iterations.
-
-        Returns
-        -------
-        Image
-            Next mask.
+        Each call returns a new `MasksIterator` holding its own counter,
+        so concurrent iteration of the same `Masks` instance from
+        multiple threads does not share or race on loop state.
         """
-        if self.counter < self.num_labels:
-            mask = self[self.counter]
-            label = self.unique_labels[self.counter]
-            self.counter += 1
-            if self.return_label:
-                return mask, label
-            else:
-                return mask
-        else:
-            raise StopIteration
+        return MasksIterator(self)
 
     def __getitem__(self, key) -> darsia.Image:
         """Access to specific mask.
@@ -76,3 +61,30 @@ class Masks:
         """
         mask = self.labels.img == self.unique_labels[key]
         return darsia.Image(img=mask, **self.labels.metadata())
+
+
+class MasksIterator:
+    """Stateful iterator over a `Masks` object; one instance per iteration."""
+
+    def __init__(self, masks: Masks) -> None:
+        self._masks = masks
+        self._counter = 0
+
+    def __next__(self) -> darsia.Image:
+        """Next iteration.
+
+        Returns
+        -------
+        Image
+            Next mask.
+        """
+        if self._counter < self._masks.num_labels:
+            mask = self._masks[self._counter]
+            label = self._masks.unique_labels[self._counter]
+            self._counter += 1
+            if self._masks.return_label:
+                return mask, label
+            else:
+                return mask
+        else:
+            raise StopIteration
