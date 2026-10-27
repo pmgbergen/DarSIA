@@ -171,7 +171,6 @@ export = [
 roi = ["full"]
 embedding = "color_path"
 color = "color_path"
-active = ["contour_smoother_selection"]
 
 [analysis.thresholding]
 data_selection = ["baseline"]
@@ -264,6 +263,7 @@ threshold = 0.2
 data_selection = ["all"]
 rois = ["calibration"]
 embedding = "color_path"
+active = ["contour_smoother_selection"]
 
 [calibration.color]
 embedding = "color_path"
@@ -316,7 +316,7 @@ width = 0.92
 height = 0.55
 in_meters = true
 
-[analysis.mass.contour_smoother_selection]
+[calibration.mass.contour_smoother_selection]
 active = false
 type = "savitzky_golay"
 

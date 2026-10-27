@@ -119,6 +119,7 @@ threshold = 0.2
 data_selection = ["all"]
 rois = ["calibration"]
 embedding = "color_path"
+active = ["contour_smoother_selection"]
 ```
 
 ![Calibration → Mass settings, with the referenced color embedding above it](images/placeholder.png)
@@ -156,7 +157,6 @@ export = [
 roi = ["full"]
 embedding = "color_path"
 color = "color_path"
-active = ["contour_smoother_selection"]
 ```
 
 ![Analysis → Mass settings: export fields, color embedding, data selection, formats, ROI](images/placeholder.png)

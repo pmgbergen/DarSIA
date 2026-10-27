@@ -201,6 +201,11 @@ threshold = 0.2
 data_selection = ["all"]
 rois = ["calibration"]
 embedding = "color_path"
+active = ["contour_smoother_selection"]
+
+[calibration.mass.contour_smoother_selection]
+active = false
+type = "savitzky_golay"
 ```
 Mass calibration currently supports only color-path embeddings.
 
@@ -263,11 +268,6 @@ export = [
 roi = ["full"]
 embedding = "color_path"
 color = "color_path"
-active = ["contour_smoother_selection"]
-
-[analysis.mass.contour_smoother_selection]
-active = false
-type = "savitzky_golay"
 ```
 `export` controls which scalar products are written (default: `mass` only).
 Full list of supported values:
