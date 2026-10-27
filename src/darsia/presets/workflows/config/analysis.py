@@ -592,7 +592,8 @@ class AnalysisMassConfig:
         default_factory=list,
         metadata={
             "name": "ROIs",
-            "help": "ROI definitions for mass analysis.",
+            "help": "ROI(s) to integrate mass over separately, in addition "
+            "to the full domain.",
             "widget": "key_list",
             "key_list_sources": ROI_SOURCES,
         },
