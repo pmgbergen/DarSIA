@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Tuple
+from typing import Callable, Tuple
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -199,6 +199,7 @@ class HeterogeneousColorToMassAnalysis:
         experiment: darsia.ProtocolledExperiment,
         rois: dict[str, darsia.VoxelArray | darsia.CoordinateArray] | None = None,
         cmap=None,
+        save: Callable[[], None] | None = None,
     ) -> None:
         """Define a local color path for a specific label.
 
@@ -206,6 +207,8 @@ class HeterogeneousColorToMassAnalysis:
             - Pick a label in the image using the mouse and select a rectangle.
             - Define a new color path just for this label.
             - Tune the values for the color path.
+            - Save with the Save button (the window stays open). Closing the window
+              saves as well and ends the calibration.
 
         Parameters
         ----------
@@ -217,6 +220,9 @@ class HeterogeneousColorToMassAnalysis:
             Named regions of interest; defaults to the entire frame.
         cmap : str or matplotlib.colors.Colormap, optional
             Optional colormap for visualization.
+        save : Callable, optional
+            Stores the current calibration; called by the Save button and when the
+            window is closed.
         """
 
         # Fill up rois with "entire frame"
@@ -1116,7 +1122,7 @@ class HeterogeneousColorToMassAnalysis:
             # - New Label
             # - Next Image
             # - New Image
-            # - Finish
+            # - Save
             # Calculate positions for 6 buttons with proper spacing
             total_buttons = 5
             button_start_x = (
@@ -1197,16 +1203,25 @@ class HeterogeneousColorToMassAnalysis:
             )
             btn_new_image = Button(ax_new_image, "New Image")
 
-            finish_button_x = 0.02  # Right side with small margin
-            ax_finish = plt.axes(
+            save_button_x = 0.02  # Left side with small margin
+            ax_save = plt.axes(
                 [
-                    finish_button_x,
+                    save_button_x,
                     button_y,
                     button_width,
                     button_height,
                 ]
             )
-            btn_finish = Button(ax_finish, "Finish")
+            btn_save = Button(ax_save, "Save")
+            save_status = fig.text(
+                save_button_x + button_width + button_spacing,
+                button_y + 0.5 * button_height,
+                "",
+                fontsize=9,
+                color="green",
+                va="center",
+            )
+            rebuilding = False  # figure is closed to be rebuilt, not to leave
 
             # Tune values for this label
             done_tuning_values = False
@@ -1384,10 +1399,8 @@ class HeterogeneousColorToMassAnalysis:
                             update_mass_plot()
                         fig.canvas.draw_idle()
 
-                    def update_analysis(event=None):
-                        """Apply the slider values and update everything."""
-                        # Check if any slider value has changed that requires updating
-                        # mass analysis.
+                    def apply_parameters() -> bool:
+                        """Apply the slider values; return if any value changed."""
                         need_update = False
                         need_update = need_update or any(
                             [
@@ -1417,8 +1430,24 @@ class HeterogeneousColorToMassAnalysis:
                             min_value_g=sliders_flash[2].val,
                             max_value_g=sliders_flash[3].val,
                         )
-                        # Update mass analysis
-                        if need_update:
+                        return need_update
+
+                    unsaved_text = "Changes not saved."
+
+                    def mark_unsaved(*args):
+                        """Show that the displayed values differ from the saved ones."""
+                        if save_status.get_text() != unsaved_text:
+                            save_status.set_text(unsaved_text)
+                            save_status.set_color("darkorange")
+                            fig.canvas.draw_idle()
+
+                    for slider in all_sliders:
+                        slider.on_changed(mark_unsaved)
+
+                    def update_analysis(event=None):
+                        """Apply the slider values and update everything."""
+                        if apply_parameters():
+                            mark_unsaved()
                             update_mass_analysis()
                         refresh(recompute=True, signal_function=True, mass_plot=True)
 
@@ -1441,27 +1470,60 @@ class HeterogeneousColorToMassAnalysis:
 
                     def new_label(event):
                         nonlocal done_tuning_values, need_to_pick_new_label
+                        nonlocal rebuilding
                         done_tuning_values = True
                         need_to_pick_new_label = True
+                        rebuilding = True
                         plt.close("all")
 
                     btn_new_label.on_clicked(new_label)
 
                     def new_image(event):
                         nonlocal done_tuning_values, need_to_pick_new_image
+                        nonlocal rebuilding
                         done_tuning_values = True
                         need_to_pick_new_image = True
+                        rebuilding = True
                         plt.close("all")
 
                     btn_new_image.on_clicked(new_image)
 
-                    def finish(event):
+                    def save_calibration() -> bool:
+                        """Store the calibration; return if it was successful."""
+                        if save is None:
+                            logger.warning("No way to save the calibration provided.")
+                            return False
+                        try:
+                            save()
+                        except Exception:
+                            logger.exception("Saving the calibration failed.")
+                            return False
+                        logger.info("Saved the calibration.")
+                        return True
+
+                    def on_save(event):
+                        """Apply the current values and save; the window stays open."""
+                        update_analysis()
+                        saved = save_calibration()
+                        save_status.set_text(
+                            "Saved." if saved else "Saving failed, see log."
+                        )
+                        save_status.set_color("green" if saved else "red")
+                        fig.canvas.draw_idle()
+
+                    btn_save.on_clicked(on_save)
+
+                    def on_close(event):
+                        """Closing the window saves and ends the calibration."""
                         nonlocal done_tuning_values, done_calibration
+                        if rebuilding:
+                            return
+                        apply_parameters()
+                        save_calibration()
                         done_tuning_values = True
                         done_calibration = True
-                        plt.close("all")
 
-                    btn_finish.on_clicked(finish)
+                    fig.canvas.mpl_connect("close_event", on_close)
 
                     def next_signal(event):
                         nonlocal signal_option_idx
@@ -1475,6 +1537,7 @@ class HeterogeneousColorToMassAnalysis:
                     def next_label(event):
                         """Move to the next label and rebuild the figure for it."""
                         nonlocal label_idx, done_tuning_values, need_to_pick_new_label
+                        nonlocal rebuilding
                         available_labels = np.sort(
                             list(self.signal_model.model[1].keys())
                         )
@@ -1488,6 +1551,7 @@ class HeterogeneousColorToMassAnalysis:
                         label_idx = available_labels[next_position]
                         need_to_pick_new_label = False
                         done_tuning_values = True
+                        rebuilding = True
                         plt.close("all")
 
                     btn_next_label.on_clicked(next_label)
