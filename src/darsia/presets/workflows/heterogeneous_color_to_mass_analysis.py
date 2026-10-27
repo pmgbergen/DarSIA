@@ -404,6 +404,7 @@ class HeterogeneousColorToMassAnalysis:
                 return darsia.resize(img, shape=coarse_shape)
 
             return {
+                "image_idx": image_idx,
                 "pH": pH,
                 "c_aq": coarsen(c_aq),
                 "s_g": coarsen(s_g),
@@ -451,6 +452,19 @@ class HeterogeneousColorToMassAnalysis:
                 alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
                 return_image=True,
             )
+
+        def cached_contour_overlay(maps: dict, thresholds: list[float]) -> darsia.Image:
+            """Contour overlay of the maps; recomputed only for new thresholds."""
+            key = tuple(float(threshold) for threshold in thresholds)
+            if maps.get("contour_key") != key:
+                maps["contour"] = contour_overlay(
+                    coarse_images[maps["image_idx"]],
+                    maps["c_aq"],
+                    maps["s_g"],
+                    thresholds,
+                )
+                maps["contour_key"] = key
+            return maps["contour"]
 
         def label_highlight(coarse_image: darsia.Image, label: int) -> np.ndarray:
             """Coarse image with everything outside the label turned (mostly) gray."""
@@ -555,6 +569,12 @@ class HeterogeneousColorToMassAnalysis:
         done_calibration = False
         need_to_pick_new_image = True
         need_to_pick_new_label = True
+        # Label-independent results are kept when the figure is rebuilt (e.g. for a
+        # new label): the maps of the current image, and the mass series. The maps
+        # are replaced whenever the image or the parameters change (refresh), and
+        # the mass series whenever the parameters change (update_analysis).
+        maps = None
+        mass_analysis_done = False
         while not done_calibration:
             # General design:
             # 1. User needs to pick a focus image (interactively)
@@ -571,7 +591,8 @@ class HeterogeneousColorToMassAnalysis:
 
             # Fetch the current image and analyze it
             coarse_image = coarse_images[image_idx]
-            maps = compute_maps()
+            if maps is None or maps["image_idx"] != image_idx:
+                maps = compute_maps()
 
             # Pick label interactively
             if need_to_pick_new_label:
@@ -579,12 +600,12 @@ class HeterogeneousColorToMassAnalysis:
                 need_to_pick_new_label = False
 
             # Compute mass analysis
-            update_mass_analysis()
+            if not mass_analysis_done:
+                update_mass_analysis()
+                mass_analysis_done = True
 
             coarse_signal = maps["signals"][signal_option_ptr[signal_option_idx]]
-            coarse_contour = contour_overlay(
-                coarse_image, maps["c_aq"], maps["s_g"], contour_thresholds
-            )
+            coarse_contour = cached_contour_overlay(maps, contour_thresholds)
 
             # Use gridspec to create a 2x3 grid with proper ratios
             fig = plt.figure(figsize=(20, 12))
@@ -1350,11 +1371,8 @@ class HeterogeneousColorToMassAnalysis:
 
                         # Phase segmentation panel
                         coarse_contour_img.set_data(
-                            contour_overlay(
-                                current_image,
-                                maps["c_aq"],
-                                maps["s_g"],
-                                [slider.val for slider in sliders_threshold],
+                            cached_contour_overlay(
+                                maps, [slider.val for slider in sliders_threshold]
                             ).img
                         )
 
