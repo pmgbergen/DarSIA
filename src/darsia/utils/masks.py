@@ -25,6 +25,10 @@ class Masks:
         self.num_labels: int = len(self.unique_labels)
         """Number of labels."""
         self.return_label: bool = return_label
+        self._masks_by_label: dict = {
+            label: self.labels.img == label for label in self.unique_labels
+        }
+        """Per-label boolean masks, computed once; immutable after construction."""
 
     @property
     def size(self) -> int:
@@ -36,6 +40,21 @@ class Masks:
             Number of labels.
         """
         return self.num_labels
+
+    def mask_for_label(self, label) -> np.ndarray:
+        """Boolean mask for `label` (precomputed at construction, read-only).
+
+        Parameters
+        ----------
+        label
+            A value from `unique_labels`.
+
+        Returns
+        -------
+        np.ndarray
+            Boolean mask selecting the pixels belonging to `label`.
+        """
+        return self._masks_by_label[label]
 
     def __iter__(self) -> "MasksIterator":
         """Return a fresh, independent iterator.
@@ -59,8 +78,8 @@ class Masks:
         Image
             Mask associated to counter.
         """
-        mask = self.labels.img == self.unique_labels[key]
-        return darsia.Image(img=mask, **self.labels.metadata())
+        label = self.unique_labels[key]
+        return darsia.Image(img=self.mask_for_label(label), **self.labels.metadata())
 
 
 class MasksIterator:

@@ -87,7 +87,7 @@ class HeterogeneousModel(Model):
         for label in self.masks.unique_labels:
             if label in self.ignore_labels:
                 continue
-            mask = self.masks.labels.img == label
+            mask = self.masks.mask_for_label(label)
             output[mask] = self[label](signal[mask])
         return output
 
