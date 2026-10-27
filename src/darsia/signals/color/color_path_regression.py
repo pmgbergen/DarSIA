@@ -3,7 +3,7 @@
 import copy
 import logging
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Callable, Literal, Optional
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -18,6 +18,44 @@ import darsia
 from .utils import get_mean_color
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_index_selection(text: str, size: int) -> list[list[int]]:
+    """Parse an index selection like ``"2"``, ``"1-3"`` or ``"1-3, 6"``.
+
+    Parameters
+    ----------
+    text : str
+        Comma-separated indices and inclusive ranges ``a-b``.
+    size : int
+        Number of available indices; out-of-range entries are dropped.
+
+    Returns
+    -------
+    list[list[int]]
+        Contiguous runs of sorted unique indices; empty if unparsable.
+
+    """
+    indices: set[int] = set()
+    try:
+        for part in text.replace(" ", "").split(","):
+            if part == "":
+                continue
+            start, _, stop = part.partition("-")
+            lo, hi = int(start), int(stop) if stop else int(start)
+            indices.update(range(min(lo, hi), max(lo, hi) + 1))
+    except ValueError:
+        logger.warning("Could not parse index selection '%s'.", text)
+        return []
+    valid = sorted(i for i in indices if 0 <= i < size)
+    runs: list[list[int]] = []
+    for i in valid:
+        if runs and i == runs[-1][-1] + 1:
+            runs[-1].append(i)
+        else:
+            runs.append([i])
+    return runs
+
 
 # ! ---- ALGORITHMIC COLOR PATH DEFINITION ----
 
@@ -574,6 +612,7 @@ class LabelColorPathMapRegression:
         preview_image: darsia.Image | None = None,
         preview_images: list[darsia.Image] | None = None,
         preview_baseline: darsia.Image | None = None,
+        initial_key_relative_colors: list[np.ndarray] | None = None,
         verbose: bool = False,
     ) -> darsia.ColorPath:
         """Find a relative color path through the significant boxes.
@@ -604,6 +643,10 @@ class LabelColorPathMapRegression:
             ``"auto"`` returns the automated result.
             ``"manual"`` starts from the automated result and allows
             interactive key-color editing before finalizing.
+        initial_key_relative_colors : list[np.ndarray] | None
+            Previously calibrated key colors. In manual mode they replace the
+            automated result as starting point (the number of segments is
+            then given by their count); ignored in auto mode.
         verbose : bool
             Whether to print additional information.
 
@@ -923,9 +966,6 @@ class LabelColorPathMapRegression:
         w_total = sorted_weights.sum()
         if w_total > 0.0:
             sorted_weights = sorted_weights / w_total
-
-        # Initialize segments.
-        segments = []
 
         def segment_error(segment_range):
             """Calculate the quantile-based fitting error for a color segment.
@@ -1350,93 +1390,110 @@ class LabelColorPathMapRegression:
             plt.show()
             return left_segment, right_segment
 
-        segment_range = range(0, len(sorted_embedding))
-        _segment_error = segment_error(segment_range)
-        _segment_length = segment_length(segment_range)
-        segment = {
-            "range": segment_range,
-            "error": _segment_error,
-            "length": _segment_length,
-        }
-        segments.append(segment)
+        def auto_fit(n_segments: int) -> list[np.ndarray]:
+            """Run the automated segmentation for a given number of segments."""
+            segments: list[dict] = []
 
-        # Perform a Ramer-Douglas-Peucker-like segmentation based on weighted least squares
-        # error reduction
-        while len(segments) < num_segments:
-            # Eligible segments are those with at least 3 points
-            eligible_segments = [seg for seg in segments if len(seg["range"]) > 2]
+            segment_range = range(0, len(sorted_embedding))
+            _segment_error = segment_error(segment_range)
+            _segment_length = segment_length(segment_range)
+            segment = {
+                "range": segment_range,
+                "error": _segment_error,
+                "length": _segment_length,
+            }
+            segments.append(segment)
 
-            # Stop if no segment can be split further
-            if len(eligible_segments) == 0:
-                warn("Cannot split segments further. Stopping early.")
-                break
+            # Perform a Ramer-Douglas-Peucker-like segmentation based on weighted
+            # least squares error reduction
+            while len(segments) < n_segments:
+                # Eligible segments are those with at least 3 points
+                eligible_segments = [seg for seg in segments if len(seg["range"]) > 2]
 
-            # Identify the segment with the highest error, it needs to have at least 3 points
-            segment_to_split_index = np.argmax(
-                [seg["error"] for seg in eligible_segments]
-            )
-            segment_to_split = eligible_segments[segment_to_split_index]
-
-            # Split the segment
-            left_segment, right_segment = split_segment(segment_to_split["range"])
-
-            # Replace the selected segment with the two new segments
-            global_segment_to_split_index = segments.index(segment_to_split)
-            segments[global_segment_to_split_index] = left_segment
-            segments.insert(global_segment_to_split_index + 1, right_segment)
-
-        # Improve segments by re-evaluating their error
-        old_distances = []
-        for _ in range(10):
-            # Cache previous segments for convergence check
-            previous_segments = copy.deepcopy(segments)
-
-            # Segment by segment, try to improve by combining with neighbor segments
-            for i, segment in enumerate(segments):
-                if i == len(segments) - 1:
-                    continue  # Last segment, nothing to do
-                # Combine segment with neighbor segments
-                combined_range = range(
-                    segment["range"].start, segments[i + 1]["range"].stop
-                )
-                if len(combined_range) < 3:
-                    # Not enough points to split
-                    continue
-                # Find the best split point again
-                left_segment, right_segment = split_segment(combined_range)
-                # Replace segments
-                segments[i] = left_segment
-                segments[i + 1] = right_segment
-
-            # Check for convergence - if no change in segments, stop
-            if all(
-                segments[i]["range"] == previous_segments[i]["range"]
-                for i in range(len(segments))
-            ):
-                break
-            # Check for oscillation
-            elif False:
-                ...
-            else:
-                distance = sum(
-                    abs(
-                        segments[i]["range"].start - previous_segments[i]["range"].start
-                    )
-                    + abs(
-                        segments[i]["range"].stop - previous_segments[i]["range"].stop
-                    )
-                    for i in range(len(segments))
-                )
-                old_distances.append(distance)
-                if len(old_distances) > 5 and len(np.unique(old_distances[-5:])) == 1:
-                    # No change in the last 5 iterations - oscillation detected
+                # Stop if no segment can be split further
+                if len(eligible_segments) == 0:
+                    warn("Cannot split segments further. Stopping early.")
                     break
-                print(f"Segment smoothing distance: {distance}")
 
-        # Extract the key relative colors from the segments
-        key_relative_colors: list[np.ndarray] = [
-            sorted_relative_colors[segment["range"].start] for segment in segments
-        ] + [sorted_relative_colors[segments[-1]["range"].stop - 1]]
+                # Identify the segment with the highest error (at least 3 points)
+                segment_to_split_index = np.argmax(
+                    [seg["error"] for seg in eligible_segments]
+                )
+                segment_to_split = eligible_segments[segment_to_split_index]
+
+                # Split the segment
+                left_segment, right_segment = split_segment(segment_to_split["range"])
+
+                # Replace the selected segment with the two new segments
+                global_segment_to_split_index = segments.index(segment_to_split)
+                segments[global_segment_to_split_index] = left_segment
+                segments.insert(global_segment_to_split_index + 1, right_segment)
+
+            # Improve segments by re-evaluating their error
+            old_distances = []
+            for _ in range(10):
+                # Cache previous segments for convergence check
+                previous_segments = copy.deepcopy(segments)
+
+                # Segment by segment, try to improve by combining with neighbor segments
+                for i, segment in enumerate(segments):
+                    if i == len(segments) - 1:
+                        continue  # Last segment, nothing to do
+                    # Combine segment with neighbor segments
+                    combined_range = range(
+                        segment["range"].start, segments[i + 1]["range"].stop
+                    )
+                    if len(combined_range) < 3:
+                        # Not enough points to split
+                        continue
+                    # Find the best split point again
+                    left_segment, right_segment = split_segment(combined_range)
+                    # Replace segments
+                    segments[i] = left_segment
+                    segments[i + 1] = right_segment
+
+                # Check for convergence - if no change in segments, stop
+                if all(
+                    segments[i]["range"] == previous_segments[i]["range"]
+                    for i in range(len(segments))
+                ):
+                    break
+                # Check for oscillation
+                elif False:
+                    ...
+                else:
+                    distance = sum(
+                        abs(
+                            segments[i]["range"].start
+                            - previous_segments[i]["range"].start
+                        )
+                        + abs(
+                            segments[i]["range"].stop
+                            - previous_segments[i]["range"].stop
+                        )
+                        for i in range(len(segments))
+                    )
+                    old_distances.append(distance)
+                    if (
+                        len(old_distances) > 5
+                        and len(np.unique(old_distances[-5:])) == 1
+                    ):
+                        # No change in the last 5 iterations - oscillation detected
+                        break
+                    print(f"Segment smoothing distance: {distance}")
+
+            # Extract the key relative colors from the segments
+            return [
+                sorted_relative_colors[segment["range"].start] for segment in segments
+            ] + [sorted_relative_colors[segments[-1]["range"].stop - 1]]
+
+        initial_relative_colors = initial_key_relative_colors
+        if mode == "manual" and initial_relative_colors:
+            key_relative_colors = [
+                np.array(c, dtype=float) for c in initial_relative_colors
+            ]
+        else:
+            key_relative_colors = auto_fit(num_segments)
 
         # Determine the maximum error for information
         # TODO error quantification
@@ -1464,7 +1521,8 @@ class LabelColorPathMapRegression:
                 key_relative_colors=key_relative_colors,
                 base_color=spectrum.base_color,
                 ignore=ignore,
-                num_dofs=num_dofs,
+                auto_fit=auto_fit,
+                default_num_segments=num_segments,
                 name=name,
                 label=label,
                 preview_image=preview_image,
@@ -1506,7 +1564,7 @@ class LabelColorPathMapRegression:
         )
 
         # Plot key colors and connecting lines
-        if np.array(key_relative_colors).shape[0] == num_dofs:
+        if len(key_relative_colors) >= 2:
             ax.plot(*np.array(key_relative_colors).T, c="black", linewidth=2)
             ax.scatter(
                 *np.array(key_relative_colors).T,
@@ -1559,6 +1617,7 @@ class LabelColorPathMapRegression:
         preview_images: list[darsia.Image] | None = None,
         preview_baseline: darsia.Image | None = None,
         ignore_labels: list[int] | None = None,
+        initial_paths: dict[int, list[np.ndarray]] | None = None,
         verbose: bool = False,
     ) -> darsia.LabelColorPathMap:
         """Find relative color paths for each label in the spectrum map.
@@ -1592,6 +1651,10 @@ class LabelColorPathMapRegression:
         ignore_labels : list[int] | None
             Label IDs to skip fitting and produce
             zero-paths for instead. Defaults to None (no labels ignored).
+        initial_paths : dict[int, list[np.ndarray]] | None
+            Previously calibrated relative key colors per label. In manual mode,
+            labels found here start from these (each with its own number of
+            segments) instead of the automated fit. Ignored in auto mode.
         verbose : bool
             Whether to print additional information.
 
@@ -1602,6 +1665,8 @@ class LabelColorPathMapRegression:
         """
         if ignore_labels is None:
             ignore_labels = []
+        if initial_paths is None:
+            initial_paths = {}
 
         # Helper to create a zero-path (all-zero color path for ignored labels)
         def create_zero_path(label: int) -> darsia.ColorPath:
@@ -1631,6 +1696,7 @@ class LabelColorPathMapRegression:
                             preview_image=preview_image,
                             preview_images=preview_images,
                             preview_baseline=preview_baseline,
+                            initial_key_relative_colors=initial_paths.get(label),
                             verbose=verbose,
                         )
                     ),
@@ -1648,7 +1714,8 @@ class LabelColorPathMapRegression:
         key_relative_colors: list[np.ndarray],
         base_color: np.ndarray,
         ignore: darsia.ColorSpectrum | None,
-        num_dofs: int,
+        auto_fit: Callable[[int], list[np.ndarray]],
+        default_num_segments: int,
         name: str,
         label: int | None,
         preview_image: darsia.Image | None,
@@ -1674,8 +1741,8 @@ class LabelColorPathMapRegression:
             height_ratios=[1, 1],
             left=0.05,
             right=0.98,
-            bottom=0.24,
-            top=0.95,
+            bottom=0.30,
+            top=0.91,
             wspace=0.1,
             hspace=0.12,
         )
@@ -1826,7 +1893,7 @@ class LabelColorPathMapRegression:
             )
 
             key_colors = [base_color + c for c in new_key_relative_colors]
-            if np.array(new_key_relative_colors).shape[0] == num_dofs:
+            if len(new_key_relative_colors) >= 2:
                 key_arr = np.array(new_key_relative_colors)
                 ax.plot(*key_arr.T, c="black", linewidth=2)
                 ax.scatter(*key_arr.T, c=np.clip(key_colors, 0, 1), s=100)
@@ -1923,16 +1990,21 @@ class LabelColorPathMapRegression:
 
             fig.canvas.draw_idle()
 
-        index_ax = plt.axes([0.05, 0.12, 0.08, 0.06])
-        r_ax = plt.axes([0.15, 0.12, 0.09, 0.06])
-        g_ax = plt.axes([0.26, 0.12, 0.09, 0.06])
-        b_ax = plt.axes([0.37, 0.12, 0.09, 0.06])
-        update_ax = plt.axes([0.48, 0.12, 0.09, 0.06])
-        finalize_ax = plt.axes([0.59, 0.12, 0.09, 0.06])
-        pipette_ax = plt.axes([0.48, 0.04, 0.09, 0.06])
-        previous_preview_ax = plt.axes([0.70, 0.12, 0.10, 0.06])
-        next_preview_ax = plt.axes([0.82, 0.12, 0.10, 0.06])
-        rerun_preview_ax = plt.axes([0.70, 0.04, 0.22, 0.06])
+        index_ax = plt.axes([0.05, 0.20, 0.08, 0.06])
+        r_ax = plt.axes([0.15, 0.20, 0.09, 0.06])
+        g_ax = plt.axes([0.26, 0.20, 0.09, 0.06])
+        b_ax = plt.axes([0.37, 0.20, 0.09, 0.06])
+        update_ax = plt.axes([0.48, 0.20, 0.09, 0.06])
+        finalize_ax = plt.axes([0.11, 0.94, 0.09, 0.05])
+        pipette_ax = plt.axes([0.05, 0.12, 0.09, 0.06])
+        previous_preview_ax = plt.axes([0.70, 0.20, 0.10, 0.06])
+        next_preview_ax = plt.axes([0.82, 0.20, 0.10, 0.06])
+        rerun_preview_ax = plt.axes([0.70, 0.12, 0.22, 0.06])
+        align_ax = plt.axes([0.05, 0.04, 0.12, 0.06])
+        align_button_ax = plt.axes([0.19, 0.04, 0.09, 0.06])
+        add_ax = plt.axes([0.15, 0.12, 0.04, 0.06])
+        remove_ax = plt.axes([0.20, 0.12, 0.04, 0.06])
+        reset_ax = plt.axes([0.01, 0.94, 0.09, 0.05])
 
         index_box = TextBox(index_ax, "Index", initial=str(selected_index))
         init_color = new_key_relative_colors[selected_index]
@@ -1943,6 +2015,12 @@ class LabelColorPathMapRegression:
         r_box.canvas.mpl_disconnect(r_box._cids[-1])
         g_box.canvas.mpl_disconnect(g_box._cids[-1])
         b_box.canvas.mpl_disconnect(b_box._cids[-1])
+        align_box = TextBox(align_ax, "Align", initial="")
+        align_box.canvas.mpl_disconnect(align_box._cids[-1])
+        align_button = Button(align_button_ax, "Align")
+        add_button = Button(add_ax, "+")
+        remove_button = Button(remove_ax, "-")
+        reset_button = Button(reset_ax, "Reset (auto)")
         update_button = Button(update_ax, "Update")
         finalize_button = Button(finalize_ax, "Finalize")
         pipette_button = Button(pipette_ax, "Pipette")
@@ -1980,6 +2058,59 @@ class LabelColorPathMapRegression:
                 return
             new_key_relative_colors[selected_index] = new_color
             preview_signal_is_stale = True
+            redraw()
+
+        def on_align(_) -> None:
+            nonlocal preview_signal_is_stale
+            n = len(new_key_relative_colors)
+            for run in _parse_index_selection(align_box.text, n):
+                lo, hi = run[0] - 1, run[-1] + 1
+                if lo < 0 or hi > n - 1:
+                    logger.warning(
+                        "Align skipped for %s: needs anchors on both sides.", run
+                    )
+                    continue
+                c_lo, c_hi = new_key_relative_colors[lo], new_key_relative_colors[hi]
+                for i in run:
+                    new_key_relative_colors[i] = c_lo + (i - lo) / (hi - lo) * (
+                        c_hi - c_lo
+                    )
+            preview_signal_is_stale = True
+            refresh_color_fields()
+            redraw()
+
+        def on_add(_) -> None:
+            nonlocal preview_signal_is_stale, selected_index
+            n = len(new_key_relative_colors)
+            i = selected_index if selected_index < n - 1 else n - 2
+            midpoint = 0.5 * (
+                new_key_relative_colors[i] + new_key_relative_colors[i + 1]
+            )
+            new_key_relative_colors.insert(i + 1, midpoint)
+            selected_index = i + 1
+            preview_signal_is_stale = True
+            refresh_color_fields()
+            redraw()
+
+        def on_remove(_) -> None:
+            nonlocal preview_signal_is_stale, selected_index
+            if len(new_key_relative_colors) <= 2:
+                logger.warning("Cannot remove: a color path needs at least 2 colors.")
+                return
+            del new_key_relative_colors[selected_index]
+            selected_index = min(selected_index, len(new_key_relative_colors) - 1)
+            preview_signal_is_stale = True
+            refresh_color_fields()
+            redraw()
+
+        def on_reset(_) -> None:
+            nonlocal preview_signal_is_stale, selected_index
+            new_key_relative_colors[:] = [
+                np.array(c, dtype=float) for c in auto_fit(default_num_segments)
+            ]
+            selected_index = 0
+            preview_signal_is_stale = True
+            refresh_color_fields()
             redraw()
 
         def on_rerun_preview(_) -> None:
@@ -2106,6 +2237,10 @@ class LabelColorPathMapRegression:
 
         index_box.on_submit(on_index_submit)
         update_button.on_clicked(on_update)
+        align_button.on_clicked(on_align)
+        add_button.on_clicked(on_add)
+        remove_button.on_clicked(on_remove)
+        reset_button.on_clicked(on_reset)
         pipette_button.on_clicked(on_pipette)
         previous_preview_button.on_clicked(on_previous_preview)
         next_preview_button.on_clicked(on_next_preview)
