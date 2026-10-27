@@ -14,6 +14,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.manifold import LocallyLinearEmbedding
 
 import darsia
+from darsia.utils.figure_window import maximize_figure_window
 
 from .utils import get_mean_color
 
@@ -1567,6 +1568,7 @@ class LabelColorPathMapRegression:
         finalized = False
 
         fig = plt.figure(figsize=(14, 8))
+        maximize_figure_window(fig)
         gs = fig.add_gridspec(
             nrows=2,
             ncols=2,
