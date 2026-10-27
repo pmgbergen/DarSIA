@@ -41,12 +41,12 @@ class Masks:
         """
         return self.num_labels
 
-    def mask_for_label(self, label) -> np.ndarray:
+    def mask_for_label(self, label: int) -> np.ndarray:
         """Boolean mask for `label` (precomputed at construction, read-only).
 
         Parameters
         ----------
-        label
+        label : int
             A value from `unique_labels`.
 
         Returns
