@@ -453,6 +453,8 @@ class HeterogeneousColorToMassAnalysis:
             self.flash.max_value_g,
         )
         default_contour_threshold = 0.05
+        # Current contour thresholds (c_aq, s_g); kept when the figure is rebuilt
+        contour_thresholds = [default_contour_threshold, default_contour_threshold]
 
         # ! ---- GRID FOR PLOTTING ----
 
@@ -1002,7 +1004,7 @@ class HeterogeneousColorToMassAnalysis:
                 make_row(
                     contour_row + 1,
                     "Threshold c_aq",
-                    default_contour_threshold,
+                    contour_thresholds[0],
                     0.0,
                     1.0,
                     (1, 0, 0),
@@ -1010,12 +1012,17 @@ class HeterogeneousColorToMassAnalysis:
                 make_row(
                     contour_row + 2,
                     "Threshold s_g",
-                    default_contour_threshold,
+                    contour_thresholds[1],
                     0.0,
                     1.0,
                     (0, 1, 0),
                 ),
             ]
+
+            for i, slider in enumerate(sliders_threshold):
+                slider.on_changed(
+                    lambda val, i=i: contour_thresholds.__setitem__(i, val)
+                )
 
             # Slider updates only repaint the sliders (blitting). Otherwise, every
             # slider step re-renders the entire figure, including all images. The
