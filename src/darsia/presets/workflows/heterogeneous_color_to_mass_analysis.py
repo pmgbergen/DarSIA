@@ -39,6 +39,31 @@ from darsia.utils.units import (
 logger = logging.getLogger(__name__)
 
 
+def _maximize_figure_window(fig: plt.Figure) -> None:
+    """Open the window of a figure maximized (best effort, depends on the backend)."""
+    try:
+        window = fig.canvas.manager.window
+    except AttributeError:
+        return  # non-interactive backend
+    try:
+        # Qt
+        from matplotlib.backends.qt_compat import QtCore
+
+        window.setWindowState(
+            window.windowState() | QtCore.Qt.WindowState.WindowMaximized
+        )
+        return
+    except Exception:
+        pass
+    try:
+        window.state("zoomed")  # Tk (Windows)
+    except Exception:
+        try:
+            window.Maximize(True)  # wx
+        except Exception:
+            logger.debug("Could not maximize the figure window.")
+
+
 class HeterogeneousColorToMassAnalysis:
     """Hetereogeneous analysis converting colors to mass."""
 
@@ -609,6 +634,7 @@ class HeterogeneousColorToMassAnalysis:
 
             # Use gridspec to create a 2x3 grid with proper ratios
             fig = plt.figure(figsize=(20, 12))
+            _maximize_figure_window(fig)
             gs = gridspec.GridSpec(
                 nrows=2,
                 ncols=3,
