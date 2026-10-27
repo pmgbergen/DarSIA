@@ -298,6 +298,10 @@ class HeterogeneousColorToMassAnalysis:
         color_interpretations = [
             self.call_color_interpretation(image) for image in images
         ]
+        coarse_color_interpretations = [
+            darsia.resize(color_interpretation, shape=coarse_shape)
+            for color_interpretation in color_interpretations
+        ]
 
         # ! ----- IMAGE SELECTION -----
 
@@ -355,7 +359,7 @@ class HeterogeneousColorToMassAnalysis:
             _color_interpretation: darsia.Image, roi: darsia.Image | None = None
         ) -> Tuple[darsia.Image, darsia.Image, darsia.Image, darsia.Image]:
             # TODO:color_interpretation: darsia.Image restrivuted to the separate boxes
-            pH = self.call_pH_analysis(color_interpretation)
+            pH = self.call_pH_analysis(_color_interpretation)
             c_aq, s_g = self.flash(pH)
             if self.expert_knowledge_adapter is not None:
                 c_aq = self.expert_knowledge_adapter.apply(c_aq, "concentration_aq")
@@ -368,6 +372,95 @@ class HeterogeneousColorToMassAnalysis:
             )
             density = mass_analysis_result.mass
             return pH, density, c_aq, s_g
+
+        # ! ---- DISPLAY HELPERS ----
+
+        def compute_maps() -> dict:
+            """Analyze the current image at full resolution, coarsened for display.
+
+            The thermodynamic state is set for the date of the current image.
+
+            """
+            date = images[image_idx].date
+            state = experiment.pressure_temperature_protocol.get_state(date)
+            gradient = experiment.pressure_temperature_protocol.get_gradient(date)
+            self.co2_mass_analysis.update_state(
+                atmospheric_pressure=state.pressure,
+                atmospheric_temperature=state.temperature,
+                atmospheric_pressure_gradient=gradient.pressure,
+                atmospheric_temperature_gradient=gradient.temperature,
+            )
+            pH, density, c_aq, s_g = detailed_mass_analysis(
+                color_interpretations[image_idx]
+            )
+            co2_g_density = darsia.full_like(
+                pH, self.co2_mass_analysis.density_gaseous_co2
+            )
+            co2_aq_solubility = darsia.full_like(
+                pH, self.co2_mass_analysis.solubility_co2
+            )
+
+            def coarsen(img: darsia.Image) -> darsia.Image:
+                return darsia.resize(img, shape=coarse_shape)
+
+            return {
+                "pH": pH,
+                "c_aq": coarsen(c_aq),
+                "s_g": coarsen(s_g),
+                "signals": {
+                    "color": coarse_color_interpretations[image_idx],
+                    "pH": coarsen(pH),
+                    "rho_co2": coarsen(density),
+                    "c_aq": coarsen(c_aq),
+                    "s_g": coarsen(s_g),
+                    "labels": coarse_labels,
+                    "depth": coarse_depth,
+                    "rho_co2(g)": coarsen(co2_g_density),
+                    "solubility_co2(aq)": coarsen(co2_aq_solubility),
+                    "porosity": coarse_porosity,
+                    "effective_depth": coarse_effective_depth,
+                },
+            }
+
+        def contour_overlay(
+            coarse_image: darsia.Image,
+            coarse_c_aq: darsia.Image,
+            coarse_s_g: darsia.Image,
+            thresholds: list[float],
+        ) -> darsia.Image:
+            """Contours of the phase segmentation on top of the coarse image."""
+            return darsia.plot_contour_on_image(
+                coarse_image,
+                mask=[
+                    coarse_c_aq > thresholds[0],
+                    coarse_c_aq > 0.1,
+                    coarse_c_aq > 0.25,
+                    coarse_c_aq > 0.5,
+                    coarse_c_aq > 0.9,
+                    coarse_s_g > thresholds[1],
+                ],
+                contour_smoother=self.contour_smoother,
+                color=[
+                    (255, 0, 0),
+                    (255, 0, 0),
+                    (255, 0, 0),
+                    (255, 0, 0),
+                    (255, 0, 0),
+                    (0, 255, 0),
+                ],
+                alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
+                return_image=True,
+            )
+
+        def label_highlight(coarse_image: darsia.Image, label: int) -> np.ndarray:
+            """Coarse image with everything outside the label turned (mostly) gray."""
+            highlighted = coarse_image.img.copy()
+            outside = coarse_labels.img != label
+            highlighted[outside] = (
+                0.7 * np.mean(highlighted[outside], axis=-1, keepdims=True)
+                + 0.3 * coarse_image.img[outside]
+            )
+            return highlighted
 
         # ! ---- MASS ANALYSIS SETUP ----
 
@@ -476,91 +569,24 @@ class HeterogeneousColorToMassAnalysis:
                 need_to_pick_new_image = False
                 need_to_pick_new_label = True
 
-            # Fetch the current image and its color interpretation
+            # Fetch the current image and analyze it
             coarse_image = coarse_images[image_idx]
-            color_interpretation = color_interpretations[image_idx]
-            coarse_color_interpretation = darsia.resize(
-                color_interpretation, shape=coarse_shape
-            )
-
-            # Identify mass density for chosen image
-            pH, density, c_aq, s_g = detailed_mass_analysis(color_interpretation)
+            maps = compute_maps()
 
             # Pick label interactively
             if need_to_pick_new_label:
-                label_idx = label_idx_selector(pH)
+                label_idx = label_idx_selector(maps["pH"])
                 need_to_pick_new_label = False
 
             # Compute mass analysis
             update_mass_analysis()
 
-            # Fetch thermodynamic infos for current image
-            state = experiment.pressure_temperature_protocol.get_state(
-                coarse_image.date
-            )
-            gradient = experiment.pressure_temperature_protocol.get_gradient(
-                coarse_image.date
-            )
-            self.co2_mass_analysis.update_state(
-                atmospheric_pressure=state.pressure,
-                atmospheric_temperature=state.temperature,
-                atmospheric_pressure_gradient=gradient.pressure,
-                atmospheric_temperature_gradient=gradient.temperature,
-            )
-            co2_g_density = darsia.full_like(
-                pH, self.co2_mass_analysis.density_gaseous_co2
-            )
-            co2_aq_solubility = darsia.full_like(
-                pH, self.co2_mass_analysis.solubility_co2
+            coarse_signal = maps["signals"][signal_option_ptr[signal_option_idx]]
+            coarse_contour = contour_overlay(
+                coarse_image, maps["c_aq"], maps["s_g"], contour_thresholds
             )
 
-            # Coarsen outputs for visualization
-            coarse_pH = darsia.resize(pH, shape=coarse_shape)
-            coarse_density = darsia.resize(density, shape=coarse_shape)
-            coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
-            coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
-            coarse_co2_g_density = darsia.resize(co2_g_density, shape=coarse_shape)
-            coarse_co2_aq_solubility = darsia.resize(
-                co2_aq_solubility, shape=coarse_shape
-            )
-            coarse_signal_dict = {
-                "color": coarse_color_interpretation,
-                "pH": coarse_pH,
-                "rho_co2": coarse_density,
-                "c_aq": coarse_c_aq,
-                "s_g": coarse_s_g,
-                "labels": coarse_labels,
-                "depth": coarse_depth,
-                "rho_co2(g)": coarse_co2_g_density,
-                "solubility_co2(aq)": coarse_co2_aq_solubility,
-                "porosity": coarse_porosity,
-                "effective_depth": coarse_effective_depth,
-            }
-            coarse_signal = coarse_signal_dict[signal_option_ptr[signal_option_idx]]
-
-            # Determine contours
-            coarse_contour = darsia.plot_contour_on_image(
-                coarse_image,
-                mask=[
-                    coarse_c_aq > 0.05,
-                    coarse_c_aq > 0.1,
-                    coarse_c_aq > 0.25,
-                    coarse_c_aq > 0.50,
-                    coarse_c_aq > 0.9,
-                    coarse_s_g > 0.05,
-                ],
-                contour_smoother=self.contour_smoother,
-                color=[
-                    (255, 0, 0),
-                    (255, 0, 0),
-                    (255, 0, 0),
-                    (255, 0, 0),
-                    (255, 0, 0),
-                    (0, 255, 0),
-                ],
-                alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
-                return_image=True,
-            )  # Use gridspec to create a 2x3 grid with proper ratios
+            # Use gridspec to create a 2x3 grid with proper ratios
             fig = plt.figure(figsize=(20, 12))
             gs = gridspec.GridSpec(
                 nrows=2,
@@ -609,17 +635,9 @@ class HeterogeneousColorToMassAnalysis:
             # ! ---- PLOTTING ----
 
             # Plot the coarse image with highlighted label - turn the rest to gray
-            labeled_coarse_image = coarse_image.img.copy()
-            labeled_coarse_image[coarse_labels.img != label_idx] = (
-                0.7
-                * np.mean(
-                    labeled_coarse_image[coarse_labels.img != label_idx],
-                    axis=-1,
-                    keepdims=True,
-                )
-                + 0.3 * coarse_image.img[coarse_labels.img != label_idx]
+            coarse_image_img = ax_coarse_image.imshow(
+                label_highlight(coarse_image, label_idx)
             )
-            coarse_image_img = ax_coarse_image.imshow(labeled_coarse_image)
 
             # Plot the coarse signal with rois
             # TODO
@@ -1175,99 +1193,8 @@ class HeterogeneousColorToMassAnalysis:
                     nonlocal done_tuning_values  # noqa: F824
                     nonlocal done_calibration  # noqa: F824
 
-                    def update_analysis(event=None):
-                        nonlocal done_tuning_values  # noqa: F824
-                        nonlocal sliders_color_to_signal  # noqa: F824
-                        nonlocal sliders_flash  # noqa: F824
-                        nonlocal sliders_threshold  # noqa: F824
-                        nonlocal _label_idx  # noqa: F824
-
-                        # Check if any slider value has changed that requires updating
-                        # mass analysis.
-                        need_update = False
-                        need_update = need_update or any(
-                            [
-                                sliders_color_to_signal[i].val
-                                != self.signal_model.model[1][_label_idx].values[i]
-                                for i in range(
-                                    len(self.signal_model.model[1][_label_idx].values)
-                                )
-                            ]
-                        )
-                        need_update = need_update or any(
-                            [
-                                sliders_flash[0].val != self.flash.min_value_aq,
-                                sliders_flash[1].val != self.flash.max_value_aq,
-                                sliders_flash[2].val != self.flash.min_value_g,
-                                sliders_flash[3].val != self.flash.max_value_g,
-                            ]
-                        )
-
-                        ## Update parameters
-                        self.signal_model.model[1][_label_idx].update(
-                            values=[slider.val for slider in sliders_color_to_signal]
-                        )
-                        self.flash.update(
-                            min_value_aq=sliders_flash[0].val,
-                            max_value_aq=sliders_flash[1].val,
-                            min_value_g=sliders_flash[2].val,
-                            max_value_g=sliders_flash[3].val,
-                        )
-                        # Identify mass density for chosen image
-                        pH, density, c_aq, s_g = detailed_mass_analysis(
-                            color_interpretation
-                        )
-
-                        # Coarsen outputs for visualization
-                        coarse_pH = darsia.resize(pH, shape=coarse_shape)
-                        coarse_density = darsia.resize(density, shape=coarse_shape)
-                        coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
-                        coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
-                        coarse_signal_dict = {
-                            "color": coarse_color_interpretation,
-                            "pH": coarse_pH,
-                            "rho_co2": coarse_density,
-                            "c_aq": coarse_c_aq,
-                            "s_g": coarse_s_g,
-                            "labels": coarse_labels,
-                            "depth": coarse_depth,
-                            "rho_co2(g)": coarse_co2_g_density,
-                            "solubility_co2(aq)": coarse_co2_aq_solubility,
-                            "porosity": coarse_porosity,
-                            "effective_depth": coarse_effective_depth,
-                        }
-                        coarse_signal = coarse_signal_dict[
-                            signal_option_ptr[signal_option_idx]
-                        ]
-
-                        # Determine contours
-                        coarse_contour = darsia.plot_contour_on_image(
-                            coarse_image,
-                            mask=[
-                                coarse_c_aq > sliders_threshold[0].val,
-                                coarse_c_aq > 0.1,
-                                coarse_c_aq > 0.25,
-                                coarse_c_aq > 0.5,
-                                coarse_c_aq > 0.9,
-                                coarse_s_g > sliders_threshold[1].val,
-                            ],
-                            contour_smoother=self.contour_smoother,
-                            color=[
-                                (255, 0, 0),
-                                (255, 0, 0),
-                                (255, 0, 0),
-                                (255, 0, 0),
-                                (255, 0, 0),
-                                (0, 255, 0),
-                            ],
-                            alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
-                            return_image=True,
-                        )
-
-                        # Update mass analysis
-                        if need_update:
-                            update_mass_analysis()
-
+                    def update_signal_function_plot():
+                        """Update the signal function plot (curve, flash lines)."""
                         # Update signal function plot
                         if signal_function_line is not None:
                             signal_func = self.signal_model.model[1][_label_idx]
@@ -1311,20 +1238,8 @@ class HeterogeneousColorToMassAnalysis:
                         )
                         ax_signal_function.texts[2].set_position((g_max_x + 0.1, 0.04))
 
-                        # Update dense plots
-                        coarse_signal_img.set_data(coarse_signal.img)
-                        coarse_contour_img.set_data(coarse_contour.img)
-
-                        # Update color scale (min/max values) based on current signal
-                        if signal_option_ptr[signal_option_idx] == "pH":
-                            signal_min = 0.0
-                            signal_max = 1.0
-                        else:
-                            signal_min = np.nanmin(coarse_signal.img)
-                            signal_max = np.nanmax(coarse_signal.img)
-                        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
-                        coarse_signal_colorbar.update_normal(coarse_signal_img)
-
+                    def update_mass_plot():
+                        """Update the mass evolution plots."""
                         # Update mass plots
                         max_expected = max(
                             (
@@ -1391,8 +1306,101 @@ class HeterogeneousColorToMassAnalysis:
                         ax_mass.set_xlabel(time_label(time_unit))
                         ax_mass.set_ylabel(mass_label(mass_unit))
 
-                        # Redraw
+                    def refresh(recompute=True, signal_function=False, mass_plot=False):
+                        """Update the displayed panels.
+
+                        Parameters
+                        ----------
+                        recompute : bool
+                            Analyze the current image anew (after changes of the
+                            parameters or the image); otherwise reuse the last maps.
+                        signal_function : bool
+                            Also update the signal function plot.
+                        mass_plot : bool
+                            Also update the mass evolution plot.
+
+                        """
+                        nonlocal maps
+                        if recompute:
+                            maps = compute_maps()
+                        current_image = coarse_images[image_idx]
+
+                        # Image panel and signal panel
+                        ax_coarse_image.set_title(
+                            f"Current Image {image_idx} and Label {_label_idx}"
+                        )
+                        coarse_image_img.set_data(
+                            label_highlight(current_image, _label_idx)
+                        )
+                        coarse_signal = maps["signals"][
+                            signal_option_ptr[signal_option_idx]
+                        ]
+                        coarse_signal_img.set_data(coarse_signal.img)
+                        ax_signal.set_title(
+                            signal_options[signal_option_ptr[signal_option_idx]]
+                        )
+                        if signal_option_ptr[signal_option_idx] == "pH":
+                            signal_min = 0.0
+                            signal_max = 1.0
+                        else:
+                            signal_min = np.nanmin(coarse_signal.img)
+                            signal_max = np.nanmax(coarse_signal.img)
+                        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
+                        coarse_signal_colorbar.update_normal(coarse_signal_img)
+
+                        # Phase segmentation panel
+                        coarse_contour_img.set_data(
+                            contour_overlay(
+                                current_image,
+                                maps["c_aq"],
+                                maps["s_g"],
+                                [slider.val for slider in sliders_threshold],
+                            ).img
+                        )
+
+                        if signal_function and signal_function_line is not None:
+                            update_signal_function_plot()
+                        if mass_plot:
+                            update_mass_plot()
                         fig.canvas.draw_idle()
+
+                    def update_analysis(event=None):
+                        """Apply the slider values and update everything."""
+                        # Check if any slider value has changed that requires updating
+                        # mass analysis.
+                        need_update = False
+                        need_update = need_update or any(
+                            [
+                                sliders_color_to_signal[i].val
+                                != self.signal_model.model[1][_label_idx].values[i]
+                                for i in range(
+                                    len(self.signal_model.model[1][_label_idx].values)
+                                )
+                            ]
+                        )
+                        need_update = need_update or any(
+                            [
+                                sliders_flash[0].val != self.flash.min_value_aq,
+                                sliders_flash[1].val != self.flash.max_value_aq,
+                                sliders_flash[2].val != self.flash.min_value_g,
+                                sliders_flash[3].val != self.flash.max_value_g,
+                            ]
+                        )
+
+                        # Update parameters
+                        self.signal_model.model[1][_label_idx].update(
+                            values=[slider.val for slider in sliders_color_to_signal]
+                        )
+                        self.flash.update(
+                            min_value_aq=sliders_flash[0].val,
+                            max_value_aq=sliders_flash[1].val,
+                            min_value_g=sliders_flash[2].val,
+                            max_value_g=sliders_flash[3].val,
+                        )
+                        # Update mass analysis
+                        if need_update:
+                            update_mass_analysis()
+                        refresh(recompute=True, signal_function=True, mass_plot=True)
 
                     # Connect button callbacks
                     btn_update.on_clicked(update_analysis)
@@ -1440,53 +1448,7 @@ class HeterogeneousColorToMassAnalysis:
                         signal_option_idx = (signal_option_idx + 1) % len(
                             signal_option_ptr
                         )
-
-                        # Identify mass density for chosen image
-                        pH, density, c_aq, s_g = detailed_mass_analysis(
-                            color_interpretation
-                        )
-
-                        # Coarsen outputs for visualization
-                        coarse_pH = darsia.resize(pH, shape=coarse_shape)
-                        coarse_density = darsia.resize(density, shape=coarse_shape)
-                        coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
-                        coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
-                        coarse_signal_dict = {
-                            "color": coarse_color_interpretation,
-                            "pH": coarse_pH,
-                            "rho_co2": coarse_density,
-                            "c_aq": coarse_c_aq,
-                            "s_g": coarse_s_g,
-                            "labels": coarse_labels,
-                            "depth": coarse_depth,
-                            "rho_co2(g)": coarse_co2_g_density,
-                            "solubility_co2(aq)": coarse_co2_aq_solubility,
-                            "porosity": coarse_porosity,
-                            "effective_depth": coarse_effective_depth,
-                        }
-                        coarse_signal = coarse_signal_dict[
-                            signal_option_ptr[signal_option_idx]
-                        ]
-
-                        # Update the image and title
-                        coarse_signal_img.set_data(
-                            coarse_signal.img
-                            if isinstance(coarse_signal, darsia.Image)
-                            else coarse_signal
-                        )
-                        ax_signal.set_title(
-                            signal_options[signal_option_ptr[signal_option_idx]]
-                        )  # Update color scale (min/max values) based on current signal
-                        if signal_option_ptr[signal_option_idx] == "pH":
-                            signal_min = 0.0
-                            signal_max = 1.0
-                        else:
-                            signal_min = np.nanmin(coarse_signal.img)
-                            signal_max = np.nanmax(coarse_signal.img)
-                        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
-                        coarse_signal_colorbar.update_normal(coarse_signal_img)
-                        # Redraw
-                        fig.canvas.draw_idle()
+                        refresh(recompute=False)
 
                     btn_next_signal.on_clicked(next_signal)
 
@@ -1511,99 +1473,9 @@ class HeterogeneousColorToMassAnalysis:
                     btn_next_label.on_clicked(next_label)
 
                     def next_image(event):
-                        nonlocal image_idx, coarse_image, color_interpretation
-                        # Cycle to next image
+                        nonlocal image_idx
                         image_idx = (image_idx + 1) % len(images)
-
-                        # Update image-dependent variables
-                        coarse_image = coarse_images[image_idx]
-                        color_interpretation = color_interpretations[image_idx]
-
-                        # Recalculate mass analysis for new image
-                        pH, density, c_aq, s_g = detailed_mass_analysis(
-                            color_interpretation
-                        )
-
-                        # Coarsen outputs for visualization
-                        coarse_pH = darsia.resize(pH, shape=coarse_shape)
-                        coarse_density = darsia.resize(density, shape=coarse_shape)
-                        coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
-                        coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
-                        coarse_signal_dict = {
-                            "color": coarse_color_interpretation,
-                            "pH": coarse_pH,
-                            "rho_co2": coarse_density,
-                            "c_aq": coarse_c_aq,
-                            "s_g": coarse_s_g,
-                            "labels": coarse_labels,
-                            "depth": coarse_depth,
-                            "rho_co2(g)": coarse_co2_g_density,
-                            "solubility_co2(aq)": coarse_co2_aq_solubility,
-                            "porosity": coarse_porosity,
-                            "effective_depth": coarse_effective_depth,
-                        }
-                        coarse_signal = coarse_signal_dict[
-                            signal_option_ptr[signal_option_idx]
-                        ]
-
-                        # Update contours
-                        coarse_contour = darsia.plot_contour_on_image(
-                            coarse_image,
-                            mask=[
-                                coarse_c_aq > sliders_threshold[0].val,
-                                coarse_c_aq > 0.1,
-                                coarse_c_aq > 0.25,
-                                coarse_c_aq > 0.5,
-                                coarse_c_aq > 0.9,
-                                coarse_s_g > sliders_threshold[1].val,
-                            ],
-                            contour_smoother=self.contour_smoother,
-                            color=[
-                                (255, 0, 0),
-                                (255, 0, 0),
-                                (255, 0, 0),
-                                (255, 0, 0),
-                                (255, 0, 0),
-                                (0, 255, 0),
-                            ],
-                            alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
-                            return_image=True,
-                        )
-
-                        # Update plot titles
-                        ax_coarse_image.set_title(
-                            f"Current Image {image_idx} and Label {label_idx}"
-                        )
-
-                        # Update coarse image highlighting
-                        labeled_coarse_image = coarse_image.img.copy()
-                        labeled_coarse_image[coarse_labels.img != label_idx] = (
-                            0.7
-                            * np.mean(
-                                labeled_coarse_image[coarse_labels.img != label_idx],
-                                axis=-1,
-                                keepdims=True,
-                            )
-                            + 0.3 * coarse_image.img[coarse_labels.img != label_idx]
-                        )
-                        coarse_image_img.set_data(labeled_coarse_image)
-
-                        # Update signal image and colorbar
-                        coarse_signal_img.set_data(coarse_signal.img)
-                        if signal_option_ptr[signal_option_idx] == "pH":
-                            signal_min = 0.0
-                            signal_max = 1.0
-                        else:
-                            signal_min = np.nanmin(coarse_signal.img)
-                            signal_max = np.nanmax(coarse_signal.img)
-                        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
-                        coarse_signal_colorbar.update_normal(coarse_signal_img)
-
-                        # Update contour image
-                        coarse_contour_img.set_data(coarse_contour.img)
-
-                        # Redraw
-                        fig.canvas.draw_idle()
+                        refresh(recompute=True)
 
                     btn_next_image.on_clicked(next_image)
 
