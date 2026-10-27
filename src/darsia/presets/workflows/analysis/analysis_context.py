@@ -10,6 +10,9 @@ from warnings import warn
 
 import darsia
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
+from darsia.presets.workflows.calibration.consistency import (
+    color_to_mass_inconsistencies,
+)
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.sections import (
     list_required_sections,
@@ -254,6 +257,25 @@ def _build_color_to_mass_analysis(
         basis=embedding.basis,
         expert_knowledge_adapter=expert_knowledge_adapter,
     )
+
+    # ! ---- CONSISTENCY WITH THE COLOR PATHS ----
+    color_paths_file = Path(embedding.color_paths_csv_file)
+    if color_paths_file.exists():
+        inconsistencies = color_to_mass_inconsistencies(
+            darsia.LabelColorPathMap.load_csv(color_paths_file),
+            color_to_mass_analysis.color_path_interpretation,
+        )
+        if len(inconsistencies) > 0:
+            details = "; ".join(
+                f"label {label}: {message}"
+                for label, message in sorted(inconsistencies.items())
+            )
+            warn(
+                "The mass calibration is outdated, as the color paths have been "
+                f"recalibrated since ({details}). The analysis uses the color paths "
+                "stored with the mass calibration; recalibrate the mass calibration "
+                "to use the current color paths."
+            )
     return color_to_mass_analysis
 
 

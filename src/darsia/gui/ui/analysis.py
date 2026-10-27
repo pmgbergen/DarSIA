@@ -3,6 +3,82 @@
 import sys
 from pathlib import Path
 
+from PySide6.QtWidgets import QMessageBox
+
+STEPS_USING_MASS_CALIBRATION = (
+    "mass",
+    "volume",
+    "segmentation",
+    "fingers",
+    "thresholding",
+)
+
+
+def _confirm_outdated_mass_calibration(main_window, config_file: str, selected_id: str):
+    """Ask the user whether to continue if the mass calibration is outdated.
+
+    The mass calibration is outdated if the color paths were recalibrated after it
+    (e.g. a different number of key colors for some label).
+
+    Returns
+    -------
+        True if the analysis may start, False if the user cancelled.
+
+    """
+    if selected_id not in STEPS_USING_MASS_CALIBRATION:
+        return True
+    try:
+        from darsia.presets.workflows.analysis.analysis_context import (
+            infer_require_color_to_mass_from_config,
+        )
+        from darsia.presets.workflows.calibration.consistency import (
+            outdated_mass_calibration,
+        )
+
+        path = Path(config_file).resolve()
+        if not infer_require_color_to_mass_from_config(
+            path,
+            include_segmentation=selected_id == "segmentation",
+            include_fingers=selected_id == "fingers",
+            include_thresholding=selected_id == "thresholding",
+            include_mass=selected_id == "mass",
+            include_volume=selected_id == "volume",
+        ):
+            return True
+        inconsistencies = outdated_mass_calibration(path)
+    except Exception as error:  # a check must never block the analysis
+        main_window.print_log(f"Skipped the mass calibration check: {error}")
+        return True
+    if len(inconsistencies) == 0:
+        return True
+
+    details = "\n".join(
+        f"  label {label}: {message}"
+        for label, message in sorted(inconsistencies.items())
+    )
+    box = QMessageBox(main_window)
+    box.setIcon(QMessageBox.Warning)
+    box.setWindowTitle("Mass calibration outdated")
+    box.setText(
+        "The color paths have been recalibrated after the last mass calibration."
+    )
+    box.setInformativeText(
+        "The analysis would use the color paths stored with the mass calibration, "
+        "not the current ones. It is recommended to recalibrate the mass "
+        "calibration first.\n\nAffected labels:\n" + details + "\n\nContinue anyway?"
+    )
+    continue_button = box.addButton("Continue anyway", QMessageBox.AcceptRole)
+    cancel_button = box.addButton("Cancel", QMessageBox.RejectRole)
+    box.setDefaultButton(cancel_button)
+    box.exec()
+    if box.clickedButton() is not continue_button:
+        main_window.print_log(
+            "Analysis cancelled: recalibrate the mass calibration for the current "
+            "color paths."
+        )
+        return False
+    return True
+
 
 class AnalysisTab:
     """Manages the analysis tab UI and workflow execution."""
@@ -30,6 +106,11 @@ class AnalysisTab:
         selected_id = self.main_window.selected_checkbox_id
         if not selected_id:
             self.main_window.print_log("Please select an option in the sidebar.")
+            return
+
+        if not _confirm_outdated_mass_calibration(
+            self.main_window, config_file, selected_id
+        ):
             return
 
         # Sync GUI widgets to config_dict before reading live values
