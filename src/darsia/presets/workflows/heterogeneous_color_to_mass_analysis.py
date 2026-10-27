@@ -7,6 +7,7 @@ from typing import Tuple
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.transforms import Bbox
 from matplotlib.widgets import Button, Slider
 from scipy.optimize import minimize
 
@@ -91,6 +92,8 @@ class HeterogeneousColorToMassAnalysis:
             **config,
         )
 
+        # Labels may have different numbers of key colors, but all share the domain
+        # [0, 1] (equidistant abscissas), so the intersection of domains is nonempty.
         # To make sure the signal functions can be evaluated (within their domain of support)
         # explicitly clip the arguments of the signal model
         min_domain_signal_functions = max(
@@ -140,12 +143,6 @@ class HeterogeneousColorToMassAnalysis:
 
         self.geometry = geometry
         """Geometry of the experiment - for the integration of mass during calibration."""
-
-        self.original_depth = geometry.depth.copy()
-        """Original depth image."""
-
-        self.analysis = SimpleRunAnalysis(self.geometry)
-        """Analysis tool for tracking mass evolution."""
 
         self.color_path_interpretation = color_path_interpretation
         """Color path interpretations for different labels."""
@@ -443,6 +440,20 @@ class HeterogeneousColorToMassAnalysis:
                     f"""error: {relative_error}"""
                 )
 
+        # ! ---- INITIAL STATE (restored by the Reset button) ----
+
+        initial_values = {
+            label: np.array(self.signal_model.model[1][label].values, dtype=float)
+            for label in self.signal_model.model[1].keys()
+        }
+        initial_flash = (
+            self.flash.min_value_aq,
+            self.flash.max_value_aq,
+            self.flash.min_value_g,
+            self.flash.max_value_g,
+        )
+        default_contour_threshold = 0.05
+
         # ! ---- GRID FOR PLOTTING ----
 
         # Interactive tuning of values for each color path (chosen by user)
@@ -476,6 +487,7 @@ class HeterogeneousColorToMassAnalysis:
             # Pick label interactively
             if need_to_pick_new_label:
                 label_idx = label_idx_selector(pH)
+                need_to_pick_new_label = False
 
             # Compute mass analysis
             update_mass_analysis()
@@ -655,7 +667,7 @@ class HeterogeneousColorToMassAnalysis:
                 color_path_cmap = _color_path_interpretation.color_path.get_color_map()
 
                 # Display the gradient as background
-                signal_function_background = ax_signal_function.imshow(
+                ax_signal_function.imshow(
                     gradient_data,
                     extent=[
                         self.signal_model_extents[0][0],
@@ -909,1054 +921,140 @@ class HeterogeneousColorToMassAnalysis:
             ax_mass.legend()
             ax_mass.grid(True, alpha=0.3)
 
-            # Get slider area position in figure coordinates
-            slider_bbox = ax_sliders.get_position()
-            slider_left = slider_bbox.x0
-            slider_bottom = slider_bbox.y0
-            slider_width = slider_bbox.width
-            slider_height_total = slider_bbox.height
+            # ! ---- PARAMETER CONTROLS ----
 
-            # Calculate total number of sliders needed
-            num_value_sliders = len(self.signal_model.model[1][label_idx].values)
-            num_flash_sliders = 4
-            num_threshold_sliders = 2
-            num_depth_sliders = 1  # Depth scaling slider
-            total_sliders = (
-                num_value_sliders
-                + num_flash_sliders
-                + num_threshold_sliders
-                + num_depth_sliders
-            )
+            # Grouped rows (label | slider | value box). The number of signal value
+            # rows follows the number of key colors of the selected label.
+            controls_box = ax_sliders.get_position()
+            signal_values = self.signal_model.model[1][label_idx].values
+            path_colors = self.color_path_interpretation[label_idx].color_path.colors
+            num_values = len(signal_values)
+            row_height = controls_box.height / (num_values + 9)
 
-            # Calculate dimensions for vertical sliders
-            # Leave some spacing between sliders - ensure they all fit in the box
-            available_width = slider_width * 0.95  # Use 95% of available width
-            slider_width_individual = available_width / total_sliders * 0.85
-            # Leave space for labels at bottom
-            slider_height_individual = slider_height_total * 0.6
-            spacing = available_width / total_sliders * 0.15 if total_sliders > 1 else 0
-
-            sliders_color_to_signal = []
-
-            # Create vertical sliders for signal model values
-            for i, val in enumerate(self.signal_model.model[1][label_idx].values):
-                slider_x = slider_left + i * (slider_width_individual + spacing)
-                # Leave space at bottom for labels
-                slider_y = slider_bottom + slider_height_total * 0.2
-
-                ax_slider = fig.add_axes(
+            def make_row(row, name, valinit, vmin, vmax, color):
+                """Create a labeled slider (with value text) in a row."""
+                x0, width = controls_box.x0, controls_box.width
+                y0 = controls_box.y1 - (row + 1) * row_height
+                fig.text(
+                    x0, y0 + 0.5 * row_height, name, fontsize=8, ha="left", va="center"
+                )
+                ax_row_slider = fig.add_axes(
                     [
-                        slider_x,
-                        slider_y,
-                        slider_width_individual,
-                        slider_height_individual,
+                        x0 + 0.30 * width,
+                        y0 + 0.2 * row_height,
+                        0.55 * width,
+                        0.6 * row_height,
                     ]
                 )
-
                 slider = Slider(
-                    ax_slider,
-                    f"Val {i}",
+                    ax_row_slider,
+                    "",
+                    vmin,
+                    vmax,
+                    valinit=valinit,
+                    valstep=0.01,
+                    color=color,
+                )
+                slider.valtext.set_fontsize(8)
+                return slider
+
+            def section_title(row, title):
+                fig.text(
+                    controls_box.x0,
+                    controls_box.y1 - (row + 0.5) * row_height,
+                    title,
+                    fontsize=9,
+                    fontweight="bold",
+                    ha="left",
+                    va="center",
+                )
+
+            section_title(0, f"Signal values (label {label_idx})")
+            sliders_color_to_signal = [
+                make_row(
+                    1 + i,
+                    f"Value {i}",
+                    val,
                     0.0,
                     2.0,
-                    valinit=val,
-                    valstep=0.01,
-                    color=np.clip(
-                        self.color_path_interpretation[label_idx].color_path.colors[i],
-                        0,
-                        1,
-                    ),
-                    orientation="vertical",
+                    np.clip(path_colors[i], 0, 1) if i < len(path_colors) else "gray",
                 )
-                sliders_color_to_signal.append(slider)
-
-            # Add two rows of arrow buttons below the signal sliders
-            arrow_button_height = (
-                slider_height_total * 0.05
-            )  # Small height for arrow buttons
-            arrow_button_spacing = (
-                slider_height_total * 0.02
-            )  # Small spacing between up and down buttons
-
-            # Calculate positions for arrow buttons
-            up_button_y = slider_bottom + slider_height_total * 0.1
-            down_button_y = up_button_y - arrow_button_height - arrow_button_spacing
-
-            # Create functions for signal slider arrow button callbacks
-            def slider_up_arrow(slider_index):
-                """Increment signal slider by one step.
-
-                Parameters
-                ----------
-                slider_index : int
-                    Index of the signal slider.
-                """
-                # Get the slider object
-                slider = sliders_color_to_signal[slider_index]
-
-                # Get current value and slider parameters
-                # current_val = slider.val
-                # step_size = slider.valstep
-                max_val = slider.valmax
-
-                # # Calculate new value with step increment, capped at maximum
-                # slider.set_val(new_val)
-                # Fetch all values of all color_path_interpolations for all labels
-                available_labels = np.sort(list(self.signal_model.model[1].keys()))
-                current_values = [
-                    self.signal_model.model[1][_label_idx].values[slider_index]
-                    for _label_idx in available_labels
-                ]
-
-                # Fetch all values of next slider index for all labels
-                if slider_index + 1 < len(self.signal_model.model[1][0].values):
-                    next_slider_index = slider_index + 1
-                    next_values = {
-                        _label_idx: self.signal_model.model[1][_label_idx].values[
-                            next_slider_index
-                        ]
-                        for _label_idx in available_labels
-                    }
-                    ten_percent_increase = {
-                        _label_idx: 0.1
-                        * (next_values[_label_idx] - current_values[_label_idx])
-                        for _label_idx in available_labels
-                    }
-                    new_values = {
-                        _label_idx: min(
-                            current_values[_label_idx]
-                            + ten_percent_increase[_label_idx],
-                            max_val,
-                        )
-                        for _label_idx in available_labels
-                    }
-
-                    # Update the current slider
-                    slider.set_val(new_values[label_idx])
-
-                    # Update parameters
-
-                    for _label_idx in available_labels:
-                        _old_values = self.signal_model.model[1][_label_idx].values
-                        _new_values = _old_values.copy()
-                        _new_values[slider_index] = new_values[_label_idx]
-                        self.signal_model.model[1][_label_idx].update(
-                            values=_new_values
-                        )
-
-                    # Identify mass density for chosen image
-                    pH, density, c_aq, s_g = detailed_mass_analysis(
-                        color_interpretation
-                    )
-
-                    # Coarsen outputs for visualization
-                    coarse_pH = darsia.resize(pH, shape=coarse_shape)
-                    coarse_density = darsia.resize(density, shape=coarse_shape)
-                    coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
-                    coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
-                    coarse_signal_dict = {
-                        "color": coarse_color_interpretation,
-                        "pH": coarse_pH,
-                        "rho_co2": coarse_density,
-                        "c_aq": coarse_c_aq,
-                        "s_g": coarse_s_g,
-                        "labels": coarse_labels,
-                        "depth": coarse_depth,
-                        "rho_co2(g)": coarse_co2_g_density,
-                        "solubility_co2(aq)": coarse_co2_aq_solubility,
-                        "porosity": coarse_porosity,
-                        "effective_depth": coarse_effective_depth,
-                    }
-                    coarse_signal = coarse_signal_dict[
-                        signal_option_ptr[signal_option_idx]
-                    ]
-
-                    # Determine contours
-                    coarse_contour = darsia.plot_contour_on_image(
-                        coarse_image,
-                        mask=[
-                            coarse_c_aq > sliders_threshold[0].val,
-                            coarse_c_aq > 0.1,
-                            coarse_c_aq > 0.25,
-                            coarse_c_aq > 0.50,
-                            coarse_c_aq > 0.9,
-                            coarse_s_g > sliders_threshold[1].val,
-                        ],
-                        contour_smoother=self.contour_smoother,
-                        color=[
-                            (255, 0, 0),
-                            (255, 0, 0),
-                            (255, 0, 0),
-                            (255, 0, 0),
-                            (255, 0, 0),
-                            (0, 255, 0),
-                        ],
-                        alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
-                        return_image=True,
-                    )
-
-                    # Update mass analysis
-                    update_mass_analysis()
-
-                    # Update signal function plot
-                    if signal_function_line is not None:
-                        signal_func = self.signal_model.model[1][label_idx]
-                        x_vals = signal_func.supports
-                        y_vals = signal_func.values.copy()
-                        signal_function_line.set_data(x_vals, y_vals)
-                        signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
-
-                        # Rescale y-axis to fit the curve, floored at the current
-                        # flash max (never zoom in tighter than the flash
-                        # thresholds, but grow if the curve exceeds them)
-                        flash_max = max(self.flash.max_value_aq, self.flash.max_value_g)
-                        ax_signal_function.set_ylim(
-                            self.signal_model_extents[1][0],
-                            max(flash_max, float(np.max(y_vals))),
-                        )
-
-                    # Update flash cut-off and max value lines
-                    signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
-                    signal_function_aq_min_y.set_ydata(self.flash.min_value_aq)
-                    signal_function_g_max_y.set_ydata(self.flash.max_value_g)
-                    signal_function_g_min_y.set_ydata(self.flash.min_value_g)
-                    aq_max_x = signal_func.inverse(self.flash.max_value_aq)
-                    aq_min_x = signal_func.inverse(self.flash.min_value_aq)
-                    g_max_x = signal_func.inverse(self.flash.max_value_g)
-                    g_min_x = signal_func.inverse(self.flash.min_value_g)
-                    signal_function_aq_max_x.set_xdata(aq_max_x)
-                    signal_function_aq_min_x.set_xdata(aq_min_x)
-                    signal_function_g_max_x.set_xdata(g_max_x)
-                    signal_function_g_min_x.set_xdata(g_min_x)
-
-                    # Update the position of the annotaion
-                    ax_signal_function.texts[0].set_position((aq_max_x - 0.05, 0.04))
-                    ax_signal_function.texts[1].set_position((aq_max_x + 0.05, 0.04))
-                    ax_signal_function.texts[2].set_position((g_max_x + 0.1, 0.04))
-
-                    # Update dense plots
-                    coarse_signal_img.set_data(coarse_signal.img)
-                    coarse_contour_img.set_data(coarse_contour.img)
-
-                    # Update color scale (min/max values) based on current signal
-                    if signal_option_ptr[signal_option_idx] == "pH":
-                        signal_min = 0.0
-                        signal_max = 1.0
-                    else:
-                        signal_min = np.nanmin(coarse_signal.img)
-                        signal_max = np.nanmax(coarse_signal.img)
-                    coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
-                    coarse_signal_colorbar.update_normal(coarse_signal_img)
-
-                    # Update mass plots
-                    max_expected = max(
-                        (
-                            max(expected_mass[k])
-                            for k in rois
-                            if len(expected_mass[k]) > 0
-                        ),
-                        default=0.0,
-                    )
-                    max_time = max(
-                        (max(times[k]) for k in rois if len(times[k]) > 0),
-                        default=0.0,
-                    )
-                    mass_unit = (
-                        choose_mass_unit(max_expected)
-                        if self.mass_unit == "auto"
-                        else self.mass_unit
-                    )
-                    time_unit = (
-                        choose_time_unit(max_time)
-                        if self.time_unit == "auto"
-                        else self.time_unit
-                    )
-                    for roi_key in rois:
-                        plot_times = convert_time(times[roi_key], time_unit)
-                        integrated_mass_plots[roi_key].set_data(
-                            plot_times,
-                            convert_mass(integrated_mass[roi_key], mass_unit),
-                        )
-                        integrated_mass_plots_g[roi_key].set_data(
-                            plot_times,
-                            convert_mass(integrated_mass_g[roi_key], mass_unit),
-                        )
-                        integrated_mass_plots_aq[roi_key].set_data(
-                            plot_times,
-                            convert_mass(integrated_mass_aq[roi_key], mass_unit),
-                        )
-                        integrated_mass_scatters[roi_key].set_offsets(
-                            np.c_[
-                                plot_times,
-                                convert_mass(integrated_mass[roi_key], mass_unit),
-                            ]
-                        )
-                        integrated_mass_scatters_g[roi_key].set_offsets(
-                            np.c_[
-                                plot_times,
-                                convert_mass(integrated_mass_g[roi_key], mass_unit),
-                            ]
-                        )
-                        integrated_mass_scatters_aq[roi_key].set_offsets(
-                            np.c_[
-                                plot_times,
-                                convert_mass(integrated_mass_aq[roi_key], mass_unit),
-                            ]
-                        )
-                    if max_expected > 0:
-                        ax_mass.set_ylim(
-                            0.0, convert_mass(2.0 * max_expected, mass_unit)
-                        )
-                    else:
-                        ax_mass.autoscale()
-                    ax_mass.set_xlabel(time_label(time_unit))
-                    ax_mass.set_ylabel(mass_label(mass_unit))
-
-                    # Redraw
-                    fig.canvas.draw_idle()
-
-            def slider_down_arrow(slider_index):
-                """Decrement signal slider by one step.
-
-                Parameters
-                ----------
-                slider_index : int
-                    Index of the signal slider.
-                """
-                # Get the slider object
-                slider = sliders_color_to_signal[slider_index]
-
-                # Get current value and slider parameters
-                # current_val = slider.val
-                # step_size = slider.valstep
-                max_val = slider.valmax
-
-                # # Calculate new value with step increment, capped at maximum
-                # slider.set_val(new_val)
-                # Fetch all values of all color_path_interpolations for all labels
-                available_labels = np.sort(list(self.signal_model.model[1].keys()))
-                current_values = [
-                    self.signal_model.model[1][_label_idx].values[slider_index]
-                    for _label_idx in available_labels
-                ]
-
-                # Fetch all values of next slider index for all labels
-                if slider_index - 1 >= 0:
-                    previous_slider_index = slider_index - 1
-                    previous_values = {
-                        _label_idx: self.signal_model.model[1][_label_idx].values[
-                            previous_slider_index
-                        ]
-                        for _label_idx in available_labels
-                    }
-                    fifty_percent_decrease = {
-                        _label_idx: 0.5
-                        * (current_values[_label_idx] - previous_values[_label_idx])
-                        for _label_idx in available_labels
-                    }
-                    new_values = {
-                        _label_idx: min(
-                            current_values[_label_idx]
-                            - fifty_percent_decrease[_label_idx],
-                            max_val,
-                        )
-                        for _label_idx in available_labels
-                    }
-
-                    # Update the current slider
-                    slider.set_val(new_values[label_idx])
-
-                    # Update parameters
-
-                    for _label_idx in available_labels:
-                        _old_values = self.signal_model.model[1][_label_idx].values
-                        _new_values = _old_values.copy()
-                        _new_values[slider_index] = new_values[_label_idx]
-                        self.signal_model.model[1][_label_idx].update(
-                            values=_new_values
-                        )
-
-                    # Identify mass density for chosen image
-                    pH, density, c_aq, s_g = detailed_mass_analysis(
-                        color_interpretation
-                    )
-
-                    # Coarsen outputs for visualization
-                    coarse_pH = darsia.resize(pH, shape=coarse_shape)
-                    coarse_density = darsia.resize(density, shape=coarse_shape)
-                    coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
-                    coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
-                    coarse_signal_dict = {
-                        "color": coarse_color_interpretation,
-                        "pH": coarse_pH,
-                        "rho_co2": coarse_density,
-                        "c_aq": coarse_c_aq,
-                        "s_g": coarse_s_g,
-                        "labels": coarse_labels,
-                        "depth": coarse_depth,
-                        "rho_co2(g)": coarse_co2_g_density,
-                        "solubility_co2(aq)": coarse_co2_aq_solubility,
-                        "porosity": coarse_porosity,
-                        "effective_depth": coarse_effective_depth,
-                    }
-                    coarse_signal = coarse_signal_dict[
-                        signal_option_ptr[signal_option_idx]
-                    ]
-
-                    # Determine contours
-                    coarse_contour = darsia.plot_contour_on_image(
-                        coarse_image,
-                        mask=[
-                            coarse_c_aq > sliders_threshold[0].val,
-                            coarse_c_aq > 0.1,
-                            coarse_c_aq > 0.25,
-                            coarse_c_aq > 0.5,
-                            coarse_c_aq > 0.9,
-                            coarse_s_g > sliders_threshold[1].val,
-                        ],
-                        contour_smoother=self.contour_smoother,
-                        color=[
-                            (255, 0, 0),
-                            (255, 0, 0),
-                            (255, 0, 0),
-                            (255, 0, 0),
-                            (255, 0, 0),
-                            (0, 255, 0),
-                        ],
-                        alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
-                        return_image=True,
-                    )
-
-                    # Update mass analysis
-                    update_mass_analysis()
-
-                    # Update signal function plot
-                    if signal_function_line is not None:
-                        signal_func = self.signal_model.model[1][label_idx]
-                        x_vals = signal_func.supports
-                        y_vals = signal_func.values.copy()
-                        signal_function_line.set_data(x_vals, y_vals)
-                        signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
-
-                        # Rescale y-axis to fit the curve, floored at the current
-                        # flash max (never zoom in tighter than the flash
-                        # thresholds, but grow if the curve exceeds them)
-                        flash_max = max(self.flash.max_value_aq, self.flash.max_value_g)
-                        ax_signal_function.set_ylim(
-                            self.signal_model_extents[1][0],
-                            max(flash_max, float(np.max(y_vals))),
-                        )
-
-                    # Update flash cut-off and max value lines
-                    signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
-                    signal_function_aq_min_y.set_ydata(self.flash.min_value_aq)
-                    signal_function_g_max_y.set_ydata(self.flash.max_value_g)
-                    signal_function_g_min_y.set_ydata(self.flash.min_value_g)
-                    aq_max_x = signal_func.inverse(self.flash.max_value_aq)
-                    aq_min_x = signal_func.inverse(self.flash.min_value_aq)
-                    g_max_x = signal_func.inverse(self.flash.max_value_g)
-                    g_min_x = signal_func.inverse(self.flash.min_value_g)
-                    signal_function_aq_max_x.set_xdata(aq_max_x)
-                    signal_function_aq_min_x.set_xdata(aq_min_x)
-                    signal_function_g_max_x.set_xdata(g_max_x)
-                    signal_function_g_min_x.set_xdata(g_min_x)
-
-                    # Update the position of the annotaion
-                    ax_signal_function.texts[0].set_position((aq_max_x - 0.05, 0.04))
-                    ax_signal_function.texts[1].set_position((aq_max_x + 0.05, 0.04))
-                    ax_signal_function.texts[2].set_position((g_max_x + 0.1, 0.04))
-
-                    # Update dense plots
-                    coarse_signal_img.set_data(coarse_signal.img)
-                    coarse_contour_img.set_data(coarse_contour.img)
-
-                    # Update color scale (min/max values) based on current signal
-                    if signal_option_ptr[signal_option_idx] == "pH":
-                        signal_min = 0.0
-                        signal_max = 1.0
-                    else:
-                        signal_min = np.nanmin(coarse_signal.img)
-                        signal_max = np.nanmax(coarse_signal.img)
-                    coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
-                    coarse_signal_colorbar.update_normal(coarse_signal_img)
-
-                    # Update mass plots
-                    max_expected = max(
-                        (
-                            max(expected_mass[k])
-                            for k in rois
-                            if len(expected_mass[k]) > 0
-                        ),
-                        default=0.0,
-                    )
-                    max_time = max(
-                        (max(times[k]) for k in rois if len(times[k]) > 0),
-                        default=0.0,
-                    )
-                    mass_unit = (
-                        choose_mass_unit(max_expected)
-                        if self.mass_unit == "auto"
-                        else self.mass_unit
-                    )
-                    time_unit = (
-                        choose_time_unit(max_time)
-                        if self.time_unit == "auto"
-                        else self.time_unit
-                    )
-                    for roi_key in rois:
-                        plot_times = convert_time(times[roi_key], time_unit)
-                        integrated_mass_plots[roi_key].set_data(
-                            plot_times,
-                            convert_mass(integrated_mass[roi_key], mass_unit),
-                        )
-                        integrated_mass_plots_g[roi_key].set_data(
-                            plot_times,
-                            convert_mass(integrated_mass_g[roi_key], mass_unit),
-                        )
-                        integrated_mass_plots_aq[roi_key].set_data(
-                            plot_times,
-                            convert_mass(integrated_mass_aq[roi_key], mass_unit),
-                        )
-                        integrated_mass_scatters[roi_key].set_offsets(
-                            np.c_[
-                                plot_times,
-                                convert_mass(integrated_mass[roi_key], mass_unit),
-                            ]
-                        )
-                        integrated_mass_scatters_g[roi_key].set_offsets(
-                            np.c_[
-                                plot_times,
-                                convert_mass(integrated_mass_g[roi_key], mass_unit),
-                            ]
-                        )
-                        integrated_mass_scatters_aq[roi_key].set_offsets(
-                            np.c_[
-                                plot_times,
-                                convert_mass(integrated_mass_aq[roi_key], mass_unit),
-                            ]
-                        )
-                    if max_expected > 0:
-                        ax_mass.set_ylim(
-                            0.0, convert_mass(2.0 * max_expected, mass_unit)
-                        )
-                    else:
-                        ax_mass.autoscale()
-                    ax_mass.set_xlabel(time_label(time_unit))
-                    ax_mass.set_ylabel(mass_label(mass_unit))
-
-                    # Redraw
-                    fig.canvas.draw_idle()
-
-            # Create arrow buttons for each signal slider
-            arrow_buttons_up = []
-            arrow_buttons_down = []
-
-            for i in range(num_value_sliders):
-                slider_x = slider_left + i * (slider_width_individual + spacing)
-
-                # Up arrow button
-                ax_up_button = fig.add_axes(
-                    [
-                        slider_x,
-                        up_button_y,
-                        slider_width_individual,
-                        arrow_button_height,
-                    ]
-                )
-                btn_up = Button(ax_up_button, "▲")
-                arrow_buttons_up.append(btn_up)
-
-                # Down arrow button
-                ax_down_button = fig.add_axes(
-                    [
-                        slider_x,
-                        down_button_y,
-                        slider_width_individual,
-                        arrow_button_height,
-                    ]
-                )
-                btn_down = Button(ax_down_button, "▼")
-                arrow_buttons_down.append(btn_down)
-
-            # Add four vertical sliders for thresholding flash model
-            flash_slider_start_idx = num_value_sliders  # Flash min value aq slider
-            slider_x = slider_left + flash_slider_start_idx * (
-                slider_width_individual + spacing
-            )
-            slider_y = slider_bottom + slider_height_total * 0.2
-
-            ax_slider_min_aq = fig.add_axes(
-                [
-                    slider_x,
-                    slider_y,
-                    slider_width_individual,
-                    slider_height_individual,
-                ]
-            )
-
-            slider_min_aq = Slider(
-                ax_slider_min_aq,
-                "Flash\nmin aq",
-                0.0,
-                2.0,
-                valinit=self.flash.min_value_aq,
-                valstep=0.01,
-                color="darkgray",
-                orientation="vertical",
-            )
-
-            # Flash max slider
-            slider_x = slider_left + (flash_slider_start_idx + 1) * (
-                slider_width_individual + spacing
-            )
-
-            ax_slider_max_aq = fig.add_axes(
-                [
-                    slider_x,
-                    slider_y,
-                    slider_width_individual,
-                    slider_height_individual,
-                ]
-            )
-            slider_max_aq = Slider(
-                ax_slider_max_aq,
-                "Flash\nmax aq",
-                0.0,
-                2.0,
-                valinit=self.flash.max_value_aq,
-                valstep=0.01,
-                color="darkgray",
-                orientation="vertical",
-            )
-            slider_x = slider_left + (flash_slider_start_idx + 2) * (
-                slider_width_individual + spacing
-            )
-            ax_slider_min_g = fig.add_axes(
-                [
-                    slider_x,
-                    slider_y,
-                    slider_width_individual,
-                    slider_height_individual,
-                ]
-            )
-
-            slider_min_g = Slider(
-                ax_slider_min_g,
-                "Flash\nmin g",
-                0.0,
-                2.0,
-                valinit=self.flash.min_value_g,
-                valstep=0.01,
-                color="darkgray",
-                orientation="vertical",
-            )
-
-            # Flash max slider
-            slider_x = slider_left + (flash_slider_start_idx + 3) * (
-                slider_width_individual + spacing
-            )
-
-            ax_slider_max_g = fig.add_axes(
-                [
-                    slider_x,
-                    slider_y,
-                    slider_width_individual,
-                    slider_height_individual,
-                ]
-            )
-            slider_max_g = Slider(
-                ax_slider_max_g,
-                "Flash\nmax g",
-                0.0,
-                2.0,
-                valinit=self.flash.max_value_g,
-                valstep=0.01,
-                color="darkgray",
-                orientation="vertical",
-            )
-            sliders_flash = [slider_min_aq, slider_max_aq, slider_min_g, slider_max_g]
-
-            # Sliders for thresholding flash model for c_aq and s_g, start with value 0.05
-            slider_x = slider_left + (flash_slider_start_idx + 4) * (
-                slider_width_individual + spacing
-            )
-            ax_slider_c_aq = fig.add_axes(
-                [
-                    slider_x,
-                    slider_y,
-                    slider_width_individual,
-                    slider_height_individual,
-                ]
-            )
-            slider_c_aq = Slider(
-                ax_slider_c_aq,
-                "Cont.\nc_aq",
-                0.0,
-                1.0,
-                valinit=0.05,
-                valstep=0.01,
-                color=(1, 0, 0),
-                orientation="vertical",
-            )
-            slider_x = slider_left + (flash_slider_start_idx + 5) * (
-                slider_width_individual + spacing
-            )
-            ax_slider_s_g = fig.add_axes(
-                [
-                    slider_x,
-                    slider_y,
-                    slider_width_individual,
-                    slider_height_individual,
-                ]
-            )
-            slider_s_g = Slider(
-                ax_slider_s_g,
-                "Cont.\ns_g",
-                0.0,
-                1.0,
-                valinit=0.05,
-                valstep=0.01,
-                color=(0, 1, 0),
-                orientation="vertical",
-            )
-            sliders_threshold = [
-                slider_c_aq,
-                slider_s_g,
+                for i, val in enumerate(signal_values)
             ]
 
-            # Add depth scaling slider
-            # TODO: remove depth slider? Not in use anywhere?
-            slider_x = slider_left + (flash_slider_start_idx + 6) * (
-                slider_width_individual + spacing
-            )
-            # ax_slider_depth = fig.add_axes(
-            #    [
-            #        slider_x,
-            #        slider_y,
-            #        slider_width_individual,
-            #        slider_height_individual,
-            #    ]
-            # )
-            # slider_depth = Slider(
-            #    ax_slider_depth,
-            #    "Depth\ncorr.(+/-)",
-            #    -0.01,
-            #    0.01,
-            #    valinit=0.0,
-            #    valstep=0.001,
-            #    color=(0, 0, 1),  # Blue color
-            #    orientation="vertical",
-            # )
-            # sliders_depth = [slider_depth]
-
-            # Add arrow buttons for flash sliders (cut-off and max)
-            flash_arrow_buttons_up = []
-            flash_arrow_buttons_down = []
-
-            for i in range(num_flash_sliders):
-                slider_x = slider_left + (flash_slider_start_idx + i) * (
-                    slider_width_individual + spacing
-                )
-
-                # Up arrow button for flash sliders
-                ax_flash_up_button = fig.add_axes(
+            flash_row = num_values + 1
+            section_title(flash_row, "Flash")
+            sliders_flash = [
+                make_row(flash_row + 1 + i, name, value, 0.0, 2.0, "darkgray")
+                for i, (name, value) in enumerate(
                     [
-                        slider_x,
-                        up_button_y,
-                        slider_width_individual,
-                        arrow_button_height,
+                        ("Min aq", self.flash.min_value_aq),
+                        ("Max aq", self.flash.max_value_aq),
+                        ("Min g", self.flash.min_value_g),
+                        ("Max g", self.flash.max_value_g),
                     ]
                 )
-                btn_flash_up = Button(ax_flash_up_button, "▲")
-                flash_arrow_buttons_up.append(btn_flash_up)
+            ]
 
-                # Down arrow button for flash sliders
-                ax_flash_down_button = fig.add_axes(
-                    [
-                        slider_x,
-                        down_button_y,
-                        slider_width_individual,
-                        arrow_button_height,
-                    ]
-                )
-                btn_flash_down = Button(ax_flash_down_button, "▼")
-                flash_arrow_buttons_down.append(btn_flash_down)
+            contour_row = flash_row + 5
+            section_title(contour_row, "Contours")
+            sliders_threshold = [
+                make_row(
+                    contour_row + 1,
+                    "Threshold c_aq",
+                    default_contour_threshold,
+                    0.0,
+                    1.0,
+                    (1, 0, 0),
+                ),
+                make_row(
+                    contour_row + 2,
+                    "Threshold s_g",
+                    default_contour_threshold,
+                    0.0,
+                    1.0,
+                    (0, 1, 0),
+                ),
+            ]
 
-            # Add arrow buttons for threshold sliders (c_aq and s_g)
-            threshold_arrow_buttons_up = []
-            threshold_arrow_buttons_down = []
+            # Slider updates only repaint the sliders (blitting). Otherwise, every
+            # slider step re-renders the entire figure, including all images. The
+            # moving parts of the sliders are animated artists, which are excluded
+            # from the stored background and drawn on top of it.
+            all_sliders = sliders_color_to_signal + sliders_flash + sliders_threshold
+            animated_artists = [
+                artist
+                for slider in all_sliders
+                for artist in (slider.poly, slider._handle, slider.valtext)
+            ]
+            for artist in animated_artists:
+                artist.set_animated(True)
+            background = None
 
-            for i in range(num_threshold_sliders):
-                slider_x = slider_left + (
-                    flash_slider_start_idx + num_flash_sliders + i
-                ) * (slider_width_individual + spacing)
+            def store_background(event):
+                nonlocal background
+                background = fig.canvas.copy_from_bbox(fig.bbox)
+                for artist in animated_artists:
+                    fig.draw_artist(artist)
 
-                # Up arrow button for threshold sliders
-                ax_threshold_up_button = fig.add_axes(
-                    [
-                        slider_x,
-                        up_button_y,
-                        slider_width_individual,
-                        arrow_button_height,
-                    ]
-                )
-                btn_threshold_up = Button(ax_threshold_up_button, "▲")
-                threshold_arrow_buttons_up.append(btn_threshold_up)
+            fig.canvas.mpl_connect("draw_event", store_background)
 
-                # Down arrow button for threshold sliders
-                ax_threshold_down_button = fig.add_axes(
-                    [
-                        slider_x,
-                        down_button_y,
-                        slider_width_individual,
-                        arrow_button_height,
-                    ]
-                )
-                btn_threshold_down = Button(ax_threshold_down_button, "▼")
-                threshold_arrow_buttons_down.append(btn_threshold_down)
+            def blit_slider(slider):
+                if background is None or not fig.canvas.supports_blit:
+                    fig.canvas.draw_idle()
+                    return
+                handle_radius = 0.5 * slider._handle.get_markersize() * fig.dpi / 72
+                region = Bbox.union(
+                    [slider.ax.bbox, slider.valtext.get_window_extent()]
+                ).padded(handle_radius + 1)
+                fig.canvas.restore_region(background)
+                for artist in animated_artists:
+                    fig.draw_artist(artist)
+                fig.canvas.blit(region)
 
-            # Add arrow buttons for depth correction slider
-            depth_arrow_buttons_up = []
-            depth_arrow_buttons_down = []
-
-            for i in range(num_depth_sliders):
-                slider_x = slider_left + (
-                    flash_slider_start_idx
-                    + num_flash_sliders
-                    + num_threshold_sliders
-                    + i
-                ) * (slider_width_individual + spacing)
-
-                # Up arrow button for depth correction slider
-                ax_depth_up_button = fig.add_axes(
-                    [
-                        slider_x,
-                        up_button_y,
-                        slider_width_individual,
-                        arrow_button_height,
-                    ]
-                )
-                btn_depth_up = Button(ax_depth_up_button, "▲")
-                depth_arrow_buttons_up.append(btn_depth_up)
-
-                # Down arrow button for depth correction slider
-                ax_depth_down_button = fig.add_axes(
-                    [
-                        slider_x,
-                        down_button_y,
-                        slider_width_individual,
-                        arrow_button_height,
-                    ]
-                )
-                btn_depth_down = Button(ax_depth_down_button, "▼")
-                depth_arrow_buttons_down.append(btn_depth_down)
-
-            # Create empty functions for flash slider arrow button callbacks
-            def flash_slider_up_arrow(slider_index):
-                """Increment flash slider by one step. And all signal function sliders across
-                all labels.
-
-                Parameters
-                ----------
-                slider_index : int
-                    Index of the flash slider (0=cut-off, 1=max).
-                """
-                # Get the slider object
-                slider = sliders_flash[slider_index]
-
-                # Get current value and slider parameters
-                current_val = slider.val
-                step_size = slider.valstep
-                max_val = slider.valmax
-
-                # Calculate new value with step increment, capped at maximum
-                new_val = min(current_val + step_size, max_val)
-                slider.set_val(new_val)
-
-            def flash_slider_down_arrow(slider_index):
-                """Decrement flash slider by one step.
-
-                Parameters
-                ----------
-                slider_index : int
-                    Index of the flash slider (0=cut-off, 1=max).
-                """
-                # Get the slider object
-                slider = sliders_flash[slider_index]
-
-                # Get current value and slider parameters
-                current_val = slider.val
-                step_size = slider.valstep
-                min_val = slider.valmin
-
-                # Calculate new value with step decrement, capped at minimum
-                new_val = max(current_val - step_size, min_val)
-                slider.set_val(new_val)
-
-            # Create empty functions for threshold slider arrow button callbacks
-            def threshold_slider_up_arrow(slider_index):
-                """Increment threshold slider by one step.
-
-                Parameters
-                ----------
-                slider_index : int
-                    Index of the threshold slider (0=c_aq, 1=s_g).
-                """
-                # Get the slider object
-                slider = sliders_threshold[slider_index]
-
-                # Get current value and slider parameters
-                current_val = slider.val
-                step_size = slider.valstep
-                max_val = slider.valmax
-
-                # Calculate new value with step increment, capped at maximum
-                new_val = min(current_val + step_size, max_val)
-                slider.set_val(new_val)
-
-            def threshold_slider_down_arrow(slider_index):
-                """Decrement threshold slider by one step.
-
-                Parameters
-                ----------
-                slider_index : int
-                    Index of the threshold slider (0=c_aq, 1=s_g).
-                """
-                # Get the slider object
-                slider = sliders_threshold[slider_index]
-
-                # Get current value and slider parameters
-                current_val = slider.val
-                step_size = slider.valstep
-                min_val = slider.valmin
-
-                # Calculate new value with step decrement, capped at minimum
-                new_val = max(current_val - step_size, min_val)
-                slider.set_val(new_val)
-
-            # Create empty functions for depth scaling slider arrow button callbacks
-            def depth_slider_up_arrow(slider_index):
-                """Increment depth scaling slider by one step.
-
-                Parameters
-                ----------
-                slider_index : int
-                    Index of the depth scaling slider (always 0).
-                """
-                pass
-
-            #    nonlocal \
-            #        coarse_depth, \
-            #        times, \
-            #        integrated_mass, \
-            #        integrated_mass_g, \
-            #        integrated_mass_aq
-            #    # Get the slider object
-            #    slider = sliders_depth[slider_index]
-
-            #    # Get current value and slider parameters
-            #    current_val = slider.val
-            #    step_size = slider.valstep
-            #    max_val = slider.valmax
-
-            #    # Calculate new value with step increment, capped at maximum
-            #    new_val = min(current_val + step_size, max_val)
-            #    slider.set_val(new_val)
-
-            #    # Update the depth in the geometry
-            #    new_depth = self.original_depth.copy()
-            #    new_depth.img += new_val
-            #    self.geometry.update(depth=new_depth)
-            #    self.analysis.geometry.update(depth=new_depth)
-
-            #    # Update coarse depth for visualization
-            #    coarse_depth = darsia.resize(self.geometry.depth, shape=coarse_shape)
-
-            #    # Update coarse signal plot if active
-            #    if signal_option_ptr[signal_option_idx] == "depth":
-            #        coarse_signal = coarse_depth
-            #        coarse_signal_img.set_data(coarse_signal.img)
-
-            #        # Update color scale (min/max values) based on current signal
-            #        signal_min = np.nanmin(coarse_signal.img)
-            #        signal_max = np.nanmax(coarse_signal.img)
-            #        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
-            #        coarse_signal_colorbar.update_normal(coarse_signal_img)
-
-            #    # Update mass analysis
-            #    update_mass_analysis()
-
-            #    # Update mass plots
-            #    integrated_mass_plot.set_data(times, integrated_mass)
-            #    integrated_mass_plot_g.set_data(times, integrated_mass_g)
-            #    integrated_mass_plot_aq.set_data(times, integrated_mass_aq)
-            #    integrated_mass_scatter.set_offsets(np.c_[times, integrated_mass])
-            #    integrated_mass_scatter_g.set_offsets(np.c_[times, integrated_mass_g])
-            #    integrated_mass_scatter_aq.set_offsets(np.c_[times, integrated_mass_aq])
-
-            #    # Redraw
-            #    fig.canvas.draw_idle()
-
-            def depth_slider_down_arrow(slider_index):
-                """Decrement depth scaling slider by one step.
-
-                Parameters
-                ----------
-                slider_index : int
-                    Index of the depth scaling slider (always 0).
-                """
-                pass
-
-            #    nonlocal \
-            #        coarse_depth, \
-            #        times, \
-            #        integrated_mass, \
-            #        integrated_mass_g, \
-            #        integrated_mass_aq
-            #    # Get the slider object
-            #    slider = sliders_depth[slider_index]
-
-            #    # Get current value and slider parameters
-            #    current_val = slider.val
-            #    step_size = slider.valstep
-            #    min_val = slider.valmin
-
-            #    # Calculate new value with step decrement, capped at minimum
-            #    new_val = max(current_val - step_size, min_val)
-            #    slider.set_val(new_val)
-
-            #    # Update the depth in the geometry
-            #    new_depth = self.original_depth.copy()
-            #    new_depth.img += new_val
-            #    self.geometry.update(depth=new_depth)
-            #    self.analysis.geometry.update(depth=new_depth)
-
-            #    # Update coarse depth for visualization
-            #    coarse_depth = darsia.resize(self.geometry.depth, shape=coarse_shape)
-
-            #    # Update coarse signal plot if active
-            #    if signal_option_ptr[signal_option_idx] == "depth":
-            #        coarse_signal = coarse_depth
-            #        coarse_signal_img.set_data(coarse_signal.img)
-
-            #        # Update color scale (min/max values) based on current signal
-            #        signal_min = np.nanmin(coarse_signal.img)
-            #        signal_max = np.nanmax(coarse_signal.img)
-            #        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
-            #        coarse_signal_colorbar.update_normal(coarse_signal_img)
-
-            #    # Update mass analysis
-            #    update_mass_analysis()
-
-            #    # Update mass plots
-            #    integrated_mass_plot.set_data(times, integrated_mass)
-            #    integrated_mass_plot_g.set_data(times, integrated_mass_g)
-            #    integrated_mass_plot_aq.set_data(times, integrated_mass_aq)
-            #    integrated_mass_scatter.set_offsets(np.c_[times, integrated_mass])
-            #    integrated_mass_scatter_g.set_offsets(np.c_[times, integrated_mass_g])
-            #    integrated_mass_scatter_aq.set_offsets(np.c_[times, integrated_mass_aq])
-
-            #    # Redraw
-            #    fig.canvas.draw_idle()
+            for slider in all_sliders:
+                slider.drawon = False
+                slider.on_changed(lambda val, slider=slider: blit_slider(slider))
 
             # Position buttons at the top of the figure
             button_width = 0.08
@@ -1964,7 +1062,7 @@ class HeterogeneousColorToMassAnalysis:
             button_y = 0.95
             button_spacing = 0.01
 
-            # Button order from left to right (Update moved to bottom right):
+            # Button order from left to right (Reset, Update at bottom right):
             # - Next Signal
             # - Next Label
             # - New Label
@@ -1983,19 +1081,14 @@ class HeterogeneousColorToMassAnalysis:
             update_button_x = 0.98 - button_width  # Right side with small margin
             update_button_y = 0.02  # Bottom with small margin
 
-            # Add "Update label" button to the left of "Update all"
-            update_label_button_x = update_button_x - button_width - button_spacing
-            ax_update_label = plt.axes(
-                [
-                    update_label_button_x,
-                    update_button_y,
-                    button_width,
-                    button_height,
-                ]
+            # Add "Reset" button to the left of "Update"
+            reset_button_x = update_button_x - button_width - button_spacing
+            ax_reset = plt.axes(
+                [reset_button_x, update_button_y, button_width, button_height]
             )
-            btn_update_label = Button(ax_update_label, "Update label")
+            btn_reset = Button(ax_reset, "Reset")
 
-            # Add "Update all" button
+            # Add "Update" button
             ax_update = plt.axes(
                 [
                     update_button_x,
@@ -2004,7 +1097,7 @@ class HeterogeneousColorToMassAnalysis:
                     button_height,
                 ]
             )
-            btn_update = Button(ax_update, "Update all")
+            btn_update = Button(ax_update, "Update")
 
             ax_next_signal = plt.axes(
                 [
@@ -2189,6 +1282,7 @@ class HeterogeneousColorToMassAnalysis:
                             )
 
                         # Update flash cut-off and max value lines
+                        signal_function_aq_min_y.set_ydata([self.flash.min_value_aq])
                         signal_function_aq_max_y.set_ydata([self.flash.max_value_aq])
                         signal_function_g_max_y.set_ydata([self.flash.max_value_g])
                         signal_function_g_min_y.set_ydata([self.flash.min_value_g])
@@ -2293,140 +1387,22 @@ class HeterogeneousColorToMassAnalysis:
                         # Redraw
                         fig.canvas.draw_idle()
 
-                    def update_label_analysis(event=None):
-                        """Update analysis for current label only (copy of update_analysis for
-                        now)
-
-                        """
-                        nonlocal done_tuning_values  # noqa: F824
-                        nonlocal sliders_color_to_signal  # noqa: F824
-                        nonlocal sliders_flash  # noqa: F824
-                        nonlocal sliders_threshold  # noqa: F824
-                        nonlocal _label_idx  # noqa: F824
-
-                        # Update parameters
-                        self.signal_model.model[1][_label_idx].update(
-                            values=[slider.val for slider in sliders_color_to_signal]
-                        )
-                        self.flash.update(
-                            min_value_aq=sliders_flash[0].val,
-                            max_value_aq=sliders_flash[1].val,
-                            min_value_g=sliders_flash[2].val,
-                            max_value_g=sliders_flash[3].val,
-                        )
-                        # Identify mass density for chosen image
-                        pH, density, c_aq, s_g = detailed_mass_analysis(
-                            color_interpretation
-                        )
-
-                        # Coarsen outputs for visualization
-                        coarse_pH = darsia.resize(pH, shape=coarse_shape)
-                        coarse_density = darsia.resize(density, shape=coarse_shape)
-                        coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
-                        coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
-                        coarse_signal_dict = {
-                            "color": coarse_color_interpretation,
-                            "pH": coarse_pH,
-                            "rho_co2": coarse_density,
-                            "c_aq": coarse_c_aq,
-                            "s_g": coarse_s_g,
-                            "labels": coarse_labels,
-                            "depth": coarse_depth,
-                            "rho_co2(g)": coarse_co2_g_density,
-                            "solubility_co2(aq)": coarse_co2_aq_solubility,
-                            "porosity": coarse_porosity,
-                            "effective_depth": coarse_effective_depth,
-                        }
-                        coarse_signal = coarse_signal_dict[
-                            signal_option_ptr[signal_option_idx]
-                        ]
-
-                        # Determine contours
-                        coarse_contour = darsia.plot_contour_on_image(
-                            coarse_image,
-                            mask=[
-                                coarse_c_aq > sliders_threshold[0].val,
-                                coarse_c_aq > 0.1,
-                                coarse_c_aq > 0.25,
-                                coarse_c_aq > 0.5,
-                                coarse_c_aq > 0.9,
-                                coarse_s_g > sliders_threshold[1].val,
-                            ],
-                            contour_smoother=self.contour_smoother,
-                            color=[
-                                (255, 0, 0),
-                                (255, 0, 0),
-                                (255, 0, 0),
-                                (255, 0, 0),
-                                (255, 0, 0),
-                                (0, 255, 0),
-                            ],
-                            alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
-                            return_image=True,
-                        )
-
-                        # Update signal function plot
-                        if signal_function_line is not None:
-                            signal_func = self.signal_model.model[1][_label_idx]
-                            x_vals = signal_func.supports
-                            y_vals = signal_func.values.copy()
-                            signal_function_line.set_data(x_vals, y_vals)
-                            signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
-
-                            # Rescale y-axis to fit the curve, floored at the
-                            # current flash max (never zoom in tighter than the
-                            # flash thresholds, but grow if the curve exceeds
-                            # them)
-                            flash_max = max(
-                                self.flash.max_value_aq, self.flash.max_value_g
-                            )
-                            ax_signal_function.set_ylim(
-                                self.signal_model_extents[1][0],
-                                max(flash_max, float(np.max(y_vals))),
-                            )
-
-                        # Update flash cut-off and max value lines
-                        signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
-                        signal_function_g_max_y.set_ydata(self.flash.max_value_g)
-                        signal_function_g_min_y.set_ydata(self.flash.min_value_g)
-                        aq_max_x = signal_func.inverse(self.flash.max_value_aq)
-                        aq_min_x = signal_func.inverse(self.flash.min_value_aq)
-                        g_max_x = signal_func.inverse(self.flash.max_value_g)
-                        g_min_x = signal_func.inverse(self.flash.min_value_g)
-                        signal_function_aq_max_x.set_xdata(aq_max_x)
-                        signal_function_aq_min_x.set_xdata(aq_min_x)
-                        signal_function_g_max_x.set_xdata(g_max_x)
-                        signal_function_g_min_x.set_xdata(g_min_x)
-
-                        # Update the position of the annotation
-                        ax_signal_function.texts[0].set_position(
-                            (aq_max_x - 0.05, 0.04)
-                        )
-                        ax_signal_function.texts[1].set_position(
-                            (aq_max_x + 0.05, 0.04)
-                        )
-                        ax_signal_function.texts[2].set_position((g_max_x + 0.1, 0.04))
-
-                        # Update dense plots
-                        coarse_signal_img.set_data(coarse_signal.img)
-                        coarse_contour_img.set_data(coarse_contour.img)
-
-                        # Update color scale (min/max values) based on current signal
-                        if signal_option_ptr[signal_option_idx] == "pH":
-                            signal_min = 0.0
-                            signal_max = 1.0
-                        else:
-                            signal_min = np.nanmin(coarse_signal.img)
-                            signal_max = np.nanmax(coarse_signal.img)
-                        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
-                        coarse_signal_colorbar.update_normal(coarse_signal_img)
-
-                        # Redraw
-                        fig.canvas.draw_idle()
-
                     # Connect button callbacks
                     btn_update.on_clicked(update_analysis)
-                    btn_update_label.on_clicked(update_label_analysis)
+
+                    def reset(event):
+                        """Restore the initial values of this label, flash, contours."""
+                        for slider, value in zip(
+                            sliders_color_to_signal, initial_values[_label_idx]
+                        ):
+                            slider.set_val(value)
+                        for slider, value in zip(sliders_flash, initial_flash):
+                            slider.set_val(value)
+                        for slider in sliders_threshold:
+                            slider.set_val(default_contour_threshold)
+                        update_analysis()
+
+                    btn_reset.on_clicked(reset)
 
                     def new_label(event):
                         nonlocal done_tuning_values, need_to_pick_new_label
@@ -2508,132 +1484,22 @@ class HeterogeneousColorToMassAnalysis:
                     btn_next_signal.on_clicked(next_signal)
 
                     def next_label(event):
-                        nonlocal label_idx, _label_idx
-                        # Get available labels from the labels image
+                        """Move to the next label and rebuild the figure for it."""
+                        nonlocal label_idx, done_tuning_values, need_to_pick_new_label
                         available_labels = np.sort(
                             list(self.signal_model.model[1].keys())
                         )
-                        available_labels = available_labels[
-                            available_labels >= 0
-                        ]  # Remove negative labels if any
-
-                        # Find current position and move to next
-                        if label_idx in available_labels:
-                            current_pos = np.where(available_labels == label_idx)[0][0]
-                            next_pos = (current_pos + 1) % len(available_labels)
-                            label_idx = available_labels[next_pos]
-                        else:
-                            label_idx = available_labels[
-                                0
-                            ]  # Default to first available label
-                        _label_idx = label_idx
-
-                        # Update coarse image plot that depends on label_idx
-                        ax_coarse_image.set_title(
-                            f"Current Image {image_idx} and Label {label_idx}"
+                        available_labels = available_labels[available_labels >= 0]
+                        position = np.where(available_labels == label_idx)[0]
+                        next_position = (
+                            (position[0] + 1) % len(available_labels)
+                            if len(position) > 0
+                            else 0
                         )
-                        # Update coarse image highlighting
-                        labeled_coarse_image = coarse_image.img.copy()
-                        labeled_coarse_image[coarse_labels.img != label_idx] = (
-                            0.7
-                            * np.mean(
-                                labeled_coarse_image[coarse_labels.img != label_idx],
-                                axis=-1,
-                                keepdims=True,
-                            )
-                            + 0.3 * coarse_image.img[coarse_labels.img != label_idx]
-                        )
-                        coarse_image_img.set_data(labeled_coarse_image)
-
-                        # Update signal function
-                        ax_signal_function.set_title(
-                            f"Signal Function - Label {label_idx}"
-                        )
-                        if signal_function_line is not None:
-                            signal_func = self.signal_model.model[1][label_idx]
-                            if (
-                                hasattr(signal_func, "values")
-                                and len(signal_func.values) > 0
-                            ):
-                                x_vals = signal_func.supports
-                                y_vals = signal_func.values.copy()
-                                signal_function_line.set_data(x_vals, y_vals)
-                                signal_function_scatter.set_offsets(
-                                    np.c_[x_vals, y_vals]
-                                )
-
-                        # Plot the signal function for the selected label
-                        signal_func: darsia.PWTransformation = self.signal_model.model[
-                            1
-                        ][label_idx]
-
-                        # Get the color path interpretation for gradient background
-                        _color_path_interpretation: darsia.ColorPathInterpolation = (
-                            self.color_path_interpretation[label_idx]
-                        )
-
-                        # Get the colormap from the color path
-                        color_path_cmap = (
-                            _color_path_interpretation.color_path.get_color_map()
-                        )
-
-                        # Update the cmap in signal_function_background
-                        signal_function_background.set_cmap(color_path_cmap)
-
-                        # Create x values for plotting the piecewise linear function
-                        x_vals = signal_func.supports
-                        y_vals = signal_func.values.copy()
-                        signal_function_line.set_data(x_vals, y_vals)
-                        signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
-
-                        # Update flash cut-off and max value lines
-                        signal_function_aq_max_y.set_ydata([self.flash.max_value_aq])
-                        signal_function_g_max_y.set_ydata([self.flash.max_value_g])
-                        signal_function_g_min_y.set_ydata([self.flash.min_value_g])
-                        aq_max_x = signal_func.inverse(self.flash.max_value_aq)
-                        aq_min_x = signal_func.inverse(self.flash.min_value_aq)
-                        g_max_x = signal_func.inverse(self.flash.max_value_g)
-                        g_min_x = signal_func.inverse(self.flash.min_value_g)
-                        signal_function_aq_max_x.set_xdata([aq_max_x])
-                        signal_function_aq_min_x.set_xdata([aq_min_x])
-                        signal_function_g_max_x.set_xdata([g_max_x])
-                        signal_function_g_min_x.set_xdata([g_min_x])
-
-                        # Update the position of the annotaion
-                        ax_signal_function.texts[0].set_position(
-                            (aq_max_x - 0.05, 0.04)
-                        )
-                        ax_signal_function.texts[1].set_position(
-                            (aq_max_x + 0.05, 0.04)
-                        )
-                        ax_signal_function.texts[2].set_position((g_max_x + 0.1, 0.04))
-
-                        # Update values of slides_signal
-                        for i, slider in enumerate(sliders_color_to_signal):
-                            slider.set_val(
-                                self.signal_model.model[1][label_idx].values[i]
-                            )
-
-                        # Update colors of sliders_signal
-                        for i, slider in enumerate(sliders_color_to_signal):
-                            new_color = np.clip(
-                                self.color_path_interpretation[
-                                    label_idx
-                                ].color_path.colors[i],
-                                0,
-                                1,
-                            )
-                            slider.color = new_color
-                            # Update the visual elements of the slider
-                            if hasattr(slider, "poly") and slider.poly is not None:
-                                slider.poly.set_facecolor(new_color)
-                            if hasattr(slider, "hline") and slider.hline is not None:
-                                slider.hline.set_color(new_color)
-                            # Force redraw of the slider's axes
-                            slider.ax.figure.canvas.draw_idle()
-
-                        # Redraw
-                        fig.canvas.draw_idle()
+                        label_idx = available_labels[next_position]
+                        need_to_pick_new_label = False
+                        done_tuning_values = True
+                        plt.close("all")
 
                     btn_next_label.on_clicked(next_label)
 
@@ -2733,48 +1599,6 @@ class HeterogeneousColorToMassAnalysis:
                         fig.canvas.draw_idle()
 
                     btn_next_image.on_clicked(next_image)
-
-                    # Connect signal slider arrow button callbacks
-                    for i, btn_up in enumerate(arrow_buttons_up):
-                        btn_up.on_clicked(lambda event, idx=i: slider_up_arrow(idx))
-
-                    for i, btn_down in enumerate(arrow_buttons_down):
-                        btn_down.on_clicked(lambda event, idx=i: slider_down_arrow(idx))
-
-                    # Connect flash arrow button callbacks
-                    for i, btn_flash_up in enumerate(flash_arrow_buttons_up):
-                        btn_flash_up.on_clicked(
-                            lambda event, idx=i: flash_slider_up_arrow(idx)
-                        )
-
-                    for i, btn_flash_down in enumerate(flash_arrow_buttons_down):
-                        btn_flash_down.on_clicked(
-                            lambda event, idx=i: flash_slider_down_arrow(idx)
-                        )
-
-                    # Connect threshold arrow button callbacks
-                    for i, btn_threshold_up in enumerate(threshold_arrow_buttons_up):
-                        btn_threshold_up.on_clicked(
-                            lambda event, idx=i: threshold_slider_up_arrow(idx)
-                        )
-
-                    for i, btn_threshold_down in enumerate(
-                        threshold_arrow_buttons_down
-                    ):
-                        btn_threshold_down.on_clicked(
-                            lambda event, idx=i: threshold_slider_down_arrow(idx)
-                        )
-
-                    # Connect depth scaling arrow button callbacks
-                    for i, btn_depth_up in enumerate(depth_arrow_buttons_up):
-                        btn_depth_up.on_clicked(
-                            lambda event, idx=i: depth_slider_up_arrow(idx)
-                        )
-
-                    for i, btn_depth_down in enumerate(depth_arrow_buttons_down):
-                        btn_depth_down.on_clicked(
-                            lambda event, idx=i: depth_slider_down_arrow(idx)
-                        )
 
                     plt.show()
 
@@ -3071,6 +1895,37 @@ class HeterogeneousColorToMassAnalysis:
             extra=metadata,
         )
 
+    @staticmethod
+    def _resample_signal_functions(
+        signal_functions: dict[int, darsia.PWTransformation],
+        color_path_interpretation: dict[int, darsia.ColorPathInterpolation],
+    ) -> None:
+        """Match stored signal functions to the current color paths (in place).
+
+        The number of key colors can differ per label and change when color paths
+        are recalibrated. Mismatching signal functions are resampled onto the
+        supports of the current color path.
+
+        """
+        for label, interpretation in color_path_interpretation.items():
+            function = signal_functions.get(label)
+            if function is None:
+                continue
+            supports = np.asarray(interpretation.values, dtype=float)
+            old_supports = np.asarray(function.supports, dtype=float)
+            if len(old_supports) == len(supports) and np.allclose(
+                old_supports, supports
+            ):
+                continue
+            logger.warning(
+                f"Label {label}: stored signal model has {len(old_supports)} values, "
+                f"but the color path has {len(supports)} key colors; resampling."
+            )
+            values = np.interp(supports, old_supports, function.values)
+            signal_functions[label] = darsia.PWTransformation(
+                supports, np.maximum.accumulate(values)
+            )
+
     @classmethod
     def load(
         cls,
@@ -3085,6 +1940,9 @@ class HeterogeneousColorToMassAnalysis:
         contour_smoother: darsia.ContourSmoother | None = None,
         mass_unit: str = "auto",
         time_unit: str = "auto",
+        color_path_interpretation: (
+            dict[int, darsia.ColorPathInterpolation] | None
+        ) = None,
     ) -> "HeterogeneousColorToMassAnalysis":
         """Load the calibration data from json file.
 
@@ -3108,16 +1966,22 @@ class HeterogeneousColorToMassAnalysis:
             Adapter for injecting expert-knowledge corrections.
         contour_smoother : darsia.ContourSmoother, optional
             Optional smoother for the label contours.
+        color_path_interpretation : dict, optional
+            Current color path interpretations. If provided, they replace the stored
+            ones, and stored signal models whose supports do not match the (possibly
+            recalibrated) color path of their label are resampled onto its supports.
         """
-        color_path_interpretation = {
-            label: darsia.ColorPathInterpolation.load(
-                folder
-                / "color_path_interpretation"
-                / f"color_path_interpretation_{label}"
-            )
-            for label in np.unique(labels.img)
-            if label >= 0
-        }
+        stored_interpretation = color_path_interpretation is None
+        if color_path_interpretation is None:
+            color_path_interpretation = {
+                label: darsia.ColorPathInterpolation.load(
+                    folder
+                    / "color_path_interpretation"
+                    / f"color_path_interpretation_{label}"
+                )
+                for label in np.unique(labels.img)
+                if label >= 0
+            }
         signal_functions = {
             label: darsia.PWTransformation.load(
                 folder / "signal_model" / f"signal_model_{label}"
@@ -3125,6 +1989,8 @@ class HeterogeneousColorToMassAnalysis:
             for label in np.unique(labels.img)
             if label >= 0
         }
+        if not stored_interpretation:
+            cls._resample_signal_functions(signal_functions, color_path_interpretation)
         flash = darsia.SimpleFlash.load(folder / "flash" / "flash")
 
         metadata_path = folder / "metadata.json"
