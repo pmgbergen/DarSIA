@@ -84,11 +84,11 @@ class HeterogeneousModel(Model):
 
     def __call__(self, signal: np.ndarray) -> np.ndarray:
         output = np.zeros(signal.shape[:2])  # TODO shape?
-        for i, mask in enumerate(self.masks):
-            label = self.masks.unique_labels[i]
+        for label in self.masks.unique_labels:
             if label in self.ignore_labels:
                 continue
-            output[mask.img] = self[label](signal[mask.img])
+            mask = self.masks.labels.img == label
+            output[mask] = self[label](signal[mask])
         return output
 
     def __getitem__(self, key):
