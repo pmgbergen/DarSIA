@@ -405,6 +405,7 @@ def calibration_color_to_mass_analysis_from_context(
             experiment=experiment,
             rois=rois,
             cmap=custom_cmap,
+            save=lambda: color_analysis.save(embedding.color_to_mass_folder),
         )
 
     for label in np.unique(selected_labels.img):
