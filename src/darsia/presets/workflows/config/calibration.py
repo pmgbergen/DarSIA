@@ -326,7 +326,8 @@ class CalibrationMassConfig:
         default_factory=list,
         metadata={
             "name": "ROIs",
-            "help": "ROI names for mass calibration.",
+            "help": "ROI(s) to review/tune mass curves for in the "
+            "interactive calibration tool; defaults to the full domain.",
             "widget": "key_list",
             "key_list_sources": ROI_SOURCES,
         },
