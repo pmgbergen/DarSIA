@@ -55,7 +55,7 @@ def _load_baseline_color_spectrum_for_color_to_mass(
     return baseline_color_spectrum
 
 
-@required_sections("color", "rig", "data", "protocols", "calibration.mass", "analysis")
+@required_sections("calibration.mass")
 def calibration_color_to_mass_analysis_from_context(
     ctx: AnalysisContext,
     ref_path: Path | None = None,
