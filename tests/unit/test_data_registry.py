@@ -5,6 +5,57 @@ import pytest
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.time_data import TimeData
 
+
+def test_common_and_merged_run_keep_one_consistent_named_definition(tmp_path):
+    import toml
+    from darsia.presets.workflows.config.roi_registry import RoiRegistry
+    common = _make_registry_sec()
+    common["roi"] = [dict(name="whole", corner_1=[0.0, 0.0], corner_2=[1.0, 1.0])]
+    merged = dict(data_interval=list(common["data_interval"]),
+                  data_time=[dict(name="manual_snap")], roi=list(common["roi"]))
+    paths = [tmp_path / "common.toml", tmp_path / "merged-run.toml"]
+    for path, value in zip(paths, (common, merged)):
+        path.write_text(toml.dumps(value), encoding="utf-8")
+    before = [path.read_bytes() for path in paths]
+    registry = DataRegistry().load(paths)
+    assert set(registry.keys()) == set(DataRegistry().load(common).keys())
+    assert registry.resolve("manual_snap").image_times == [0.5, 1.0]
+    assert len(registry.resolve("calibration1").image_times) == 5
+    rois = RoiRegistry().load(paths)
+    assert rois.keys() == ["whole"]
+    assert [path.read_bytes() for path in paths] == before
+
+
+@pytest.mark.parametrize("category,first,second", [
+    ("data_interval", dict(name="window", start="00:00:00", end="01:00:00", num=2),
+        dict(name="window", start="00:00:00", end="01:00:00", num=3)),
+    ("data_time", dict(name="window", times=["00:00:00"]), dict(name="window", times=["01:00:00"])),
+    ("roi", dict(name="whole", corner_1=[0.0, 0.0], corner_2=[1.0, 1.0]),
+        dict(name="whole", corner_1=[0.0, 0.0], corner_2=[2.0, 1.0])),
+])
+def test_conflicting_named_values_across_sources_remain_errors(tmp_path, category, first, second):
+    import toml
+    from darsia.presets.workflows.config.roi_registry import RoiRegistry
+    paths = [tmp_path / "first.toml", tmp_path / "second.toml"]
+    for path, row in zip(paths, (first, second)):
+        path.write_text(toml.dumps({category: [row]}), encoding="utf-8")
+    registry = RoiRegistry() if category == "roi" else DataRegistry()
+    with pytest.raises(ValueError, match="duplicate.*conflicting"):
+        registry.load(paths)
+
+
+@pytest.mark.parametrize("category", ["data_interval", "roi"])
+def test_duplicate_names_in_one_source_still_fail(tmp_path, category):
+    import toml
+    from darsia.presets.workflows.config.roi_registry import RoiRegistry
+    row = (dict(name="window", start="00:00:00", end="01:00:00", num=2) if category == "data_interval"
+           else dict(name="whole", corner_1=[0.0, 0.0], corner_2=[1.0, 1.0]))
+    path = tmp_path / "duplicate.toml"
+    path.write_text(toml.dumps({category: [row, row]}), encoding="utf-8")
+    registry = RoiRegistry() if category == "roi" else DataRegistry()
+    with pytest.raises(ValueError, match="duplicate.*one configuration source"):
+        registry.load([path])
+
 # ---------------------------------------------------------------------------
 # DataRegistry tests
 # ---------------------------------------------------------------------------

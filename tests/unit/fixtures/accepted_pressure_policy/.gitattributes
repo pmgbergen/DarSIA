@@ -1,0 +1,2 @@
+# Historical evidence is SHA-bound; retain its original LF/CRLF bytes.
+*.json -text

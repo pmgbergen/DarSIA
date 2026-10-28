@@ -1,0 +1,14 @@
+[
+  {
+    "id": "decision-0345-overflow-method",
+    "utc": "2026-10-21T10:51:53Z",
+    "decided_by": "reviewer",
+    "answer": "Recorded answer: the overflow method is accepted as specified."
+  },
+  {
+    "id": "decision-0444-overflow-variant",
+    "utc": "2026-10-22T08:36:22Z",
+    "decided_by": "reviewer",
+    "answer": "Recorded answer: the overflow variant is accepted with a report of capped targets."
+  }
+]

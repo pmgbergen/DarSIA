@@ -396,13 +396,8 @@ def calibration_color_to_mass_analysis_from_context(
                 )
                 ignore_labels.append(label)
                 logger.warning(f"Error processing label {label}: {e}")
-        flash = darsia.SimpleFlash(
-            min_value_aq=0,
-            max_value_aq=0.75,
-            min_value_g=0.75,
-            max_value_g=1.0,
-            restoration=None,
-        )
+        from darsia.fluidflower.mass.optical_initialization import initial_flash_bounds
+        flash = darsia.SimpleFlash(**initial_flash_bounds(), restoration=None)
         color_analysis = HeterogeneousColorToMassAnalysis(
             baseline=fluidflower.baseline,
             labels=selected_labels,

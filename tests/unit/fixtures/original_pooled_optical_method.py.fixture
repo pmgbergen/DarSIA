@@ -1,0 +1,132 @@
+"""Frozen original numerical functions; inert until explicitly loaded by a test.
+
+Original retained source SHA256: adf1e749fce22844652eae5166300c6f477be0267b1bd18f9bb84be4f3da7642
+Only function definitions were extracted. Test-supplied cohorts/roles remove
+campaign selection from this numerical oracle; no historical driver is run.
+"""
+from __future__ import annotations
+
+def reference_normalized_rgb(frame: CommonFrameArrays):
+    """Measured dye-free reference removes local optical response, not mass.
+
+    This identical formula is applied before path fitting and evaluation.  It
+    contains no optimized gain or chemistry-specific transformation.  Unknown
+    clear-water support is excluded explicitly, never extended by a fit.
+    """
+    clear = frame.clear_water_rgb
+    support = frame.known_physical_domain & frame.supported_mask & frame.clear_water_supported_mask
+    support &= np.isfinite(clear).all(axis=2) & (clear > 0).all(axis=2)
+    current = np.zeros(frame.current_rgb.shape, np.float32)
+    baseline = np.zeros(frame.baseline_rgb.shape, np.float32)
+    np.divide(frame.current_rgb, clear, out=current, where=support[..., None])
+    np.divide(frame.baseline_rgb, clear, out=baseline, where=support[..., None])
+    if not np.isfinite(current[support]).all() or not np.isfinite(baseline[support]).all():
+        raise ValueError("Clear-water normalization produced nonfinite scientific signal")
+    return current, baseline, support
+
+
+def sample_frame_for_common_paths(frame: CommonFrameArrays, *, stride_px=8, interior_radius_px=None):
+    """Sample native supported centres after identical measured-reference IO."""
+    import cv2
+    if normalize_run(frame.run_id) not in CALIBRATION_RUNS:
+        raise ValueError("Held-out and excluded frames cannot enter path sampling")
+    if frame.provenance.get("physical_context_verified") is not True:
+        raise ValueError("Native facies, domain, depth and porosity must be independently source-verified")
+    radius = frame.provenance.get("facies_interior_radius_px") if interior_radius_px is None else interior_radius_px
+    if type(radius) is not int or radius < 0 or type(stride_px) is not int or stride_px < 1:
+        raise ValueError("A fixed verified facies boundary-error margin and native sampling stride are required")
+    current, baseline, support = reference_normalized_rgb(frame)
+    support &= frame.mass_eligible_mask & np.isin(frame.phase_labels, (1, 2))
+    yy, xx = np.mgrid[0:frame.domain.shape[0]:stride_px, 0:frame.domain.shape[1]:stride_px]
+    samples, counts = {}, {}
+    for label in SUPPORTED_FACIES:
+        mask = np.asarray(frame.facies == label, np.uint8)
+        depth = cv2.distanceTransform(mask, cv2.DIST_L2, 5)
+        selected = support[yy, xx] & (frame.facies[yy, xx] == label) & (depth[yy, xx] >= radius)
+        values = (current[yy[selected], xx[selected]]-baseline[yy[selected], xx[selected]]).astype(np.float32)
+        samples[label] = values
+        counts[str(label)] = len(values)
+    return samples, dict(run=normalize_run(frame.run_id), frame_index=frame.frame_index, elapsed_h=frame.elapsed_h,
+        sampling_stride_px=stride_px, facies_interior_radius_px=radius, sample_counts=counts,
+        representation="corrected linear current/clearwater minus registered baseline/clearwater",
+        source_binding=dict(frame.provenance), pooled_path_used_locked_phase=True)
+
+
+def fit_pooled_color_paths(samples_by_facies: Mapping[int, Mapping[str, np.ndarray]], *, min_samples=16, min_runs=2):
+    """Native ColorPaths from balanced run-level robust RAW-difference anchors.
+
+    Samples are exact native pixel centres, never resized images.  Every run
+    has equal influence on the knots.  Hold-out samples are rejected before
+    their values are read.  No signal is borrowed for an unsupported facies.
+    """
+    paths, audit = {}, {}
+    for facies in sorted(samples_by_facies):
+        if int(facies) not in SUPPORTED_FACIES:
+            audit[str(facies)] = dict(status="unquantified", reason="pre-declared unsupported facies")
+            continue
+        runs = samples_by_facies[facies]
+        if any(normalize_run(run) not in CALIBRATION_RUNS for run in runs):
+            raise ValueError("Held-out or excluded samples cannot fit common ColorPaths")
+        anchors, counts = [], {}
+        for run, raw in sorted(runs.items()):
+            values = np.asarray(raw)
+            if values.dtype != np.float32 or values.ndim != 2 or values.shape[1] != 3 or not np.isfinite(values).all():
+                raise TypeError("Native relative RAW path samples must be finite float32 Nx3")
+            counts[run] = len(values)
+            if len(values) < min_samples:
+                continue
+            norms = np.linalg.norm(values, axis=1)
+            if np.quantile(norms, .98) <= 1e-8:
+                continue
+            rows = []
+            for fraction in (.25, .55, .85, .98):
+                lower, upper = np.quantile(norms, (max(0., fraction-.075), min(1., fraction+.075)))
+                rows.append(np.median(values[(norms >= lower) & (norms <= upper)], axis=0))
+            anchors.append(np.asarray(rows, np.float32))
+        if len(anchors) < min_runs:
+            audit[str(facies)] = dict(status="unquantified", reason="insufficient independent calibration-run optical span", sample_counts=counts)
+            continue
+        knots = np.vstack((np.zeros(3, np.float32), np.median(np.stack(anchors), axis=0))).astype(np.float32)
+        keep = np.r_[True, np.linalg.norm(np.diff(knots, axis=0), axis=1) > 1e-9]
+        knots = knots[keep]
+        if len(knots) < 2:
+            audit[str(facies)] = dict(status="unquantified", reason="zero common color-path span", sample_counts=counts)
+            continue
+        path = darsia.ColorPath(colors=[row for row in knots], mode="rgb", name=f"FF_AC common RAW facies {facies}")
+        paths[int(facies)] = darsia.ColorPathInterpolation(color_path=path, color_mode=darsia.ColorMode.RELATIVE, values=np.asarray(path.relative_distances))
+        audit[str(facies)] = dict(status="supported", run_count=len(anchors), sample_counts=counts, knots=knots.tolist(), equal_run_weight=True)
+    if not paths:
+        raise ValueError("No physically supported facies has a common optical response")
+    return paths, audit
+
+
+def save_common_path_package(folder: str | Path, paths, *, path_audit=None, source_bindings=None, flash_bounds=None):
+    """Write a native-compatible calibration folder only at a new destination."""
+    root = Path(folder)
+    if root.exists():
+        raise FileExistsError("Common calibration artifacts are immutable; use a new folder")
+    bounds = dict(DEFAULT_FLASH_BOUNDS if flash_bounds is None else flash_bounds)
+    if set(bounds) != set(DEFAULT_FLASH_BOUNDS) or not np.isfinite(list(bounds.values())).all() or bounds["max_value_aq"] <= bounds["min_value_aq"] or bounds["max_value_g"] <= bounds["min_value_g"]:
+        raise ValueError("Explicit common finite positive flash windows are required")
+    if not set(paths).issubset(SUPPORTED_FACIES) or not paths:
+        raise ValueError("Only independently supported pooled facies paths are allowed")
+    root.mkdir(parents=True)
+    ignored = tuple(sorted(set((*UNQUANTIFIED_FACIES, *SUPPORTED_FACIES)) - set(paths)))
+    for label in sorted(set(paths) | set(ignored)):
+        interpretation = paths.get(label)
+        if interpretation is None:
+            # Load-only ignored function: it is explicitly excluded from every
+            # mass and shown as an unknown bound, not borrowed as a sand path.
+            dummy = darsia.ColorPath(colors=[np.zeros(3), np.full(3, 1e-8)], mode="rgb")
+            interpretation = darsia.ColorPathInterpolation(color_path=dummy, color_mode=darsia.ColorMode.RELATIVE, values=[0., 1.])
+        interpretation.save(root / "color_path_interpretation" / f"color_path_interpretation_{label}")
+        darsia.PWTransformation(supports=[0., 1.], values=[0., 1.]).save(root / "signal_model" / f"signal_model_{label}")
+    darsia.SimpleFlash(**bounds).save(root / "flash" / "flash")
+    metadata = dict(contract=CONTRACT, basis="facies", label_ids=sorted(set(paths) | set(ignored)), ignore_labels=list(ignored), color_mode=darsia.ColorMode.RELATIVE.value,
+        representation="corrected float32 camera-linear RAW divided by measured registered clear-water RAW; native current-minus-registered-baseline",
+        shared_signal="identity native ColorPath coordinate for every supported facies", flash_bounds=bounds,
+        calibration_runs=list(CALIBRATION_RUNS), heldout_runs=list(HELDOUT_RUNS), source_bindings=source_bindings or {}, path_audit=path_audit or {},
+        fitted_per_run_parameters=False, map_mass_rescaling=False, dilution="none")
+    (root / "metadata.json").write_text(json.dumps(metadata, indent=2, allow_nan=False), encoding="utf-8")
+    return metadata
+

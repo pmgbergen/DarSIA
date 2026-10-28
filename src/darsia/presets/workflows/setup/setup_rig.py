@@ -33,7 +33,8 @@ logging.basicConfig(level=logging.INFO)
     "corrections",
     "image_porosity",
 )
-def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> None:
+def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False,
+              *, raw_build_request: dict | None = None) -> None:
     """Setup and store rig object.
 
     Parameters
@@ -52,7 +53,18 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
     tic = time.time()
 
     # ! ---- LOAD RUN AND RIG ----
-    config = FluidFlowerConfig(path, require_data=False, require_results=False)
+    from darsia.fluidflower.rig_raw_build import capture_configuration_sources
+
+    configuration_sources = capture_configuration_sources(path)
+    from darsia.presets.workflows.config.utils import _get_section_from_toml
+    data_section = _get_section_from_toml(path, "data")
+    raw_requested = data_section.get("raw_camera") is not None
+    if raw_requested:
+        from darsia.fluidflower.rig_raw_build import read_build_request
+        read_build_request(raw_build_request, artifact_kind="raw_rig_baseline")
+        if data_section.get("use_cache", False) is not False:
+            raise ValueError("RAW setup must not create or write a data cache")
+    config = FluidFlowerConfig(path, require_data=False, require_results=raw_requested)
     config.check(*list_required_sections(setup_rig))
 
     # Mypy type checking
@@ -65,6 +77,12 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
     assert config.protocols.injection is not None
     assert config.protocols.pressure_temperature is not None
 
+    if raw_requested:
+        from darsia.fluidflower.rig_raw_basis import require_protocol_sources
+        require_protocol_sources(
+            read_build_request(raw_build_request, artifact_kind="raw_rig_baseline")[0],
+            config.protocols)
+
     # Load imaging protocol
     experiment = darsia.ProtocolledExperiment(
         data=config.data.data,
@@ -76,7 +94,21 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
 
     # Determine effective baseline path, using cache when enabled.
     baseline_path = config.data.baseline
-    if config.data.use_cache:
+    raw_camera = getattr(config.data, "raw_camera", None)
+    analysis_exclusions = getattr(config.rig, "analysis_exclusions", None)
+    native_product = getattr(config.rig, "native_product", None)
+    raw_build = None
+    if raw_camera is not None:
+        from darsia.fluidflower.rig_raw_build import begin_raw_rig_build
+
+        raw_build = begin_raw_rig_build(
+            path, baseline_path, raw_camera, config.rig.path,
+            configuration_sources=configuration_sources,
+            request_binding=raw_build_request,
+            **({"analysis_exclusions": analysis_exclusions} if analysis_exclusions is not None else {}),
+            **({"native_product": native_product} if native_product is not None else {}),
+        )
+    if config.data.use_cache and raw_camera is None:
         assert config.data.raw_cache is not None
         baseline_relative = None
         for folder in config.data.folders:
@@ -112,8 +144,16 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
         image_porosity_config=config.image_porosity,
         log=config.rig.path / "figures",
         show_plot=show,
+        **({"raw_camera": raw_camera,
+            "raw_baseline_sha256": raw_build.raw_source["sha256"],
+            "raw_build_id": raw_build.operation_id,
+            "raw_build": raw_build} if raw_build is not None else {}),
+        **({"analysis_exclusions": analysis_exclusions} if analysis_exclusions is not None else {}),
+        **({"native_product": native_product} if native_product is not None else {}),
     )
     rig.save(config.rig.path)
+    if raw_build is not None:
+        raw_build.publish(rig)
 
     # Monitoring time of execution
     logger.info(f"Rig setup in {time.time() - tic:.2f} s.")

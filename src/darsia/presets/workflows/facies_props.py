@@ -1,3 +1,5 @@
+
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
 from pathlib import Path
 
 import pandas as pd
@@ -14,6 +16,14 @@ class FaciesProps:
     ) -> None:
         self.facies = facies
         """Facies label image."""
+        self.porosity_labels = (
+            frozenset(porosity) if isinstance(porosity, dict) else None
+        )
+        """Explicitly assigned labels, or None for a constant on every label."""
+        self.permeability_labels = (
+            frozenset(permeability) if isinstance(permeability, dict) else None
+        )
+        """Explicitly assigned labels, independent of their numeric values."""
         if isinstance(porosity, dict):
             self.porosity = darsia.zeros_like(facies, dtype=float)
             """Porosity values for each facies label."""
@@ -48,9 +58,9 @@ class FaciesProps:
             Instance of FaciesProps with loaded properties.
         """
         if path.suffix.lower() == ".xlsx":
-            df = pd.read_excel(path)
+            df = pd.read_excel(_preset_io.table_source(path, sheet=None))
         elif path.suffix.lower() == ".csv":
-            df = pd.read_csv(path)
+            df = pd.read_csv(_preset_io.table_source(path, sheet=None))
         else:
             raise ValueError("Facies properties file must be .csv or .xlsx format.")
         if (

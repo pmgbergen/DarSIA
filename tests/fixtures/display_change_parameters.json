@@ -1,0 +1,171 @@
+{
+ "change_display": {
+  "box_radius": 2,
+  "box_size": 5,
+  "contract": "ffac-track1-display-change-flatfield-v1",
+  "homography_error": "V5 temporal alignment requires an invertible 3x3 H",
+  "homography_floor": 1e-09,
+  "lift_mode": "lift1",
+  "minimum_reference_luminance": 1e-06,
+  "reference_luminance": 0.014062383957633609,
+  "tile_rows": 128,
+  "validity_tolerance": 1e-06
+ },
+ "display_modes": {
+  "base_mode": "natural",
+  "chroma_median_size_px": 5,
+  "contract_metadata": {
+   "A": [
+    [
+     0.7482367985193791,
+     -0.046057072251059435,
+     -0.0033417078351086617
+    ],
+    [
+     -0.016847507193594402,
+     0.7967817054734453,
+     -0.05549901039949279
+    ],
+    [
+     0.08512591962169573,
+     0.19570119026229627,
+     1.17028321514431
+    ]
+   ],
+   "M1": [
+    [
+     0.00029792297036576425,
+     -5.479831037268461e-05,
+     4.557770855244091e-06
+    ],
+    [
+     -4.7784972644298926e-05,
+     0.0001882330901444948,
+     -5.8189790197807505e-05
+    ],
+    [
+     -9.052150215971802e-05,
+     -0.00015616390509033662,
+     0.00045598006872025245
+    ]
+   ],
+   "adaptive_gain": false,
+   "chroma": {
+    "colour_space": "OpenCV_RGB8_YCrCb",
+    "luminance_filter": "none",
+    "median_size_px": 5,
+    "roundtrip_luminance_quantisation": "at_most_1_rgb8_unit"
+   },
+   "contract": "ffac-track1-display-modes-v1",
+   "default_mode": "natural",
+   "display_mode": "natural_modes_v1",
+   "display_only_never_features": true,
+   "highlights": {
+    "fallback": "w=clip((min(linear_R,linear_B)-0.55)/0.25,0,1); blend_to_max_linear_srgb",
+    "max_channel_threshold_forbidden": true,
+    "preferred": "native_raw_any_channel_saturation_mask_to_max_linear_srgb",
+    "scope": "outside_photo_sand_only"
+   },
+   "invalid_components": {
+    "connectivity": 8,
+    "fill": "iterated_valid_5x5_channel_median_linear_srgb",
+    "max_fill_area_px": 64,
+    "unfilled_rgb8": [
+     40,
+     40,
+     40
+    ]
+   },
+   "matrix_definition": "M_natural=M1@A; linear_srgb=exp(log_camera_rgb).T@M_natural",
+   "matrix_definition_sha256": "adc9067a9a845d2a1514758a94ac5da427b541a8854fdf187722d04c9a74ad5b",
+   "matrix_rows_camera_rgb_cols_linear_srgb": [
+    [
+     0.00022422812891554153,
+     -5.6491789785883e-05,
+     7.379563203284224e-06
+    ],
+    [
+     -4.387919269217012e-05,
+     0.0001407937073266365,
+     -7.83856015712351e-05
+    ],
+    [
+     -2.6284823779787712e-05,
+     -3.1023545081590044e-05,
+     0.0005425952594693075
+    ]
+   ],
+   "matrix_source_json_path": "provenance path omitted",
+   "matrix_source_json_sha256": "69e72fe789a5c455d343aaa3db17e92d78b262c0c3f6566a5e7729ace7ab01df",
+   "modes": {
+    "lift1": {
+     "gain": 4.266701875070739,
+     "tone": "extended_reinhard_luminance",
+     "white": 4.053366781317202
+    },
+    "lift2": {
+     "gain": 7.111169791784565,
+     "tone": "extended_reinhard_luminance",
+     "white": 6.755611302195336
+    },
+    "natural": {
+     "gain": 1.0,
+     "tone": "clip",
+     "white": null
+    }
+   },
+   "raw_detail_display": "unchanged-existing-fixed-log-camera-channel-view",
+   "same_for_all_runs_and_frames": true,
+   "sand_reference_luminance": 0.014062383957633609
+  },
+  "fill_connectivity": 8,
+  "fill_max_area_px": 64,
+  "fill_max_iterations": 64,
+  "fill_radius_px": 2,
+  "gains": {
+   "lift1": 4.266701875070739,
+   "lift2": 7.111169791784565,
+   "natural": 1.0
+  },
+  "highlight_threshold": 0.55,
+  "highlight_width": 0.25,
+  "luminance_weights": [
+   0.2126,
+   0.7152,
+   0.0722
+  ],
+  "matrix": [
+   [
+    0.00022422812891554153,
+    -5.6491789785883e-05,
+    7.379563203284224e-06
+   ],
+   [
+    -4.387919269217012e-05,
+    0.0001407937073266365,
+    -7.83856015712351e-05
+   ],
+   [
+    -2.6284823779787712e-05,
+    -3.1023545081590044e-05,
+    0.0005425952594693075
+   ]
+  ],
+  "modes": [
+   "natural",
+   "lift1",
+   "lift2"
+  ],
+  "srgb": {
+   "linear_gain": 12.92,
+   "power_denominator": 2.4,
+   "power_gain": 1.055,
+   "power_offset": 0.055,
+   "threshold": 0.0031308
+  },
+  "tile_rows": 128,
+  "unfilled_rgb8": 40,
+  "white_multiplier": 0.95
+ },
+ "rig_contract": "ffac-rig-domain-revision-v1"
+}

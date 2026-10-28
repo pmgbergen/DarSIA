@@ -50,6 +50,7 @@ class ProtocolledExperiment:
         blacklist_protocol: Optional[
             Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]]
         ] = None,
+        overflow_protocol: Optional[Path | tuple[Path, str]] = None,
     ):
         self.data = data
         """Pool of data paths."""
@@ -88,6 +89,12 @@ class ProtocolledExperiment:
             pressure_temperature_protocol
         )
         """Pressure and temperature protocol."""
+        self.overflow_protocol = (
+            darsia.OverflowProtocol(overflow_protocol)
+            if overflow_protocol is not None
+            else None
+        )
+        """Optional measured overflow table; no gas-volume conversion is implied."""
 
         # Reference date
         self.experiment_start = self.injection_protocol.df["start"].min()
@@ -122,6 +129,7 @@ class ProtocolledExperiment:
             injection_protocol=config.protocols.injection,
             pressure_temperature_protocol=config.protocols.pressure_temperature,
             blacklist_protocol=config.protocols.blacklist,
+            overflow_protocol=getattr(config.protocols, "overflow", None),
         )
 
     def time_since_start(self, date: datetime) -> float:

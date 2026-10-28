@@ -1,5 +1,7 @@
 """Module for relative color balance correction based on global analysis."""
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 from pathlib import Path
 from typing import Optional, Union
 from warnings import warn
@@ -86,7 +88,7 @@ class RelativeColorCorrection(darsia.BaseCorrection):
 
     def load(self, path: Path) -> None:
         """Load the linear approximation incl. the coefficients and meta information."""
-        data = np.load(path, allow_pickle=True)
+        data = np.load(_preset_io.source(path), allow_pickle=True)
         self.config = data["config"].item()
         self.correction = self.define_correction()
 

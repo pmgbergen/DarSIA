@@ -5,7 +5,7 @@ import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Callable, Iterable, Literal
 
 import numpy as np
 import pandas as pd
@@ -144,6 +144,8 @@ def _load_and_process_mass(
     uncertainty: float,
     porosity_times_depth: darsia.Image,
     ref_image: darsia.Image | None = None,
+    *,
+    mass_reader: Callable[..., darsia.Image | None] | None = None,
 ) -> darsia.Image | None:
     """Load and resize mass data for a given run and time.
 
@@ -161,6 +163,8 @@ def _load_and_process_mass(
         Geometry weight (porosity × depth).
     ref_image : darsia.Image | None
         Reference image for resizing (optional).
+    mass_reader : callable | None
+        Supplied original mass reader; None retains the local load_data reader.
 
     Returns
     -------
@@ -168,7 +172,8 @@ def _load_and_process_mass(
         The processed coarse mass image, or None if mass data is not found.
     """
     # Load mass data
-    mass = load_data(
+    read_mass = load_data if mass_reader is None else mass_reader
+    mass = read_mass(
         config.runs.config[run_name],
         data="mass",
         time=time,
@@ -179,7 +184,7 @@ def _load_and_process_mass(
         logger.warning(
             f"Mass data for run {run_name} at time {time} not found. Skipping."
         )
-        return None, None
+        return None
 
     # Apply weight for 3D effect and porosity
     dimensionally_reduced_mass = mass * porosity_times_depth
@@ -210,9 +215,23 @@ def _load_and_process_mass(
 
 
 def _compute_wasserstein_distances(
-    cls: type[Rig], config: MultiFluidFlowerConfig, skip_existing: bool
+    cls: type[Rig],
+    config: MultiFluidFlowerConfig,
+    skip_existing: bool,
+    *,
+    reference_rig: Rig | None = None,
+    reference_experiment: darsia.ProtocolledExperiment | None = None,
+    mass_reader: Callable[..., darsia.Image | None] | None = None,
+    results_dir: Path | None = None,
+    vtk_root: Path | None = None,
+    on_result: Callable[[WassersteinDistanceResult, Path], None] | None = None,
 ) -> None:
-    """Compute all Wasserstein distances with intermediate file storage."""
+    """Compute original distances, optionally using admitted reader dependencies.
+
+    The local defaults retain the original reference run, readers and output
+    paths. Supplied dependencies change ownership and location only; all mass
+    processing, reference calculations and solver behavior stay here.
+    """
 
     # Set some 'standard' options for computing the Wasserstein distance.
     options = {
@@ -235,14 +254,19 @@ def _compute_wasserstein_distances(
 
     times = config.wasserstein.times
     active_runs = config.wasserstein.runs
-    results_dir = config.wasserstein.results
+    results_dir = (
+        config.wasserstein.results if results_dir is None else Path(results_dir)
+    )
+    vtk_root = Path("./new_weighted_w1") if vtk_root is None else Path(vtk_root)
 
     total_computations = 0
     completed_computations = 0
 
     # Fetch geometry weighting factor
     example_config = config.runs.config[active_runs[0]]
-    fluidflower = cls.load(example_config.rig.path)
+    fluidflower = (
+        cls.load(example_config.rig.path) if reference_rig is None else reference_rig
+    )
     geometry = fluidflower.geometry
     porosity_times_depth = geometry.weight
 
@@ -264,7 +288,11 @@ def _compute_wasserstein_distances(
     )
 
     # Fetch experimental protocol for defining reference values based on injection profile
-    example_experiment = darsia.ProtocolledExperiment.init_from_config(example_config)
+    example_experiment = (
+        darsia.ProtocolledExperiment.init_from_config(example_config)
+        if reference_experiment is None
+        else reference_experiment
+    )
 
     # Determine characteristic solubility distriburion
     state = example_experiment.pressure_temperature_protocol.get_state(
@@ -328,6 +356,7 @@ def _compute_wasserstein_distances(
                 time=time,
                 uncertainty=uncertainty,
                 porosity_times_depth=porosity_times_depth,
+                mass_reader=mass_reader,
             )
 
             # Add weight accounting for 3D effect and porosity
@@ -354,6 +383,7 @@ def _compute_wasserstein_distances(
                     uncertainty=uncertainty,
                     porosity_times_depth=porosity_times_depth,
                     ref_image=coarse_mass_1,
+                    mass_reader=mass_reader,
                 )
 
                 # Perform wasserstein computations for all ROIs
@@ -503,7 +533,7 @@ def _compute_wasserstein_distances(
 
                             # Print the result to vtk.
                             vtk_path = (
-                                Path("./new_weighted_w1")
+                                vtk_root
                                 / f"roi_{roi_name}"
                                 / f"run_{run_1}_to_{run_2}"
                                 / f"w1_{time}"
@@ -545,6 +575,8 @@ def _compute_wasserstein_distances(
                             f"Computed Wasserstein distance: {result_file.name}"
                         )
 
+                    if on_result is not None:
+                        on_result(result, results_dir / result_file)
                     completed_computations += 1
 
 
@@ -651,7 +683,12 @@ def _assemble_wasserstein_results(config):
         )
 
 
-def _assemble_all_wasserstein_results(config: MultiFluidFlowerConfig) -> None:
+def _assemble_all_wasserstein_results(
+    config: MultiFluidFlowerConfig | None,
+    *,
+    result_records: Iterable[WassersteinDistanceResult] | None = None,
+    output_dir: Path | None = None,
+) -> None:
     """Assemble all Wasserstein results into a single CSV file.
 
     Collects all results across all times, ROIs, and run pairs into a single
@@ -664,82 +701,92 @@ def _assemble_all_wasserstein_results(config: MultiFluidFlowerConfig) -> None:
     ----------
     config : MultiFluidFlowerConfig
         Multi-run FluidFlower configuration.
+    result_records : iterable, optional
+        Already verified original records in original traversal order. When
+        supplied, no configured result path is read and output_dir is required.
+    output_dir : Path, optional
+        Explicit table folder. The original local route uses results/tables.
     """
-    # Fetch configuration details
-    times = config.wasserstein.times
-    active_runs = config.wasserstein.runs
-    results_dir = config.wasserstein.results
-    assert (
-        results_dir.exists()
-    ), f"Results directory {results_dir} does not exist. Run computation first."
-    roi_keys = list(config.wasserstein.roi.keys())
-    roi_names = [config.wasserstein.roi[key].name for key in roi_keys]
+    if result_records is None:
+        if config is None:
+            raise ValueError("Original configuration or verified comparison records required")
+        times = config.wasserstein.times
+        active_runs = config.wasserstein.runs
+        results_dir = config.wasserstein.results
+        assert (
+            results_dir.exists()
+        ), f"Results directory {results_dir} does not exist. Run computation first."
+        roi_names = [roi.name for roi in config.wasserstein.roi.values()]
+
+        def local_records():
+            for time, _ in times:
+                run_pairs = [(r1, r2) for r1 in active_runs for r2 in active_runs if r1 < r2]
+                for run_1, run_2 in run_pairs:
+                    for roi_name in roi_names:
+                        result_file = WassersteinDistanceResult.get_filename(run_1, run_2, time, roi_name)
+                        result_path = results_dir / result_file
+                        if not result_path.exists():
+                            logger.warning(f"Missing result: {result_file.name}")
+                            continue
+                        try:
+                            result = WassersteinDistanceResult.load(result_path)
+                        except Exception as e:
+                            logger.warning(f"Failed to load {result_file.name}: {e}")
+                            continue
+                        yield result
+
+        result_records = local_records()
+        if output_dir is None:
+            output_dir = results_dir / "tables"
+    elif output_dir is None:
+        raise ValueError("Verified comparison records need an explicit table folder")
 
     # Create output directory
-    output_dir = results_dir / "tables"
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Collect all rows, aiming at creating DataFrame df further below.
     rows = []
 
-    for time, _ in times:
-        run_pairs = [(r1, r2) for r1 in active_runs for r2 in active_runs if r1 < r2]
+    for result in result_records:
+        # Raw (unnormalized) distance
+        rows.append(
+            {
+                "time": result.time,
+                "roi_name": result.roi_name,
+                "run_1": result.run_1,
+                "run_2": result.run_2,
+                "normalization": "None",
+                "distance": result.distance,
+            }
+        )
 
-        for run_1, run_2 in run_pairs:
-            for roi_name in roi_names:
-                result_file = WassersteinDistanceResult.get_filename(
-                    run_1, run_2, time, roi_name
-                )
-                result_path = results_dir / result_file
-
-                if not result_path.exists():
-                    logger.warning(f"Missing result: {result_file.name}")
-                    continue
-
-                try:
-                    result = WassersteinDistanceResult.load(result_path)
-                except Exception as e:
-                    logger.warning(f"Failed to load {result_file.name}: {e}")
-                    continue
-
-                # Raw (unnormalized) distance
+        # Normalized distances
+        normalized = result.normalized_distance
+        if isinstance(normalized, dict):
+            for norm_key, norm_value in normalized.items():
                 rows.append(
                     {
                         "time": result.time,
                         "roi_name": result.roi_name,
                         "run_1": result.run_1,
                         "run_2": result.run_2,
-                        "normalization": "None",
-                        "distance": result.distance,
+                        "normalization": norm_key,
+                        "distance": norm_value,
                     }
                 )
-
-                # Normalized distances
-                normalized = result.normalized_distance
-                if isinstance(normalized, dict):
-                    for norm_key, norm_value in normalized.items():
-                        rows.append(
-                            {
-                                "time": result.time,
-                                "roi_name": result.roi_name,
-                                "run_1": result.run_1,
-                                "run_2": result.run_2,
-                                "normalization": norm_key,
-                                "distance": norm_value,
-                            }
-                        )
-                else:
-                    # Single normalized value (float)
-                    rows.append(
-                        {
-                            "time": result.time,
-                            "roi_name": result.roi_name,
-                            "run_1": result.run_1,
-                            "run_2": result.run_2,
-                            "normalization": "normalized",
-                            "distance": normalized,
-                        }
-                    )
+        else:
+            # Single normalized value (float)
+            rows.append(
+                {
+                    "time": result.time,
+                    "roi_name": result.roi_name,
+                    "run_1": result.run_1,
+                    "run_2": result.run_2,
+                    "normalization": "normalized",
+                    "distance": normalized,
+                }
+            )
 
     # Assemble DataFrame and save
     df = pd.DataFrame(

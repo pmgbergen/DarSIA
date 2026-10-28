@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 import logging
 import time
 from pathlib import Path
@@ -96,6 +98,8 @@ class IlluminationCorrection(darsia.BaseCorrection):
         bounds: tuple[float, float] = (0.5, 2.0),
         show_plot: bool = False,
         log: Path | None = None,
+        method: Literal["group_average", "reference_sample"] = "group_average",
+        reference_sample: int | None = None,
     ):
         """Initialize an illumination correction.
 
@@ -124,10 +128,23 @@ class IlluminationCorrection(darsia.BaseCorrection):
             Whether to show diagnostic plots during setup (default: False).
         log : Path | None
             Path to save logs or diagnostic plots (optional).
+        method : Literal["group_average", "reference_sample"]
+            ``"group_average"`` (default): optimisation-based scaling toward the average
+            colour of each sample group. ``"reference_sample"``: closed-form scaling of
+            every sample toward one reference sample, ``s_i = c_ref / c_i`` per colour
+            component (the historical FluidFlower method); requires a single sample
+            group and a single base image, ignores ``outliers`` and ``bounds``.
+        reference_sample : int | None
+            Index of the reference sample within the (single) sample group for
+            ``method="reference_sample"`` (default: 0).
         """
         # Cache input parameters
         if isinstance(base, darsia.Image):
             base = [base]
+        if method not in ("group_average", "reference_sample"):
+            raise ValueError(
+                f"method must be 'group_average' or 'reference_sample', got {method!r}"
+            )
 
         # Convert image to requested format
         self.colorspace = colorspace.lower()
@@ -313,26 +330,59 @@ class IlluminationCorrection(darsia.BaseCorrection):
 
             return residual
 
-        # Solve least-squares problem to find the optimal scaling values.
-        num_vars = sum(num_samples) * color_components
-        vector_bounds = [bounds] * num_vars
+        if method == "reference_sample":
+            # Closed-form scaling toward one reference sample (the historical
+            # FluidFlower method): s_i = c_ref / c_i per colour component. Unlike the
+            # optimisation below, the level of the field is pinned by the reference.
+            if num_groups != 1 or len(images) != 1:
+                raise ValueError(
+                    "method='reference_sample' expects exactly one non-empty sample "
+                    f"group and one base image, got {num_groups} group(s) and "
+                    f"{len(images)} image(s)."
+                )
+            group_id = next(g for g in range(len(sample_groups)) if g not in skipped_groups)
+            colors = np.vstack(characteristic_colors[(group_id, 0)]).reshape(
+                -1, color_components
+            )
+            index = 0 if reference_sample is None else int(reference_sample)
+            if not -len(colors) <= index < len(colors):
+                raise ValueError(
+                    f"reference_sample {index} is out of range for {len(colors)} samples."
+                )
+            reference = colors[index]
+            if np.any(np.abs(reference) < 1e-12):
+                raise ValueError(
+                    f"reference sample {index} has a vanishing colour component "
+                    f"{reference}; choose another reference."
+                )
+            reshaped_scaling = np.asarray(reference / colors, dtype=float).reshape(
+                -1, color_components
+            )
+            logger.info(
+                f"Illumination correction: closed-form scaling toward reference sample "
+                f"{index} (range {reshaped_scaling.min():.4f}-{reshaped_scaling.max():.4f})."
+            )
+        else:
+            # Solve least-squares problem to find the optimal scaling values.
+            num_vars = sum(num_samples) * color_components
+            vector_bounds = [bounds] * num_vars
 
-        logger.info("Starting optimization for illumination correction...")
-        tic = time.time()
-        opt_result = scipy.optimize.minimize(
-            objective_function,
-            np.ones(num_vars),
-            bounds=vector_bounds,
-            # method="Powell", # slower for large number of samples
-            method="L-BFGS-B",
-            tol=1e-6,
-            options={"maxiter": 1000, "disp": True, "ftol": 1e-10, "gtol": 1e-8},
-        )
-        toc = time.time()
-        logger.info(
-            f"Finished optimization for illumination correction in {toc - tic} seconds."
-        )
-        reshaped_scaling = np.reshape(opt_result.x, (-1, color_components))
+            logger.info("Starting optimization for illumination correction...")
+            tic = time.time()
+            opt_result = scipy.optimize.minimize(
+                objective_function,
+                np.ones(num_vars),
+                bounds=vector_bounds,
+                # method="Powell", # slower for large number of samples
+                method="L-BFGS-B",
+                tol=1e-6,
+                options={"maxiter": 1000, "disp": True, "ftol": 1e-10, "gtol": 1e-8},
+            )
+            toc = time.time()
+            logger.info(
+                f"Finished optimization for illumination correction in {toc - tic} seconds."
+            )
+            reshaped_scaling = np.reshape(opt_result.x, (-1, color_components))
         self.local_scaling = _interpolate_scaling(reshaped_scaling, base[0])
 
         # Evaluate deviation for all samples (skip empty/skipped groups).
@@ -572,11 +622,11 @@ class IlluminationCorrection(darsia.BaseCorrection):
             Path to the file.
         """
         # Make sure the file exists
-        if not path.is_file():
+        if not _preset_io.exists(path, 'is_file'):
             raise FileNotFoundError(f"File {path} not found.")
 
         # Load color space and local scaling images from npz file
-        data = np.load(path, allow_pickle=True)["config"].item()
+        data = np.load(_preset_io.source(path), allow_pickle=True)["config"].item()
         if "colorspace" not in data or "local_scaling" not in data:
             raise ValueError("Invalid file format.")
         self.colorspace = data["colorspace"]

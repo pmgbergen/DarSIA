@@ -264,6 +264,9 @@ class CropCorrectionConfig:
         Crop height (default: 1.0).
     in_meters
         Whether width/height are in meters (default: True).
+    origin
+        Physical [x, y] of the cropped image's top-left corner, in the units
+        of width and height (default: None, which means [0, height]).
     """
 
     top_left: tuple[int, int] | None = field(
@@ -316,6 +319,15 @@ class CropCorrectionConfig:
             "help": "If true, width and height are in meters; otherwise pixels.",
         },
     )
+    origin: tuple[float, float] | None = field(
+        default=None,
+        metadata={
+            # Written with a separate crop area; not edited in the settings panel.
+            "hidden": True,
+            "name": "Crop origin",
+            "help": "Physical x, y of the crop's top-left corner (default 0, height).",
+        },
+    )
 
     @property
     def pts_src(self) -> list[list[int]] | None:
@@ -355,6 +367,13 @@ class CropCorrectionConfig:
         self.in_meters = sec.get("in_meters", self.in_meters)
         if not isinstance(self.in_meters, bool):
             self.in_meters = bool(self.in_meters)
+        origin = sec.get("origin")
+        if origin is None:
+            self.origin = None
+        else:
+            from darsia.corrections.shape.curvature import crop_origin
+
+            self.origin = crop_origin(origin)
         return self
 
 
@@ -493,6 +512,14 @@ class CurvatureCorrectionConfig:
         Parsed but deactivated stage configs (preserved when toggled off).
     """
 
+    optional_stages_active: bool = field(
+        default=True,
+        kw_only=True,
+        metadata={
+            "name": "Enable optional curvature stages",
+            "help": "Enable initial bulge, bulge and stretch; the saved crop remains independent.",
+        },
+    )
     init: InitCorrectionConfig | None = field(
         default=None,
         metadata={
@@ -551,6 +578,9 @@ class CurvatureCorrectionConfig:
 
         # Parse active list (None = all present stages active)
         active = sec.get("active")
+        self.optional_stages_active = sec.get("optional_stages_active", True)
+        if type(self.optional_stages_active) is not bool:
+            raise ValueError("curvature.optional_stages_active must be true or false.")
 
         # Parse all stages; active list decides exposure
         for stage_name, stage_cls in _STAGE_CLASSES.items():
@@ -558,7 +588,9 @@ class CurvatureCorrectionConfig:
             if not stage_sec:
                 continue
             parsed = stage_cls().load(stage_sec)
-            is_active = active is None or stage_name in active
+            is_active = (active is None or stage_name in active) and (
+                stage_name == "crop" or self.optional_stages_active
+            )
             if is_active:
                 setattr(self, stage_name, parsed)
             else:
@@ -596,6 +628,8 @@ class CurvatureCorrectionConfig:
                     "height": stage_config.height,
                     "in_meters": stage_config.in_meters,
                 }
+                if stage_config.origin is not None:
+                    result["crop"]["origin"] = list(stage_config.origin)
             elif isinstance(stage_config, BulgeCorrectionConfig):
                 result["bulge"] = {
                     "horizontal_bulge": stage_config.horizontal_bulge,
@@ -1043,6 +1077,59 @@ class IlluminationCorrectionConfig:
         },
     )
     """List of labels to use for illumination correction. Overrides `label` if not empty."""
+    samples: list[list[int]] | None = field(
+        default=None,
+        metadata={
+            "name": "Fixed sample windows",
+            "help": (
+                "Optional explicit sample windows [row_start, row_stop, col_start, col_stop] "
+                "in pixels of the shape-corrected baseline. When given, these windows are "
+                "used instead of random samples (labels, width, num_samples and seed are "
+                "ignored)."
+            ),
+            "placeholder": "e.g., [[1357, 1401, 221, 321], [1418, 1545, 1419, 1591]]",
+        },
+    )
+    """Explicit sample windows (row_start, row_stop, col_start, col_stop) in pixels of the
+    shape-corrected baseline. Overrides random sampling when not None."""
+    method: Literal["group_average", "reference_sample"] = field(
+        default="group_average",
+        metadata={
+            "name": "Scaling method",
+            "help": (
+                "group_average: optimisation toward the average colour of each sample "
+                "group (default). reference_sample: closed-form scaling of every sample "
+                "toward one reference sample (historical FluidFlower method; pins the "
+                "level of the field, single sample group)."
+            ),
+            "options": ["group_average", "reference_sample"],
+        },
+    )
+    """Scaling method: optimisation toward the group average, or closed-form scaling
+    toward one reference sample."""
+    reference_sample: int | str = field(
+        default=0,
+        metadata={
+            "name": "Reference sample",
+            "help": (
+                "Index of the reference sample (method='reference_sample'), or 'top_left' "
+                "for the sample whose centre has the smallest row + column."
+            ),
+            "placeholder": "e.g., 0 or top_left",
+        },
+    )
+    """Reference sample index, or ``"top_left"`` (method ``"reference_sample"`` only)."""
+    use_porosity_mask: bool = field(
+        default=True,
+        metadata={
+            "name": "Use porosity mask",
+            "help": (
+                "Restrict the sample colours to pixels of the boolean porosity mask "
+                "(default). Disable to use every pixel of the sample windows."
+            ),
+        },
+    )
+    """Whether the sample colours are restricted to the boolean porosity mask."""
     interpolation: Literal["rbf", "quartic", "illumination"] = field(
         default="illumination",
         metadata={
@@ -1150,6 +1237,52 @@ class IlluminationCorrectionConfig:
             "gray",
         )
         self.labels = sec.get("labels", self.labels)
+        samples = sec.get("samples", self.samples)
+        if samples is not None:
+            if not isinstance(samples, (list, tuple)) or len(samples) == 0:
+                raise ValueError(
+                    "IlluminationCorrectionConfig.samples must be a non-empty list of "
+                    "[row_start, row_stop, col_start, col_stop] windows."
+                )
+            parsed_samples = []
+            for index, window in enumerate(samples):
+                if not isinstance(window, (list, tuple)) or len(window) != 4:
+                    raise ValueError(
+                        f"IlluminationCorrectionConfig.samples[{index}] must have 4 "
+                        f"entries [row_start, row_stop, col_start, col_stop], got {window!r}"
+                    )
+                row_start, row_stop, col_start, col_stop = (int(value) for value in window)
+                if not (0 <= row_start < row_stop and 0 <= col_start < col_stop):
+                    raise ValueError(
+                        f"IlluminationCorrectionConfig.samples[{index}] must satisfy "
+                        f"0 <= row_start < row_stop and 0 <= col_start < col_stop, "
+                        f"got {window!r}"
+                    )
+                parsed_samples.append([row_start, row_stop, col_start, col_stop])
+            samples = parsed_samples
+        self.samples = samples
+        method = sec.get("method", self.method)
+        if method not in ("group_average", "reference_sample"):
+            raise ValueError(
+                "IlluminationCorrectionConfig.method must be 'group_average' or "
+                f"'reference_sample', got {method!r}"
+            )
+        self.method = method
+        reference_sample = sec.get("reference_sample", self.reference_sample)
+        if isinstance(reference_sample, str):
+            if reference_sample.strip().lower() != "top_left":
+                raise ValueError(
+                    "IlluminationCorrectionConfig.reference_sample must be an integer "
+                    f"index or 'top_left', got {reference_sample!r}"
+                )
+            reference_sample = "top_left"
+        elif isinstance(reference_sample, bool) or not isinstance(reference_sample, int):
+            raise ValueError(
+                "IlluminationCorrectionConfig.reference_sample must be an integer "
+                f"index or 'top_left', got {reference_sample!r}"
+            )
+        self.reference_sample = reference_sample
+        self.use_porosity_mask = bool(sec.get("use_porosity_mask", self.use_porosity_mask))
         self.interpolation = sec.get("interpolation", self.interpolation)
         colorspace = sec.get("colorspace", self.colorspace)
         if colorspace not in _supported_colorspaces:

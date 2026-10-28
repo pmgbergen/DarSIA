@@ -1,5 +1,7 @@
 """Type correction for images."""
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 import logging
 from pathlib import Path
 
@@ -51,8 +53,8 @@ class TypeCorrection(darsia.BaseCorrection):
         """
         np.savez(path, class_name=type(self).__name__, data_type=self.data_type)
 
-        logger.info("\033[92mTypeCorrection saved as: " + str(Path(path)) + "\033[0m")
+        logger.info("\033[92mTypeCorrection saved as: " + str(path) + "\033[0m")
 
     def load(self, path: Path) -> None:
         """Load the data type from a npz file."""
-        self.data_type = np.load(path, allow_pickle=True)["data_type"].item()
+        self.data_type = np.load(_preset_io.source(path), allow_pickle=True)["data_type"].item()

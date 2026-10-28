@@ -1,4 +1,4 @@
-"""Setup utilities for protocol CSV files."""
+"""Generate CSV protocol templates or read an existing workbook-backed set."""
 
 from __future__ import annotations
 
@@ -24,13 +24,75 @@ logger = logging.getLogger(__name__)
 _SUPPORTED_MODES = {"exif", "ctime", "interval", "Load from CSV"}
 
 
+def _reuse_workbook_protocols(path: Path | list[Path]) -> bool:
+    """Validate existing selected tables when any primary protocol uses Excel.
+
+    Workbook protocols are already authored inputs. Generation modes and their
+    scalar defaults apply only to CSV templates, so this route reads the saved
+    file/worksheet pairs without loading image metadata or allocating results.
+    """
+    from darsia.presets.workflows.config.protocols import ProtocolsConfig
+    from darsia.presets.workflows.config.utils import _config_path, _get_section_from_toml
+
+    protocols = ProtocolsConfig().load(path)
+    references = [*(protocols.imaging or {}).values(), protocols.injection, protocols.pressure_temperature]
+    def key(reference):
+        return tuple(reference) if isinstance(reference, (list, tuple)) else (reference,)
+    if not any(Path(key(reference)[0]).suffix.casefold() in (".xls", ".xlsx")
+               for reference in references if reference is not None):
+        return False
+    if not protocols.imaging:
+        raise ValueError("Workbook-backed protocol sets require a selected imaging table")
+    data = _get_section_from_toml(path, "data")
+    folders = []
+    for value in (data.get("folder"), *(data.get("folders") or [])):
+        if value and value != "No file chosen":
+            folder = _config_path(value, path)
+            if folder not in folders:
+                folders.append(folder)
+    # Keep the original per-folder declaration validation without discarding
+    # worksheet names from the values actually passed to the protocol readers.
+    _imaging_protocol_paths({folder: key(reference)[0] for folder, reference in protocols.imaging.items()}, folders)
+    from darsia.experiment.protocols import (
+        ImagingProtocol, InjectionProtocol, OverflowProtocol, PressureTemperatureProtocol,
+    )
+    readers = {}
+    for reference in protocols.imaging.values():
+        if key(reference) not in readers:
+            readers[key(reference)] = ImagingProtocol(reference)
+    blacklist = protocols.blacklist
+    blacklists = list(blacklist.values()) if isinstance(blacklist, dict) else [blacklist]
+    first = next(iter(readers.values()))
+    seen = set()
+    for reference in blacklists:
+        if reference is not None and key(reference) not in seen:
+            first._load_blacklist(reference)
+            seen.add(key(reference))
+    if protocols.injection is not None:
+        InjectionProtocol(protocols.injection)
+    if protocols.pressure_temperature is not None:
+        PressureTemperatureProtocol(protocols.pressure_temperature)
+    if protocols.overflow is not None:
+        OverflowProtocol(protocols.overflow)
+    logger.info("Existing workbook-backed protocol tables are valid. No files were written. "
+                "Generation options apply to CSV templates only.")
+    return True
+
+
 def get_modification_time(filepath: Path) -> datetime:
     """Get file modification time as datetime."""
     return datetime.fromtimestamp(filepath.stat().st_mtime)
 
 
 def _extract_exif_datetime(path: Path) -> datetime | None:
-    """Extract EXIF datetime from an image."""
+    """Extract EXIF datetime from an image (camera RAW: from its TIFF EXIF)."""
+    from darsia.fluidflower.photograph_io import is_camera_raw, raw_capture_time
+
+    if is_camera_raw(path):
+        taken = raw_capture_time(path)
+        if taken is None:
+            logger.warning("%s: No EXIF datetime found.", path.name)
+        return taken
     with Image.open(path) as img:
         exif_data = img.getexif()
         if exif_data:
@@ -128,6 +190,8 @@ def _generation_targets(
 
 def preview_protocol_setup_conflicts(path: Path | list[Path]) -> list[Path]:
     """Return protocol target files that already exist."""
+    if _reuse_workbook_protocols(path):
+        return []
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
     config.check("protocols")
     assert config.protocols is not None
@@ -349,7 +413,9 @@ def setup_imaging_protocol(
     force: bool = False,
     show: bool = False,
 ) -> None:
-    """Generate imaging/injection/pressure-temperature protocol CSV templates."""
+    """Generate CSV templates, or read and validate existing Excel-backed tables."""
+    if _reuse_workbook_protocols(path):
+        return
     logger.info("\033[92mSetting up protocol CSV templates...\033[0m")
     del show
 

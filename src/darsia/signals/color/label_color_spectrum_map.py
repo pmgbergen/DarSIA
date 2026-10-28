@@ -22,16 +22,14 @@ class LabelColorSpectrumMap(dict[int, darsia.ColorSpectrum]):
         super().__init__(color_spectra or {})
 
     def __repr__(self) -> str:
-        str_repr = ""
-        for label, color_spectrum in self.items():
-            str_repr += f"Label {label}: {color_spectrum}\n"
-        return str_repr
+        from .label_color_path_map import LabelColorPathMap
+
+        return LabelColorPathMap.__repr__(self)
 
     def __str__(self) -> str:
-        str_str = ""
-        for label, color_spectrum in self.items():
-            str_str += f"Label {label}: {str(color_spectrum)}\n"
-        return str_str
+        from .label_color_path_map import LabelColorPathMap
+
+        return LabelColorPathMap.__str__(self)
 
     def save(self, directory: darsia.Path) -> None:
         """Save color spectra to a directory.

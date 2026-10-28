@@ -65,6 +65,26 @@ class TranslationEstimator:
         success : bool
             Whether the procedure succeeded.
         """
+        # Exactly equal views have zero translation even when their floating
+        # values exceed the conversion range used by feature detection.
+        effective_roi_dst = roi_src if roi_src is not None and roi_dst is None else roi_dst
+        same_roi = roi_src is None and effective_roi_dst is None
+        if (isinstance(roi_src, tuple) and isinstance(effective_roi_dst, tuple)
+                and len(roi_src) == len(effective_roi_dst) == 2
+                and all(isinstance(item, slice) for item in (*roi_src, *effective_roi_dst))):
+            same_roi = all((left.start, left.stop, left.step)
+                           == (right.start, right.stop, right.step)
+                           for left, right in zip(roi_src, effective_roi_dst))
+        if (same_roi and mask_src is None and mask_dst is None
+                and img_src.dtype == img_dst.dtype and img_src.dtype.kind == "f"
+                and img_src.shape == img_dst.shape and img_src.ndim == 3
+                and img_src.shape[-1] == 3 and min(img_src.shape[:2]) >= 2):
+            selected = img_src if roi_src is None else img_src[roi_src]
+            if (selected.size and np.isfinite(img_src).all()
+                    and np.isfinite(img_dst).all() and np.array_equal(img_src, img_dst)
+                    and (np.min(selected) < -1.0 or np.max(selected) > 1.0)):
+                return np.array([[1., 0., 0.], [0., 1., 0.]]), True
+
         # Make several attempts to find a matching transformation.
         # First attempt to match both images, using a homography.
         # Finding a homography is the preferred approach, as it

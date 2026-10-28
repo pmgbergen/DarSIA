@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .utils import _get_key, _get_section_from_toml
+from .utils import _config_path, _get_key, _get_section_from_toml
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +53,10 @@ class FaciesConfig:
         """Load facies config from a toml file from [section]."""
         sec = _get_section_from_toml(path, "facies")
 
-        # Input output paths.
-        self.props = _get_key(sec, "props", required=True, type_=Path)
-        self.path = _get_key(sec, "path", required=False, type_=Path)
+        # Input output paths (relative ones of a series project: series root).
+        self.props = _config_path(_get_key(sec, "props", required=True), path)
+        self.path = _get_key(sec, "path", required=False)
+        self.path = None if self.path is None else _config_path(self.path, path)
         if not self.path:
             assert results is not None
             self.path = results / "setup" / "facies" / "facies.npz"

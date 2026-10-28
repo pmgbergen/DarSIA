@@ -1,0 +1,100 @@
+"""Frozen original capacity reader method; not an importable production module.
+
+Source: src/darsia/fluidflower/pipeline/capacity.py
+Commit: 098465c1b82f92ae6ce129571e9bf8e2e6267ddf
+Git blob: 60a76769eb8cec5d76b76a85dd1468816d1f1bf8
+Full source SHA-256: aa339c28862e47edc72015d4d5c949a8ebcd54bd34f99db9a91af111a0ef02cd
+Original method: lines 1398 through 1487, retained verbatim below.
+"""
+
+class CapacityLedger:
+    def remaining(self, *, exclude_job=None):
+        if not self._common_binding():
+            return 0  # Prospective readonly report; no v2 claim can exist unbound.
+        total = 0
+        from itertools import islice
+        paths = list(islice(self.root.glob("r-*/reserved.json"), MAX_RESERVATIONS + 1))
+        if len(paths) > MAX_RESERVATIONS:
+            raise RunUnavailable("Preserved capacity history needs explicit maintenance; no claim")
+        for path in paths:
+            row = _read_local(path)
+            if (row.get("physical_host")!=self.host or row.get("service_account_sid")!=self.account
+                    or (self.remote_scope is None and row.get("volume_id")!=self.volume["volume_id"])
+                    or (self.remote_scope is not None and row.get("remote_scope")!=self.remote_scope)):
+                raise ValueError("Reservation belongs to another actual host/account/capacity scope")
+            if (row.get("format") not in {"darsia-local-capacity-reservation-v1",
+                    "darsia-n43-predeclared-capacity-mirror-v1", "darsia-first-whole-output-reservation-v1"}
+                    or path.parent.name != "r-" + _reservation_id(row["job_root"], row)
+                    or type(row.get("case_count")) is not int or row["case_count"] < 1
+                    or len(row.get("ordered_case_ids", [])) != row["case_count"]
+                    or len(set(row["ordered_case_ids"])) != row["case_count"]):
+                raise ValueError("Original reservation identity/case coverage differs")
+            _owner(row["owner"])
+            if row.get("reservation_model")=="N43-shared-aggregate-service-mirror":
+                _integer(row["maximum_aggregate_bytes"],"Predeclared N43 aggregate",positive=True)
+                if (row["format"]!="darsia-n43-predeclared-capacity-mirror-v1"
+                        or row["maximum_aggregate_bytes"]!=65728995330
+                        or row["case_count"]!=39 or row["run"]!="ac52"
+                        or not isinstance(row.get("shared_service_reservation"),dict)):
+                    raise ValueError("N43 mirror differs from the actual one service entitlement")
+                _bound(row["request"]);_bound(row["administration"])
+                if row["shared_service_reservation"]!=row["estimate"]["shared_service_reservation"]:
+                    raise ValueError("N43 mirror differs from the actual one service entitlement")
+            elif row.get("reservation_model") == "first-Q104-whole-output-once":
+                from darsia_cache.first_qualification import BOUND_OUTPUT_ADMINISTRATION, FIRST_OUTPUT_BASE_ENTITLEMENT_BYTES
+                if (row["format"] != "darsia-first-whole-output-reservation-v1"
+                        or type(row.get("maximum_output_bytes")) is not int
+                        or row["maximum_output_bytes"] < FIRST_OUTPUT_BASE_ENTITLEMENT_BYTES
+                        or row["case_count"] != 39 or row["run"] != "ac52"
+                        or row.get("not_a_measured_profile") is not True
+                        or row.get("estimate", {}).get("maximum_output_bytes") != row["maximum_output_bytes"]):
+                    raise ValueError("First Q104 whole-claim entitlement differs")
+                for role in ("request", "administration", "all_stage_reference"):
+                    _bound(row[role])
+                    if row[role] != row["estimate"].get(role):
+                        raise ValueError("First Q104 reservation binding differs: " + role)
+                admin = read_bound(row["administration"])[0]
+                if (admin.get("format") != BOUND_OUTPUT_ADMINISTRATION
+                        or admin.get("administrative_output_entitlement_bytes") != row["maximum_output_bytes"]
+                        or admin.get("scope") != row.get("scope")
+                        or row["scope"] != row["estimate"].get("scope")
+                        or row["scope"].get("ordered_case_ids") != row["ordered_case_ids"]):
+                    raise ValueError("First Q119 reservation differs from actual predeclared whole-output plan")
+            else:
+                if row["format"]!="darsia-local-capacity-reservation-v1":
+                    raise ValueError("Unknown typed capacity reservation model")
+                _integer(row["products_per_frame_estimated_bytes"], "Reserved products")
+                _integer(row["transient_estimated_bytes"], "Reserved transient")
+            if exclude_job is not None and Path(row["job_root"]).resolve() == Path(exclude_job).resolve():
+                continue
+            release = path.parent / "released.json"
+            if release.exists():
+                ended = _read_local(release)
+                if (ended.get("reservation_sha256") != hashlib.sha256(path.read_bytes()).hexdigest()
+                        or ended.get("owner") != row["owner"] or ended.get("attempt_id") != row["attempt_id"]
+                        or ended.get("format") != "darsia-local-capacity-release-v1"):
+                    raise ValueError("Capacity release belongs to another reservation")
+                continue
+            committed = 0
+            progress_paths = list(islice(path.parent.glob("p-*.json"), row["case_count"] + 1))
+            if len(progress_paths) > row["case_count"]:
+                raise ValueError("Capacity progress exceeds original case count")
+            for progress in progress_paths:
+                update = _read_local(progress)
+                if (update.get("owner") != row["owner"] or update.get("attempt_id") != row["attempt_id"]
+                        or update.get("case_id") not in row["ordered_case_ids"]
+                        or update.get("committed_prefix_count") != row["ordered_case_ids"].index(update["case_id"]) + 1):
+                    raise ValueError("Capacity progress ownership differs")
+                committed = max(committed, _integer(update.get("committed_prefix_count"), "Committed prefix"))
+            if committed > row["case_count"]:
+                raise ValueError("Capacity progress exceeds original case count")
+            if row.get("reservation_model")=="N43-shared-aggregate-service-mirror":
+                total += row["maximum_aggregate_bytes"]
+            elif row.get("reservation_model") == "first-Q104-whole-output-once":
+                # Never divide by 39 or shrink a whole-tree ceiling with prefix
+                # progress. Actual committed/preparation files remain retained.
+                total += row["maximum_output_bytes"]
+            else:
+                total += ((row["case_count"] - committed) * row["products_per_frame_estimated_bytes"]
+                          + row["transient_estimated_bytes"])
+        return total

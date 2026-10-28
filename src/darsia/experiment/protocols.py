@@ -1,5 +1,7 @@
 """Module for organizing data with equi-distant time intervals."""
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 import json
 import logging
 from dataclasses import dataclass
@@ -14,6 +16,30 @@ import pandas as pd
 import darsia
 
 logger = logging.getLogger(__name__)
+
+
+class OverflowProtocol:
+    """Measured overflow table, kept separate from any gas-volume calculation.
+
+    As with the other protocols, the source is a CSV or an Excel file/sheet
+    pair. Columns, units, timezone text and review/source columns are retained.
+    Reading a scale value does not imply a density, tare or feed correction.
+    """
+
+    def __init__(self, path: Path | tuple[Path, str]) -> None:
+        protocol_path, sheet = (
+            path if isinstance(path, (list, tuple)) else (path, None)
+        )
+        protocol_path = Path(protocol_path)
+        source = _preset_io.table_source(protocol_path, sheet=sheet)
+        if protocol_path.suffix.lower() == ".csv":
+            if sheet is not None:
+                raise ValueError("CSV overflow protocols do not have sheets.")
+            self.df = pd.read_csv(source)
+        elif protocol_path.suffix.lower() in {".xls", ".xlsx"}:
+            self.df = pd.read_excel(source, sheet_name=0 if sheet is None else sheet)
+        else:
+            raise ValueError("Unsupported overflow protocol format. Use CSV or Excel.")
 
 
 @dataclass
@@ -125,7 +151,7 @@ class ImagingProtocolOld:
 
     def load(self, file_name: Path) -> None:
         """Load a protocol from a json file."""
-        with open(file_name, "r") as f:
+        with _preset_io.open_read(file_name, "r") as f:
             data = json.load(f)
 
         self.pad = data["pad"]
@@ -137,6 +163,14 @@ class ImagingProtocolOld:
             )
             for _interval in data["intervals"]
         ]
+
+
+def _relocated_protocol_paths(paths: pd.Series) -> pd.Series:
+    """Use the configuration reader's alias and worker-scope rules for CSV paths."""
+    from darsia.presets.workflows.config.utils import _with_storage_aliases
+
+    values = _with_storage_aliases({"paths": paths.tolist()})["paths"]
+    return pd.Series(values, index=paths.index, name=paths.name, dtype=paths.dtype)
 
 
 class ImagingProtocol:
@@ -245,9 +279,9 @@ class ImagingProtocol:
 
         if protocol_path.suffix == ".csv":
             assert sheet is None, "Sheet name should not be provided for CSV files."
-            df = pd.read_csv(protocol_path)
+            df = pd.read_csv(_preset_io.table_source(protocol_path, sheet=None))
         elif protocol_path.suffix in [".xls", ".xlsx"]:
-            df = pd.read_excel(protocol_path, sheet_name=sheet)
+            df = pd.read_excel(_preset_io.table_source(protocol_path, sheet=sheet), sheet_name=sheet)
         else:
             raise ValueError("Unsupported file format. Use CSV or Excel files.")
 
@@ -259,8 +293,8 @@ class ImagingProtocol:
         assert (
             "datetime" in df.columns
         ), "Column 'Datetime' not found in the protocol file."
-        paths = (
-            df["path"].astype(str).str.replace(r"\\", "/", regex=False).str.lstrip("./")
+        paths = _relocated_protocol_paths(df["path"].astype(str)).map(
+            self._normalize_protocol_path
         )
         datetimes = df["datetime"]
 
@@ -280,9 +314,9 @@ class ImagingProtocol:
 
         if protocol_path.suffix == ".csv":
             assert sheet is None, "Sheet name should not be provided for CSV files."
-            df = pd.read_csv(protocol_path)
+            df = pd.read_csv(_preset_io.table_source(protocol_path, sheet=None))
         elif protocol_path.suffix in [".xls", ".xlsx"]:
-            df = pd.read_excel(protocol_path, sheet_name=sheet)
+            df = pd.read_excel(_preset_io.table_source(protocol_path, sheet=sheet), sheet_name=sheet)
         else:
             raise ValueError("Unsupported file format. Use CSV or Excel files.")
 
@@ -291,7 +325,7 @@ class ImagingProtocol:
             df.shape[1] == 1
         ), "Blacklist protocol file should contain only one column."
         df.columns = ["path"]
-        paths = df["path"]
+        paths = _relocated_protocol_paths(df["path"])
         return pd.DataFrame({"path": paths})
 
     def find_images_for_paths(self, paths: list[Path]) -> list[Path]:
@@ -437,7 +471,7 @@ class InjectionProtocol:
         date : datetime
             Date to get the cumulative injected mass for.
         time : float
-            Time (in seconds) to get the cumulative injected mass for.
+            Elapsed time in hours since the earliest injection starts.
         roi : Optional[darsia.Image]
             Region of interest for the mass calculation.
 
@@ -451,6 +485,7 @@ class InjectionProtocol:
         if date is not None and time is not None:
             raise ValueError("Only one of date or time must be provided.")
 
+        origin = self.df["start"].min() if time is not None else None
         # Loop over all injection intervals and sum up the contributions
         mass = 0.0
         for _, row in self.df.iterrows():
@@ -492,7 +527,7 @@ class InjectionProtocol:
                     # Full time has passed in this interval
                     time_passed = (end - start).total_seconds()
             elif time is not None:
-                time_in_seconds = time * 3600
+                time_in_seconds = time * 3600 - (start - origin).total_seconds()
                 time_passed = np.clip(
                     time_in_seconds, 0.0, (end - start).total_seconds()
                 )
@@ -520,9 +555,9 @@ class InjectionProtocol:
 
         if protocol_path.suffix == ".csv":
             assert sheet is None, "Sheet name should not be provided for CSV files."
-            df = pd.read_csv(protocol_path)
+            df = pd.read_csv(_preset_io.table_source(protocol_path, sheet=None))
         elif protocol_path.suffix in [".xls", ".xlsx"]:
-            df = pd.read_excel(protocol_path, sheet_name=sheet)
+            df = pd.read_excel(_preset_io.table_source(protocol_path, sheet=sheet), sheet_name=sheet)
         else:
             raise ValueError("Unsupported file format. Use CSV or Excel files.")
 
@@ -612,6 +647,19 @@ class PressureTemperatureProtocol:
     def __init__(self, path: Path | tuple[Path, str]) -> None:
         self.df = self._load_protocol(path)
         """DataFrame containing the protocol."""
+        self._constant_values = None
+        values = self.df[
+            [
+                "pressure_bar",
+                "temperature_celsius",
+                "pressure_gradient_bar",
+                "temperature_gradient_celsius",
+            ]
+        ].to_numpy()
+        if len(values) and np.isfinite(values).all() and (values == values[0]).all():
+            # A truly constant protocol is independent of its timestamp axis.
+            # No timezone is inferred for a time-varying measurement series.
+            self._constant_values = tuple(float(value) for value in values[0])
 
     def get_state(self, date: datetime) -> ThermodynamicState:
         """Get the pressure and temperature at the given date.
@@ -626,6 +674,15 @@ class PressureTemperatureProtocol:
         ThermodynamicState
             Pressure [bar] and temperature [Celsius] at the given date.
         """
+        if (
+            self._constant_values is not None
+            and isinstance(date, datetime)
+            and not pd.isna(date)
+        ):
+            return ThermodynamicState(
+                pressure=self._constant_values[0],
+                temperature=self._constant_values[1],
+            )
         # Find the two rows surrounding the date
         before = (
             self.df[self.df["datetime"] <= date].iloc[-1]
@@ -683,6 +740,15 @@ class PressureTemperatureProtocol:
             Pressure [bar] and temperature [Celsius] gradient at the given
             date.
         """
+        if (
+            self._constant_values is not None
+            and isinstance(date, datetime)
+            and not pd.isna(date)
+        ):
+            return ThermodynamicState(
+                pressure=self._constant_values[2],
+                temperature=self._constant_values[3],
+            )
         # Find the two rows surrounding the date
         before = (
             self.df[self.df["datetime"] <= date].iloc[-1]
@@ -738,9 +804,9 @@ class PressureTemperatureProtocol:
 
         if protocol_path.suffix == ".csv":
             assert sheet is None, "Sheet name should not be provided for CSV files."
-            df = pd.read_csv(protocol_path)
+            df = pd.read_csv(_preset_io.table_source(protocol_path, sheet=None))
         elif protocol_path.suffix in [".xls", ".xlsx"]:
-            df = pd.read_excel(protocol_path, sheet_name=sheet)
+            df = pd.read_excel(_preset_io.table_source(protocol_path, sheet=sheet), sheet_name=sheet)
         else:
             raise ValueError("Unsupported file format. Use CSV or Excel files.")
 

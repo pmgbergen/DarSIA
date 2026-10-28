@@ -25,12 +25,8 @@ def _normalize_extensions(extensions: list[str] | str) -> list[str]:
 
 
 def _to_rgb(color: list[int] | tuple[int, int, int], name: str) -> tuple[int, int, int]:
-    if len(color) != 3:
-        raise ValueError(f"{name} must have exactly 3 entries [R, G, B].")
-    vals = tuple(int(v) for v in color)
-    if any(v < 0 or v > 255 for v in vals):
-        raise ValueError(f"{name} entries must be in [0, 255].")
-    return vals
+    from .analysis import _to_rgb as _canonical_to_rgb
+    return _canonical_to_rgb(color, name)
 
 
 @dataclass

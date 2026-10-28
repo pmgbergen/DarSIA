@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -223,10 +225,10 @@ class ColorEmbeddingRegistry:
         color_root = results / "color" if results is not None else None
 
         for p in paths:
-            if not p.exists():
+            if not _preset_io.exists(p, 'exists'):
                 continue
 
-            with open(p, "rb") as f:
+            with _preset_io.open_read(p, "rb") as f:
                 toml_data = tomllib.load(f)
 
             # Load from three separate arrays: color_path, color_range, color_channel

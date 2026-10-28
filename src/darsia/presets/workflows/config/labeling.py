@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .utils import _get_key, _get_section_from_toml
+from .utils import _config_path, _get_key, _get_section_from_toml
 
 logger = logging.getLogger(__name__)
 
@@ -93,13 +93,16 @@ class LabelingConfig:
     def load(self, path: Path, results: Path | None = None) -> "LabelingConfig":
         """Load labeling config from a toml file from [section]."""
         sec = _get_section_from_toml(path, "labeling")
-        self.colored_image = _get_key(sec, "colored_image", required=True, type_=Path)
+        self.colored_image = _config_path(
+            _get_key(sec, "colored_image", required=True), path
+        )
         self.unite_labels = _get_key(sec, "unite_labels", required=False, type_=list)
         self.water_label = _get_key(sec, "water_label", required=False, type_=int)
         self.colorchecker_label = _get_key(
             sec, "colorchecker_label", required=False, type_=int
         )
-        self.labels = _get_key(sec, "labels", required=False, type_=Path)
+        self.labels = _get_key(sec, "labels", required=False)
+        self.labels = None if self.labels is None else _config_path(self.labels, path)
         if not self.labels:
             assert results is not None
             self.labels = results / "setup" / "labels" / "labels.npz"

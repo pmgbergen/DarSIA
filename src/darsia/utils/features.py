@@ -54,6 +54,12 @@ class FeatureDetection:
         if mask is not None:
             mask_roi = mask[roi] if roi is not None else mask.copy()
 
+        # Float images are read on [0, 1], like an 8-bit photograph: linear
+        # values above 1 (saturation, demosaic overshoot) are white. Images
+        # already within [-1, 1] convert exactly as before.
+        if np.issubdtype(img_roi.dtype, np.floating):
+            img_roi = np.clip(img_roi, 0, 1)
+
         # Convert to gray color space
         img_gray = cv2.cvtColor(
             skimage.img_as_ubyte(img_roi),  # type: ignore[attr-defined]

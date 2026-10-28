@@ -55,6 +55,19 @@ def test_setup_color_corrections_requires_shape_corrected_baseline():
         rig.setup_color_corrections(config)
 
 
+def test_original_colour_method_refuses_missing_chart_without_uninitialized_correction(monkeypatch):
+    rig = Rig()
+    rig.shape_corrected_baseline = DummyImage()
+    config = CorrectionsConfig(color=ColorCorrectionConfig(colorchecker="upper_right"))
+    def absent(*args, **kwargs):
+        raise IndexError("No checker detected")
+    monkeypatch.setattr(darsia, "find_colorchecker", absent)
+    with pytest.raises(ValueError, match="configured ColorChecker could not be located"):
+        rig.setup_color_corrections(config)
+    assert rig.color_corrections == []
+    assert not hasattr(rig, "color_correction")
+
+
 def test_setup_color_corrections_illumination_return_is_assigned_and_appended(
     monkeypatch,
 ):

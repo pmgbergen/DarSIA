@@ -1,5 +1,7 @@
 """Patchwise illumination correction module for images."""
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 from pathlib import Path
 
 import cv2
@@ -271,7 +273,7 @@ class PatchwiseIlluminationCorrection(darsia.BaseCorrection):
         path : Path
             Path to the file from which coefficients will be loaded.
         """
-        data = np.load(path, allow_pickle=True)["correction"].item()
+        data = np.load(_preset_io.source(path), allow_pickle=True)["correction"].item()
         if "r_diff" not in data or "g_diff" not in data or "b_diff" not in data:
             raise ValueError(
                 f"Invalid correction coefficients file: {path}. "

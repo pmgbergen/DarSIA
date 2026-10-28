@@ -1,0 +1,135 @@
+{
+  "inputs": {
+    "contract": "ffac-selected-historical-native-input-correction-proposal-v1",
+    "fields": {
+      "native": [
+        "v5_log_linear_rgb_path",
+        "v5_log_linear_rgb_sha256",
+        "v5_log_linear_valid_mask_path",
+        "v5_log_linear_valid_mask_sha256"
+      ],
+      "temporal": [
+        "v5_extended_ring_path",
+        "v5_extended_ring_sha256",
+        "v5_extended_pad_px",
+        "v5_extended_origin_xy"
+      ]
+    },
+    "kinds": {
+      "original_native": "exact_original_masked_native",
+      "new_native": "new_source_historical_masked_representation",
+      "original_core": "exact_original_native_core",
+      "original_ring": "exact_original_temporal_ring",
+      "new_core": "new_source_no_ring",
+      "new_ring": "new_source_own_ring_masked_native_centre"
+    },
+    "policy_sources": {
+      "no_ring": "historical reference has no declared temporal ring",
+      "ring": "exact bound historical extended-reference convention"
+    },
+    "mask_names": [
+      "photo_sand_domain",
+      "feature_support",
+      "regional_native_domain",
+      "flatfield_valid",
+      "feature_eligible",
+      "optical_presence_ge_half",
+      "frozen_gas",
+      "frozen_unresolved"
+    ],
+    "bitorder": "little",
+    "photo_mask_name": "photo_sand_domain",
+    "source_sha_field": "source_sha256",
+    "mask_file": "extra_masks.packbits.npz",
+    "mask_array_key": "masks"
+  },
+  "retained": {
+    "contracts": {
+      "CONTRACT": "ffac-retained-source-inference-cache-v1",
+      "PRIOR_FILL_CONTRACT": "ffac-retained-source-categorical-fill-v1",
+      "OLD_DOMAIN_RING_CONTRACT": "ffac-old-domain-one-pixel-fresh-ring-v1",
+      "OLD_DOMAIN_INTERPOLATION_CONTRACT": "ffac-old-domain-exterior-interpolation-footprint-v1",
+      "ENCODING_CONTRACT": "ffac-frozen-probability-storage-contract-v1",
+      "PROBABILITY_CONTRACT": "ffac-g3-downstream-probability-layers-v1",
+      "FRAME_CONTRACT": "ffac-gas-barrier-rule-b-candidate-v1"
+    },
+    "mask_names": [
+      "photo_sand_domain",
+      "feature_support",
+      "regional_native_domain",
+      "flatfield_valid",
+      "feature_eligible",
+      "optical_presence_ge_half",
+      "frozen_gas",
+      "frozen_unresolved"
+    ],
+    "run_pattern": "ac[0-9]{2}",
+    "expected_models": {
+      "g3": "90f1d4608506273974e4cc758573f4c6467a823243abdaa02ef214b7286c9692",
+      "co2": "8c3727110be01dbef4849fad6849e50bcc8e28bdd1ee22a1c24c0ab8027c64e3",
+      "regional_refit": "d33b3eea47392268d3ddebe2d9e9c695bfc640eb6e252d83670a3eaf3e7428be"
+    },
+    "encoding": {
+      "labelled_layout": "native-float16",
+      "compact_layout": "compact-g3-u8-regional-own-grid-float16",
+      "probability_files": [
+        "g3_pixel.npy",
+        "regional_frozen.npy",
+        "regional_refit.npy"
+      ],
+      "pixel_file": "g3_pixel.npy",
+      "compact_dtype": "uint8",
+      "float_dtype": "float16",
+      "bitorder": "little",
+      "resize_rule": "cv2.resize(values.astype(float32), native_shape[::-1], interpolation=cv2.INTER_LINEAR); threshold AFTER resize",
+      "compact_rule": "round-to-nearest-even(254*p); 255 invalid; decode code/254"
+    },
+    "scientific_keys": [
+      "source_sha256",
+      "v5_raw_sha256",
+      "v5_log_linear_rgb_path",
+      "v5_log_linear_rgb_sha256",
+      "v5_log_linear_valid_mask_path",
+      "v5_log_linear_valid_mask_sha256"
+    ],
+    "parent_array_names": [
+      "v5_log_linear_rgb",
+      "v5_log_linear_valid_mask"
+    ],
+    "source_fields": {
+      "source_sha": "source_sha256",
+      "raw_sha": "v5_raw_sha256"
+    },
+    "mask_file": "extra_masks.packbits.npz",
+    "mask_array_key": "masks"
+  },
+  "fixed_baseline_cache": {
+    "contract": "ffac-selected-fixed-baseline-exact-decode-cache-v1",
+    "fixed_roles": [
+      "fixed_temporal_baseline",
+      "fixed_native_flat_baseline"
+    ],
+    "validation_role": "fixed_native_flat_baseline",
+    "maximum_bytes": 1073741824,
+    "array_hash_buffer_elements": 262144,
+    "maximum_entries": 2
+  },
+  "scientific": {
+    "contract": "ffac-rig-frozen-raw-camera-ring-v1",
+    "storage": "exact-native-centre-plus-disjoint-frozen-raw-ring-windows",
+    "photograph_canvas_wh": [
+      6304,
+      3546
+    ],
+    "native_shape_hw": [
+      2979,
+      5472
+    ],
+    "native_box_xywh": [
+      416,
+      496,
+      5472,
+      2979
+    ]
+  }
+}

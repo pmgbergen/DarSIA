@@ -5,6 +5,8 @@ Finally, corrections are based on single, global translation.
 
 """
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 from typing import Optional, Union
 
 import numpy as np
@@ -35,6 +37,7 @@ class DriftCorrection(darsia.BaseCorrection):
                     area used for feature detection and alignment
                 padding (float)   relative padding factor
                 active (bool)     apply the correction (default True)
+                linear_input (bool)    baseline was built from linear RAW values
         """
         # Read baseline image
         if isinstance(base, darsia.Image):
@@ -56,6 +59,11 @@ class DriftCorrection(darsia.BaseCorrection):
         """Detection of effective translation based on feature detection."""
 
     def _init_from_config(self, config: dict) -> None:
+
+        """Load drift settings and the explicitly recorded baseline encoding."""
+        self.linear_input = config.get("linear_input", False)
+        if type(self.linear_input) is not bool:
+            raise ValueError("Drift linear_input must be a boolean")
 
         self.active = config.get("active", True)
         """Flag controlling whether correction is active."""
@@ -81,11 +89,14 @@ class DriftCorrection(darsia.BaseCorrection):
 
     def return_config(self) -> dict:
         """Return config file for the drift correction."""
-        return {
+        config = {
             "active": self.active,
             "padding": self.relative_padding,
             "roi": self.roi,
         }
+        if self.linear_input:
+            config["linear_input"] = True
+        return config
 
     # ! ---- Main correction routines ----
 
@@ -122,8 +133,8 @@ class DriftCorrection(darsia.BaseCorrection):
 
     def load(self, path) -> None:
         """Load the drift correction from a file."""
-        self.base = np.load(path, allow_pickle=True)["base"]
-        config = np.load(path, allow_pickle=True)["config"].item()
+        self.base = np.load(_preset_io.source(path), allow_pickle=True)["base"]
+        config = np.load(_preset_io.source(path), allow_pickle=True)["config"].item()
         self._init_from_config(config)
 
     def save(self, path) -> None:
