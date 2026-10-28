@@ -276,6 +276,7 @@ def calibration_color_to_mass_analysis_from_context(
     )
 
     contour_smoother = mass_cfg.contour_smoother
+    evaluation_mode = darsia.EvaluationMode.from_name(mass_cfg.evaluation_mode)
 
     # Fetch signal functions from reference calibration.
     if not reset and ref_path is not None:
@@ -329,18 +330,24 @@ def calibration_color_to_mass_analysis_from_context(
         signal_functions = {}
         for label in color_path_interpolation:
             if label in calibration_ignore_labels or label in ignore_labels:
-                signal_functions[label] = darsia.PWTransformation(
+                signal_functions[label] = evaluation_mode.signal_function(
+                    color_paths[label],
+                    embedding.mode,
                     color_paths[label].equidistant_distances,
                     np.zeros(len(color_paths[label].equidistant_distances)),
                 )
                 continue
             try:
-                signal_functions[label] = darsia.PWTransformation(
+                signal_functions[label] = evaluation_mode.signal_function(
+                    color_paths[label],
+                    embedding.mode,
                     color_paths[label].equidistant_distances,
                     color_path_interpolation[label].values,
                 )
             except Exception as e:
-                signal_functions[label] = darsia.PWTransformation(
+                signal_functions[label] = evaluation_mode.signal_function(
+                    color_paths[label],
+                    embedding.mode,
                     color_paths[label].equidistant_distances,
                     np.zeros(len(color_paths[label].equidistant_distances)),
                 )
@@ -369,6 +376,7 @@ def calibration_color_to_mass_analysis_from_context(
             contour_smoother=contour_smoother,
             mass_unit=mass_cfg.mass_unit,
             time_unit=mass_cfg.time_unit,
+            evaluation_mode=evaluation_mode,
         )
 
     # ! ---- INTERACTIVE CALIBRATION ---- ! #

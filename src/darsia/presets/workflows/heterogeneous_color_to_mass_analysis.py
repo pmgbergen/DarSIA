@@ -60,7 +60,12 @@ class HeterogeneousColorToMassAnalysis:
         contour_smoother: darsia.ContourSmoother | None = None,
         mass_unit: str = "auto",
         time_unit: str = "auto",
+        evaluation_mode: darsia.EvaluationMode | None = None,
     ):
+        self.evaluation_mode = (
+            darsia.LinearEvaluation() if evaluation_mode is None else evaluation_mode
+        )
+        """How colors are turned into a signal (stored with the calibration)."""
         self.mass_unit = mass_unit
         """Unit for mass axes/values in calibration plots ('auto' or a fixed unit)."""
         self.time_unit = time_unit
@@ -1834,6 +1839,9 @@ class HeterogeneousColorToMassAnalysis:
         # Save the flash
         self.flash.save(folder / "flash" / "flash")
 
+        # Save the evaluation mode
+        self.evaluation_mode.save(folder)
+
         # Save remaining meta data (implicit and explicit)
         color_mode = (
             darsia.ColorMode.ABSOLUTE
@@ -1862,6 +1870,7 @@ class HeterogeneousColorToMassAnalysis:
     def _resample_signal_functions(
         signal_functions: dict[int, darsia.PWTransformation],
         color_path_interpretation: dict[int, darsia.ColorPathInterpolation],
+        evaluation_mode: darsia.EvaluationMode,
     ) -> None:
         """Match stored signal functions to the current color paths (in place).
 
@@ -1885,8 +1894,11 @@ class HeterogeneousColorToMassAnalysis:
                 f"but the color path has {len(supports)} key colors; resampling."
             )
             values = np.interp(supports, old_supports, function.values)
-            signal_functions[label] = darsia.PWTransformation(
-                supports, np.maximum.accumulate(values)
+            signal_functions[label] = evaluation_mode.signal_function(
+                interpretation.color_path,
+                interpretation.color_mode,
+                supports,
+                np.maximum.accumulate(values),
             )
 
     @classmethod
@@ -1945,15 +1957,25 @@ class HeterogeneousColorToMassAnalysis:
                 for label in np.unique(labels.img)
                 if label >= 0
             }
-        signal_functions = {
-            label: darsia.PWTransformation.load(
+        evaluation_mode = darsia.EvaluationMode.load(folder)
+        signal_functions = {}
+        for label in np.unique(labels.img):
+            if label < 0:
+                continue
+            stored = darsia.PWTransformation.load(
                 folder / "signal_model" / f"signal_model_{label}"
             )
-            for label in np.unique(labels.img)
-            if label >= 0
-        }
+            interpretation = color_path_interpretation[label]
+            signal_functions[label] = evaluation_mode.signal_function(
+                interpretation.color_path,
+                interpretation.color_mode,
+                stored.supports,
+                stored.values,
+            )
         if not stored_interpretation:
-            cls._resample_signal_functions(signal_functions, color_path_interpretation)
+            cls._resample_signal_functions(
+                signal_functions, color_path_interpretation, evaluation_mode
+            )
         flash = darsia.SimpleFlash.load(folder / "flash" / "flash")
 
         metadata_path = folder / "metadata.json"
@@ -1991,4 +2013,5 @@ class HeterogeneousColorToMassAnalysis:
             contour_smoother=contour_smoother,
             mass_unit=mass_unit,
             time_unit=time_unit,
+            evaluation_mode=evaluation_mode,
         )
