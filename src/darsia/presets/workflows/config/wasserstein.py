@@ -1,5 +1,7 @@
 """Configuration for Wasserstein comparison."""
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -46,7 +48,7 @@ class WassersteinDistancesConfig:
 
         # Create results directory if it doesn't exist
         try:
-            self.results.mkdir(parents=True, exist_ok=True)
+            _preset_io.make_directory(self.results, parents=True, exist_ok=True)
         except Exception as e:
             raise PermissionError(
                 f"Cannot create results directory at {self.results}."
@@ -63,7 +65,9 @@ class WassersteinDistancesConfig:
         # Load times.
         try:
             time_data = TimeData()
-            time_data.load(data_section["data"], data_folder=None)
+            time_section = data_section["data"]
+            time_data.image_time_data.load(time_section)
+            time_data.image_interval_data.load(time_section)
             self.times = time_data.get_times_with_uncertainty()
         except KeyError:
             logger.info("No times specified in Wasserstein config.")
@@ -72,5 +76,11 @@ class WassersteinDistancesConfig:
         # Load ROIs
         roi_names = _get_key(data_section, "roi", required=True, type_=list)
         self.roi = {name: roi.roi[name] for name in roi_names}
+        restricted = [name for name, entry in self.roi.items() if entry.label is not None]
+        if restricted:
+            raise ValueError(
+                "Wasserstein comparison does not support label-restricted ROIs: "
+                + ", ".join(restricted)
+            )
 
         return self

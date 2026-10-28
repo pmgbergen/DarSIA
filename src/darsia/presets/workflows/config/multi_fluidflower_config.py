@@ -1,3 +1,5 @@
+
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -81,7 +83,7 @@ class MultiFluidFlowerDataConfig:
 
         # Create results directory if it doesn't exist
         try:
-            self.results.mkdir(parents=True, exist_ok=True)
+            _preset_io.make_directory(self.results, parents=True, exist_ok=True)
         except Exception as e:
             raise PermissionError(
                 f"Cannot create results directory at {self.results}."
@@ -147,7 +149,7 @@ class EventsConfig:
             raise ValueError(
                 f"Events path not specified and results path is None in {path}."
             )
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        _preset_io.make_directory(self.path.parent, parents=True, exist_ok=True)
 
         return self
 

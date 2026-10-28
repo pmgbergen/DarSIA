@@ -45,11 +45,13 @@ class SidebarRow(QWidget):
 
         # Icon — promoted to self so refresh_style can update it
         self._icon_label = QLabel()
+        self._icon_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         layout.addWidget(self._icon_label)
 
         # Text label — no stylesheet, let it inherit WindowText from palette
         self._text_label = QLabel(label)
         self._text_label.setStyleSheet("font-size: 12px;")
+        self._text_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         layout.addWidget(self._text_label)
 
         layout.addStretch()
@@ -57,13 +59,31 @@ class SidebarRow(QWidget):
 
         # Styling
         self.setCursor(Qt.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        self.setAccessibleName(label)
+        self.setAccessibleDescription(help_text)
         self.setMinimumHeight(24)
         self.refresh_style()
         theme_signal.theme_changed.connect(self.refresh_style)
 
     def mousePressEvent(self, event):
-        """Emit clicked signal on mouse press."""
-        self.clicked.emit()
+        """Open the row through its existing navigation signal."""
+        if self.isEnabled() and event.button() == Qt.MouseButton.LeftButton:
+            self.setFocus(Qt.FocusReason.MouseFocusReason)
+            event.accept()
+            self.clicked.emit()
+            return
+        super().mousePressEvent(event)
+
+    def keyPressEvent(self, event):
+        """Give a focused row the same activation as a mouse click."""
+        if self.isEnabled() and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space):
+            event.accept()
+            if not event.isAutoRepeat():
+                self.clicked.emit()
+            return
+        super().keyPressEvent(event)
 
     def enterEvent(self, event):
         """Show help popup on mouse enter after 1s delay and update hover styling."""
@@ -174,6 +194,8 @@ class SidebarRow(QWidget):
 
         # Set text color via stylesheet
         stylesheet = (
+            "SidebarRow { border: 1px solid transparent; }"
+            f"SidebarRow:focus {{ border: 1px dotted {pal.color(QPalette.Highlight).name()}; }}"
             f"SidebarRow QLabel {{ "
             f"background-color: transparent; "
             f"color: {text_color}; }}"

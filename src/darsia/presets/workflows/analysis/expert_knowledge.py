@@ -1,9 +1,15 @@
-"""Expert-knowledge adapter for constraining scalar analysis fields by ROIs."""
+"""Expert-knowledge adapter for constraining scalar analysis fields.
+
+Expert knowledge is static (ROIs that hold for every image) or dynamic (a
+definition that belongs to one image, such as that image's phase map). Both
+restrict where a mode may be nonzero; a dynamic source is combined with the
+static ROIs of the same mode.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 
@@ -30,6 +36,9 @@ class ExpertKnowledgeAdapter:
     """Resolved facies-ID image backing shape='facies' ROI entries, if any."""
     roi_registry: "RoiRegistry | None" = None
     """Registry used to resolve shape='intersection'/'union' entries' `members`."""
+    # Per-image definitions: mode -> callable(state) returning a boolean mask
+    # on the image grid, e.g. the allowed region of one phase in a phase map.
+    dynamic: dict[str, Callable[[Any], np.ndarray]] = field(default_factory=dict)
     _mask_cache: dict[tuple[str, tuple], np.ndarray] = field(
         default_factory=dict, init=False
     )
@@ -171,7 +180,7 @@ class ExpertKnowledgeAdapter:
             mask |= self._mask_for_roi(roi, image)
         return mask
 
-    def mask_for(self, image: darsia.Image, mode: str) -> np.ndarray | None:
+    def _static_mask(self, image: darsia.Image, mode: str) -> np.ndarray | None:
         """Boolean "keep" mask for `mode` - True where the field may stay non-zero.
 
         Combines two independent rules: a positive ROI union (only keep
@@ -199,10 +208,23 @@ class ExpertKnowledgeAdapter:
             self._mask_cache[cache_key] = keep_mask
         return self._mask_cache[cache_key]
 
-    def apply(self, image: darsia.Image | None, mode: str) -> darsia.Image | None:
+    def mask_for(self, image: darsia.Image, mode: str, *, state: Any = None) -> np.ndarray | None:
+        """Allowed region of ``mode``; ``state`` feeds that mode's dynamic source."""
+        static = self._static_mask(image, mode)
+        source = self.dynamic.get(mode)
+        if source is None:
+            return static
+        if state is None:
+            raise ValueError("Dynamic expert knowledge for " + mode + " needs its image state")
+        dynamic = np.asarray(source(state))
+        if dynamic.dtype != bool or dynamic.shape != tuple(image.num_voxels):
+            raise ValueError("Dynamic expert knowledge must be a boolean mask on the image grid")
+        return dynamic if static is None else static & dynamic
+
+    def apply(self, image: darsia.Image | None, mode: str, *, state: Any = None) -> darsia.Image | None:
         if image is None:
             return None
-        mask = self.mask_for(image, mode)
+        mask = self.mask_for(image, mode, state=state)
         if mask is None:
             return image
 

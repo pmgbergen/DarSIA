@@ -47,6 +47,8 @@ Tasks reference entries by key::
 
 from __future__ import annotations
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 import logging
 import tomllib
 from dataclasses import dataclass, field
@@ -164,9 +166,12 @@ class DataRegistry:
                 paths = [paths]
             toml_data_list = []
             for path in paths:
-                with open(path, "rb") as f:
+                with _preset_io.open_read(path, "rb") as f:
                     toml_data_list.append(tomllib.load(f))
 
+        from .utils import _merge_named_registry_sources
+        toml_data_list = [_merge_named_registry_sources(toml_data_list,
+            ("data_interval", "data_window", "data_time", "data_path"), label="DataRegistry")]
         interval_keys: set[str] = set()
         window_keys: set[str] = set()
         time_keys: set[str] = set()

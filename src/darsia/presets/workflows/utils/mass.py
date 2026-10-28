@@ -4,6 +4,7 @@ import os
 from typing import Literal
 
 import darsia
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 
 
@@ -33,13 +34,23 @@ def load_data(
         Loaded data image.
     """
 
+    path = select_data_path(config, data, time, tol)
+    return None if path is None else darsia.imread(path)
+
+
+def select_data_path(config, data, time, tol=None):
+    """Original directory/protocol nearest-match selection, without image decoding."""
     # Fetch available analyzed mass files
     if data == "mass":
         folder = config.analysis.mass.folder
     else:
         raise ValueError(f"Data type {data} not recognized.")
+    scope = _preset_io.current_scope()
+    if scope is not None:
+        # Preserve this field's original working-directory-relative meaning.
+        folder = scope.absolute(folder)
     available_files = sorted(
-        folder / name for name in os.listdir(folder) if name.endswith(".npz")
+        folder / name for name in _preset_io.list_names(folder) if name.endswith(".npz")
     )
 
     # Fetch experiment protocol
@@ -53,7 +64,4 @@ def load_data(
         data=available_files,
     )
 
-    if path is None:
-        return None
-    else:
-        return darsia.imread(path)
+    return path

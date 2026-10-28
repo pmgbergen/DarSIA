@@ -15,6 +15,7 @@ from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
 )
+from darsia.signals.color.utils import get_mean_color as _canonical_get_mean_color
 from darsia.utils.units import (
     choose_mass_unit,
     choose_time_unit,
@@ -45,13 +46,7 @@ def get_mean_color(
     np.ndarray
         The mean color of the image, calculated as the average of RGB values.
     """
-    if isinstance(mask, darsia.Image):
-        subimage = image.img[mask.img]
-    elif isinstance(mask, np.ndarray):
-        subimage = image.img[mask]
-    else:
-        subimage = image.img
-    return np.mean(subimage.reshape(-1, 3), axis=0)
+    return _canonical_get_mean_color(image, mask)
 
 
 class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):

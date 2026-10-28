@@ -3,6 +3,23 @@ common data types in computational and laboratory porous media research.
 
 """
 
+# Suppress bootstrap-closure bytecode writes before an admitted prefix exists.
+# This package's own loader/startup bytecode has already happened; it is not covered.
+import sys as _cache_bootstrap_sys
+_cache_bootstrap_dont_write = _cache_bootstrap_sys.dont_write_bytecode
+_cache_bootstrap_sys.dont_write_bytecode = True
+try:
+    from darsia_cache.bootstrap import before_darsia_import as _cache_bootstrap
+    _cache_bootstrap(package_file=__file__)
+finally:
+    _cache_bootstrap_sys.dont_write_bytecode = _cache_bootstrap_dont_write
+    del _cache_bootstrap_dont_write, _cache_bootstrap_sys
+del _cache_bootstrap
+
+from darsia._opencv_runtime import scientific_thread as _scientific_thread
+_scientific_thread("darsia-import")
+del _scientific_thread
+
 # Basic imports
 from darsia.image.coordinatesystem import *
 from darsia.image.image import *
@@ -159,3 +176,5 @@ from darsia.corrections.readcorrection import *
 
 # Presets
 from darsia.presets.workflows.simple_run_analysis import *
+
+from darsia.multiphase.flash import TitrationFlash

@@ -48,6 +48,8 @@ def load_images_with_cache(
     -------
         Ordered list of loaded :class:`darsia.Image` objects.
     """
+    from darsia._opencv_runtime import POLICY, scientific_thread, require_ipp_off
+    scientific_thread("load_images_with_cache:setup")
     images: list[darsia.Image] = []
     resolved_paths = [path.resolve() for path in paths]
     if resolved_paths:
@@ -58,6 +60,7 @@ def load_images_with_cache(
     else:
         common_root = None
     for p in paths:
+        scientific_thread("load_images_with_cache:frame-before")
         if use_cache and cache_dir is not None:
             resolved = p.resolve()
             if common_root is not None:
@@ -67,14 +70,16 @@ def load_images_with_cache(
                     relative = Path(resolved.name)
             else:
                 relative = Path(resolved.name)
-            cache_path = cache_dir / relative.with_suffix(".npz")
+            cache_path = cache_dir / POLICY / relative.with_suffix(".npz")
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             if cache_path.exists():
                 image = darsia.imread(cache_path)
             else:
                 image = rig.read_image(p)
+                require_ipp_off("load_images_with_cache:before-cache-publication")
                 image.save(cache_path)
         else:
             image = rig.read_image(p)
+        require_ipp_off("load_images_with_cache:frame-after")
         images.append(image)
     return images

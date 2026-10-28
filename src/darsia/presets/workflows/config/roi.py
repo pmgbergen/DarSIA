@@ -8,7 +8,7 @@ from typing import Literal
 from darsia import CoordinateArray
 
 from ._key_list_sources import FACIES_SOURCES, ROI_SOURCES
-from .utils import _get_key, _get_section, _get_section_from_toml
+from .utils import _get_key
 
 logger = logging.getLogger(__name__)
 
@@ -190,10 +190,9 @@ class MultiRoiConfig:
     """Dictionary of ROI configurations."""
 
     def load(self, path: Path) -> "MultiRoiConfig":
-        raise NotImplementedError("TBC. Does not use the ROI style.")
-        # Load the entire TOML data to access events section
-        roi_sec = _get_section_from_toml(path, "roi")
-        self.roi = {}
-        for key in roi_sec.keys():
-            self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
+        """Read current ``[[roi]]`` entries through the original ROI registry."""
+        # Import here because the registry itself uses RoiConfig.
+        from .roi_registry import RoiRegistry
+
+        self.roi = RoiRegistry().load(path).rois
         return self

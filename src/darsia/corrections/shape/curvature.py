@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 import json
 import math
+import numbers
 import tomllib
 from pathlib import Path
 from warnings import warn
@@ -41,6 +44,35 @@ def load_curvature_correction_config_from_toml(path: Path) -> dict:
     return load_curvature_correction_config_from_dict(sec, source=str(path))
 
 
+def crop_origin(value) -> tuple[float, float]:
+    """Read the optional ``origin`` of a curvature crop as two finite numbers.
+
+    ``[corrections.curvature.crop] origin = [x, y]`` gives the physical
+    coordinates of the cropped image's top-left corner, in the units of
+    ``width`` and ``height``. Without it, that corner is ``[0, height]``.
+
+    Parameters
+    ----------
+    value : sequence
+        The configured ``[x, y]``.
+
+    Returns
+    -------
+    tuple of float
+        ``(x, y)``.
+    """
+    items = list(value) if isinstance(value, (list, tuple, np.ndarray)) else []
+    if len(items) != 2 or not all(
+        isinstance(item, numbers.Real) and not isinstance(item, bool)
+        for item in items
+    ):
+        raise ValueError("curvature.crop.origin must be two numbers [x, y].")
+    x, y = (float(item) for item in items)
+    if not (math.isfinite(x) and math.isfinite(y)):
+        raise ValueError("curvature.crop.origin must be two finite numbers [x, y].")
+    return x, y
+
+
 def load_curvature_correction_config_from_dict(
     sec: dict, source: str = "config"
 ) -> dict:
@@ -57,6 +89,13 @@ def load_curvature_correction_config_from_dict(
     -------
         Config (dict): config dictionary for curvature correction.
     """
+    optional = sec.get("optional_stages_active", True)
+    if type(optional) is not bool:
+        raise ValueError("curvature.optional_stages_active must be true or false.")
+    if not optional:
+        sec = dict(sec)
+        for stage in ("init", "bulge", "stretch"):
+            sec[stage] = None
     config = {}
 
     # Fetch sub-sections:
@@ -88,6 +127,8 @@ def load_curvature_correction_config_from_dict(
                 "height": float(sec_crop.get("height", 1.0)),
                 "in_meters": sec_crop.get("in_meters", True),
             }
+            if sec_crop.get("origin") is not None:
+                config["crop"]["origin"] = list(crop_origin(sec_crop["origin"]))
     except KeyError:
         warn(f"No 'curvature.crop' section found in {source}.")
 
@@ -307,11 +348,11 @@ class CurvatureCorrection(darsia.BaseCorrection):
             Path to the file.
         """
         # Make sure the file exists
-        if not path.is_file():
+        if not _preset_io.exists(path, 'is_file'):
             raise FileNotFoundError(f"File {path} not found.")
 
         # Load color space and local scaling images from npz file
-        data = np.load(path, allow_pickle=True)
+        data = np.load(_preset_io.source(path), allow_pickle=True)
         if "config" not in data:
             raise ValueError("Invalid file format.")
         self.config = data["config"].item()
@@ -961,8 +1002,11 @@ class CurvatureCorrection(darsia.BaseCorrection):
                     self.config["crop"]["width"],
                 ]
                 meta["dimensions"] = dimensions
+                # An optional crop origin keeps the coordinates of a larger
+                # frame, e.g. for a crop area inside a rig's reference frame.
+                origin = self.config["crop"].get("origin")
                 meta["origin"] = darsia.CoordinateArray(
-                    [0, self.config["crop"]["height"]]
+                    [0, self.config["crop"]["height"]] if origin is None else origin
                 )
 
         return meta

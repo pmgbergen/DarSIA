@@ -1,5 +1,7 @@
 """Data configuration for the setup."""
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 import logging
 import os
 from dataclasses import dataclass, field
@@ -7,7 +9,7 @@ from pathlib import Path
 
 from natsort import natsorted, ns
 
-from .utils import _get_key, _get_section_from_toml
+from .utils import _config_path, _get_key, _get_section_from_toml
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,7 @@ class DataConfig:
         metadata={
             "name": "Format",
             "help": "Image file format/extension.",
-            "options": ["JPG", "PNG", "TIF", "TIFF", "BMP"],
+            "options": ["JPG", "PNG", "TIF", "TIFF", "BMP", "ARW", "NEF", "DNG"],
             "group": "Input",
         },
     )
@@ -93,6 +95,8 @@ class DataConfig:
         },
     )
     """Whether to use the cache folder for reading/writing cached images."""
+    raw_camera: dict | None = field(default=None, metadata={"hidden": True})
+    """Explicit calibrated camera-U profile for RAW rig setup and image reads."""
 
     @property
     def folder(self) -> Path:
@@ -105,7 +109,12 @@ class DataConfig:
         require_data: bool,
         require_results: bool,
     ) -> "DataConfig":
+        """Load ordered data paths, dates and the optional calibrated RAW camera binding."""
         sec = _get_section_from_toml(path, "data")
+
+        from darsia.fluidflower.rig_raw_input import camera_binding
+
+        self.raw_camera = camera_binding(sec.get("raw_camera"), path)
 
         # Get folder(s) — support both legacy 'folder' (singular) and current
         # 'folders' (plural)
@@ -122,22 +131,24 @@ class DataConfig:
         if folder_value is None and folders_value is None:
             raise KeyError("Missing key 'folder' or 'folders' in [data].")
 
+        # Relative folders/results of a series project are read against its
+        # series root (see _config_path); the baseline stays folder-relative.
         self.folders = []
         if folder_value is not None:
-            self.folders.append(Path(folder_value))
+            self.folders.append(_config_path(folder_value, path))
         if folders_value is not None:
             if not isinstance(folders_value, list):
                 raise ValueError("[data].folders must be a list of paths.")
             if not folders_value:
                 raise ValueError("[data].folders must not be empty.")
-            parsed_folders = [Path(folder) for folder in folders_value]
+            parsed_folders = [_config_path(folder, path) for folder in folders_value]
             for folder in parsed_folders:
                 if folder not in self.folders:
                     self.folders.append(folder)
 
         if require_data:
             for folder in self.folders:
-                if not folder.is_dir():
+                if not _preset_io.exists(folder, 'is_dir'):
                     raise FileNotFoundError(f"Folder {folder} not found.")
 
         # Get baseline
@@ -147,13 +158,13 @@ class DataConfig:
         else:
             baseline_candidates = [folder / baseline for folder in self.folders]
             existing_candidates = [
-                candidate for candidate in baseline_candidates if candidate.is_file()
+                candidate for candidate in baseline_candidates if _preset_io.exists(candidate, 'is_file')
             ]
             if len(existing_candidates) > 0:
                 self.baseline = existing_candidates[0]
             else:
                 self.baseline = self.folder / baseline
-        if require_data and not self.baseline.is_file():
+        if require_data and not _preset_io.exists(self.baseline, 'is_file'):
             raise FileNotFoundError(f"Baseline image {self.baseline} not found.")
 
         # Get data
@@ -180,13 +191,13 @@ class DataConfig:
             self.data = None
 
         # Get results
-        self.results = _get_key(sec, "results", required=True, type_=Path)
+        self.results = _config_path(_get_key(sec, "results", required=True), path)
         if require_results:
-            if not self.results.is_dir():
+            if not _preset_io.exists(self.results, 'is_dir'):
                 raise FileNotFoundError(f"Results folder {self.results} not found.")
         else:
             try:
-                self.results.mkdir(parents=True, exist_ok=True)
+                _preset_io.make_directory(self.results, parents=True, exist_ok=True)
             except Exception as e:
                 raise PermissionError(
                     f"Cannot create results directory at {self.results}."
@@ -202,13 +213,13 @@ class DataConfig:
             self.cache = self.results / "cache"
             self.raw_cache = self.results / "raw_cache"
             try:
-                self.cache.mkdir(parents=True, exist_ok=True)
+                _preset_io.make_directory(self.cache, parents=True, exist_ok=True)
             except Exception as e:
                 raise PermissionError(
                     f"Cannot create cache directory at {self.cache}."
                 ) from e
             try:
-                self.raw_cache.mkdir(parents=True, exist_ok=True)
+                _preset_io.make_directory(self.raw_cache, parents=True, exist_ok=True)
             except Exception as e:
                 raise PermissionError(
                     f"Cannot create raw cache directory at {self.raw_cache}."

@@ -10,6 +10,8 @@ are supported:
 
 from __future__ import annotations
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 import logging
 import time
 from datetime import datetime
@@ -58,19 +60,19 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
         path = Path(path)
 
     # Extract content of folder if folder provided.
-    if isinstance(path, Path) and path.is_dir():
-        path = sorted(list(path.glob("*")))
-    elif isinstance(path, list) and all([p.is_dir() for p in path]):
+    if isinstance(path, Path) and _preset_io.exists(path, 'is_dir'):
+        path = sorted(list(_preset_io.glob_paths(path, "*")))
+    elif isinstance(path, list) and all([_preset_io.exists(p, 'is_dir') for p in path]):
         tmp_path = []
         for p in path:
-            tmp_path = tmp_path + list(p.glob("*"))
+            tmp_path = tmp_path + list(_preset_io.glob_paths(p, "*"))
         path = sorted(tmp_path)
 
     # Check if files exist
     if isinstance(path, list):
-        assert all([p.exists() for p in path]), "Not all files exist."
+        assert all([_preset_io.exists(p, 'exists') for p in path]), "Not all files exist."
     else:
-        assert path.exists(), f"File {path} does not exist."
+        assert _preset_io.exists(path, 'exists'), f"File {path} does not exist."
 
     # Determine file type of images
     suffix = kwargs.get("suffix", None)
@@ -158,7 +160,7 @@ def imread_from_numpy(
     if isinstance(path, list):
         raise NotImplementedError
 
-    array = np.load(path, allow_pickle=True)
+    array = np.load(_preset_io.source(path), allow_pickle=True)
     image = darsia.Image(array, **kwargs)
     return image
 
@@ -173,7 +175,7 @@ def imread_from_npz(
     path : Path or list of Path
         Path(s) to npz files.
     """
-    npzdata = np.load(path, allow_pickle=True)
+    npzdata = np.load(_preset_io.source(path), allow_pickle=True)
     array = npzdata["array"]
     metadata = npzdata["metadata"].item()
     image_type = metadata.get("type", None)
@@ -221,6 +223,8 @@ def imread_from_optical(
     """
     # TODO check method for grayscale images. shape of array?
 
+    output_dtype = kwargs.pop("dtype", float)
+
     if isinstance(path, Path):
         # Read single image incl. date from metadata of the image
         array, date = _read_single_optical_image(path)
@@ -240,7 +244,7 @@ def imread_from_optical(
             time=time,
             transformations=transformations,
             **kwargs,
-        ).img_as(float)
+        ).img_as(output_dtype)
 
         return image
 
@@ -265,7 +269,7 @@ def imread_from_optical(
             time=time,
             transformations=transformations,
             **kwargs,
-        ).img_as(float)
+        ).img_as(output_dtype)
         return image
 
     else:

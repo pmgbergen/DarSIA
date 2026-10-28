@@ -1,5 +1,7 @@
 """Registry for ROI configurations loaded from a top-level [[roi]] TOML array-of-tables."""
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 import logging
 import tomllib
 from dataclasses import dataclass, field
@@ -130,17 +132,22 @@ class RoiRegistry:
             If the [roi] section is not an array-of-tables (strict format
             enforcement).
         ValueError
-            If any ROI entry has a duplicate name (checked during load).
+            If a name repeats within one source, or repeated inherited entries
+            have conflicting values.
         """
         paths = [path] if isinstance(path, Path) else path
         self.rois = {}
         seen_names: set[str] = set()
 
+        documents = []
         for p in paths:
-            if not p.exists():
+            if not _preset_io.exists(p, 'exists'):
                 continue
-            with open(p, "rb") as f:
-                data = tomllib.load(f)
+            with _preset_io.open_read(p, "rb") as f:
+                documents.append(tomllib.load(f))
+
+        from .utils import _merge_named_registry_sources
+        for data in [_merge_named_registry_sources(documents, ("roi",), label="ROI")]:
 
             if "roi" not in data:
                 continue

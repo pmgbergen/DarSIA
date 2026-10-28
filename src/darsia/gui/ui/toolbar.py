@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, Qt, Slot
 from PySide6.QtGui import QIcon
 
 from .icons import themed_icon
@@ -23,7 +23,7 @@ _QTA_ICONS = {
 }
 
 
-class ToolbarBuilder:
+class ToolbarBuilder(QObject):
     """Builds the main toolbar, reusing the QActions MenuBuilder created.
 
     Custom icons: drop new.png / open.png / save.png into gui/icons/ and they
@@ -32,6 +32,7 @@ class ToolbarBuilder:
     """
 
     def __init__(self, main_window, menu_builder):
+        super().__init__(main_window)
         self.main_window = main_window
         self.menu_builder = menu_builder
         self._themed_actions = {}  # key -> QAction (for live refresh)
@@ -103,6 +104,7 @@ class ToolbarBuilder:
         if key in _QTA_ICONS:
             self._themed_actions[key] = action
 
+    @Slot()
     def refresh_icons(self):
         """Rebuild all qtawesome-backed icons from current palette."""
         for key, action in self._themed_actions.items():

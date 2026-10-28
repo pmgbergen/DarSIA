@@ -7,6 +7,8 @@ size lengths.
 
 from __future__ import annotations
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 from typing import Optional, Union, overload
 
 import cv2
@@ -278,7 +280,7 @@ class Resize:
         path : str
             Path to load the parameters from.
         """
-        data = np.load(path, allow_pickle=True)
+        data = np.load(_preset_io.source(path), allow_pickle=True)
         self.shape = tuple(data["shape"]) if "shape" in data else None
         self.dsize = tuple(data["dsize"]) if "dsize" in data else None
         if self.dsize is None and self.shape is not None:

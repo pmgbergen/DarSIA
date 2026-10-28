@@ -2490,8 +2490,20 @@ class SettingsFactory:
         for key, value in self.main_window.settings_inputs.items():
             if isinstance(value, dict) and "path_map" in value:
                 rows = value["rows"]
+                def reference(text):
+                    # Protocol paths may name one worksheet in a shared file.
+                    # Preserve that pair when a path-map row is saved.
+                    if key.startswith("protocols."):
+                        try:
+                            pair = ast.literal_eval(text)
+                        except (ValueError, SyntaxError):
+                            pair = None
+                        if (isinstance(pair, (list, tuple)) and len(pair) == 2
+                                and all(isinstance(item, str) for item in pair)):
+                            return list(pair)
+                    return text
                 result = {
-                    k.text(): v.text()
+                    k.text(): reference(v.text())
                     for k, v in rows
                     if k.text().strip() and v.text().strip()
                 }

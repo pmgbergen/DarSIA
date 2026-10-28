@@ -1,5 +1,7 @@
 """Configuration for data handling in FluidFlower workflows."""
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 # Add imports
 import logging
 from dataclasses import dataclass, field
@@ -342,10 +344,10 @@ class PathData:
                         if isinstance(data_folder, list):
                             all_paths = []
                             for folder in data_folder:
-                                all_paths.extend(sorted(folder.glob(p)))
+                                all_paths.extend(sorted(_preset_io.glob_paths(folder, p)))
                             self.paths.extend(all_paths)
                         else:
-                            all_paths = sorted((data_folder or Path(".")).glob(p))
+                            all_paths = sorted(_preset_io.glob_paths(data_folder or Path("."), p))
                             self.paths.extend(all_paths)
                     else:
                         candidate = Path(p)
@@ -355,7 +357,7 @@ class PathData:
                             existing_candidates = [
                                 folder / candidate
                                 for folder in data_folder
-                                if (folder / candidate).exists()
+                                if _preset_io.exists(folder / candidate, 'exists')
                             ]
                             if len(existing_candidates) > 0:
                                 self.paths.extend(existing_candidates)
@@ -373,7 +375,7 @@ class PathData:
 
     def validate(self) -> bool:
         """Validate that all paths exist."""
-        missing = [p for p in self.paths if not p.exists()]
+        missing = [p for p in self.paths if not _preset_io.exists(p, 'exists')]
         if missing:
             logger.warning(f"Missing image paths: {missing}")
             return False

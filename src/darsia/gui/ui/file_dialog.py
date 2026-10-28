@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from .help import build_help_column
-from .table_viewer import TABLE_LOADERS, TableViewerDialog
+from .table_viewer import TABLE_LOADERS, TableViewerDialog, load_table_reference
 from .theme import danger_color, theme_signal
 
 NO_FILE_CHOSEN = "No file chosen"
@@ -198,16 +198,32 @@ class FileDialogHelper:
                         f"Unknown table viewer format: {loader_key}"
                     )
                     return
-                loader = TABLE_LOADERS[loader_key]
                 try:
                     df = None
                     if path_text:
-                        df = loader(Path(path_text))
+                        df = load_table_reference(path_text, loader_key=loader_key,
+                            config=getattr(self.main_window, "config_file", None))
                     title = setting_dict.get("name", loader_key)
                     dialog = TableViewerDialog(
                         parent=self.main_window, title=title, dataframe=df
                     )
-                    dialog.exec()
+                    stack = getattr(self.main_window, "content_stack", None)
+                    if stack is None:
+                        dialog.exec()
+                    else:
+                        previous = stack.currentWidget()
+                        dialog.setWindowFlags(Qt.WindowType.Widget)
+                        back = QPushButton("Back")
+                        def return_to_settings():
+                            if previous is not None and stack.indexOf(previous) >= 0:
+                                stack.setCurrentWidget(previous)
+                            stack.removeWidget(dialog)
+                            dialog.deleteLater()
+                        back.clicked.connect(return_to_settings)
+                        dialog.layout().insertWidget(0, back)
+                        dialog.layout().insertWidget(1, QLabel(title))
+                        stack.addWidget(dialog)
+                        stack.setCurrentWidget(dialog)
                 except Exception as e:
                     self.main_window.print_log(f"Error opening table viewer: {e}")
                     import traceback

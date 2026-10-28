@@ -1,8 +1,8 @@
 """Protocol configuration for the setup.
 
-DarSIA reads three protocols — imaging, injection and pressure/temperature — and
-each one owns its own fields, defaults and parsing here. :class:`ProtocolsConfig`
-gathers all three.
+DarSIA reads imaging, injection, pressure/temperature and optional overflow
+protocols. Each owns its fields, defaults and parsing here.
+:class:`ProtocolsConfig` gathers them.
 
 They are *mixed in* rather than nested, which keeps the TOML flat under a single
 ``[protocols]`` table. Nesting would collide with ``[protocols.imaging]``, which is
@@ -16,7 +16,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .utils import _get_section_from_toml, _normalize_mode
+from .utils import _config_path, _get_section_from_toml, _normalize_mode
 
 logger = logging.getLogger(__name__)
 
@@ -39,12 +39,17 @@ _VOLUMETRIC_INJECTION_RATE_UNITS = ["mL/s", "mL/min", "mL/hr"]
 
 def _parse_protocol_value(
     value: str | Path | list[str] | tuple[str, str],
+    config: Path | list[Path] | None = None,
 ) -> Path | tuple[Path, str]:
-    """Normalize a protocol entry to a path, or a (path, sheet) pair."""
+    """Normalize a protocol entry to a path, or a (path, sheet) pair.
+
+    ``config`` names the configuration file(s) the entry was read from; a
+    relative entry of a series project is then read against its series root.
+    """
     if isinstance(value, (list, tuple)):
-        return (Path(value[0]), value[1])
+        return (_config_path(value[0], config), value[1])
     if isinstance(value, (str, Path)):
-        return Path(value)
+        return _config_path(value, config)
     raise ValueError(
         "Protocol value must be a string, Path, or a list of [path, sheet]."
     )
@@ -165,8 +170,12 @@ class ImagingProtocolConfig:
     )
     """Reference image used as time zero when start_reference='image'."""
 
-    def load_imaging(self, sec: dict) -> None:
-        """Read the imaging keys from a flat [protocols] section."""
+    def load_imaging(self, sec: dict, config: Path | list[Path] | None = None) -> None:
+        """Read the imaging keys from a flat [protocols] section.
+
+        ``config`` (the file(s) ``sec`` came from) reads relative folders and
+        files of a series project against its series root, like ``[data]``.
+        """
         try:
             imaging_protocol = sec["imaging"]
             if not isinstance(imaging_protocol, dict):
@@ -176,7 +185,7 @@ class ImagingProtocolConfig:
                     "A bare scalar value is no longer supported."
                 )
             self.imaging = {
-                Path(folder): _parse_protocol_value(protocol)
+                _config_path(folder, config): _parse_protocol_value(protocol, config)
                 for folder, protocol in imaging_protocol.items()
             }
         except KeyError:
@@ -186,13 +195,15 @@ class ImagingProtocolConfig:
             blacklist_protocol = sec["blacklist"]
             if isinstance(blacklist_protocol, dict):
                 self.blacklist = {
-                    Path(folder): _parse_protocol_value(protocol)
+                    _config_path(folder, config): _parse_protocol_value(
+                        protocol, config
+                    )
                     for folder, protocol in blacklist_protocol.items()
                 }
             elif isinstance(blacklist_protocol, str) and not blacklist_protocol.strip():
                 self.blacklist = None
             else:
-                self.blacklist = _parse_protocol_value(blacklist_protocol)
+                self.blacklist = _parse_protocol_value(blacklist_protocol, config)
         except KeyError:
             self.blacklist = None
 
@@ -205,7 +216,7 @@ class ImagingProtocolConfig:
         imaging_interval_seconds = sec.get("imaging_interval_seconds")
         if isinstance(imaging_interval_seconds, dict) and imaging_interval_seconds:
             self.imaging_interval_seconds = {
-                Path(folder): float(value)
+                _config_path(folder, config): float(value)
                 for folder, value in imaging_interval_seconds.items()
             }
         else:
@@ -227,7 +238,7 @@ class ImagingProtocolConfig:
 
         start_reference_image = sec.get("start_reference_image")
         self.start_reference_image = (
-            Path(start_reference_image)
+            _config_path(start_reference_image, config)
             if start_reference_image and str(start_reference_image).strip()
             else None
         )
@@ -327,14 +338,20 @@ class InjectionProtocolConfig:
     )
     """Constant injection (x, y) in meters (injection_mode='constant' only)."""
 
-    def load_injection(self, sec: dict) -> None:
-        """Read the injection keys from a flat [protocols] section."""
+    def load_injection(
+        self, sec: dict, config: Path | list[Path] | None = None
+    ) -> None:
+        """Read the injection keys from a flat [protocols] section.
+
+        ``config`` reads a relative protocol file of a series project against
+        its series root.
+        """
         try:
             injection_protocol = sec["injection"]
             if isinstance(injection_protocol, str) and not injection_protocol.strip():
                 self.injection = None
             else:
-                self.injection = _parse_protocol_value(injection_protocol)
+                self.injection = _parse_protocol_value(injection_protocol, config)
         except KeyError:
             self.injection = None
 
@@ -413,8 +430,14 @@ class PressureTemperatureProtocolConfig:
     )
     """Constant temperature in Celsius (pressure_temperature_mode='constant' only)."""
 
-    def load_pressure_temperature(self, sec: dict) -> None:
-        """Read the pressure/temperature keys from a flat [protocols] section."""
+    def load_pressure_temperature(
+        self, sec: dict, config: Path | list[Path] | None = None
+    ) -> None:
+        """Read the pressure/temperature keys from a flat [protocols] section.
+
+        ``config`` reads a relative protocol file of a series project against
+        its series root.
+        """
         try:
             pressure_temperature_protocol = sec["pressure_temperature"]
             if (
@@ -424,7 +447,7 @@ class PressureTemperatureProtocolConfig:
                 self.pressure_temperature = None
             else:
                 self.pressure_temperature = _parse_protocol_value(
-                    pressure_temperature_protocol
+                    pressure_temperature_protocol, config
                 )
         except KeyError:
             self.pressure_temperature = None
@@ -440,20 +463,52 @@ class PressureTemperatureProtocolConfig:
 
 
 @dataclass
+class OverflowProtocolConfig:
+    """Optional overflow measurements supplied as an ordinary protocol table."""
+
+    overflow: Path | tuple[Path, str] | None = field(
+        default=None,
+        metadata={
+            "name": "Overflow protocol",
+            "help": (
+                "Optional overflow measurement file, or [file, sheet]. "
+                "The table keeps its measured values, units and timestamps; "
+                "selecting it does not turn scale readings into gas volume."
+            ),
+            "widget": "file",
+            "group": "Operating conditions",
+            "table_viewer": "csv",
+        },
+    )
+
+    def load_overflow(
+        self, sec: dict, config: Path | list[Path] | None = None
+    ) -> None:
+        value = sec.get("overflow")
+        self.overflow = (
+            None
+            if value is None or isinstance(value, str) and not value.strip()
+            else _parse_protocol_value(value, config)
+        )
+
+
+@dataclass
 class ProtocolsConfig(
     # Reverse order on purpose: dataclasses collect inherited fields in
     # reverse-MRO order, and that order is what the GUI renders top to bottom.
+    OverflowProtocolConfig,
     PressureTemperatureProtocolConfig,
     InjectionProtocolConfig,
     ImagingProtocolConfig,
 ):
-    """All three protocols for a run, read from one flat [protocols] section."""
+    """Run protocols, including optional overflow, from one [protocols] section."""
 
     def load(self, path: Path) -> "ProtocolsConfig":
         sec = _get_section_from_toml(path, "protocols")
-        self.load_imaging(sec)
-        self.load_injection(sec)
-        self.load_pressure_temperature(sec)
+        self.load_imaging(sec, path)
+        self.load_injection(sec, path)
+        self.load_pressure_temperature(sec, path)
+        self.load_overflow(sec, path)
         return self
 
     def error(self):

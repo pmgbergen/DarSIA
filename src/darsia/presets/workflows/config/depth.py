@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .utils import _get_key, _get_section_from_toml, _normalize_mode
+from .utils import _config_path, _get_key, _get_section_from_toml, _normalize_mode
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,9 @@ class DepthConfig:
     def load(self, path: Path, results: Path | None = None) -> "DepthConfig":
         """Load depth config from a toml file from [section]."""
         sec = _get_section_from_toml(path, "depth")
-        self.measurements = _get_key(sec, "measurements", required=True, type_=Path)
+        self.measurements = _config_path(
+            _get_key(sec, "measurements", required=True), path
+        )
 
         self.measurements_mode = _normalize_mode(
             sec.get("measurements_mode", "Load from CSV"),
@@ -88,8 +90,9 @@ class DepthConfig:
         default_depth_map = (
             results / "setup" / "depth" / "depth_map.npz" if results else None
         )
-        self.depth_map = _get_key(
-            sec, "depth_map", default=default_depth_map, required=False, type_=Path
+        depth_map = _get_key(sec, "depth_map", required=False)
+        self.depth_map = (
+            default_depth_map if depth_map is None else _config_path(depth_map, path)
         )
         assert self.depth_map is not None, "results is required if depth_map is not set"
         self.target_resolution = _get_key(

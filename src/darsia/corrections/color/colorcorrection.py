@@ -2,6 +2,8 @@
 based on the Classic Color Checker from calibrite / x-rite.
 """
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 import copy
 import json
 from abc import ABC
@@ -448,8 +450,8 @@ class ColorCorrection(darsia.BaseCorrection):
         path : Path
             Path to the file.
         """
-        assert path.exists(), f"File {path} does not exist."
-        data = np.load(path, allow_pickle=True)
+        assert _preset_io.exists(path, 'exists'), f"File {path} does not exist."
+        data = np.load(_preset_io.source(path), allow_pickle=True)
         base = CustomColorChecker(reference_colors=data["base"])
         self.config = data["config"].item()
         self._init_from_config(base=base)

@@ -14,7 +14,7 @@ from darsia.signals.color.color_embedding import (
 from .data_registry import DataRegistry
 from .roi_registry import RoiRegistry, _load_roi_key_list
 from .time_data import TimeData
-from .utils import _get_key, _get_section_from_toml
+from .utils import _config_path, _get_key, _get_section_from_toml
 
 if TYPE_CHECKING:
     pass
@@ -94,8 +94,11 @@ class ColorToMassConfig:
             self.data = None
 
         # Where to store the calibration results
-        self.calibration_folder = _get_key(
-            sec, "calibration_folder", required=False, type_=Path
+        calibration_folder = _get_key(sec, "calibration_folder", required=False)
+        self.calibration_folder = (
+            None
+            if calibration_folder is None
+            else _config_path(calibration_folder, path)
         )
         if not self.calibration_folder:
             assert results is not None

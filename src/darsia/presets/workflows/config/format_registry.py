@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from darsia.fluidflower import preset_wasserstein_inputs as _preset_io
+
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -235,10 +237,10 @@ class FormatRegistry:
         self.formats = {}
 
         for p in paths:
-            if not p.exists():
+            if not _preset_io.exists(p, 'exists'):
                 continue
 
-            with open(p, "rb" if use_tomllib else "r") as f:
+            with _preset_io.open_read(p, "rb" if use_tomllib else "r") as f:
                 if use_tomllib:
                     data = tomllib.load(f)
                 else:
