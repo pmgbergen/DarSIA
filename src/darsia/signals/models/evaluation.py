@@ -9,6 +9,7 @@ file means the simple piecewise linear evaluation.
 """
 
 import abc
+import itertools
 import json
 import logging
 from pathlib import Path
@@ -53,6 +54,17 @@ class EvaluationMode(abc.ABC):
         if "type" in cls.__dict__:
             EvaluationMode.registry[cls.type] = cls
 
+    @property
+    def per_label(self) -> dict[int, dict]:
+        """Label-specific data (json-serializable), e.g. derived choices to reproduce."""
+        if "_per_label" not in self.__dict__:
+            self._per_label: dict[int, dict] = {}
+        return self._per_label
+
+    def same_as(self, other: "EvaluationMode") -> bool:
+        """Whether the other mode has the same type and parameters (not label data)."""
+        return self.type == other.type and self.parameters() == other.parameters()
+
     # ! ---- Serialization ---- ! #
 
     @abc.abstractmethod
@@ -67,14 +79,15 @@ class EvaluationMode(abc.ABC):
     def to_dict(self) -> dict:
         """Describe the mode (and its parameters) as json-serializable data.
 
-        The empty ``per_label`` entry is reserved for later, label-specific parameters.
+        The ``per_label`` entry holds label-specific data, e.g. choices derived from the
+        color paths which must be reproducible.
 
         """
         return {
             "format_version": self.FORMAT_VERSION,
             "mode": self.type,
             "parameters": self.parameters(),
-            "per_label": {},
+            "per_label": {str(label): data for label, data in self.per_label.items()},
         }
 
     @staticmethod
@@ -86,7 +99,11 @@ class EvaluationMode(abc.ABC):
                 f"Unknown evaluation mode '{name}'. "
                 f"Known modes: {sorted(EvaluationMode.registry)}."
             )
-        return EvaluationMode.registry[name].from_parameters(data.get("parameters", {}))
+        mode = EvaluationMode.registry[name].from_parameters(data.get("parameters", {}))
+        mode.per_label.update(
+            {int(label): d for label, d in data.get("per_label", {}).items()}
+        )
+        return mode
 
     @staticmethod
     def from_name(name: str, parameters: dict | None = None) -> "EvaluationMode":
@@ -126,6 +143,7 @@ class EvaluationMode(abc.ABC):
         color_mode: "darsia.ColorMode",
         supports: np.ndarray | list[float],
         values: np.ndarray | list[float],
+        label: int | None = None,
     ):
         """Create the signal function of a label.
 
@@ -139,6 +157,8 @@ class EvaluationMode(abc.ABC):
             Parameters of the key colors on the color path (equidistant).
         values : array-like
             Signal values at the key colors.
+        label : int, optional
+            Label; allows to store and reuse label-specific data, see ``per_label``.
 
         """
 
@@ -155,7 +175,7 @@ class LinearEvaluation(EvaluationMode):
     def from_parameters(cls, parameters: dict) -> "LinearEvaluation":
         return cls()
 
-    def signal_function(self, color_path, color_mode, supports, values):
+    def signal_function(self, color_path, color_mode, supports, values, label=None):
         return darsia.PWTransformation(supports, values)
 
 
@@ -180,8 +200,53 @@ class SplineEvaluation(EvaluationMode):
     def from_parameters(cls, parameters: dict) -> "SplineEvaluation":
         return cls(kind=parameters.get("kind", "pchip"))
 
-    def signal_function(self, color_path, color_mode, supports, values):
+    def signal_function(self, color_path, color_mode, supports, values, label=None):
         return darsia.PchipTransformation(supports, values)
+
+
+def select_affine_supports(key_colors: np.ndarray) -> list[int]:
+    """Select at most 4 key colors, which determine an affine function of the color.
+
+    A linear kernel is an affine function of the color (3 slopes and an offset), which
+    can interpolate at most 4 key colors. The first and last key colors are always
+    kept. Of the interior ones, the pair is chosen which maximizes the volume of the
+    tetrahedron with the first and last key color, i.e., the best conditioned choice.
+    Degenerate (collinear or coplanar) key colors fall back to an even split by index.
+
+    Parameters
+    ----------
+    key_colors : np.ndarray
+        Key colors of shape (n, 3).
+
+    Returns
+    -------
+    list[int]
+        Indices of the selected key colors (all, if there are at most 4).
+
+    """
+    colors = np.asarray(key_colors, dtype=float)
+    num = len(colors)
+    if num <= 4:
+        return list(range(num))
+    first, last = colors[0], colors[-1]
+    best, best_volume = None, 1e-12
+    for i, j in itertools.combinations(range(1, num - 1), 2):
+        volume = abs(
+            np.linalg.det(
+                np.stack((colors[i] - first, colors[j] - first, last - first))
+            )
+        )
+        if volume > best_volume:
+            best, best_volume = (i, j), volume
+    if best is None:
+        i = max(1, min(num - 3, round((num - 1) / 3)))
+        j = max(i + 1, min(num - 2, round(2 * (num - 1) / 3)))
+        best = (i, j)
+        logger.warning(
+            "Key colors are (nearly) collinear or coplanar; the linear kernel uses "
+            "an even split of the key colors."
+        )
+    return [0, best[0], best[1], num - 1]
 
 
 class KernelSignalFunction:
@@ -203,6 +268,7 @@ class KernelSignalFunction:
         values: np.ndarray | list[float],
         kernel: "darsia.BaseKernel",
         regularization: float = 1e-8,
+        support_indices: list[int] | None = None,
     ) -> None:
         self.color_path = color_path
         self.color_mode = color_mode
@@ -215,6 +281,13 @@ class KernelSignalFunction:
             dtype=float,
         )
         """Key colors (relative or absolute, depending on the color mode)."""
+        self.support_indices = (
+            np.arange(len(self.supports))
+            if support_indices is None
+            else np.asarray(support_indices, dtype=int)
+        )
+        """Indices of the key colors used as supports of the kernel interpolation. The
+        values at the other key colors do not influence the signal."""
         self.values = None
         self._interpolation = darsia.KernelInterpolation(
             kernel, regularization=regularization, deduplicate=False
@@ -245,10 +318,21 @@ class KernelSignalFunction:
 
         # Regularized kernel interpolation, i.e., (K + lambda I) w = values. The kernel
         # matrix is only set up once, later updates reuse it.
+        used = self.support_indices
         if self._interpolation.supports is None:
-            self._interpolation.update(supports=self.key_colors, values=self.values)
+            self._interpolation.update(
+                supports=self.key_colors[used], values=self.values[used]
+            )
+            if np.ptp(self.values[used]) > 0:
+                condition = np.linalg.cond(self._interpolation.X)
+                if condition > 1e8:
+                    logger.warning(
+                        "Ill-conditioned kernel interpolation (condition number "
+                        f"{condition:.1e}): the used key colors are (nearly) "
+                        "degenerate or the kernel is too narrow/wide."
+                    )
         else:
-            self._interpolation.update(values=self.values)
+            self._interpolation.update(values=self.values[used])
 
     def __call__(self, colors: np.ndarray) -> np.ndarray:
         """Evaluate the signal at colors of shape (..., 3)."""
@@ -277,34 +361,49 @@ class KernelSignalFunction:
 
 
 class KernelEvaluation(EvaluationMode):
-    """Kernel evaluation (Gaussian) directly on the colors, with the key colors as
-    supports and the signal values at the key colors as goal values."""
+    """Kernel evaluation directly on the colors, with the key colors as supports and the
+    signal values at the key colors as goal values.
+
+    The Gaussian kernel uses all key colors. The linear kernel is an affine function of
+    the color and can interpolate at most 4 key colors; for more key colors, 4 are
+    selected, see :func:`select_affine_supports`, and stored per label in ``per_label``.
+
+    """
 
     type = "kernel"
     projects_onto_path = False
 
-    KERNELS = ("gaussian",)
+    KERNELS = ("gaussian", "linear")
 
     def __init__(
         self,
         kernel: str = "gaussian",
         gamma: float = 10.0,
+        shift: float = 1.0,
         regularization: float = 1e-8,
     ) -> None:
         if kernel not in self.KERNELS:
             raise ValueError(
                 f"Unknown kernel '{kernel}'. Known kernels: {list(self.KERNELS)}."
             )
-        if gamma <= 0 or regularization < 0:
-            raise ValueError("gamma must be positive, regularization nonnegative.")
+        if gamma <= 0 or shift < 0 or regularization < 0:
+            raise ValueError(
+                "gamma must be positive, shift and regularization nonnegative."
+            )
         self.kernel = kernel
         self.gamma = float(gamma)
+        self.shift = float(shift)
         self.regularization = float(regularization)
 
     def parameters(self) -> dict:
+        kernel_parameter = (
+            {"gamma": self.gamma}
+            if self.kernel == "gaussian"
+            else {"shift": self.shift}
+        )
         return {
             "kernel": self.kernel,
-            "gamma": self.gamma,
+            **kernel_parameter,
             "regularization": self.regularization,
         }
 
@@ -314,18 +413,59 @@ class KernelEvaluation(EvaluationMode):
             **{
                 key: parameters[key]
                 for key in parameters
-                if key in {"kernel", "gamma", "regularization"}
+                if key in {"kernel", "gamma", "shift", "regularization"}
             }
         )
 
-    def signal_function(self, color_path, color_mode, supports, values):
+    def _support_indices(self, key_colors: np.ndarray, label: int | None) -> list[int]:
+        """Indices of the key colors used by the linear kernel (stored per label)."""
+        num = len(key_colors)
+        stored = (
+            None
+            if label is None
+            else self.per_label.get(label, {}).get("support_indices")
+        )
+        if stored is not None:
+            valid = (
+                len(stored) == len(set(stored)) == min(num, 4)
+                and all(0 <= index < num for index in stored)
+                and stored[0] == 0
+                and stored[-1] == num - 1
+                and list(stored) == sorted(stored)
+            )
+            if valid:
+                return [int(index) for index in stored]
+            logger.warning(
+                "Stored supports of label %s do not match its %d key colors; "
+                "selecting them anew.",
+                label,
+                num,
+            )
+        indices = [int(index) for index in select_affine_supports(key_colors)]
+        if label is not None:
+            self.per_label.setdefault(int(label), {})["support_indices"] = indices
+        return indices
+
+    def signal_function(self, color_path, color_mode, supports, values, label=None):
+        indices = None
+        if self.kernel == "linear":
+            key_colors = color_path.interpret(
+                np.asarray(supports, dtype=float), color_mode, mode="equidistant"
+            )
+            indices = self._support_indices(np.asarray(key_colors), label)
+        kernel = (
+            darsia.GaussianKernel(gamma=self.gamma)
+            if self.kernel == "gaussian"
+            else darsia.LinearKernel(a=self.shift)
+        )
         return KernelSignalFunction(
             color_path,
             color_mode,
             supports,
             values,
-            kernel=darsia.GaussianKernel(gamma=self.gamma),
+            kernel=kernel,
             regularization=self.regularization,
+            support_indices=indices,
         )
 
 
