@@ -432,8 +432,9 @@ class CalibrationMassConfig:
             "key colors of the color path: 'linear' (piecewise linear between the "
             "key colors), 'spline' (smooth, monotone cubic through the values) or "
             "'kernel' (kernel interpolation evaluated directly on the colors). "
-            "The mode is stored with the mass calibration, and the analysis uses "
-            "the stored mode.",
+            "This is the mode of a new calibration (or after a reset). A stored "
+            "calibration keeps its mode, unless you confirm switching when asked. "
+            "The analysis always uses the stored mode.",
             "options": ["linear", "spline", "kernel"],
         },
     )

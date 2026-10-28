@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from warnings import warn
@@ -12,6 +14,9 @@ import darsia
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.calibration.consistency import (
     color_to_mass_inconsistencies,
+    configured_evaluation_mode,
+    mass_calibration_info,
+    mass_calibration_status_line,
 )
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.sections import (
@@ -257,6 +262,29 @@ def _build_color_to_mass_analysis(
         basis=embedding.basis,
         expert_knowledge_adapter=expert_knowledge_adapter,
     )
+
+    # ! ---- EVALUATION MODE OF THE CALIBRATION ----
+    info = mass_calibration_info(embedding, color_to_mass_analysis.evaluation_mode)
+    logger.info(mass_calibration_status_line(info))
+    requested = configured_evaluation_mode(config)
+    if requested is not None and not requested.same_as(
+        color_to_mass_analysis.evaluation_mode
+    ):
+        logger.warning(
+            "[calibration.mass] requests the evaluation mode %s, but the stored mass "
+            "calibration uses %s. The analysis uses the stored one.",
+            requested.describe(),
+            color_to_mass_analysis.evaluation_mode.describe(),
+        )
+    if config.data is not None and getattr(config.data, "results", None) is not None:
+        try:
+            results = Path(config.data.results)
+            results.mkdir(parents=True, exist_ok=True)
+            info["written_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open(results / "mass_calibration_info.json", "w") as file:
+                json.dump(info, file, indent=2)
+        except Exception as error:  # provenance must never block the analysis
+            logger.debug("Could not write the mass calibration info: %s", error)
 
     # ! ---- CONSISTENCY WITH THE COLOR PATHS ----
     color_paths_file = Path(embedding.color_paths_csv_file)

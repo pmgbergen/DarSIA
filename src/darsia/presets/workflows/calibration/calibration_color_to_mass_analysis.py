@@ -56,6 +56,44 @@ def _load_baseline_color_spectrum_for_color_to_mass(
     return baseline_color_spectrum
 
 
+def _resolve_evaluation_mode(
+    color_analysis: HeterogeneousColorToMassAnalysis,
+    configured_mode: darsia.EvaluationMode,
+    interactive: bool,
+) -> None:
+    """Keep the stored evaluation mode unless the user confirms switching.
+
+    The configured mode is the initial mode of a new calibration. A stored calibration
+    keeps its mode (and parameters); switching to the configured one keeps the signal
+    values and is overwritten when saving.
+
+    """
+    stored_mode = color_analysis.evaluation_mode
+    if configured_mode.same_as(stored_mode):
+        return
+    answer = None
+    if interactive:
+        answer = ask_yes_no(
+            "Evaluation mode differs",
+            "The stored mass calibration uses the evaluation mode\n"
+            f"    {stored_mode.describe()}\n"
+            "but the config requests\n"
+            f"    {configured_mode.describe()}.\n\n"
+            "Switch to the configured mode? The signal values are kept; the mode is "
+            "overwritten when saving.",
+            default=False,
+        )
+    if answer:
+        color_analysis.set_evaluation_mode(configured_mode)
+    else:
+        logger.warning(
+            "Keeping the stored evaluation mode %s; the config requests %s. Confirm "
+            "the switch when asked, or reset the calibration, to change it.",
+            stored_mode.describe(),
+            configured_mode.describe(),
+        )
+
+
 @required_sections("calibration.mass")
 def calibration_color_to_mass_analysis_from_context(
     ctx: AnalysisContext,
@@ -384,8 +422,10 @@ def calibration_color_to_mass_analysis_from_context(
             evaluation_mode=evaluation_mode,
         )
 
-    # The configured evaluation mode wins over a stored one; signal values are kept
-    color_analysis.set_evaluation_mode(evaluation_mode)
+    # A stored evaluation mode is kept unless the user confirms the configured one
+    _resolve_evaluation_mode(
+        color_analysis, evaluation_mode, interactive=show and not default
+    )
 
     # ! ---- INTERACTIVE CALIBRATION ---- ! #
 

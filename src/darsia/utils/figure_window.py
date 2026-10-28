@@ -61,7 +61,11 @@ def ask_yes_no(title: str, question: str, default: bool = True) -> bool | None:
         from matplotlib.backends.qt_compat import QtWidgets
 
         if QtWidgets.QApplication.instance() is None:
-            return None
+            # Allow dialogs before the first figure: create the application like the
+            # matplotlib Qt backend does (same configuration, reused by it later).
+            from matplotlib.backends import backend_qt
+
+            backend_qt._create_qApp()
         buttons = QtWidgets.QMessageBox.StandardButton
         box = QtWidgets.QMessageBox()
         box.setIcon(QtWidgets.QMessageBox.Icon.Question)

@@ -65,6 +65,11 @@ class EvaluationMode(abc.ABC):
             self._per_label: dict[int, dict] = {}
         return self._per_label
 
+    def describe(self) -> str:
+        """Short, human-readable description of the mode and its parameters."""
+        parameters = ", ".join(f"{k}={v}" for k, v in self.parameters().items())
+        return f"{self.type} ({parameters})" if parameters else self.type
+
     def same_as(self, other: "EvaluationMode") -> bool:
         """Whether the other mode has the same type and parameters (not label data)."""
         return self.type == other.type and self.parameters() == other.parameters()
@@ -199,6 +204,9 @@ class SplineEvaluation(EvaluationMode):
 
     def parameters(self) -> dict:
         return {"kind": self.kind}
+
+    def describe(self) -> str:
+        return f"spline ({self.kind})"
 
     @classmethod
     def from_parameters(cls, parameters: dict) -> "SplineEvaluation":
@@ -427,6 +435,12 @@ class KernelEvaluation(EvaluationMode):
                 if key in {"kernel", "gamma", "shift", "regularization"}
             }
         )
+
+    def describe(self) -> str:
+        parameters = self.parameters()
+        kernel = parameters.pop("kernel")
+        details = ", ".join(f"{k}={v}" for k, v in parameters.items())
+        return f"kernel ({kernel}, {details})"
 
     def _support_indices(self, key_colors: np.ndarray, label: int | None) -> list[int]:
         """Indices of the key colors used by the linear kernel (stored per label)."""
