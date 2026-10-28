@@ -82,6 +82,22 @@ class PWTransformation:
         """Apply the transformation to a numpy array."""
         return self.interpolator(arr)
 
+    def evaluate_on_path(self, t: float | np.ndarray) -> float | np.ndarray:
+        """Evaluate the signal at the colors on the color path.
+
+        Parameters
+        ----------
+        t : float or np.ndarray
+            Equidistant parameters along the color path.
+
+        Returns
+        -------
+        float or np.ndarray
+            Signal. For the linear evaluation it is the function of the parameter.
+
+        """
+        return self._call_for_array(np.asarray(t, dtype=float))
+
     def inverse(self, value: float | np.ndarray) -> float | np.ndarray:
         """Compute the inverse transformation at given value(s)."""
 

@@ -362,6 +362,18 @@ class CalibrationMassConfig:
             "options": ["auto"] + list(TIME_UNIT_FACTORS),
         },
     )
+    evaluation_mode: str = field(
+        default="linear",
+        metadata={
+            "name": "Evaluation mode",
+            "help": "How colors are turned into a signal from the values at the "
+            "key colors of the color path: 'linear' (piecewise linear between the "
+            "key colors). The mode is stored with the mass calibration, and the "
+            "analysis uses the stored mode.",
+            "options": ["linear"],
+        },
+    )
+    """Evaluation mode of the color to signal conversion."""
     contour_smoother_selection: ContourSmootherSelection = field(
         default_factory=ContourSmootherSelection,
         metadata={
@@ -437,6 +449,15 @@ class CalibrationMassConfig:
                 "calibration.mass.time_unit must be 'auto' or one of "
                 f"{sorted(TIME_UNIT_FACTORS)}."
             )
+        self.evaluation_mode = (
+            _get_key(
+                sec, "evaluation_mode", required=False, default="linear", type_=str
+            )
+            .lower()
+            .strip()
+        )
+        if self.evaluation_mode not in {"linear"}:
+            raise ValueError("calibration.mass.evaluation_mode must be 'linear'.")
         self.contour_smoother_selection = ContourSmootherSelection().load(sec)
         return self
 
