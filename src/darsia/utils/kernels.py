@@ -33,6 +33,10 @@ class BaseKernel(ABC):
         """
         pass
 
+    def to_dict(self) -> dict:
+        """Describe the kernel (type and parameters) as json-serializable data."""
+        raise NotImplementedError
+
     def linear_combination(self, signal: np.ndarray, supports, interpolation_weights):
         num_supports = len(supports)
         if num_supports == 0:
@@ -55,6 +59,9 @@ class LinearKernel(BaseKernel):
     def __init__(self, a: float = 0):
         self.a = a
         """Shift of the kernel."""
+
+    def to_dict(self) -> dict:
+        return {"type": "linear", "a": float(self.a)}
 
     def __call__(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         """Compute kernel between two arrays.
@@ -136,6 +143,9 @@ class GaussianKernel(BaseKernel):
         self.gamma = np.float32(gamma)
         """Gamma parameter of the kernel."""
 
+    def to_dict(self) -> dict:
+        return {"type": "gaussian", "gamma": float(self.gamma)}
+
     def __call__(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         """Compute kernel between two arrays.
 
@@ -209,3 +219,12 @@ class GaussianKernel(BaseKernel):
         return _linear_combination_numba(
             signal, supports, interpolation_weights, self.gamma
         )
+
+
+def kernel_from_dict(data: dict) -> BaseKernel:
+    """Create a kernel from its description, see :meth:`BaseKernel.to_dict`."""
+    if data["type"] == "gaussian":
+        return GaussianKernel(gamma=data.get("gamma", 1.0))
+    if data["type"] == "linear":
+        return LinearKernel(a=data.get("a", 0))
+    raise ValueError(f"Unknown kernel type '{data['type']}'.")

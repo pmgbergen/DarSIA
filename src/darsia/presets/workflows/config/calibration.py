@@ -274,6 +274,53 @@ class CalibrationColorConfig:
 
 
 @dataclass
+class KernelEvaluationConfig:
+    """Options of the kernel evaluation mode."""
+
+    kernel: str = field(
+        default="gaussian",
+        metadata={
+            "name": "Kernel",
+            "help": "Kernel type.",
+            "options": ["gaussian"],
+        },
+    )
+    gamma: float = field(
+        default=10.0,
+        metadata={
+            "name": "Gamma",
+            "help": "Gaussian kernel exp(-gamma |x - y|^2) on (relative) RGB colors: "
+            "larger values localize the kernel around the key colors "
+            "(gamma = 1 / (2 sigma^2)).",
+        },
+    )
+    regularization: float = field(
+        default=1e-8,
+        metadata={
+            "name": "Regularization",
+            "help": "Ridge term of the kernel interpolation; stabilizes close key "
+            "colors. Zero means exact interpolation.",
+        },
+    )
+
+    def load(self, sec: dict) -> "KernelEvaluationConfig":
+        self.kernel = _get_key(
+            sec, "kernel", default=self.kernel, required=False, type_=str
+        ).lower()
+        self.gamma = _get_key(
+            sec, "gamma", default=self.gamma, required=False, type_=float
+        )
+        self.regularization = _get_key(
+            sec,
+            "regularization",
+            default=self.regularization,
+            required=False,
+            type_=float,
+        )
+        return self
+
+
+@dataclass
 class CalibrationMassConfig:
     """Config for mass calibration using a selected color embedding."""
 
@@ -368,13 +415,24 @@ class CalibrationMassConfig:
             "name": "Evaluation mode",
             "help": "How colors are turned into a signal from the values at the "
             "key colors of the color path: 'linear' (piecewise linear between the "
-            "key colors) or 'spline' (smooth, monotone cubic through the values). "
+            "key colors), 'spline' (smooth, monotone cubic through the values) or "
+            "'kernel' (kernel interpolation evaluated directly on the colors). "
             "The mode is stored with the mass calibration, and the analysis uses "
             "the stored mode.",
-            "options": ["linear", "spline"],
+            "options": ["linear", "spline", "kernel"],
         },
     )
     """Evaluation mode of the color to signal conversion."""
+    kernel_options: KernelEvaluationConfig | None = field(
+        default=None,
+        metadata={
+            "name": "Kernel options",
+            "toml_key": "evaluation_options",
+            "depends_on": {"field": "evaluation_mode", "value": "kernel"},
+        },
+    )
+    """Options of the kernel evaluation mode."""
+
     contour_smoother_selection: ContourSmootherSelection = field(
         default_factory=ContourSmootherSelection,
         metadata={
@@ -388,6 +446,17 @@ class CalibrationMassConfig:
     def contour_smoother(self) -> darsia.ContourSmoother | None:
         """Built contour smoother for manual-calibration contour plots."""
         return self.contour_smoother_selection.build()
+
+    def evaluation_parameters(self) -> dict:
+        """Parameters of the selected evaluation mode."""
+        if self.evaluation_mode == "kernel":
+            options = self.kernel_options or KernelEvaluationConfig()
+            return {
+                "kernel": options.kernel,
+                "gamma": options.gamma,
+                "regularization": options.regularization,
+            }
+        return {}
 
     def load(
         self,
@@ -457,9 +526,14 @@ class CalibrationMassConfig:
             .lower()
             .strip()
         )
-        if self.evaluation_mode not in {"linear", "spline"}:
+        if self.evaluation_mode not in {"linear", "spline", "kernel"}:
             raise ValueError(
-                "calibration.mass.evaluation_mode must be 'linear' or 'spline'."
+                "calibration.mass.evaluation_mode must be 'linear', 'spline' or "
+                "'kernel'."
+            )
+        if self.evaluation_mode == "kernel":
+            self.kernel_options = KernelEvaluationConfig().load(
+                sec.get("evaluation_options", {})
             )
         self.contour_smoother_selection = ContourSmootherSelection().load(sec)
         return self

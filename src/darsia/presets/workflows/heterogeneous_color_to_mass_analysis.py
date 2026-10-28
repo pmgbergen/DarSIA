@@ -72,14 +72,55 @@ class HeterogeneousColorToMassAnalysis:
         self.time_unit = time_unit
         """Unit for time axes/values in calibration plots ('auto' or a fixed unit)."""
 
-        base_model = darsia.CombinedModel(
-            [
-                darsia.HeterogeneousModel(
-                    color_path_interpretation,
-                    labels,
-                    ignore_labels=ignore_labels,
-                )
-            ]
+        self.color_path_interpretation = color_path_interpretation
+        """Color path interpretations for different labels."""
+        self._baseline = baseline
+        self._labels = labels
+        self._color_mode = color_mode
+        self._restoration = restoration
+        self._ignore_labels = ignore_labels
+        self._build_stages(signal_functions)
+
+        self.flash = flash
+        """Flash model for converting pH to concentrations."""
+
+        self.co2_mass_analysis = co2_mass_analysis
+        """Mass computation tool."""
+
+        self.geometry = geometry
+        """Geometry of the experiment - for the integration of mass during calibration."""
+
+        self.basis = parse_color_embedding_basis(basis)
+        """Label-space basis used during calibration."""
+        self.expert_knowledge_adapter = expert_knowledge_adapter
+        """Optional adapter constraining saturation/concentration via expert ROIs."""
+        self.contour_smoother = contour_smoother
+        """Optional contour smoother for better visualization of ROIs during calibration."""
+
+    def _build_stages(self, signal_functions: dict) -> None:
+        """Set up the two stages from colors to the signal (pH).
+
+        Stage 1 (color interpretation) projects the colors onto the color path, if the
+        evaluation mode requires it, and otherwise only provides the baseline-relative
+        colors. Stage 2 evaluates the signal functions of the labels.
+
+        """
+        labels = self._labels
+        ignore_labels = self._ignore_labels
+        projects = self.evaluation_mode.projects_onto_path
+
+        base_model = (
+            darsia.CombinedModel(
+                [
+                    darsia.HeterogeneousModel(
+                        self.color_path_interpretation,
+                        labels,
+                        ignore_labels=ignore_labels,
+                    )
+                ]
+            )
+            if projects
+            else None
         )
 
         # Define general config options
@@ -92,7 +133,11 @@ class HeterogeneousColorToMassAnalysis:
 
         # Define general ConcentrationAnalysis.
         self.color_analysis = darsia.ConcentrationAnalysis(
-            base=baseline if color_mode == darsia.ColorMode.RELATIVE else None,
+            base=(
+                self._baseline
+                if self._color_mode == darsia.ColorMode.RELATIVE
+                else None
+            ),
             restoration=None,
             model=base_model,
             labels=labels,
@@ -120,10 +165,16 @@ class HeterogeneousColorToMassAnalysis:
             (min_range_signal_functions, max_range_signal_functions),
         )
 
+        # NOTE: Without projection, the first model is a placeholder (no clipping), so
+        # that the signal functions are always the second model.
         signal_model = darsia.CombinedModel(
             [
-                darsia.ClipModel(
-                    min_domain_signal_functions, max_domain_signal_functions
+                (
+                    darsia.ClipModel(
+                        min_domain_signal_functions, max_domain_signal_functions
+                    )
+                    if projects
+                    else darsia.ClipModel(-np.inf, np.inf)
                 ),
                 darsia.HeterogeneousModel(
                     signal_functions,
@@ -135,30 +186,12 @@ class HeterogeneousColorToMassAnalysis:
 
         self.signal_model = darsia.ConcentrationAnalysis(
             base=None,
-            restoration=restoration,
+            restoration=self._restoration,
             model=signal_model,
             labels=labels,
             **config,
         )
         """Model converting color interpretation to pH."""
-
-        self.flash = flash
-        """Flash model for converting pH to concentrations."""
-
-        self.co2_mass_analysis = co2_mass_analysis
-        """Mass computation tool."""
-
-        self.geometry = geometry
-        """Geometry of the experiment - for the integration of mass during calibration."""
-
-        self.color_path_interpretation = color_path_interpretation
-        """Color path interpretations for different labels."""
-        self.basis = parse_color_embedding_basis(basis)
-        """Label-space basis used during calibration."""
-        self.expert_knowledge_adapter = expert_knowledge_adapter
-        """Optional adapter constraining saturation/concentration via expert ROIs."""
-        self.contour_smoother = contour_smoother
-        """Optional contour smoother for better visualization of ROIs during calibration."""
 
     def set_evaluation_mode(self, evaluation_mode: darsia.EvaluationMode) -> None:
         """Switch the evaluation mode, keeping the values at the key colors.
@@ -178,16 +211,18 @@ class HeterogeneousColorToMassAnalysis:
             evaluation_mode.type,
         )
         model = self.signal_model.model[1]
+        signal_functions = {}
         for label in list(model.keys()):
             interpretation = self.color_path_interpretation[label]
             old = model[label]
-            model[label] = evaluation_mode.signal_function(
+            signal_functions[label] = evaluation_mode.signal_function(
                 interpretation.color_path,
                 interpretation.color_mode,
                 old.supports,
                 old.values,
             )
         self.evaluation_mode = evaluation_mode
+        self._build_stages(signal_functions)
 
     @property
     def labels(self) -> darsia.Image:
@@ -340,8 +375,18 @@ class HeterogeneousColorToMassAnalysis:
         color_interpretations = [
             self.call_color_interpretation(image) for image in images
         ]
+
+        def display_color_interpretation(color_interpretation: darsia.Image):
+            """Scalar color interpretation for display (colors: size of the color)."""
+            if color_interpretation.img.ndim == 3:
+                color_interpretation = darsia.ScalarImage(
+                    np.linalg.norm(color_interpretation.img, axis=-1),
+                    **color_interpretation.metadata(),
+                )
+            return darsia.resize(color_interpretation, shape=coarse_shape)
+
         coarse_color_interpretations = [
-            darsia.resize(color_interpretation, shape=coarse_shape)
+            display_color_interpretation(color_interpretation)
             for color_interpretation in color_interpretations
         ]
 

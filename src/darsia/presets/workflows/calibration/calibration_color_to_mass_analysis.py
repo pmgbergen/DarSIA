@@ -276,7 +276,9 @@ def calibration_color_to_mass_analysis_from_context(
     )
 
     contour_smoother = mass_cfg.contour_smoother
-    evaluation_mode = darsia.EvaluationMode.from_name(mass_cfg.evaluation_mode)
+    evaluation_mode = darsia.EvaluationMode.from_name(
+        mass_cfg.evaluation_mode, mass_cfg.evaluation_parameters()
+    )
 
     # Fetch signal functions from reference calibration.
     if not reset and ref_path is not None:

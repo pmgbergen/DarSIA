@@ -40,6 +40,11 @@ class EvaluationMode(abc.ABC):
     registry: ClassVar[dict[str, type["EvaluationMode"]]] = {}
     """All known modes by name."""
 
+    projects_onto_path: ClassVar[bool] = True
+    """Whether colors are projected onto the color path before the evaluation (the
+    signal is then a function of the position along the path), or the evaluation
+    uses the (baseline-relative) colors directly."""
+
     FILE_NAME: ClassVar[str] = "evaluation.json"
     FORMAT_VERSION: ClassVar[int] = 1
 
@@ -177,6 +182,151 @@ class SplineEvaluation(EvaluationMode):
 
     def signal_function(self, color_path, color_mode, supports, values):
         return darsia.PchipTransformation(supports, values)
+
+
+class KernelSignalFunction:
+    """Signal function evaluating a kernel interpolation of the key colors.
+
+    The kernel interpolation uses the key colors of the color path as supports and the
+    signal values at the key colors as goal values. In contrast to the piecewise
+    functions, it is evaluated at the colors themselves and not at their projection onto
+    the color path: colors far away from all key colors decay towards the baseline
+    signal. The output is clipped to the range of the values.
+
+    """
+
+    def __init__(
+        self,
+        color_path: "darsia.ColorPath",
+        color_mode: "darsia.ColorMode",
+        supports: np.ndarray | list[float],
+        values: np.ndarray | list[float],
+        kernel: "darsia.BaseKernel",
+        regularization: float = 1e-8,
+    ) -> None:
+        self.color_path = color_path
+        self.color_mode = color_mode
+        self.kernel = kernel
+        self.regularization = regularization
+        self.supports = np.asarray(supports, dtype=float)
+        """Equidistant parameters of the key colors along the color path."""
+        self.key_colors = np.asarray(
+            color_path.interpret(self.supports, color_mode, mode="equidistant"),
+            dtype=float,
+        )
+        """Key colors (relative or absolute, depending on the color mode)."""
+        self.values = None
+        self._interpolation = darsia.KernelInterpolation(
+            kernel, regularization=regularization, deduplicate=False
+        )
+        """Kernel interpolation; identical key colors (e.g., of a zero path) are kept
+        and are solvable by the regularization."""
+        self.update(values=values)
+
+    def update(
+        self,
+        supports: np.ndarray | list[float] | None = None,
+        values: np.ndarray | list[float] | None = None,
+        dofs: np.ndarray | list[int] | None = None,
+    ) -> None:
+        """Update the values at the key colors and refit the interpolation weights."""
+        if supports is not None:
+            raise ValueError("The key colors are defined by the color path.")
+        if values is not None:
+            if dofs is not None:
+                self.values[np.array(dofs)] = values
+            else:
+                self.values = np.array(values, dtype=float)
+        assert len(self.values) == len(
+            self.supports
+        ), f"wrong size: {len(self.values)} vs. {len(self.supports)}"
+        values_diff = np.diff(self.values)
+        assert np.all(values_diff > -1e-12), f"monotonicity broken {values_diff}"
+
+        # Regularized kernel interpolation, i.e., (K + lambda I) w = values. The kernel
+        # matrix is only set up once, later updates reuse it.
+        if self._interpolation.supports is None:
+            self._interpolation.update(supports=self.key_colors, values=self.values)
+        else:
+            self._interpolation.update(values=self.values)
+
+    def __call__(self, colors: np.ndarray) -> np.ndarray:
+        """Evaluate the signal at colors of shape (..., 3)."""
+        signal = self._interpolation(np.asarray(colors))
+        return np.clip(signal, np.min(self.values), np.max(self.values))
+
+    def evaluate_on_path(self, t: float | np.ndarray) -> float | np.ndarray:
+        """Evaluate the signal at the colors on the color path at parameters t."""
+        t = np.asarray(t, dtype=float)
+        colors = self.color_path.interpret(t, self.color_mode, mode="equidistant")
+        return self(colors)
+
+    def inverse(self, value: float | np.ndarray) -> float | np.ndarray:
+        """Parameter along the color path at which the signal first reaches a value."""
+        t, y = signal_curve(self, num_fine_segments=100)
+        return curve_inverse(t, y, value)
+
+    def save(self, path: Path) -> None:
+        """Store the supports and values (the kernel is part of the mode)."""
+        import pandas as pd
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame({"supports": self.supports, "values": self.values}).to_csv(
+            path.with_suffix(".csv"), index=False
+        )
+
+
+class KernelEvaluation(EvaluationMode):
+    """Kernel evaluation (Gaussian) directly on the colors, with the key colors as
+    supports and the signal values at the key colors as goal values."""
+
+    type = "kernel"
+    projects_onto_path = False
+
+    KERNELS = ("gaussian",)
+
+    def __init__(
+        self,
+        kernel: str = "gaussian",
+        gamma: float = 10.0,
+        regularization: float = 1e-8,
+    ) -> None:
+        if kernel not in self.KERNELS:
+            raise ValueError(
+                f"Unknown kernel '{kernel}'. Known kernels: {list(self.KERNELS)}."
+            )
+        if gamma <= 0 or regularization < 0:
+            raise ValueError("gamma must be positive, regularization nonnegative.")
+        self.kernel = kernel
+        self.gamma = float(gamma)
+        self.regularization = float(regularization)
+
+    def parameters(self) -> dict:
+        return {
+            "kernel": self.kernel,
+            "gamma": self.gamma,
+            "regularization": self.regularization,
+        }
+
+    @classmethod
+    def from_parameters(cls, parameters: dict) -> "KernelEvaluation":
+        return cls(
+            **{
+                key: parameters[key]
+                for key in parameters
+                if key in {"kernel", "gamma", "regularization"}
+            }
+        )
+
+    def signal_function(self, color_path, color_mode, supports, values):
+        return KernelSignalFunction(
+            color_path,
+            color_mode,
+            supports,
+            values,
+            kernel=darsia.GaussianKernel(gamma=self.gamma),
+            regularization=self.regularization,
+        )
 
 
 def signal_curve(
