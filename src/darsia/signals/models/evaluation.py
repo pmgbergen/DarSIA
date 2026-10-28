@@ -154,6 +154,31 @@ class LinearEvaluation(EvaluationMode):
         return darsia.PWTransformation(supports, values)
 
 
+class SplineEvaluation(EvaluationMode):
+    """Smooth, monotone cubic (PCHIP) evaluation through the values at the key colors."""
+
+    type = "spline"
+
+    KINDS = ("pchip",)
+
+    def __init__(self, kind: str = "pchip") -> None:
+        if kind not in self.KINDS:
+            raise ValueError(
+                f"Unknown spline kind '{kind}'. Known kinds: {list(self.KINDS)}."
+            )
+        self.kind = kind
+
+    def parameters(self) -> dict:
+        return {"kind": self.kind}
+
+    @classmethod
+    def from_parameters(cls, parameters: dict) -> "SplineEvaluation":
+        return cls(kind=parameters.get("kind", "pchip"))
+
+    def signal_function(self, color_path, color_mode, supports, values):
+        return darsia.PchipTransformation(supports, values)
+
+
 def signal_curve(
     signal_function, num_fine_segments: int = 10
 ) -> tuple[np.ndarray, np.ndarray]:

@@ -368,9 +368,10 @@ class CalibrationMassConfig:
             "name": "Evaluation mode",
             "help": "How colors are turned into a signal from the values at the "
             "key colors of the color path: 'linear' (piecewise linear between the "
-            "key colors). The mode is stored with the mass calibration, and the "
-            "analysis uses the stored mode.",
-            "options": ["linear"],
+            "key colors) or 'spline' (smooth, monotone cubic through the values). "
+            "The mode is stored with the mass calibration, and the analysis uses "
+            "the stored mode.",
+            "options": ["linear", "spline"],
         },
     )
     """Evaluation mode of the color to signal conversion."""
@@ -456,8 +457,10 @@ class CalibrationMassConfig:
             .lower()
             .strip()
         )
-        if self.evaluation_mode not in {"linear"}:
-            raise ValueError("calibration.mass.evaluation_mode must be 'linear'.")
+        if self.evaluation_mode not in {"linear", "spline"}:
+            raise ValueError(
+                "calibration.mass.evaluation_mode must be 'linear' or 'spline'."
+            )
         self.contour_smoother_selection = ContourSmootherSelection().load(sec)
         return self
 

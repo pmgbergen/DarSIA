@@ -379,6 +379,9 @@ def calibration_color_to_mass_analysis_from_context(
             evaluation_mode=evaluation_mode,
         )
 
+    # The configured evaluation mode wins over a stored one; signal values are kept
+    color_analysis.set_evaluation_mode(evaluation_mode)
+
     # ! ---- INTERACTIVE CALIBRATION ---- ! #
 
     rois: dict[str, darsia.CoordinateArray] = {}

@@ -52,15 +52,15 @@ class PWTransformation:
             assert len(self.values) == len(
                 self.supports
             ), f"wrong size: {len(values)} vs. {len(self.supports)}"
-            values_diff = np.diff(values)
+            values_diff = np.diff(self.values)
             assert np.all(values_diff > -1e-12), f"monotonicity broken {values_diff}"
 
             # Interpolator
-            self.interpolator = interpolate.interp1d(
-                self.supports,
-                self.values,
-                kind="linear",
-            )
+            self.interpolator = self._build_interpolator()
+
+    def _build_interpolator(self):
+        """Interpolator through the values at the supports (piecewise linear)."""
+        return interpolate.interp1d(self.supports, self.values, kind="linear")
 
     def values_from_diff(self, values_diff: list | np.ndarray) -> list | np.ndarray:
         raise NotImplementedError("Implementation of class has changed.")
@@ -151,3 +151,30 @@ class PWTransformation:
         supports = df["supports"].to_numpy()
         values = df["values"].to_numpy()
         return cls(supports=supports, values=values)
+
+
+class PchipTransformation(PWTransformation):
+    """Transformation interpolating the values at the supports by a monotone cubic.
+
+    Uses piecewise cubic Hermite interpolation (PCHIP). Like the piecewise linear
+    transformation, it passes through all values; between the supports it is smooth
+    (continuous first derivative) and monotone for monotone values, i.e. it does not
+    overshoot. Arguments outside the range of the supports are clipped to the range.
+
+    """
+
+    def _build_interpolator(self):
+        interpolator = interpolate.PchipInterpolator(
+            np.asarray(self.supports, dtype=float),
+            np.asarray(self.values, dtype=float),
+            extrapolate=False,
+        )
+        lower, upper = float(np.min(self.supports)), float(np.max(self.supports))
+        return lambda arr: interpolator(np.clip(arr, lower, upper))
+
+    def inverse(self, value: float | np.ndarray) -> float | np.ndarray:
+        """Compute the inverse transformation at given value(s) numerically."""
+        from darsia.signals.models.evaluation import curve_inverse, signal_curve
+
+        t, y = signal_curve(self, num_fine_segments=100)
+        return curve_inverse(t, y, value)
