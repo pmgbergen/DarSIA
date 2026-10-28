@@ -1,6 +1,7 @@
 """Consistency checks between calibration steps."""
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -47,6 +48,104 @@ def color_to_mass_inconsistencies(
         elif not np.allclose(stored, current, atol=1e-6):
             inconsistencies[label] = "key colors differ from the current color paths"
     return inconsistencies
+
+
+def mass_calibration_info(embedding, mode: darsia.EvaluationMode | None = None) -> dict:
+    """Describe the stored mass calibration of a color path embedding.
+
+    Parameters
+    ----------
+    embedding : ColorPathEmbedding
+        Embedding the mass calibration belongs to.
+    mode : EvaluationMode, optional
+        Evaluation mode; loaded from the calibration folder if not provided.
+
+    Returns
+    -------
+    dict
+        Embedding, folder, evaluation mode (data and description), whether it is
+        the default for calibrations without stored mode, and the time of saving.
+
+    """
+    folder = Path(embedding.color_to_mass_folder)
+    legacy = not (folder / darsia.EvaluationMode.FILE_NAME).exists()
+    if mode is None:
+        mode = darsia.EvaluationMode.load(folder)
+    reference = folder / "metadata.json"
+    if not reference.exists():
+        reference = folder
+    saved_at = (
+        datetime.fromtimestamp(reference.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+        if reference.exists()
+        else None
+    )
+    return {
+        "embedding": embedding.embedding_id,
+        "folder": str(folder),
+        "evaluation_mode": mode.to_dict(),
+        "description": mode.describe(),
+        "legacy_without_evaluation_file": legacy,
+        "saved_at": saved_at,
+    }
+
+
+def mass_calibration_status_line(info: dict) -> str:
+    """One-line summary of :func:`mass_calibration_info` for logs and the GUI."""
+    legacy = ", no evaluation.json" if info["legacy_without_evaluation_file"] else ""
+    saved = "" if info["saved_at"] is None else f", saved {info['saved_at']}"
+    return (
+        f"Mass calibration of embedding '{info['embedding']}': "
+        f"{info['description']}{legacy}{saved}"
+    )
+
+
+def configured_evaluation_mode(config) -> darsia.EvaluationMode | None:
+    """Evaluation mode requested by ``[calibration.mass]`` of a config, if any."""
+    if config.calibration is None or config.calibration.mass is None:
+        return None
+    mass_cfg = config.calibration.mass
+    return darsia.EvaluationMode.from_name(
+        mass_cfg.evaluation_mode, mass_cfg.evaluation_parameters()
+    )
+
+
+def mass_calibration_status(config_path: Path) -> dict | None:
+    """Stored mass calibration of a config and whether the config differs from it.
+
+    Lightweight (no images are loaded). Returns None if there is nothing to describe
+    (no mass analysis, no color path embedding, no stored mass calibration, unreadable
+    files). Otherwise the dictionary of :func:`mass_calibration_info`, extended by
+    ``config_description`` and ``config_differs`` (the evaluation mode which
+    ``[calibration.mass]`` requests, and whether it differs from the stored one).
+
+    """
+    from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+    from darsia.signals.color import ColorPathEmbedding
+
+    try:
+        config = FluidFlowerConfig(
+            config_path, require_data=False, require_results=False
+        )
+        if (
+            config.color is None
+            or config.analysis is None
+            or config.analysis.mass is None
+        ):
+            return None
+        embedding = config.color.resolve(config.analysis.mass.color)
+        if not isinstance(embedding, ColorPathEmbedding):
+            return None
+        if not Path(embedding.color_to_mass_folder).exists():
+            return None
+        info = mass_calibration_info(embedding)
+        stored = darsia.EvaluationMode.from_dict(info["evaluation_mode"])
+        requested = configured_evaluation_mode(config)
+        info["config_description"] = None if requested is None else requested.describe()
+        info["config_differs"] = requested is not None and not requested.same_as(stored)
+        return info
+    except Exception as error:  # a check must never block the workflow
+        logger.debug("Could not describe the mass calibration: %s", error)
+        return None
 
 
 def outdated_mass_calibration(config_path: Path) -> dict[int, str]:

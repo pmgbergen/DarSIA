@@ -32,6 +32,8 @@ def _confirm_outdated_mass_calibration(main_window, config_file: str, selected_i
             infer_require_color_to_mass_from_config,
         )
         from darsia.presets.workflows.calibration.consistency import (
+            mass_calibration_status,
+            mass_calibration_status_line,
             outdated_mass_calibration,
         )
 
@@ -45,6 +47,14 @@ def _confirm_outdated_mass_calibration(main_window, config_file: str, selected_i
             include_volume=selected_id == "volume",
         ):
             return True
+        status = mass_calibration_status(path)
+        if status is not None:
+            main_window.print_log(mass_calibration_status_line(status))
+            if status["config_differs"]:
+                main_window.print_log(
+                    f"Note: [calibration.mass] requests {status['config_description']}"
+                    ", but the analysis uses the stored mode."
+                )
         inconsistencies = outdated_mass_calibration(path)
     except Exception as error:  # a check must never block the analysis
         main_window.print_log(f"Skipped the mass calibration check: {error}")
