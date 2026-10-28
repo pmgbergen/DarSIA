@@ -7,6 +7,7 @@ from typing import Callable, Tuple
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.colors import to_rgba_array
 from matplotlib.transforms import Bbox
 from matplotlib.widgets import Button, Slider
 from scipy.optimize import minimize
@@ -39,6 +40,20 @@ from darsia.utils.units import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _dot_values(signal_func) -> np.ndarray:
+    """Values shown as dots in the signal function plot.
+
+    Key colors which do not influence the signal (unused supports of a kernel) are not
+    shown (NaN).
+
+    """
+    values = np.asarray(signal_func.values, dtype=float).copy()
+    used = getattr(signal_func, "support_indices", None)
+    if used is not None:
+        values[[i for i in range(len(values)) if i not in used]] = np.nan
+    return values
 
 
 class HeterogeneousColorToMassAnalysis:
@@ -202,7 +217,7 @@ class HeterogeneousColorToMassAnalysis:
             New mode; signal functions of all labels are created anew with it.
 
         """
-        if evaluation_mode.to_dict() == self.evaluation_mode.to_dict():
+        if evaluation_mode.same_as(self.evaluation_mode):
             return
         logger.info(
             "Switching the evaluation mode from '%s' to '%s', keeping the signal "
@@ -220,6 +235,7 @@ class HeterogeneousColorToMassAnalysis:
                 interpretation.color_mode,
                 old.supports,
                 old.values,
+                label=label,
             )
         self.evaluation_mode = evaluation_mode
         self._build_stages(signal_functions)
@@ -813,17 +829,17 @@ class HeterogeneousColorToMassAnalysis:
                 # Plot the signal function evaluated on a fine grid along the color
                 # path, with the values at the key colors as dots
                 x_vals = signal_func.supports
-                y_vals = signal_func.values.copy()
                 t_fine, y_fine = signal_curve(signal_func)
                 [signal_function_line] = ax_signal_function.plot(
                     t_fine, y_fine, "gray", linewidth=2, zorder=2
                 )
 
                 colors = _color_path_interpretation.color_path.colors
+                facecolors = to_rgba_array(np.clip(colors, 0, 1))
                 signal_function_scatter = ax_signal_function.scatter(
                     x_vals,
-                    y_vals,
-                    c=np.clip(colors, 0, 1),
+                    _dot_values(signal_func),
+                    c=facecolors,
                     zorder=3,
                     s=50,
                     edgecolors="black",
@@ -927,6 +943,23 @@ class HeterogeneousColorToMassAnalysis:
                     fontsize=8,
                     color="k",
                 )
+                # NOTE: Keep after the annotations above, which are accessed by index
+                used_indices = getattr(signal_func, "support_indices", None)
+                if used_indices is not None and len(used_indices) < len(
+                    signal_func.values
+                ):
+                    ax_signal_function.text(
+                        x=0.01,
+                        y=0.99,
+                        s="Unused key colors (no dot): the signal is affine in the "
+                        "color and bends at every key color.",
+                        transform=ax_signal_function.transAxes,
+                        ha="left",
+                        va="top",
+                        fontsize=7,
+                        color="k",
+                        zorder=4,
+                    )
 
                 ax_signal_function.set_xlabel("Color Interpretation")
                 ax_signal_function.set_ylabel("Signal Value")
@@ -1058,15 +1091,20 @@ class HeterogeneousColorToMassAnalysis:
             # rows follows the number of key colors of the selected label.
             controls_box = ax_sliders.get_position()
             signal_values = self.signal_model.model[1][label_idx].values
+            used_values = getattr(
+                self.signal_model.model[1][label_idx],
+                "support_indices",
+                range(len(signal_values)),
+            )
             path_colors = self.color_path_interpretation[label_idx].color_path.colors
             num_values = len(signal_values)
             row_height = controls_box.height / (num_values + 9)
 
-            def make_row(row, name, valinit, vmin, vmax, color):
+            def make_row(row, name, valinit, vmin, vmax, color, active=True):
                 """Create a labeled slider (with value text) in a row."""
                 x0, width = controls_box.x0, controls_box.width
                 y0 = controls_box.y1 - (row + 1) * row_height
-                fig.text(
+                label_text = fig.text(
                     x0, y0 + 0.5 * row_height, name, fontsize=8, ha="left", va="center"
                 )
                 ax_row_slider = fig.add_axes(
@@ -1087,6 +1125,16 @@ class HeterogeneousColorToMassAnalysis:
                     color=color,
                 )
                 slider.valtext.set_fontsize(8)
+                if not active:
+                    # Values without influence cannot be changed and appear faded
+                    slider.set_active(False)
+                    for artist in (
+                        label_text,
+                        slider.poly,
+                        slider._handle,
+                        slider.valtext,
+                    ):
+                        artist.set_alpha(0.35)
                 return slider
 
             def section_title(row, title):
@@ -1104,11 +1152,12 @@ class HeterogeneousColorToMassAnalysis:
             sliders_color_to_signal = [
                 make_row(
                     1 + i,
-                    f"Value {i}",
+                    f"Value {i}" + ("" if i in used_values else " (unused)"),
                     val,
                     0.0,
                     2.0,
                     np.clip(path_colors[i], 0, 1) if i < len(path_colors) else "gray",
+                    active=i in used_values,
                 )
                 for i, val in enumerate(signal_values)
             ]
@@ -1322,7 +1371,9 @@ class HeterogeneousColorToMassAnalysis:
                             x_vals = signal_func.supports
                             y_vals = signal_func.values.copy()
                             signal_function_line.set_data(t_fine, y_fine)
-                            signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
+                            signal_function_scatter.set_offsets(
+                                np.c_[x_vals, _dot_values(signal_func)]
+                            )
 
                             # Rescale y-axis to fit the curve, floored at the
                             # current flash max (never zoom in tighter than the
@@ -1985,6 +2036,7 @@ class HeterogeneousColorToMassAnalysis:
                 interpretation.color_mode,
                 supports,
                 np.maximum.accumulate(values),
+                label=label,
             )
 
     @classmethod
@@ -2057,6 +2109,7 @@ class HeterogeneousColorToMassAnalysis:
                 interpretation.color_mode,
                 stored.supports,
                 stored.values,
+                label=label,
             )
         if not stored_interpretation:
             cls._resample_signal_functions(

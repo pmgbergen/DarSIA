@@ -337,6 +337,7 @@ def calibration_color_to_mass_analysis_from_context(
                     embedding.mode,
                     color_paths[label].equidistant_distances,
                     np.zeros(len(color_paths[label].equidistant_distances)),
+                    label=label,
                 )
                 continue
             try:
@@ -345,6 +346,7 @@ def calibration_color_to_mass_analysis_from_context(
                     embedding.mode,
                     color_paths[label].equidistant_distances,
                     color_path_interpolation[label].values,
+                    label=label,
                 )
             except Exception as e:
                 signal_functions[label] = evaluation_mode.signal_function(
@@ -352,6 +354,7 @@ def calibration_color_to_mass_analysis_from_context(
                     embedding.mode,
                     color_paths[label].equidistant_distances,
                     np.zeros(len(color_paths[label].equidistant_distances)),
+                    label=label,
                 )
                 ignore_labels.append(label)
                 logger.warning(f"Error processing label {label}: {e}")

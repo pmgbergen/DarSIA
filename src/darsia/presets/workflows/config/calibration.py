@@ -281,8 +281,10 @@ class KernelEvaluationConfig:
         default="gaussian",
         metadata={
             "name": "Kernel",
-            "help": "Kernel type.",
-            "options": ["gaussian"],
+            "help": "Kernel type: 'gaussian' (all key colors) or 'linear' (an affine "
+            "function of the color; at most 4 key colors are used, the first and "
+            "last plus two selected ones).",
+            "options": ["gaussian", "linear"],
         },
     )
     gamma: float = field(
@@ -292,6 +294,16 @@ class KernelEvaluationConfig:
             "help": "Gaussian kernel exp(-gamma |x - y|^2) on (relative) RGB colors: "
             "larger values localize the kernel around the key colors "
             "(gamma = 1 / (2 sigma^2)).",
+            "depends_on": {"field": "kernel", "value": "gaussian"},
+        },
+    )
+    shift: float = field(
+        default=1.0,
+        metadata={
+            "name": "Shift",
+            "help": "Linear kernel x.y + shift. With shift 0 the signal is linear in "
+            "the color (zero at the baseline), otherwise it is affine.",
+            "depends_on": {"field": "kernel", "value": "linear"},
         },
     )
     regularization: float = field(
@@ -309,6 +321,9 @@ class KernelEvaluationConfig:
         ).lower()
         self.gamma = _get_key(
             sec, "gamma", default=self.gamma, required=False, type_=float
+        )
+        self.shift = _get_key(
+            sec, "shift", default=self.shift, required=False, type_=float
         )
         self.regularization = _get_key(
             sec,
@@ -454,6 +469,7 @@ class CalibrationMassConfig:
             return {
                 "kernel": options.kernel,
                 "gamma": options.gamma,
+                "shift": options.shift,
                 "regularization": options.regularization,
             }
         return {}
