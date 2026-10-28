@@ -28,6 +28,8 @@ class KernelInterpolation(darsia.Model):
         kernel: darsia.BaseKernel,
         supports: Optional[np.ndarray] = None,
         values: Optional[np.ndarray] = None,
+        regularization: float = 0.0,
+        deduplicate: bool = True,
     ):
         """Setup of the kernel-based interpolation.
 
@@ -39,6 +41,13 @@ class KernelInterpolation(darsia.Model):
             Support points.
         values : np.ndarray
             Goal points.
+        regularization : float
+            Ridge term added to the diagonal of the kernel matrix. Zero means exact
+            interpolation; positive values stabilize close supports.
+        deduplicate : bool
+            Whether to remove duplicate supports (and their values) before solving.
+            Without removal, duplicate supports need a positive regularization (or
+            equal values) to be solvable.
 
         Raises
         ------
@@ -48,6 +57,10 @@ class KernelInterpolation(darsia.Model):
         """
         self.kernel = kernel
         """Kernel."""
+        self.regularization = regularization
+        """Ridge term of the kernel matrix."""
+        self.deduplicate = deduplicate
+        """Flag for removing duplicate supports."""
         self.supports = supports
         """Support points."""
         self.values = values
@@ -121,21 +134,23 @@ class KernelInterpolation(darsia.Model):
             len(self.values) == self.num_supports
         ), f"Input data not compatible: {len(self.values)} != {self.num_supports}."
 
-        # Reduce to unique supports for unique solvability
-        self.supports, indices, counts = np.unique(
-            np.round(self.supports, decimals=5),
-            return_index=True,
-            return_counts=True,
-            axis=0,
-        )
-        # Warn the user that some supports were removed
-        if not np.allclose(counts, 1):
-            warn(
-                f"Supports are not unique. {np.sum(counts - 1)} supports were removed."
+        if self.deduplicate:
+            # Reduce to unique supports for unique solvability
+            self.supports, indices, counts = np.unique(
+                np.round(self.supports, decimals=5),
+                return_index=True,
+                return_counts=True,
+                axis=0,
             )
-        # Adapt the remaining values
-        self.num_supports = self.supports.shape[0]
-        self.values = self.values[indices]
+            # Warn the user that some supports were removed
+            if not np.allclose(counts, 1):
+                warn(
+                    f"Supports are not unique. {np.sum(counts - 1)} supports were "
+                    "removed."
+                )
+            # Adapt the remaining values
+            self.num_supports = self.supports.shape[0]
+            self.values = self.values[indices]
 
         # Solve the interpolation problem, i.e., set up the kernel matrix, and solve
         # for the interpolation weights
@@ -143,6 +158,8 @@ class KernelInterpolation(darsia.Model):
         for i in range(self.num_supports):
             for j in range(self.num_supports):
                 self.X[i, j] = self.kernel(self.supports[i], self.supports[j])
+        if self.regularization > 0:
+            self.X = self.X + self.regularization * np.eye(self.num_supports)
         self.Xinv = np.linalg.inv(self.X)
 
     def update_interpolation(self) -> None:
@@ -163,7 +180,7 @@ class KernelInterpolation(darsia.Model):
         parameters: np.ndarray,
         dofs: Optional[Union[list[Literal["kernel", "values"]], Literal["all"]]] = None,
     ) -> None:
-        if "supports" in dofs:
+        if dofs is not None and "supports" in dofs:
             raise ValueError("Supports cannot be updated. Use update method.")
 
         if dofs is None or dofs == "all" or set(dofs) == set(["kernel", "values"]):
@@ -193,7 +210,7 @@ class KernelInterpolation(darsia.Model):
         """
         if self.supports is None or self.interpolation_weights is None:
             # NOTE: Currently only scalar output supported - forced here.
-            return np.zeros(signal.shape[:1], dtype=np.float32)
+            return np.zeros(signal.shape[:-1], dtype=np.float32)
         else:
             return self.kernel.linear_combination(
                 signal.astype(np.float32),
