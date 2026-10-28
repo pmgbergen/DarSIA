@@ -152,3 +152,62 @@ class LinearEvaluation(EvaluationMode):
 
     def signal_function(self, color_path, color_mode, supports, values):
         return darsia.PWTransformation(supports, values)
+
+
+def signal_curve(
+    signal_function, num_fine_segments: int = 10
+) -> tuple[np.ndarray, np.ndarray]:
+    """Sample the signal along the color path on a fine grid.
+
+    Each segment between two key colors is split into fine segments, and the signal
+    function is evaluated at the colors on the path at the fine nodes.
+
+    Parameters
+    ----------
+    signal_function
+        Signal function of a label, see :class:`EvaluationMode`.
+    num_fine_segments : int
+        Number of fine segments per segment between two key colors.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Parameters along the color path and signal at the fine nodes.
+
+    """
+    supports = np.asarray(signal_function.supports, dtype=float)
+    t = np.concatenate(
+        [
+            np.linspace(start, stop, num_fine_segments + 1)[:-1]
+            for start, stop in zip(supports[:-1], supports[1:])
+        ]
+        + [supports[-1:]]
+    )
+    return t, np.asarray(signal_function.evaluate_on_path(t), dtype=float)
+
+
+def curve_inverse(
+    t: np.ndarray, signal: np.ndarray, value: float | np.ndarray
+) -> float | np.ndarray:
+    """Parameter at which a sampled signal curve first reaches a value.
+
+    The running maximum of the curve is used, so the result is well-defined also for
+    curves which are not monotone, e.g. between key colors. Values outside the range of
+    the curve are clipped to its end points.
+
+    Parameters
+    ----------
+    t : np.ndarray
+        Parameters along the color path, increasing.
+    signal : np.ndarray
+        Signal at the parameters.
+    value : float or np.ndarray
+        Signal value(s) to invert.
+
+    Returns
+    -------
+    float or np.ndarray
+        Parameter(s) along the color path.
+
+    """
+    return np.interp(value, np.maximum.accumulate(signal), t)

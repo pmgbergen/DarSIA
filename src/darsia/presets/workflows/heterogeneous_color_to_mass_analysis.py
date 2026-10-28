@@ -27,6 +27,7 @@ from darsia.signals.color.color_embedding import (
     ColorEmbeddingBasis,
     parse_color_embedding_basis,
 )
+from darsia.signals.models.evaluation import curve_inverse, signal_curve
 from darsia.utils.figure_window import maximize_figure_window
 from darsia.utils.units import (
     choose_mass_unit,
@@ -735,11 +736,13 @@ class HeterogeneousColorToMassAnalysis:
                     zorder=0,  # Behind everything else
                 )
 
-                # Create x values for plotting the piecewise linear function
+                # Plot the signal function evaluated on a fine grid along the color
+                # path, with the values at the key colors as dots
                 x_vals = signal_func.supports
                 y_vals = signal_func.values.copy()
+                t_fine, y_fine = signal_curve(signal_func)
                 [signal_function_line] = ax_signal_function.plot(
-                    x_vals, y_vals, "gray", linewidth=2, zorder=2
+                    t_fine, y_fine, "gray", linewidth=2, zorder=2
                 )
 
                 colors = _color_path_interpretation.color_path.colors
@@ -787,10 +790,10 @@ class HeterogeneousColorToMassAnalysis:
                 # Find the corresponding x-values for the cut-off and max value lines as
                 # solution to the signal_function(x) = cut_off and
                 # signal_function(x) = max_value
-                aq_min_x = signal_func.inverse(self.flash.min_value_aq)
-                aq_max_x = signal_func.inverse(self.flash.max_value_aq)
-                g_max_x = signal_func.inverse(self.flash.max_value_g)
-                g_min_x = signal_func.inverse(self.flash.min_value_g)
+                aq_min_x = curve_inverse(t_fine, y_fine, self.flash.min_value_aq)
+                aq_max_x = curve_inverse(t_fine, y_fine, self.flash.max_value_aq)
+                g_max_x = curve_inverse(t_fine, y_fine, self.flash.max_value_g)
+                g_min_x = curve_inverse(t_fine, y_fine, self.flash.min_value_g)
 
                 # Add vertical lines for cut-off and max value
                 signal_function_aq_min_x = ax_signal_function.axvline(
@@ -1238,12 +1241,13 @@ class HeterogeneousColorToMassAnalysis:
 
                     def update_signal_function_plot():
                         """Update the signal function plot (curve, flash lines)."""
+                        signal_func = self.signal_model.model[1][_label_idx]
+                        t_fine, y_fine = signal_curve(signal_func)
                         # Update signal function plot
                         if signal_function_line is not None:
-                            signal_func = self.signal_model.model[1][_label_idx]
                             x_vals = signal_func.supports
                             y_vals = signal_func.values.copy()
-                            signal_function_line.set_data(x_vals, y_vals)
+                            signal_function_line.set_data(t_fine, y_fine)
                             signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
 
                             # Rescale y-axis to fit the curve, floored at the
@@ -1255,7 +1259,11 @@ class HeterogeneousColorToMassAnalysis:
                             )
                             ax_signal_function.set_ylim(
                                 self.signal_model_extents[1][0],
-                                max(flash_max, float(np.max(y_vals))),
+                                max(
+                                    flash_max,
+                                    float(np.max(y_fine)),
+                                    float(np.max(y_vals)),
+                                ),
                             )
 
                         # Update flash cut-off and max value lines
@@ -1263,10 +1271,14 @@ class HeterogeneousColorToMassAnalysis:
                         signal_function_aq_max_y.set_ydata([self.flash.max_value_aq])
                         signal_function_g_max_y.set_ydata([self.flash.max_value_g])
                         signal_function_g_min_y.set_ydata([self.flash.min_value_g])
-                        aq_max_x = signal_func.inverse(self.flash.max_value_aq)
-                        aq_min_x = signal_func.inverse(self.flash.min_value_aq)
-                        g_max_x = signal_func.inverse(self.flash.max_value_g)
-                        g_min_x = signal_func.inverse(self.flash.min_value_g)
+                        aq_max_x = curve_inverse(
+                            t_fine, y_fine, self.flash.max_value_aq
+                        )
+                        aq_min_x = curve_inverse(
+                            t_fine, y_fine, self.flash.min_value_aq
+                        )
+                        g_max_x = curve_inverse(t_fine, y_fine, self.flash.max_value_g)
+                        g_min_x = curve_inverse(t_fine, y_fine, self.flash.min_value_g)
                         signal_function_aq_max_x.set_xdata([aq_max_x])
                         signal_function_aq_min_x.set_xdata([aq_min_x])
                         signal_function_g_max_x.set_xdata([g_max_x])
