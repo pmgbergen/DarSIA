@@ -29,6 +29,10 @@ from darsia.signals.color.color_embedding import (
     parse_color_embedding_basis,
 )
 from darsia.signals.models.evaluation import curve_inverse, signal_curve
+from darsia.signals.models.pwtransformation import (
+    monotonicity_message,
+    monotonicity_violation,
+)
 from darsia.utils.figure_window import maximize_figure_window
 from darsia.utils.units import (
     choose_mass_unit,
@@ -388,9 +392,22 @@ class HeterogeneousColorToMassAnalysis:
         )
 
         # ! ---- COLOR INTERPRETATIONS ----
-        color_interpretations = [
-            self.call_color_interpretation(image) for image in images
-        ]
+
+        # The projection onto the color path is expensive, so the color interpretations
+        # of the images are cached. Without projection, they are merely the baseline
+        # relative colors (3 channels, i.e., larger), cheap to compute and not cached.
+        cache_color_interpretations = self.evaluation_mode.projects_onto_path
+        color_interpretations = (
+            [self.call_color_interpretation(image) for image in images]
+            if cache_color_interpretations
+            else None
+        )
+
+        def color_interpretation_of(idx: int) -> darsia.Image:
+            """Color interpretation of an image (cached if expensive)."""
+            if color_interpretations is not None:
+                return color_interpretations[idx]
+            return self.call_color_interpretation(images[idx])
 
         def display_color_interpretation(color_interpretation: darsia.Image):
             """Scalar color interpretation for display (colors: size of the color)."""
@@ -402,8 +419,8 @@ class HeterogeneousColorToMassAnalysis:
             return darsia.resize(color_interpretation, shape=coarse_shape)
 
         coarse_color_interpretations = [
-            display_color_interpretation(color_interpretation)
-            for color_interpretation in color_interpretations
+            display_color_interpretation(color_interpretation_of(idx))
+            for idx in range(len(images))
         ]
 
         # ! ----- IMAGE SELECTION -----
@@ -494,7 +511,7 @@ class HeterogeneousColorToMassAnalysis:
                 atmospheric_temperature_gradient=gradient.temperature,
             )
             pH, density, c_aq, s_g = detailed_mass_analysis(
-                color_interpretations[image_idx]
+                color_interpretation_of(image_idx)
             )
             co2_g_density = darsia.full_like(
                 pH, self.co2_mass_analysis.density_gaseous_co2
@@ -594,7 +611,9 @@ class HeterogeneousColorToMassAnalysis:
                 roi_key: SimpleRunAnalysis(self.geometry.subregion(roi))
                 for roi_key, roi in rois.items()
             }
-            for img, color_interpretation in zip(images, color_interpretations):
+            for idx, img in enumerate(images):
+                color_interpretation = color_interpretation_of(idx)
+
                 # Update thermodynamic state
                 state = experiment.pressure_temperature_protocol.get_state(img.date)
                 gradient = experiment.pressure_temperature_protocol.get_gradient(
@@ -1283,6 +1302,16 @@ class HeterogeneousColorToMassAnalysis:
                 ]
             )
             btn_update = Button(ax_update, "Update")
+            values_status = fig.text(
+                controls_box.x0,
+                update_button_y + 0.5 * button_height,
+                "",
+                fontsize=8,
+                color="red",
+                ha="left",
+                va="center",
+            )
+            """Message about invalid (decreasing) signal values."""
 
             ax_next_signal = plt.axes(
                 [
@@ -1541,8 +1570,45 @@ class HeterogeneousColorToMassAnalysis:
                             update_mass_plot()
                         fig.canvas.draw_idle()
 
-                    def apply_parameters() -> bool:
-                        """Apply the slider values; return if any value changed."""
+                    def check_values() -> str | None:
+                        """Message if the signal values of the label decrease, else None."""
+                        values = [slider.val for slider in sliders_color_to_signal]
+                        function = self.signal_model.model[1][_label_idx]
+                        violation = monotonicity_violation(
+                            values, getattr(function, "support_indices", None)
+                        )
+                        if violation is None:
+                            return None
+                        return monotonicity_message(values, violation)
+
+                    def show_values_status(message: str | None) -> None:
+                        """Show (or clear) the message about invalid signal values."""
+                        text = (
+                            "" if message is None else message.replace(": ", ":\n", 1)
+                        )
+                        if values_status.get_text() != text:
+                            values_status.set_text(text)
+                            fig.canvas.draw_idle()
+
+                    for slider in sliders_color_to_signal:
+                        slider.on_changed(
+                            lambda val: show_values_status(check_values())
+                        )
+
+                    def apply_parameters() -> bool | None:
+                        """Apply the slider values.
+
+                        Returns
+                        -------
+                        bool or None
+                            Whether any value changed, or None if the values are
+                            invalid, in which case nothing is applied.
+
+                        """
+                        message = check_values()
+                        show_values_status(message)
+                        if message is not None:
+                            return None
                         need_update = False
                         need_update = need_update or any(
                             [
@@ -1588,7 +1654,10 @@ class HeterogeneousColorToMassAnalysis:
 
                     def update_analysis(event=None):
                         """Apply the slider values and update everything."""
-                        if apply_parameters():
+                        changed = apply_parameters()
+                        if changed is None:
+                            return
+                        if changed:
                             mark_unsaved()
                             update_mass_analysis()
                         refresh(recompute=True, signal_function=True, mass_plot=True)
@@ -1645,6 +1714,13 @@ class HeterogeneousColorToMassAnalysis:
 
                     def on_save(event):
                         """Apply the current values and save; the window stays open."""
+                        message = check_values()
+                        if message is not None:
+                            show_values_status(message)
+                            save_status.set_text("Not saved: fix the values first.")
+                            save_status.set_color("red")
+                            fig.canvas.draw_idle()
+                            return
                         update_analysis()
                         saved = save_calibration()
                         save_status.set_text(
@@ -1660,10 +1736,20 @@ class HeterogeneousColorToMassAnalysis:
                         nonlocal done_tuning_values, done_calibration
                         if rebuilding:
                             return
-                        apply_parameters()
-                        save_calibration()
-                        done_tuning_values = True
-                        done_calibration = True
+                        try:
+                            message = check_values()
+                            if message is None:
+                                apply_parameters()
+                            else:
+                                logger.warning(
+                                    f"{message}. Saving the last applied state."
+                                )
+                            save_calibration()
+                        except Exception:
+                            logger.exception("Closing the calibration window failed.")
+                        finally:
+                            done_tuning_values = True
+                            done_calibration = True
 
                     fig.canvas.mpl_connect("close_event", on_close)
 

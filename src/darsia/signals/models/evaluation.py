@@ -18,6 +18,10 @@ from typing import ClassVar
 import numpy as np
 
 import darsia
+from darsia.signals.models.pwtransformation import (
+    monotonicity_message,
+    monotonicity_violation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -305,16 +309,22 @@ class KernelSignalFunction:
         """Update the values at the key colors and refit the interpolation weights."""
         if supports is not None:
             raise ValueError("The key colors are defined by the color path.")
+        # Candidate values; stored only if they are valid. Only the values at the used
+        # key colors matter.
+        new_values = self.values
         if values is not None:
             if dofs is not None:
-                self.values[np.array(dofs)] = values
+                new_values = np.array(self.values, dtype=float)
+                new_values[np.array(dofs)] = values
             else:
-                self.values = np.array(values, dtype=float)
-        assert len(self.values) == len(
+                new_values = np.array(values, dtype=float)
+        assert len(new_values) == len(
             self.supports
-        ), f"wrong size: {len(self.values)} vs. {len(self.supports)}"
-        values_diff = np.diff(self.values)
-        assert np.all(values_diff > -1e-12), f"monotonicity broken {values_diff}"
+        ), f"wrong size: {len(new_values)} vs. {len(self.supports)}"
+        violation = monotonicity_violation(new_values, self.support_indices)
+        if violation is not None:
+            raise ValueError(monotonicity_message(new_values, violation))
+        self.values = new_values
 
         # Regularized kernel interpolation, i.e., (K + lambda I) w = values. The kernel
         # matrix is only set up once, later updates reuse it.
@@ -337,7 +347,8 @@ class KernelSignalFunction:
     def __call__(self, colors: np.ndarray) -> np.ndarray:
         """Evaluate the signal at colors of shape (..., 3)."""
         signal = self._interpolation(np.asarray(colors))
-        return np.clip(signal, np.min(self.values), np.max(self.values))
+        used_values = self.values[self.support_indices]
+        return np.clip(signal, np.min(used_values), np.max(used_values))
 
     def evaluate_on_path(self, t: float | np.ndarray) -> float | np.ndarray:
         """Evaluate the signal at the colors on the color path at parameters t."""

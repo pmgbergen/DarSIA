@@ -13,6 +13,43 @@ import darsia
 logger = logging.getLogger(__name__)
 
 
+def monotonicity_violation(
+    values: list | np.ndarray, used: list | np.ndarray | None = None
+) -> tuple[int, int] | None:
+    """First pair of consecutive (used) values which decreases.
+
+    Parameters
+    ----------
+    values : list or np.ndarray
+        Values.
+    used : list or np.ndarray, optional
+        Indices of the values which count; all by default.
+
+    Returns
+    -------
+    tuple[int, int] or None
+        Indices (i, j) of the first decrease values[j] < values[i], or None.
+
+    """
+    values = np.asarray(values, dtype=float)
+    indices = (
+        np.arange(len(values)) if used is None else np.asarray(sorted(used), dtype=int)
+    )
+    for i, j in zip(indices[:-1], indices[1:]):
+        if values[j] < values[i] - 1e-12:
+            return int(i), int(j)
+    return None
+
+
+def monotonicity_message(values: list | np.ndarray, pair: tuple[int, int]) -> str:
+    """Message for a decrease found by :func:`monotonicity_violation`."""
+    i, j = pair
+    return (
+        f"Values must not decrease: Value {j} ({values[j]:.2f}) < "
+        f"Value {i} ({values[i]:.2f})"
+    )
+
+
 class PWTransformation:
     """Transformation which cuts off values below 0 and ensures monotonicity."""
 
@@ -32,30 +69,36 @@ class PWTransformation:
         values: Optional[list | np.ndarray] = None,
         dofs: Optional[list | np.ndarray] = None,
     ) -> None:
-        # Update supports and values
+        # Candidate supports and values; stored only if they are valid
+        new_supports, new_values = self.supports, self.values
         if supports is not None:
             if dofs is not None:
-                self.supports[np.array(dofs)] = supports
+                new_supports = np.array(self.supports)
+                new_supports[np.array(dofs)] = supports
             else:
-                self.supports = supports
+                new_supports = supports
         if values is not None:
             if dofs is not None:
-                self.values[np.array(dofs)] = values
+                new_values = np.array(self.values)
+                new_values[np.array(dofs)] = values
             else:
-                self.values = values
+                new_values = values
 
         # Update interpolator
-        if self.supports is None or self.values is None:
+        if new_supports is None or new_values is None:
+            self.supports, self.values = new_supports, new_values
             warn("No supports or values provided. Interpolator not updated.")
         else:
             # Sanity checks
-            assert len(self.values) == len(
-                self.supports
-            ), f"wrong size: {len(values)} vs. {len(self.supports)}"
-            values_diff = np.diff(self.values)
-            assert np.all(values_diff > -1e-12), f"monotonicity broken {values_diff}"
+            assert len(new_values) == len(
+                new_supports
+            ), f"wrong size: {len(new_values)} vs. {len(new_supports)}"
+            violation = monotonicity_violation(new_values)
+            if violation is not None:
+                raise ValueError(monotonicity_message(new_values, violation))
 
             # Interpolator
+            self.supports, self.values = new_supports, new_values
             self.interpolator = self._build_interpolator()
 
     def _build_interpolator(self):
