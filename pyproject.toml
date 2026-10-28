@@ -73,6 +73,7 @@ darsia = "darsia.gui.__main__:main"
 
 [project.scripts]
 darsia-install-desktop = "darsia.gui.desktop_integration:main"
+darsia-reproduce = "darsia.fluidflower.published_dataset.reproduce_cli:main"
 
 # ── Optional dependencies (replaces extras_require in setup.py) ───────────────
 [project.optional-dependencies]

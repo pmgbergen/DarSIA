@@ -1,0 +1,25 @@
+# Keep the environment lock and new worker sources identical on every host.
+requirements-worker.lock text eol=lf
+src/darsia/fluidflower/__init__.py text eol=lf
+src/darsia/fluidflower/job_queue.py text eol=lf
+src/darsia/fluidflower/worker.py text eol=lf
+src/darsia/fluidflower/n1_*.py text eol=lf
+src/darsia/fluidflower/production_precision_adapter.py text eol=lf
+src/darsia/fluidflower/production_retained.py text eol=lf
+src/darsia/fluidflower/production_sandmap.py text eol=lf
+# This qualified numerical provider is retained byte for byte.
+src/darsia/fluidflower/mass_cuda.py -text
+scripts/enqueue_jobs.py text eol=lf
+scripts/aggregate_jobs.py text eol=lf
+tests/test_job_queue.py text eol=lf
+tests/test_n1_pipeline.py text eol=lf
+tests/test_fluidflower_lazy_import.py text eol=lf
+docs/shared_nas_worker.md text eol=lf
+
+# Preserve the exact pinned validation fixtures and moved numerical provider.
+tests/fixtures/n1_phase2_fixture.py -text
+tests/fixtures/n1_original_pipeline.py -text
+src/darsia/fluidflower/mass/mass_cuda.py -text
+tests/fixtures/storage_saved_products_default_oracle.py.fixture -text
+# The macOS launcher is a shell script.
+start_darsia.command text eol=lf
