@@ -1,0 +1,2 @@
+"""Optional reporting subpage factories."""
+
