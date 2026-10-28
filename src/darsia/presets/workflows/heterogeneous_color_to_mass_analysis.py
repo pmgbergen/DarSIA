@@ -160,6 +160,35 @@ class HeterogeneousColorToMassAnalysis:
         self.contour_smoother = contour_smoother
         """Optional contour smoother for better visualization of ROIs during calibration."""
 
+    def set_evaluation_mode(self, evaluation_mode: darsia.EvaluationMode) -> None:
+        """Switch the evaluation mode, keeping the values at the key colors.
+
+        Parameters
+        ----------
+        evaluation_mode : darsia.EvaluationMode
+            New mode; signal functions of all labels are created anew with it.
+
+        """
+        if evaluation_mode.to_dict() == self.evaluation_mode.to_dict():
+            return
+        logger.info(
+            "Switching the evaluation mode from '%s' to '%s', keeping the signal "
+            "values.",
+            self.evaluation_mode.type,
+            evaluation_mode.type,
+        )
+        model = self.signal_model.model[1]
+        for label in list(model.keys()):
+            interpretation = self.color_path_interpretation[label]
+            old = model[label]
+            model[label] = evaluation_mode.signal_function(
+                interpretation.color_path,
+                interpretation.color_mode,
+                old.supports,
+                old.values,
+            )
+        self.evaluation_mode = evaluation_mode
+
     @property
     def labels(self) -> darsia.Image:
         """Labels image - refer to attribute of color analysis."""
