@@ -1,0 +1,3 @@
+# Preserve exact source-bound metadata and protocol fixture bytes.
+*.json -text
+*.md -text

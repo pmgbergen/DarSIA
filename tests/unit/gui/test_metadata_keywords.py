@@ -19,6 +19,23 @@ from PySide6.QtWidgets import (
 from darsia.gui.ui.schema.dataclass_introspection import _build_fields
 from darsia.gui.ui.settings import SettingsFactory
 
+
+@pytest.mark.parametrize("extension", ["ARW", "NEF", "DNG"])
+def test_saved_camera_raw_format_is_shown_in_native_setup(extension, qtbot):
+    from darsia.presets.workflows.config.data import DataConfig
+
+    field_schema = next(
+        row for row in _build_fields(DataConfig, "data")
+        if row["key"] == "data.format"
+    )
+    window = MagicMock()
+    window.config_dict = {"data": {"format": extension}}
+    factory = SettingsFactory(window)
+    _, widget = factory.create_dropdown_input(field_schema)
+    qtbot.addWidget(widget)
+    assert widget.property("value_widget").currentText() == extension
+    assert DataConfig().format == "JPG"
+
 # ────────────────────────────────────────────────────────────────────────────────
 # Synthetic dataclass fixtures for metadata testing
 # ────────────────────────────────────────────────────────────────────────────────

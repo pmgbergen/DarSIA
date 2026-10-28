@@ -1,0 +1,326 @@
+{
+ "alignment": {
+  "border": "cv2.BORDER_CONSTANT",
+  "border_rgb": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "coverage_floor": 1e-06,
+  "homography_floor": 1e-09,
+  "homography_min_determinant": 1e-09,
+  "homography_min_scale": 1e-09,
+  "interpolation": "cv2.INTER_LINEAR",
+  "origin_translation_dtype": "float64",
+  "rgb_dtype": "float32",
+  "support_tolerance": 1e-06
+ },
+ "contract": {
+  "bright_version": "baseline-aware-bright-grain-v4",
+  "change_detectors": {
+   "none": "none",
+   "plain": "concentration-analysis-plain-background-difference-v1"
+  },
+  "change_feature_names": [
+   "delta_r",
+   "delta_g",
+   "delta_b",
+   "rgb_change_norm",
+   "local_rgb_change_mean",
+   "local_rgb_change_std",
+   "local_rgb_change_coherence",
+   "dynamic_delta_r",
+   "dynamic_delta_g",
+   "dynamic_delta_b",
+   "dynamic_rgb_change_norm",
+   "local_dynamic_rgb_change_mean"
+  ],
+  "chemistry_adapters": {
+   "btb-ratiometric-relative-v2": [
+    "delta_btb_acidification"
+   ],
+   "btb-ratiometric-v1": [
+    "btb_acidification",
+    "delta_btb_acidification"
+   ],
+   "none": []
+  },
+  "defaults": {
+   "change_detector": "concentration-analysis-plain-background-difference-v1",
+   "chemistry_adapter": "none",
+   "generic_version": "baseline-aware-bright-grain-v4",
+   "include_dynamic": true,
+   "input_color_space": "radiometrically-corrected-rgb-0-1",
+   "reference_adapter": "none",
+   "schema": 1
+  },
+  "input_color_space": "radiometrically-corrected-rgb-0-1",
+  "packed_versions": [
+   "baseline-relative-texture-dynamic-v3",
+   "baseline-aware-bright-grain-v4",
+   "baseline-relative-bright-grain-v5"
+  ],
+  "reference_adapters": {
+   "clearwater-projection-v1": [
+    "clearwater_reference_reliability",
+    "clearwater_projection",
+    "clearwater_orthogonal_distance",
+    "clearwater_alignment",
+    "clearwater_projection_score",
+    "clearwater_distance_from_baseline",
+    "clearwater_distance_to_endpoint",
+    "clearwater_texture_difference"
+   ],
+   "none": []
+  },
+  "relative_bright_version": "baseline-relative-bright-grain-v5",
+  "schema": 1,
+  "versions": {
+   "baseline-aware-bright-grain-v4": [
+    [
+     "delta_r",
+     "delta_g",
+     "delta_b",
+     "delta_intensity",
+     "delta_red_fraction",
+     "delta_green_fraction",
+     "delta_blue_fraction",
+     "delta_log_r_over_g",
+     "delta_log_g_over_b",
+     "delta_log_r_over_b",
+     "delta_texture_highpass",
+     "abs_delta_texture_highpass",
+     "rgb_change_norm",
+     "local_rgb_change_mean",
+     "local_rgb_change_std",
+     "local_rgb_change_coherence",
+     "baseline_intensity",
+     "baseline_signed_local_contrast",
+     "current_signed_local_contrast",
+     "delta_signed_local_contrast",
+     "persistent_bright_contrast",
+     "new_bright_contrast"
+    ],
+    [
+     "dynamic_available",
+     "dynamic_delta_r",
+     "dynamic_delta_g",
+     "dynamic_delta_b",
+     "dynamic_delta_intensity",
+     "dynamic_texture_delta",
+     "dynamic_rgb_change_norm",
+     "local_dynamic_rgb_change_mean"
+    ]
+   ],
+   "baseline-relative-bright-grain-v5": [
+    [
+     "delta_r",
+     "delta_g",
+     "delta_b",
+     "delta_intensity",
+     "delta_red_fraction",
+     "delta_green_fraction",
+     "delta_blue_fraction",
+     "delta_log_r_over_g",
+     "delta_log_g_over_b",
+     "delta_log_r_over_b",
+     "delta_texture_highpass",
+     "abs_delta_texture_highpass",
+     "rgb_change_norm",
+     "local_rgb_change_mean",
+     "local_rgb_change_std",
+     "local_rgb_change_coherence",
+     "baseline_intensity",
+     "baseline_signed_local_contrast",
+     "current_signed_local_contrast",
+     "delta_signed_local_contrast",
+     "persistent_bright_contrast",
+     "new_bright_contrast",
+     "baseline_relative_local_contrast",
+     "current_relative_local_contrast",
+     "delta_relative_local_contrast",
+     "persistent_relative_bright_contrast",
+     "new_relative_bright_contrast",
+     "relative_bright_contrast_agreement"
+    ],
+    [
+     "dynamic_available",
+     "dynamic_delta_r",
+     "dynamic_delta_g",
+     "dynamic_delta_b",
+     "dynamic_delta_intensity",
+     "dynamic_texture_delta",
+     "dynamic_rgb_change_norm",
+     "local_dynamic_rgb_change_mean"
+    ]
+   ],
+   "baseline-relative-texture-dynamic-v3": [
+    [
+     "delta_r",
+     "delta_g",
+     "delta_b",
+     "delta_intensity",
+     "delta_red_fraction",
+     "delta_green_fraction",
+     "delta_blue_fraction",
+     "delta_log_r_over_g",
+     "delta_log_g_over_b",
+     "delta_log_r_over_b",
+     "delta_texture_highpass",
+     "abs_delta_texture_highpass",
+     "rgb_change_norm",
+     "local_rgb_change_mean",
+     "local_rgb_change_std",
+     "local_rgb_change_coherence"
+    ],
+    [
+     "dynamic_available",
+     "dynamic_delta_r",
+     "dynamic_delta_g",
+     "dynamic_delta_b",
+     "dynamic_delta_intensity",
+     "dynamic_texture_delta",
+     "dynamic_rgb_change_norm",
+     "local_dynamic_rgb_change_mean"
+    ]
+   ],
+   "corrected-rgb-texture-dynamic-v1": [
+    [
+     "current_r",
+     "current_g",
+     "current_b",
+     "delta_r",
+     "delta_g",
+     "delta_b",
+     "current_intensity",
+     "delta_intensity",
+     "current_red_fraction",
+     "current_green_fraction",
+     "current_blue_fraction",
+     "delta_red_fraction",
+     "delta_green_fraction",
+     "delta_blue_fraction",
+     "log_r_over_g",
+     "log_g_over_b",
+     "log_r_over_b",
+     "delta_log_r_over_g",
+     "delta_log_g_over_b",
+     "delta_log_r_over_b",
+     "texture_highpass",
+     "delta_texture_highpass",
+     "rgb_change_norm"
+    ],
+    [
+     "dynamic_available",
+     "dynamic_delta_r",
+     "dynamic_delta_g",
+     "dynamic_delta_b",
+     "dynamic_delta_intensity",
+     "dynamic_texture_delta",
+     "dynamic_rgb_change_norm"
+    ]
+   ],
+   "corrected-rgb-texture-dynamic-v2": [
+    [
+     "current_r",
+     "current_g",
+     "current_b",
+     "delta_r",
+     "delta_g",
+     "delta_b",
+     "current_intensity",
+     "delta_intensity",
+     "current_red_fraction",
+     "current_green_fraction",
+     "current_blue_fraction",
+     "delta_red_fraction",
+     "delta_green_fraction",
+     "delta_blue_fraction",
+     "log_r_over_g",
+     "log_g_over_b",
+     "log_r_over_b",
+     "delta_log_r_over_g",
+     "delta_log_g_over_b",
+     "delta_log_r_over_b",
+     "texture_highpass",
+     "delta_texture_highpass",
+     "rgb_change_norm",
+     "local_rgb_change_mean",
+     "local_rgb_change_std",
+     "local_rgb_change_coherence"
+    ],
+    [
+     "dynamic_available",
+     "dynamic_delta_r",
+     "dynamic_delta_g",
+     "dynamic_delta_b",
+     "dynamic_delta_intensity",
+     "dynamic_texture_delta",
+     "dynamic_rgb_change_norm",
+     "local_dynamic_rgb_change_mean"
+    ]
+   ]
+  }
+ },
+ "flatfield": {
+  "alignment_h_key": "H_v5_B_to_frame_native",
+  "box_size": 5,
+  "denominator_dtype": "float32",
+  "denominator_floor": 1e-06,
+  "feature_count": 4,
+  "halo_rows": 2,
+  "luminance": [
+   0.2126,
+   0.7152,
+   0.0722
+  ],
+  "luminance_work_dtype": "float32",
+  "masked_border": "cv2.BORDER_CONSTANT",
+  "native_border": "cv2.BORDER_REFLECT_101",
+  "natural_matrix": [
+   [
+    0.00022422812891554153,
+    -5.6491789785883e-05,
+    7.379563203284224e-06
+   ],
+   [
+    -4.387919269217012e-05,
+    0.0001407937073266365,
+    -7.83856015712351e-05
+   ],
+   [
+    -2.6284823779787712e-05,
+    -3.1023545081590044e-05,
+    0.0005425952594693075
+   ]
+  ],
+  "natural_matrix_dtype": "float64",
+  "ordering": "calibrate original baseline before warp; native difference-of-logs path and masked ratio-then-log path remain distinct"
+ },
+ "native_decoder": {
+  "denominator": 65535,
+  "invalid_fill": 0,
+  "operation": "exp(float32 channel,out=float32), divide np.float32(denominator)"
+ },
+ "optical": {
+  "block_rows": 128,
+  "block_rows_native": 128,
+  "dynamic_available_column": true,
+  "dynamic_unavailable_columns": 7,
+  "fraction_epsilon": 0.0001,
+  "generic_contracts": "Exact source constant tables and original frozen head feature_contract; version identifiers are data",
+  "ratio_floor": 0.0001,
+  "relative_grain_floor": 0.05,
+  "relative_grain_max": 4,
+  "relative_grain_min": -1,
+  "review_denominator": 255,
+  "review_encoding": "review-uint8",
+  "spatial_context_fraction": 0.0015,
+  "texture_sigma": 2.0,
+  "unit_encoding": "v5-unit-float32"
+ },
+ "rig_decoder": {
+  "denominator": 65535.0,
+  "operation": "exp(maskedlog.astype(float64))/Pythonfloat denominator, assignment into float32"
+ }
+}

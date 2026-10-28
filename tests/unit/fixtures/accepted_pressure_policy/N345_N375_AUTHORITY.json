@@ -1,0 +1,14 @@
+[
+  {
+    "id": "decision-0345-pressure-short-gaps",
+    "utc": "2026-10-21T10:51:53Z",
+    "decided_by": "reviewer",
+    "answer": "Use the existing short-gap station-pressure means without changing measured values or quality flags."
+  },
+  {
+    "id": "decision-0375-other-series-steps",
+    "utc": "2026-10-21T15:38:33Z",
+    "decided_by": "reviewer",
+    "answer": "An unrelated recorded decision in the same answer file."
+  }
+]

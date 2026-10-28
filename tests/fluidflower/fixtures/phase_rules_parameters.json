@@ -1,0 +1,278 @@
+{
+  "nominal_pixel_area_mm2": 0.027053,
+  "nominal_mm_per_pixel": 0.16447796204963144,
+  "top": {
+    "band_mm": 60,
+    "band_pixels": 365,
+    "column_gate_mm": 30,
+    "column_gate_pixels": 182,
+    "connectivity": 8,
+    "component_structure_hw": [
+      3,
+      3
+    ],
+    "remaining_report_depth_mm": 90,
+    "source_rule": {
+      "order": [
+        "restore_flagged_floor_labels",
+        "remove_detached_top_components"
+      ],
+      "band_mm": 60,
+      "band_pixels": 365,
+      "column_gate_mm": 30,
+      "column_gate_pixels": 182,
+      "nominal_pixel_area_mm2": 0.027053,
+      "connectivity": 8,
+      "passes": 1,
+      "top_line": "first label !=255 per column",
+      "depth": "row minus own-column top line",
+      "component_removal": "touches acting-column band and nowhere deeper than band",
+      "deeper_component": "keep whole, including pixels in the band",
+      "bottom_edge_changed": false
+    }
+  },
+  "floor": {
+    "column_gate_mm": 30.0,
+    "column_gate_pixels": 182,
+    "floor_band_mm": 20.0,
+    "floor_band_pixels": 121,
+    "connectivity_disc_radius_mm": 1.5,
+    "connectivity_disc_radius_pixels": 9.119762801702109,
+    "connectivity": 8,
+    "component_structure_hw": [
+      3,
+      3
+    ],
+    "source_rule": {
+      "order": [
+        "A_sand_floor",
+        "B_floor_connectivity",
+        "C_floor_contact",
+        "D_gas_envelope"
+      ],
+      "nominal_pixel_area_mm2": 0.027053,
+      "nominal_mm_per_phase_pixel": 0.16447796204963144,
+      "metric": "fixed nominal AC28 raster; measured variable areas weight cm2 only",
+      "acting_columns": "abs(own last domain row - median last domain row) <= floor(30/MM)",
+      "column_gate_mm": 30.0,
+      "column_gate_pixels": 182,
+      "floor_band_mm": 20.0,
+      "floor_band_pixels": 121,
+      "floor_line": "last corrected rig-domain row in each column; unresolved labels do not shift it",
+      "floor_height": "own-column floor row minus pixel row",
+      "connectivity_disc_radius_mm": 1.5,
+      "connectivity_disc_radius_pixels": 9.119762801702109,
+      "connectivity": 8,
+      "group_attributes": "original CO2 pixels only, not dilated pixels",
+      "labels_dilated": false,
+      "short_fill_limit_mm": 1.5,
+      "short_fill_limit_pixels": 9,
+      "carryover_tolerance": "Chebyshev one pixel; one 3x3 square dilation with zero border",
+      "fill_reason_precedence": "a (short supported run), then b (fully inside tolerated carryover)",
+      "fill_time": "elapsed_h >0",
+      "fill_under_gas": false,
+      "injection_end_h": [
+        0.935,
+        2.389
+      ],
+      "envelope_selection": "P1-final gas after A, inclusive through first frame at/after each end",
+      "envelope_radius_mm": 5.0,
+      "envelope_radius_pixels": 30.39920933900703,
+      "distance_transform": "exact float64 Euclidean EDT; empty union has empty envelope",
+      "envelope_time": "strictly later frame index than the corresponding inclusive union frame",
+      "size_filter_reapplied": false,
+      "overlap_policy": "each final changed pixel belongs to exactly one step; unchanged stage restorations are reported",
+      "training": false,
+      "inference": false
+    }
+  },
+  "contact": {
+    "short_fill_limit_mm": 1.5,
+    "short_fill_limit_pixels": 9,
+    "carryover_structure_hw": [
+      3,
+      3
+    ],
+    "carryover_iterations": 1,
+    "carryover_border_value": 0,
+    "fill_after_elapsed_h": 0,
+    "source_final_contact_rule": {
+      "name": "drop_contact_fill_reason_b_v1",
+      "operation": "P1-final2 label 1 to 0 exactly on contact fill reason (b)",
+      "contact_fill_a_maximum_run_mm": 1.5,
+      "training": false,
+      "inference": false,
+      "backend": "cpu"
+    }
+  },
+  "envelopes": {
+    "radius_mm": 5.0,
+    "radius_pixels": 30.39920933900703,
+    "distance_dtype": "float64",
+    "injection_end_h": [
+      0.935,
+      2.389
+    ],
+    "inclusive_unions": true,
+    "apply_only_later_frame_index": true
+  },
+  "barrier": {
+    "connectivity": 4,
+    "maximum_component_id": 255,
+    "maximum_touch_table_entries": 32000000,
+    "diagnostic_pixel_area_mm2": 0.027053,
+    "rule_contract": "ffac-gas-barrier-rule-b-v1",
+    "frozen_spatial_contract": "ffac-frozen-rule-b-spatial-decision-v1"
+  },
+  "placement": {
+    "pixel_threshold": 0.7,
+    "regional_threshold": 0.6,
+    "minimum_area_mm2": 2.5,
+    "minimum_connectivity": 4,
+    "fraction_kernel_hw": [
+      51,
+      51
+    ],
+    "fraction_kernel_original_python_type": "tuple",
+    "fraction_dtype": "float32",
+    "pixel_logit_dtype": "float64",
+    "shifted_probability_dtype": "float32",
+    "base_probability_clip": [
+      1e-06,
+      0.999999
+    ],
+    "fraction_clip": [
+      0.01,
+      0.99
+    ],
+    "epoch_modes": {
+      "bypass": "rig_light",
+      "evaluate": "new_lamps"
+    },
+    "placement_modes": {
+      "regional_base": "P1",
+      "constrained_neighbourhood": "P2",
+      "regional_joint_epoch": "P3"
+    },
+    "source_contract": "ffac-g3-t4c-frozen-logit-placements-v1",
+    "base_pixel_model_sha256": "90f1d4608506273974e4cc758573f4c6467a823243abdaa02ef214b7286c9692",
+    "base_regional_model_sha256": "d33b3eea47392268d3ddebe2d9e9c695bfc640eb6e252d83670a3eaf3e7428be"
+  },
+  "units": {
+    "area_mm2_per_cm2": 100,
+    "area_mm2_per_cm2_float_literal": 100.0
+  },
+  "categories": {
+    "water": 0,
+    "aqueous": 1,
+    "gas": 2,
+    "unresolved": 255
+  },
+  "literal_values": {
+    "top_mask_int_255": 255,
+    "top_mask_structure_hw": [
+      3,
+      3
+    ],
+    "top_mask_int_8": 8,
+    "apply_top_rule_default_backend": "auto",
+    "apply_top_rule_int_255": 255,
+    "apply_top_rule_int_1000": 1000,
+    "apply_top_rule_structure_hw": [
+      3,
+      3
+    ],
+    "apply_top_rule_int_8": 8,
+    "apply_top_rule_int_100": 100,
+    "apply_top_rule_int_90": 90,
+    "floor_labels_int_255": 255,
+    "label_structure_hw": [
+      3,
+      3
+    ],
+    "label_int_8": 8,
+    "apply_floor_boundary_int_255": 255,
+    "envelopes_core_float_5_0": 5.0,
+    "build_envelopes_default_backend": "auto",
+    "build_envelopes_float_1000_0": 1000.0,
+    "build_envelopes_float_5_0": 5.0,
+    "floor_core_int_255": 255,
+    "floor_core_float_1_5": 1.5,
+    "floor_core_structure_hw": [
+      3,
+      3
+    ],
+    "apply_floor_round_default_backend": "auto",
+    "apply_floor_round_float_1000_0": 1000.0,
+    "apply_floor_round_int_4": 4,
+    "apply_floor_round_int_8": 8,
+    "apply_floor_round_float_100_0": 100.0,
+    "apply_floor_round_int_255": 255,
+    "remove_contact_fill_b_int_255": 255,
+    "validate_components_int_255": 255,
+    "apply_barrier_rule_b_int_255": 255,
+    "apply_barrier_rule_b_int_4": 4,
+    "apply_barrier_rule_b_int_32000000": 32000000,
+    "apply_barrier_rule_b_float_100_0": 100.0,
+    "frozen_rule_b_forbidden_mask_int_255": 255,
+    "frozen_rule_b_forbidden_mask_metadata_9c7fee89": "ffac-frozen-rule-b-spatial-decision-v1",
+    "placement_labels_int_255": 255,
+    "cached_fraction_float_1eminus_06": 1e-06,
+    "cached_fraction_float_0_01": 0.01,
+    "cached_fraction_float_0_99": 0.99,
+    "prepare_p2_allowed_int_4": 4,
+    "minimum_additions_int_4": 4,
+    "evaluate_placement_float_0_01": 0.01,
+    "evaluate_placement_float_0_99": 0.99,
+    "evaluate_placement_float_1eminus_06": 1e-06,
+    "replace_gas_from_scores_int_255": 255,
+    "replace_gas_from_scores_float_0_7": 0.7,
+    "replace_gas_from_scores_float_0_6": 0.6,
+    "replace_gas_from_scores_float_2_5": 2.5,
+    "replace_gas_from_scores_int_4": 4
+  },
+  "source_contracts": {
+    "prepare_p2_allowed": "ffac-g3-t4c-frozen-logit-placements-v1",
+    "evaluate_placement": "ffac-g3-t4c-frozen-logit-placements-v1",
+    "replace_gas_from_scores": "ffac-g3-t2-source-exact-regional-inputs-v1"
+  },
+  "centre_selection": {
+    "pixel_threshold": 0.7,
+    "regional_threshold": 0.6
+  },
+  "gas_configuration": {
+    "format": "ffac-approved-g3-frozen-co2-partition-v1",
+    "allowed_pixel_thresholds": [
+      0.5,
+      0.6,
+      0.7
+    ],
+    "allowed_regional_modes": [
+      "frozen",
+      "refit",
+      "off"
+    ],
+    "disabled_regional_mode": "off",
+    "regional_threshold": 0.6,
+    "allowed_minimum_area_mm2": [
+      0.0,
+      1.0,
+      2.5
+    ],
+    "connectivity": 4,
+    "unresolved_category": 255,
+    "selected_settings": {
+      "format": "ffac-approved-g3-frozen-co2-partition-v1",
+      "pixel_threshold": 0.7,
+      "regional_mode": "refit",
+      "regional_threshold": 0.6,
+      "minimum_area_mm2": 2.5,
+      "connectivity": 4
+    }
+  },
+  "native_partition": {
+    "presence_threshold": 0.5,
+    "conditional_gas_threshold": 0.6,
+    "unresolved_category": 255
+  }
+}

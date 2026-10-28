@@ -1,0 +1,810 @@
+{
+  "format": "darsia-running-gfi-pressure-index-v1",
+  "utc": "2026-10-20T23:45:43.082118+00:00",
+  "source_manifest": {
+    "path": "C:\\Users\\user\\Documents\\project\\gfi_source_manifest_20261021\\GFI_SOURCE_MANIFEST.json",
+    "sha256": "c3b8040c2ae6090b4c8f33eb7bb507abef3ed3170b5055836d0f39ad02cc0ad2",
+    "size_bytes": 540870
+  },
+  "data_builder": {
+    "path": "C:\\FFAC_cache\\validation\\n243_data_tools_20261021_v1\\source\\src\\darsia\\fluidflower\\round5_pressure.py",
+    "sha256": "a947fb612447fd6c8aa141340fe60dbaf100a0b5b8395235fe6eaae25d947382",
+    "size_bytes": 10484
+  },
+  "runs": {
+    "FF_AC": {
+      "ac17": {
+        "run": "ac17",
+        "complete": true,
+        "row_count": 829,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac17\\atmosphere_series.json",
+          "sha256": "f540a40f751d8aedcf9c443ddc69a89b506c360b3e85c9d17969f3eece816337",
+          "size_bytes": 569809
+        },
+        "adopted": false
+      },
+      "ac18": {
+        "run": "ac18",
+        "complete": true,
+        "row_count": 706,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac18\\atmosphere_series.json",
+          "sha256": "db6ed40eab876782dbb9e15283c1bf4e544678e969ae977c8b74c51233a0adc1",
+          "size_bytes": 486016
+        },
+        "adopted": false
+      },
+      "ac19": {
+        "run": "ac19",
+        "complete": true,
+        "row_count": 881,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac19\\atmosphere_series.json",
+          "sha256": "3e90a3eff90d8c05b2fa3c7faaace8c3fd6c09c7a728088c5f0e7351557602bc",
+          "size_bytes": 605602
+        },
+        "adopted": false
+      },
+      "ac20": {
+        "run": "ac20",
+        "complete": true,
+        "row_count": 708,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac20\\atmosphere_series.json",
+          "sha256": "328c8a276da66784bff26f88f8eee67fa561276958465f0eb171a6ec2f04f370",
+          "size_bytes": 486670
+        },
+        "adopted": false
+      },
+      "ac21": {
+        "run": "ac21",
+        "complete": true,
+        "row_count": 835,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac21\\atmosphere_series.json",
+          "sha256": "a320ae2a56e097a097afe561ae5f76e52fb2d6ab3619bf10fd40824131d9937c",
+          "size_bytes": 572439
+        },
+        "adopted": false
+      },
+      "ac22": {
+        "run": "ac22",
+        "complete": true,
+        "row_count": 2221,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac22\\atmosphere_series.json",
+          "sha256": "9366f5fa7d3f5f28757efc7f8bc1cc91410a8b62a37a2f8d13c4620d388e76c4",
+          "size_bytes": 1515287
+        },
+        "adopted": false
+      },
+      "ac23": {
+        "run": "ac23",
+        "complete": true,
+        "row_count": 143,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac23\\atmosphere_series.json",
+          "sha256": "379ef08cf1bc48b4ee0d0473734603f43fca4d17cb2a0e761e4c4109865d4a4a",
+          "size_bytes": 102636
+        },
+        "adopted": false
+      },
+      "ac24": {
+        "run": "ac24",
+        "complete": true,
+        "row_count": 292,
+        "provisional_gap_default": true,
+        "gaps": [
+          {
+            "first_utc": "2023-01-12T10:30:00+00:00",
+            "last_utc": "2023-01-12T10:40:00+00:00",
+            "missing_stamp_count": 2,
+            "filled_count": 2,
+            "resolved_provisionally": true
+          }
+        ],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac24\\atmosphere_series.json",
+          "sha256": "7655d300f76dcc2e8f255d4df4640d6d12c27391d608aa6be8e70a7336703378",
+          "size_bytes": 207135
+        },
+        "adopted": false
+      },
+      "ac25": {
+        "run": "ac25",
+        "complete": true,
+        "row_count": 739,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac25\\atmosphere_series.json",
+          "sha256": "aef05ed4c4210fe87f2091bf0386cefba591931ee511d33ab5548dfbfb82b6fa",
+          "size_bytes": 505828
+        },
+        "adopted": false
+      },
+      "ac26": {
+        "run": "ac26",
+        "complete": true,
+        "row_count": 290,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac26\\atmosphere_series.json",
+          "sha256": "73b962794d15b9578cf39575edef673e1637b5546f43685b80747a07556a0901",
+          "size_bytes": 202005
+        },
+        "adopted": false
+      },
+      "ac27": {
+        "run": "ac27",
+        "complete": true,
+        "row_count": 438,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac27\\atmosphere_series.json",
+          "sha256": "2250814d6566716ce13ecdd35948bd2dde29d557087e3164310d08725099480c",
+          "size_bytes": 302589
+        },
+        "adopted": false
+      },
+      "ac28": {
+        "run": "ac28",
+        "complete": true,
+        "row_count": 293,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac28\\atmosphere_series.json",
+          "sha256": "23b5df189b4d48127d965d41cdda139cf2ee99e9ef7fd715eb25d5a46dea333c",
+          "size_bytes": 204107
+        },
+        "adopted": false
+      },
+      "ac29": {
+        "run": "ac29",
+        "complete": true,
+        "row_count": 139,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac29\\atmosphere_series.json",
+          "sha256": "ef2c8f451474c5915adf0da72e2915c0a9335ef7fed29d3115e3039c47e779f4",
+          "size_bytes": 99494
+        },
+        "adopted": false
+      },
+      "ac30": {
+        "run": "ac30",
+        "complete": true,
+        "row_count": 137,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac30\\atmosphere_series.json",
+          "sha256": "8cb5c78ab3d1fc3c2ea68feef0e0ea4d34a3d209454bf19d15d71fda0955bd8f",
+          "size_bytes": 98098
+        },
+        "adopted": false
+      },
+      "ac31": {
+        "run": "ac31",
+        "complete": true,
+        "row_count": 556,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac31\\atmosphere_series.json",
+          "sha256": "d02fdca7c5b37c86c8f8123028e7d4744df95de38f8510529bfc9ba4216135c1",
+          "size_bytes": 383799
+        },
+        "adopted": false
+      },
+      "ac32": {
+        "run": "ac32",
+        "complete": true,
+        "row_count": 300,
+        "provisional_gap_default": true,
+        "gaps": [
+          {
+            "first_utc": "2023-02-16T10:30:00+00:00",
+            "last_utc": "2023-02-16T10:40:00+00:00",
+            "missing_stamp_count": 2,
+            "filled_count": 2,
+            "resolved_provisionally": true
+          }
+        ],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac32\\atmosphere_series.json",
+          "sha256": "5cfb9bd2bca80cf9b6149c45cc917e1785017b7828ccb7056dd35643ab16c5d7",
+          "size_bytes": 206227
+        },
+        "adopted": false
+      },
+      "ac33": {
+        "run": "ac33",
+        "complete": true,
+        "row_count": 401,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac33\\atmosphere_series.json",
+          "sha256": "a73aee4c80feaace644624f87b47447e49ca522241389418e3f5dace845774eb",
+          "size_bytes": 277734
+        },
+        "adopted": false
+      },
+      "ac34": {
+        "run": "ac34",
+        "complete": true,
+        "row_count": 319,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac34\\atmosphere_series.json",
+          "sha256": "bdf6d34e661118bc61d9f72f7631bbea7ad132ade3800205b99f27e31e2807a0",
+          "size_bytes": 222088
+        },
+        "adopted": false
+      },
+      "ac35": {
+        "run": "ac35",
+        "complete": true,
+        "row_count": 406,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac35\\atmosphere_series.json",
+          "sha256": "5d15e3e5fd33ae8a3e05fc8d37647c0b642ce6424a32f9aae2f3fc3957184c18",
+          "size_bytes": 281282
+        },
+        "adopted": false
+      },
+      "ac38": {
+        "run": "ac38",
+        "complete": true,
+        "row_count": 417,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac38\\atmosphere_series.json",
+          "sha256": "601434d0efd4fcc77fcf4be0da5c9812758b1e47c1e73d3bc7d64969ab8c9b6f",
+          "size_bytes": 287618
+        },
+        "adopted": false
+      },
+      "ac39": {
+        "run": "ac39",
+        "complete": true,
+        "row_count": 697,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac39\\atmosphere_series.json",
+          "sha256": "333692523ba0864d431951a50a6a856483dc93a8d192bbf68fca2f83f829ab29",
+          "size_bytes": 479448
+        },
+        "adopted": false
+      },
+      "ac40": {
+        "run": "ac40",
+        "complete": true,
+        "row_count": 875,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac40\\atmosphere_series.json",
+          "sha256": "e477b0a663e3337c7de2169141fd190f8e9d804b9e1cc61a9137d9da4c062971",
+          "size_bytes": 599157
+        },
+        "adopted": false
+      },
+      "ac41": {
+        "run": "ac41",
+        "complete": true,
+        "row_count": 276,
+        "provisional_gap_default": true,
+        "gaps": [
+          {
+            "first_utc": "2023-03-29T06:50:00+00:00",
+            "last_utc": "2023-03-29T06:50:00+00:00",
+            "missing_stamp_count": 1,
+            "filled_count": 1,
+            "resolved_provisionally": true
+          }
+        ],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac41\\atmosphere_series.json",
+          "sha256": "11aa5a3be084308e0f83179e7672dc492acc3328d2083075f2522f58fa0ee538",
+          "size_bytes": 195482
+        },
+        "adopted": false
+      },
+      "ac42": {
+        "run": "ac42",
+        "complete": true,
+        "row_count": 1023,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac42\\atmosphere_series.json",
+          "sha256": "4451aadab2a06799e19b96ad64ba6bf03402d6cef47f03c91904ba123ba38dcf",
+          "size_bytes": 700636
+        },
+        "adopted": false
+      },
+      "ac43": {
+        "run": "ac43",
+        "complete": true,
+        "row_count": 719,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac43\\atmosphere_series.json",
+          "sha256": "78593c4b3dff7b22ea5688d59a3c8805f2fe6c2b9a1eac23d1cd0f06023f364e",
+          "size_bytes": 493554
+        },
+        "adopted": false
+      },
+      "ac44": {
+        "run": "ac44",
+        "complete": true,
+        "row_count": 267,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac44\\atmosphere_series.json",
+          "sha256": "154f0e3fffd939a93e3652be865ac7147846af74bf769a9cc5779401e8274545",
+          "size_bytes": 186643
+        },
+        "adopted": false
+      },
+      "ac45": {
+        "run": "ac45",
+        "complete": true,
+        "row_count": 279,
+        "provisional_gap_default": true,
+        "gaps": [
+          {
+            "first_utc": "2023-04-22T11:00:00+00:00",
+            "last_utc": "2023-04-22T11:00:00+00:00",
+            "missing_stamp_count": 1,
+            "filled_count": 1,
+            "resolved_provisionally": true
+          },
+          {
+            "first_utc": "2023-04-22T13:00:00+00:00",
+            "last_utc": "2023-04-22T13:00:00+00:00",
+            "missing_stamp_count": 1,
+            "filled_count": 1,
+            "resolved_provisionally": true
+          }
+        ],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac45\\atmosphere_series.json",
+          "sha256": "acdbd5ae770146f5d8e6b22b1e7dd1231fda42e530818317f0390cbee92006e4",
+          "size_bytes": 199251
+        },
+        "adopted": false
+      },
+      "ac46": {
+        "run": "ac46",
+        "complete": true,
+        "row_count": 292,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac46\\atmosphere_series.json",
+          "sha256": "9c12873394a019d0cbbc3fa62df4608490b7404a7b9ea691bdf463f481ef7a2b",
+          "size_bytes": 203902
+        },
+        "adopted": false
+      },
+      "ac47": {
+        "run": "ac47",
+        "complete": true,
+        "row_count": 429,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac47\\atmosphere_series.json",
+          "sha256": "381a60057eca521bf21d919a4a86c64628367daf145a7c7ca85bd23275a5d038",
+          "size_bytes": 297836
+        },
+        "adopted": false
+      },
+      "ac48": {
+        "run": "ac48",
+        "complete": true,
+        "row_count": 292,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac48\\atmosphere_series.json",
+          "sha256": "b89b4b0aeb6a58f92bfb80e862cab0272d319ffed6f6c26daa58959de4c0cc5f",
+          "size_bytes": 203968
+        },
+        "adopted": false
+      },
+      "ac49": {
+        "run": "ac49",
+        "complete": true,
+        "row_count": 423,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac49\\atmosphere_series.json",
+          "sha256": "ba7c0466f03464e7b5b59bc757e55b5c47dc24cab4f95241daed2723463d90d5",
+          "size_bytes": 293470
+        },
+        "adopted": false
+      },
+      "ac50": {
+        "run": "ac50",
+        "complete": true,
+        "row_count": 268,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac50\\atmosphere_series.json",
+          "sha256": "35f36a8f837657b52f86960581ebd654ed571458cabef4035774ca4672575dad",
+          "size_bytes": 187601
+        },
+        "adopted": false
+      },
+      "ac51": {
+        "run": "ac51",
+        "complete": true,
+        "row_count": 432,
+        "provisional_gap_default": true,
+        "gaps": [
+          {
+            "first_utc": "2023-05-12T10:40:00+00:00",
+            "last_utc": "2023-05-12T10:40:00+00:00",
+            "missing_stamp_count": 1,
+            "filled_count": 1,
+            "resolved_provisionally": true
+          },
+          {
+            "first_utc": "2023-05-12T20:20:00+00:00",
+            "last_utc": "2023-05-12T20:20:00+00:00",
+            "missing_stamp_count": 1,
+            "filled_count": 1,
+            "resolved_provisionally": true
+          },
+          {
+            "first_utc": "2023-05-13T02:20:00+00:00",
+            "last_utc": "2023-05-13T02:20:00+00:00",
+            "missing_stamp_count": 1,
+            "filled_count": 1,
+            "resolved_provisionally": true
+          }
+        ],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac51\\atmosphere_series.json",
+          "sha256": "c9c57598f7e1e3908b40db4865df575a29a1bf7fead1622eee555ace464c9a57",
+          "size_bytes": 306916
+        },
+        "adopted": false
+      },
+      "ac52": {
+        "run": "ac52",
+        "complete": true,
+        "row_count": 886,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac52\\atmosphere_series.json",
+          "sha256": "ea7a7fbe9a480cecb4cf8d0e37df82e10ceebe1f1aa7159c5a315be0e6aa98b3",
+          "size_bytes": 607194
+        },
+        "adopted": false
+      },
+      "ac53": {
+        "run": "ac53",
+        "complete": true,
+        "row_count": 292,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac53\\atmosphere_series.json",
+          "sha256": "efd7e25de855f824abc2884015560c32cf7e4390f6fbe0e0350d930fe80c264e",
+          "size_bytes": 203916
+        },
+        "adopted": false
+      },
+      "ac54": {
+        "run": "ac54",
+        "complete": true,
+        "row_count": 319,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac54\\atmosphere_series.json",
+          "sha256": "a82bb19c7bf417bd4feaa4cb9260670805fb45478858fe00722c44c19282580a",
+          "size_bytes": 221671
+        },
+        "adopted": false
+      },
+      "ac55": {
+        "run": "ac55",
+        "complete": true,
+        "row_count": 292,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac55\\atmosphere_series.json",
+          "sha256": "f7871513468a18c23b1e46531ebfe7332587e508201d01e13b8f2c8a000e5384",
+          "size_bytes": 204062
+        },
+        "adopted": false
+      },
+      "ac56": {
+        "run": "ac56",
+        "complete": true,
+        "row_count": 428,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac56\\atmosphere_series.json",
+          "sha256": "7da7a8f9f89b16ca7455bf1cae4dbcd01024851f19b2d3c7e7d0699982af30f5",
+          "size_bytes": 296879
+        },
+        "adopted": false
+      },
+      "ac57": {
+        "run": "ac57",
+        "complete": true,
+        "row_count": 294,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac57\\atmosphere_series.json",
+          "sha256": "37986b1bf73b1b020c3b8df9303129950e898ab6832de12c602c7556072494a8",
+          "size_bytes": 204542
+        },
+        "adopted": false
+      },
+      "ac58": {
+        "run": "ac58",
+        "complete": true,
+        "row_count": 431,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac58\\atmosphere_series.json",
+          "sha256": "af1a53180a04b22e7ebdb11ff8477b14d6e843ffe61bf8e6c8b16a3720ae12a8",
+          "size_bytes": 298831
+        },
+        "adopted": false
+      },
+      "ac59": {
+        "run": "ac59",
+        "complete": true,
+        "row_count": 292,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac59\\atmosphere_series.json",
+          "sha256": "625924da49a468cb12f60321e856373414d8872779c40516cbf3434ebb093f37",
+          "size_bytes": 203855
+        },
+        "adopted": false
+      },
+      "ac60": {
+        "run": "ac60",
+        "complete": true,
+        "row_count": 430,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac60\\atmosphere_series.json",
+          "sha256": "b781f104a031c9cb007929d34d2c66d56cff6d1826e42efa41c4fc01e2476ded",
+          "size_bytes": 298166
+        },
+        "adopted": false
+      },
+      "ac61": {
+        "run": "ac61",
+        "complete": true,
+        "row_count": 3180,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_AC\\ac61\\atmosphere_series.json",
+          "sha256": "b47daa9dc17f13df23a0a57574e979a561c3a4a3ef209d320d14a2b1fe03264d",
+          "size_bytes": 2167801
+        },
+        "adopted": false
+      }
+    },
+    "FF_RE": {
+      "e0": {
+        "run": "e0",
+        "complete": false,
+        "row_count": 0,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_RE\\e0\\atmosphere_series.json",
+          "sha256": "1fe57c108343bfd75bf5d698cc40657bf215b3816599b10356ab99ea700905bf",
+          "size_bytes": 477
+        },
+        "adopted": false
+      },
+      "e1": {
+        "run": "e1",
+        "complete": false,
+        "row_count": 0,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_RE\\e1\\atmosphere_series.json",
+          "sha256": "de701f88f2725d7f0ada1b6f7b3c0d310c07529cd8bd61b707c84abd613a36f1",
+          "size_bytes": 477
+        },
+        "adopted": false
+      },
+      "e2": {
+        "run": "e2",
+        "complete": false,
+        "row_count": 0,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_RE\\e2\\atmosphere_series.json",
+          "sha256": "b06b418ba9877e04387546e1348f3022a24561129caaa9a9cf73d43e423b40d3",
+          "size_bytes": 477
+        },
+        "adopted": false
+      },
+      "g1": {
+        "run": "g1",
+        "complete": false,
+        "row_count": 0,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_RE\\g1\\atmosphere_series.json",
+          "sha256": "df4eb902b834b72c3849d0902ce23eac16fed7d6db52dbf76c11a4843f5ba1b0",
+          "size_bytes": 477
+        },
+        "adopted": false
+      },
+      "g2": {
+        "run": "g2",
+        "complete": false,
+        "row_count": 0,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_RE\\g2\\atmosphere_series.json",
+          "sha256": "dcfe7d6727284df53e10db161669ac958a2dc58e77410a1324c560390f1e3453",
+          "size_bytes": 477
+        },
+        "adopted": false
+      },
+      "g3": {
+        "run": "g3",
+        "complete": false,
+        "row_count": 0,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_RE\\g3\\atmosphere_series.json",
+          "sha256": "4a574c4aa875fa5a11ea8ac95259afa749a1e6b00af5735b906b513560a212ed",
+          "size_bytes": 477
+        },
+        "adopted": false
+      }
+    },
+    "FF_BM": {
+      "c1": {
+        "run": "c1",
+        "complete": true,
+        "row_count": 776,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_BM\\c1\\atmosphere_series.json",
+          "sha256": "4e715dbb415119c7b4b0678aa716f4be0aa1c9495810bdadb69cec8d04475ab7",
+          "size_bytes": 527380
+        },
+        "adopted": false
+      },
+      "c2": {
+        "run": "c2",
+        "complete": true,
+        "row_count": 735,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_BM\\c2\\atmosphere_series.json",
+          "sha256": "53e65b24e8fec05e03e5aa566e8c5746771df981b982606386301a59fac71d1f",
+          "size_bytes": 499656
+        },
+        "adopted": false
+      },
+      "c3": {
+        "run": "c3",
+        "complete": false,
+        "row_count": 705,
+        "provisional_gap_default": false,
+        "gaps": [
+          {
+            "first_utc": "2021-12-14T22:30:00+00:00",
+            "last_utc": "2021-12-15T08:10:00+00:00",
+            "missing_stamp_count": 59,
+            "filled_count": 0,
+            "resolved_provisionally": false
+          },
+          {
+            "first_utc": "2021-12-18T15:10:00+00:00",
+            "last_utc": "2021-12-18T15:10:00+00:00",
+            "missing_stamp_count": 1,
+            "filled_count": 0,
+            "resolved_provisionally": false
+          }
+        ],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_BM\\c3\\atmosphere_series.json",
+          "sha256": "00ab1ad76d76352a05ef47f9a5a12deafbc40366e5f792ab705874dd47c6c70f",
+          "size_bytes": 479944
+        },
+        "adopted": false
+      },
+      "c4": {
+        "run": "c4",
+        "complete": true,
+        "row_count": 892,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_BM\\c4\\atmosphere_series.json",
+          "sha256": "ae96aba7f4d6f6dd4943f58d22d63880ae823f834bac40b46975782bc3f7dd0d",
+          "size_bytes": 605969
+        },
+        "adopted": false
+      },
+      "c5": {
+        "run": "c5",
+        "complete": true,
+        "row_count": 791,
+        "provisional_gap_default": false,
+        "gaps": [],
+        "atmosphere_series": {
+          "path": "C:\\FFAC_cache\\validation\\n274_running_gfi_20261021_v1\\FF_BM\\c5\\atmosphere_series.json",
+          "sha256": "65a2cc35730fd5d9c0c110f3f5739659703a7b7c3d12fba294be217fd01b91b4",
+          "size_bytes": 536036
+        },
+        "adopted": false
+      }
+    }
+  },
+  "adopted": false,
+  "production_start": false,
+  "refit": false,
+  "needs_decision": [
+    "FF_RE2026 GFI export download",
+    "BM c3 outage bridge",
+    "AC provisional short-gap default",
+    "AC23/AC43 camera dates"
+  ],
+  "complete": false
+}
