@@ -504,7 +504,7 @@ def signal_curve(
 
     Parameters
     ----------
-    signal_function
+    signal_function : PWTransformation or KernelSignalFunction
         Signal function of a label, see :class:`EvaluationMode`.
     num_fine_segments : int
         Number of fine segments per segment between two key colors.
