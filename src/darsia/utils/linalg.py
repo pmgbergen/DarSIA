@@ -24,10 +24,10 @@ class CG:
         self.scipy_options = scipy_options
 
     def solve(self, b: np.ndarray, **kwargs) -> np.ndarray:
-        if len(kwargs) > 0:
-            options = kwargs
-        else:
-            options = self.scipy_options
+        # Merge setup-time options with per-call kwargs so callers can pass
+        # ``x0=`` (or any other per-call override) without losing the
+        # preconditioner / tolerance / maxiter set up at construction.
+        options = {**self.scipy_options, **kwargs}
         return cg(self.A, b, **options)[0]
 
 
@@ -237,7 +237,8 @@ try:
                 Solution of the linear system
             """
             # check if x0 is provided as kwargs
-            if "x0" in kwargs:
+            # if the solver is not "preonly", otherwise petsc does not accept an initial guess
+            if "x0" in kwargs and not (self.ksp.getType() == "preonly"): 
                 x0 = kwargs["x0"]
                 self.ksp.setInitialGuessNonzero(True)
                 if isinstance(x0, np.ndarray):

@@ -38,10 +38,17 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
 
         self.weight = weight
         """Optional[darsia.Image]: weight"""
-        if weight is not None:
+        # Gprox solves the unweighted Beckmann problem. A weight is therefore only
+        # admissible if it is the uniform unit weight (equivalent to no weight), in
+        # any of the formats accepted by the other solvers: None, a scalar field of
+        # shape (rows, cols), or a diagonal tensor field of shape (rows, cols, dim).
+        if not self._is_unit_weight(weight):
             raise NotImplementedError(
-                "Weighted Gprox not implemented for anisotropic meshes"
+                "Weighted Gprox is not implemented: only a uniform unit weight "
+                "(equal to 1.0 everywhere) is supported."
             )
+        # Normalize the trivial weight to the unweighted path.
+        self.weight = None
 
         # Cache solver options
         self.options = options
@@ -56,9 +63,55 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         self.norm_mode = self.options.get("norm_mode", "l2")
         """str: mode for computing the norm: l2 or manhattan"""
 
+        # ``update_kantorovich_potential`` controls whether the Kantorovich
+        # potential is refreshed inside the PDHG loop by re-solving the
+        # transport-density-weighted Poisson problem. Supported modes:
+        #   "none"     : never update (default; matches the historical loop).
+        #   "adaptive" : update only when the relative residual of the current
+        #                potential against the current weighted Laplacian
+        #                exceeds ``update_kantorovich_potential_tol`` (default
+        #                1e-1).
+        #   "all"      : update at every iteration.
+        # The wall-clock time spent on these updates is collected in the
+        # convergence history under ``time_kantorovich_potential`` and is
+        # intentionally excluded from the run-time totals.
+        self.update_kantorovich_potential_mode = self.options.get(
+            "update_kantorovich_potential", "none"
+        )
+        assert self.update_kantorovich_potential_mode in (
+            "none",
+            "adaptive",
+            "all",
+        ), (
+            "update_kantorovich_potential must be one of 'none', 'adaptive', 'all';"
+            f" got {self.update_kantorovich_potential_mode!r}"
+        )
+        self.update_kantorovich_potential_tol = self.options.get(
+            "update_kantorovich_potential_tol", 1e-1
+        )
+
         self._setup_variables()
         self._setup_l1_quadrature()
         self._setup_discretization()
+
+    @staticmethod
+    def _is_unit_weight(weight: Optional[darsia.Image]) -> bool:
+        """Check whether a weight is the trivial uniform unit weight.
+
+        Accepts the formats used by the other solvers: None, a scalar field
+        (rows, cols), or a (diagonal) tensor field (rows, cols, dim).
+
+        Args:
+            weight (Optional[darsia.Image]): weight to inspect.
+
+        Returns:
+            bool: True if the weight is equal to 1.0 everywhere (or None).
+
+        """
+        if weight is None:
+            return True
+        arr = np.asarray(weight.img, dtype=float)
+        return bool(np.allclose(arr, 1.0))
 
     def _setup_variables(self) -> None:
         # Allocate space for main and auxiliary variables
@@ -119,10 +172,22 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         """sps.csc_matrix: inverse of the (diagonal) of mass matrix on faces:"""
         """flat fluxes -> flat fluxes"""
 
-        linear_solver_options = self.options.get("linear_solver_options", {})
-        rtol = linear_solver_options.get("rtol", 1e-6)
-        self.Poisson_solver = self.setup_poisson_solver("pure_poisson", rtol=rtol)
-        """ sps.linalg.KSP: Poisson solver"""
+        # Read the gprox-specific Poisson solver options. Note that gprox uses
+        # ``poisson_solver``/``poisson_solver_options`` for the unweighted
+        # Poisson solved every PDHG iteration, and ``tdens_poisson_solver``
+        # for the transport-density-weighted Poisson (used inside
+        # :meth:`compute_kantorovich_potential`).
+        poisson_solver_type = self.options.get("poisson_solver", "cg")
+        poisson_solver_options = self.options.get("poisson_solver_options", {})
+        rtol = poisson_solver_options.get("rtol", 1e-6)
+        maxiter = poisson_solver_options.get("maxiter", 100)
+        self.Poisson_solver = self.setup_poisson_solver(
+            "pure_poisson",
+            linear_solver_type=poisson_solver_type,
+            linear_solver_rtol=rtol,
+            linear_solver_maxiter=maxiter,
+        )
+        """sps.linalg.KSP: Poisson solver for the inner PDHG Leray projection"""
 
         self.full_flux_reconstructor = darsia.FVFullFaceReconstruction(self.grid)
         """darsia.FVFullFaceReconstruction: full flux reconstructor"""
@@ -173,7 +238,11 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         mass_conservation_residual = self.div.dot(self.flux) - self.integrated_mass_diff
 
         time_extra = time.time() - tic
-        stats_i = {"time_poisson": time_poisson, "time_extra": time_extra}
+        stats_i = {
+            "time_poisson": time_poisson,
+            "time_extra": time_extra,
+            "time_kantorovich_potential": 0.0,
+        }
 
         # Initialize container for storing the convergence history
         self.convergence_history = {
@@ -184,6 +253,7 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
             "primal": [],
             "dual": [],
             "run_time": [time_poisson + time_extra],
+            "time_kantorovich_potential": [0.0],
             "mass_conservation_residual": [
                 np.linalg.norm(mass_conservation_residual, 2) / mass_ref
             ],
@@ -251,13 +321,17 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
             # new flux
             self.flux[:] = u[:] + self.gradient_poisson_pressure[:]
 
-            update_kantorovich_potential = False
-            if update_kantorovich_potential:
-                flat_pressure = self.compute_pressure(self.flux, flat_mass_diff)
-                grad_pressure = self.inverse_mass_matrix_faces.dot(
-                    self.grad.dot(flat_pressure)
-                )
-                print(f"MAX GRAD {np.max(abs(grad_pressure))}")
+            # Optionally refresh the Kantorovich potential by solving the
+            # transport-density-weighted Poisson with the current flux.
+            tic_kp = time.time()
+            if self.update_kantorovich_potential_mode == "all":
+                self.compute_kantorovich_potential(flat_mass_diff, self.flux)
+            elif self.update_kantorovich_potential_mode == "adaptive":
+                if self._weighted_poisson_relative_residual(flat_mass_diff) > (
+                    self.update_kantorovich_potential_tol
+                ):
+                    self.compute_kantorovich_potential(flat_mass_diff, self.flux)
+            time_kantorovich_potential = time.time() - tic_kp
 
             # Second step of the PDHG
             # new_p = argmax_{|p|\leq 1} (p, u_{n+1})_{L^2} + \frac{1}{2 sigma}|p-p_n|_{L^2}^2
@@ -298,6 +372,11 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
                 abs(self.dual_value - self.primal_value) / self.primal_value
             )
             time_extra += time.time() - tic
+            # ``time_extra`` is measured over the whole iteration body and so
+            # already includes the K-potential refresh interval. Subtract it
+            # here so each second of wall time is charged to exactly one
+            # bucket (gprox time_extra vs. diagnostic K-potential).
+            time_extra -= time_kantorovich_potential
 
             convergence_history["primal"].append(self.primal_value)
             convergence_history["dual"].append(self.dual_value)
@@ -305,7 +384,11 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
             stats_i = {
                 "time_poisson": time_poisson,
                 "time_extra": time_extra,
+                "time_kantorovich_potential": time_kantorovich_potential,
             }
+            convergence_history["time_kantorovich_potential"].append(
+                time_kantorovich_potential
+            )
 
             new_distance = self.primal_value
 
@@ -411,6 +494,9 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         # reshape the solution
         flux_cells = darsia.face_to_cell(self.grid, solution)
         transport_density_cells = np.linalg.norm(flux_cells, axis=-1)
+        if not hasattr(self, "face_reconstruction"):
+            self._setup_face_reconstruction()
+        flux_faces = self.face_reconstruction(solution)
 
         # Return solution
         return_info = self.options.get("return_info", False)
@@ -426,6 +512,9 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
                         self.grid, self.gradient_poisson_pressure
                     ),
                     "flux": flux_cells,
+                    "flux_cells": flux_cells,
+                    "normal_flux_faces": solution,
+                    "flux_faces": flux_faces,
                     "pressure": pressure,
                     # "pressure": pressure,
                     "transport_density": transport_density_cells,
@@ -454,10 +543,20 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         """
         full_flux = self.full_flux_reconstructor(flux)
         transport_density_faces = np.linalg.norm(full_flux, axis=1)
+        # The transport-density-weighted Poisson uses its own option keys.
+        tdens_solver_type = self.options.get("tdens_poisson_solver", "cg")
+        tdens_solver_options = self.options.get("tdens_poisson_solver_options", {})
+        rtol = tdens_solver_options.get("rtol", tdens_solver_options.get("tol", tol))
+        maxiter = tdens_solver_options.get("maxiter", 100)
+        # Floor the transport density so faces with zero flux still yield a
+        # well-defined Laplacian (otherwise hypre returns an indefinite PC).
+        min_tdens = 1e-8
         weighted_Poisson_solver = self.setup_poisson_solver(
             "transport_density_weighted_poisson",
-            rtol=tol,
-            permeability_faces=transport_density_faces,
+            linear_solver_type=tdens_solver_type,
+            linear_solver_rtol=rtol,
+            linear_solver_maxiter=maxiter,
+            permeability_faces=transport_density_faces + min_tdens,
         )
         integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
         pressure = weighted_Poisson_solver.solve(
@@ -526,55 +625,67 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         user_defined_amg_options = self.options.get("amg_options", {})
         self.amg_options.update(user_defined_amg_options)
 
-    def setup_poisson_solver(self, solver_prefix, rtol=1e-6, permeability_faces=None):
-        """Return the Poisson solver.
+    def setup_poisson_solver(
+        self,
+        solver_prefix: str,
+        linear_solver_type: str = "cg",
+        linear_solver_rtol: float = 1e-6,
+        linear_solver_maxiter: int = 100,
+        permeability_faces: Optional[np.ndarray] = None,
+    ):
+        """Return a Poisson solver of the requested type.
 
         Args:
-            permeability_faces (np.ndarray, optional): permeability faces. Defaults to None.
+            solver_prefix (str): name used by the KSP backend.
+            linear_solver_type (str): one of "cg", "ksp", "dct". The caller is
+                responsible for reading the right option key from
+                ``self.options`` (``poisson_solver`` for the unweighted Poisson
+                set up at problem construction, ``tdens_poisson_solver`` for
+                the transport-density-weighted Poisson solved in
+                :meth:`compute_kantorovich_potential`).
+            linear_solver_rtol (float): relative tolerance.
+            linear_solver_maxiter (int): maximum iterations.
+            permeability_faces (np.ndarray, optional): face permeabilities for
+                the weighted Poisson problem. Defaults to None (unweighted).
 
         Returns:
-            darsia.linalg.KSP: Poisson solver
+            Poisson solver
 
         """
-
-        self.linear_solver_type = self.options.get("linear_solver", "cg")
-        """str: type of linear solver"""
-
         # Safety checks
-        assert self.linear_solver_type in [
+        assert linear_solver_type in [
             "cg",
             "ksp",
             "dct",
-        ], f"Linear solver {self.linear_solver_type} not supported."
-        linear_solver_options = self.options.get("linear_solver_options", {})
+        ], f"Linear solver {linear_solver_type} not supported."
 
-        if permeability_faces is not None and self.linear_solver_type == "dct":
+        if permeability_faces is not None and linear_solver_type == "dct":
             raise ValueError(
                 "DCT solver does not support permeability faces. Use CG or KSP instead."
             )
 
-        # Define CG solver
+        if linear_solver_type == "dct":
+            # dct is matrix-free
+            from darsia.utils.linear_solvers.dct import DCTSolver
+            Poisson_solver = DCTSolver(self.grid)
+            return Poisson_solver
+
+        # Pressure nullspace for the CG/KSP solvers (constant mode).
         kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(
             self.grid.num_cells
         )
 
-        if self.linear_solver_type == "dct":
-            # dct is matrix-free
-            pass
+        if permeability_faces is None:
+            Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad
         else:
-            if permeability_faces is None:
-                Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad
-            else:
-                Laplacian_matrix = (
-                    self.div
-                    * sps.diags(permeability_faces)
-                    * self.inverse_mass_matrix_faces
-                    * self.grad
-                )
+            Laplacian_matrix = (
+                self.div
+                * sps.diags(permeability_faces)
+                * self.inverse_mass_matrix_faces
+                * self.grad
+            )
 
-        #
-        if self.linear_solver_type == "cg":
-            # Define CG solver
+        if linear_solver_type == "cg":
             Poisson_solver = darsia.linalg.CG(Laplacian_matrix)
 
             # Define AMG preconditioner
@@ -587,36 +698,52 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
                     Laplacian_matrix, **self.amg_options
                 ).aspreconditioner(cycle="V")
 
-            # Define solver options
-            maxiter = linear_solver_options.get("maxiter", 100)
             solver_options = {
-                "rtol": rtol,
+                "rtol": linear_solver_rtol,
                 "atol": 1e-15,
-                "maxiter": maxiter,
+                "maxiter": linear_solver_maxiter,
                 "M": amg,
             }
             Poisson_solver.setup(solver_options)
 
-        elif self.linear_solver_type == "ksp":
+        elif linear_solver_type == "ksp":
             Poisson_solver = darsia.linalg.KSP(
                 Laplacian_matrix,
                 nullspace=[kernel],
                 appctx={},
                 solver_prefix=solver_prefix,
             )
-            maxiter = linear_solver_options.get("maxiter", 100)
             ksp_ctrl = {
                 "ksp_type": "cg",
-                "ksp_rtol": rtol,
-                "ksp_max_it": maxiter,
+                "ksp_rtol": linear_solver_rtol,
+                "ksp_max_it": linear_solver_maxiter,
                 "pc_type": "hypre",
-                # "ksp_monitor_true_residual" : None
             }
-            # if permeability_faces is not None:
-            #    ksp_ctrl["ksp_monitor_true_residual"] = None
             Poisson_solver.setup(ksp_ctrl)
 
         return Poisson_solver
+
+    def _weighted_poisson_relative_residual(
+        self, flat_mass_diff: np.ndarray
+    ) -> float:
+        """Relative residual of the current Kantorovich potential against the
+        transport-density-weighted Poisson problem at the current flux.
+
+        Cheap (a few sparse mat-vec products) — used to decide whether the
+        potential is stale enough to be worth resolving when
+        ``update_kantorovich_potential == "adaptive"``.
+        """
+        full_flux = self.full_flux_reconstructor(self.flux)
+        transport_density_faces = np.linalg.norm(full_flux, axis=1) + 1e-8
+        Ap = self.div.dot(
+            transport_density_faces
+            * self.inverse_mass_matrix_faces.dot(
+                self.grad.dot(self.kantorovich_potential)
+            )
+        )
+        integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
+        ref = max(float(np.linalg.norm(integrated_mass_diff)), 1e-16)
+        return float(np.linalg.norm(Ap - integrated_mass_diff)) / ref
 
     def leray_projection(self, p: np.ndarray) -> np.ndarray:
         """Leray projection of a vector fiels
@@ -649,7 +776,19 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         total_timings = {
             "poisson": sum([t["time_poisson"] for t in timings]),
             "extra": sum([t["time_extra"] for t in timings]),
+            "kantorovich_potential": sum(
+                t.get("time_kantorovich_potential", 0.0) for t in timings
+            ),
         }
-        total_timings["total"] = total_timings["poisson"] + total_timings["extra"]
+        # ``total`` accounts for every solver-side wall-clock cost, including
+        # the optional diagnostic Kantorovich-potential refresh. Consumers
+        # that want a gprox-only timing can subtract
+        # ``kantorovich_potential`` (or read the dedicated key in the
+        # convergence history).
+        total_timings["total"] = (
+            total_timings["poisson"]
+            + total_timings["extra"]
+            + total_timings["kantorovich_potential"]
+        )
 
         return total_timings

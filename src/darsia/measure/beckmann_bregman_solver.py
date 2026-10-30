@@ -50,6 +50,9 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
         super().__init__(grid, weight, options)
 
+        self.kantorovich_potential = np.zeros(self.grid.num_cells, dtype=float)
+        """ Kantorovich potential, updated at the end of the Bregman iteration by solving a single Newton step."""
+
         self.L = options.get("L", 1.0)
         """Penalty parameter for the Bregman iteration, associated to face mobility."""
 
@@ -117,6 +120,62 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
         return l_scheme_mixed_darcy, weight, shrink_factor
 
+    def compute_kantorovich_potential(
+        self, flat_mass_diff: np.ndarray,
+        flux: np.ndarray,
+        kantorovich_potential: np.ndarray,
+        tol=1e-6
+        ):
+        """Compute the kantorovich potential from the normal flux
+
+        Args:
+            flat_mass_diff (np.ndarray): difference of mass distributions
+            flux (np.ndarray): flux on the faces
+            kantorovich_potential (np.ndarray): initial guess for the Kantorovich potential, updated in-place
+
+        Returns:
+            np.ndarray: kantorovich potential
+
+        """
+        _, face_weights_inv = self._compute_face_weight(flux)
+        transport_density_faces = self.transport_density_faces(flux)
+        # Floor the transport density so faces with (near-)zero flux still
+        # yield a well-defined Laplacian (mirrors beckmann_gprox_solver.py's
+        # compute_kantorovich_potential; otherwise cg/hypre can see an
+        # indefinite / disconnected operator).
+        min_tdens = 1e-8
+        Laplacian_matrix = (
+                    self.div
+                    * sps.diags(transport_density_faces + min_tdens)
+                    * self.inverse_weighted_mass_matrix_faces
+                    * self.div.T
+                )
+        rhs = self.mass_matrix_cells.dot(flat_mass_diff)
+
+        # setup linear solve for weighted elliptic problem with zero Neumann bc
+        unit_kernel = np.ones(self.grid.num_cells) / np.sqrt(self.grid.num_cells)
+        weighted_Poisson_solver = darsia.linalg.KSP(
+            Laplacian_matrix,
+            nullspace = [unit_kernel],
+            solver_prefix = "kantorovich_potential_solver_")
+        weighted_Poisson_solver.setup({
+            "ksp_type": "minres",
+            "ksp_rtol": tol,
+            "pc_type": "hypre",
+        })
+
+        # solve for the pressure
+        solution = weighted_Poisson_solver.solve(
+            rhs, x0=kantorovich_potential
+        )
+        kantorovich_potential[:] = solution[:]
+
+        # clean up the linear solver to free memory
+        if isinstance(weighted_Poisson_solver, darsia.linalg.KSP):
+            weighted_Poisson_solver.kill()
+        else:
+            weighted_Poisson_solver = None
+
     @override
     def solve_beckmann_problem(
         self, flat_mass_diff: np.ndarray
@@ -142,6 +201,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                 np.zeros(1, dtype=float),
             ]
         )
+        self.integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
 
         # Initialize Newton iteration with Darcy solution for unitary mobility
         solution = np.zeros_like(rhs, dtype=float)
@@ -152,6 +212,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
         # Initialize container for storing the convergence history
         convergence_history = darsia.BeckmannConvergenceHistory()
+        self.convergence_history = convergence_history
 
         # Print header
         if self.verbose:
@@ -286,7 +347,9 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
             # Update distance and flux norm for reference
             distance = self.l1_dissipation(flux)
-            flux_norm = np.linalg.norm(flux, 2)
+            # Safeguard against division by zero when normalising the increment
+            # (in particular at iteration 0, where flux may be identically zero).
+            flux_norm = max(np.linalg.norm(flux, 2), 1e-16)
 
             # Catch nan values
             if np.isnan(distance):
@@ -346,6 +409,9 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                     f"{relative_mass_residual:.6e}"
                 )
 
+            self.solution = solution
+            self.flux = flux
+            self.pressure = self.pressure_view(solution)
             if self.callbacks is not None:
                 for callback in self.callbacks:
                     callback(self)
@@ -368,16 +434,25 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
             old_force = new_force.copy()
             old_distance = distance
 
-        # Solve for the pressure by solving a single Newton iteration
-        newton_jacobian, _, _ = self._compute_heterogeneous_bregman_regularization(flux)
+        # Solve for the pressure by solving a single Newton iteration.
+        # NOTE: the residual must be negated before the linear solve
+        tic_kp = time.time()
         solution = np.zeros_like(rhs)
         solution[self.flux_slice] = flux.copy()
-        newton_residual = self.optimality_conditions(solution, rhs)
-        newton_update, _ = self.linear_solve(newton_jacobian, newton_residual, solution)
-        solution[self.pressure_slice] = self.pressure_view(newton_update)
+        if self.linear_solver_type == "dct":
+            self.compute_kantorovich_potential(flat_mass_diff, flux, self.kantorovich_potential)
+            solution[self.pressure_slice] = self.kantorovich_potential
+        else:
+            newton_jacobian, _, _ = self._compute_heterogeneous_bregman_regularization(flux)
+            newton_residual = self.optimality_conditions(solution, rhs)
+            newton_update, _ = self.linear_solve(newton_jacobian, -newton_residual, solution)
+            solution[self.pressure_slice] = self.pressure_view(newton_update)
+        time_kantorovich_potential = time.time() - tic_kp
 
         # Summarize profiling (time in seconds, memory in GB)
         total_timings = self._sum_timings(convergence_history.timings)
+        total_timings["kantorovich_potential"] = time_kantorovich_potential
+        total_timings["total"] += time_kantorovich_potential
         peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
 
         # Compute l1 norm of the flux

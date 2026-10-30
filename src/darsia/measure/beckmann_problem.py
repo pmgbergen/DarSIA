@@ -154,8 +154,8 @@ class BeckmannProblem(darsia.EMD):
         self._setup_l1_quadrature()
         self._setup_face_weights()
         self._setup_discretization()
-        self._setup_linear_solver()
         self._setup_schur_complement_reduction()
+        self._setup_linear_solver()
         self._setup_acceleration()
 
         # Store list of callbacks passed by user
@@ -304,12 +304,17 @@ class BeckmannProblem(darsia.EMD):
         """sps.csc_matrix: mass matrix on cells: flat pressures -> flat pressures"""
 
         lumping = self.options.get("lumping", True)
+
         self.weighted_mass_matrix_faces_init = sps.diags(
             self.face_weights, format="csc"
         ) @ (darsia.FVMass(self.grid, "faces", lumping).mat)
         """sps.csc_matrix: weighted mass matrix on faces: flat fluxes -> flat fluxes"""
         self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
         """sps.csc_matrix: mass matrix on faces: flat fluxes -> flat fluxes"""
+
+        self.inverse_weighted_mass_matrix_faces = sps.diags(
+            1.0 / self.weighted_mass_matrix_faces_init.diagonal(), format="csc"
+        )
 
         self.broken_darcy = sps.bmat(
             [
@@ -322,6 +327,7 @@ class BeckmannProblem(darsia.EMD):
         """sps.csc_matrix: linear part of the Darcy operator with pressure constraint"""
 
         L_init = self.options.get("L_init", 1.0)
+
         self.darcy_init = self.broken_darcy_with_custom_flux_block(
             L_init * self.weighted_mass_matrix_faces_init
         )
@@ -362,10 +368,17 @@ class BeckmannProblem(darsia.EMD):
         self.linear_solver_type = linear_solver_type
         """str: type of linear solver"""
 
-        self.linear_solver = darsia.BeckmannLinearSolverFactory.create(
-            linear_solver_type, self.options
-        )
-
+        if linear_solver_type == "dct" and self.options.get("formulation") == "flux_reduced":
+            # used only by bregman with fixed relaxation
+            from darsia.utils.linear_solvers.dct import DCTSolver
+            self.linear_solver = DCTSolver(self.grid)
+        else:
+            self.linear_solver = darsia.BeckmannLinearSolverFactory.create(
+                linear_solver_type, self.options, 
+                # arguments used only by the ksp solver, but passed to all for simplicity
+                flux_indices=self.flux_indices, pressure_indices=self.pressure_indices
+            )
+    
     def _setup_schur_complement_reduction(self) -> None:
         # TODO: Move to setup_schur_complement_reduction()
         self.formulation: str = self.options.get("formulation", "pressure")
@@ -439,6 +452,9 @@ class BeckmannProblem(darsia.EMD):
         # Reshape the fluxes and pressure to grid format
         flux_img = darsia.face_to_cell(self.grid, flux)
         pressure_img = pressure.reshape(self.grid.shape, order="F")
+        if not hasattr(self, "face_reconstruction"):
+            self._setup_face_reconstruction()
+        flux_faces = self.face_reconstruction(flux)
 
         # Determine transport density
         transport_density = self.transport_density(flux, flatten=False)
@@ -455,6 +471,9 @@ class BeckmannProblem(darsia.EMD):
                     "grid": self.grid,
                     "mass_diff": mass_diff_img,
                     "flux": flux_img,
+                    "flux_cells": flux_img,
+                    "normal_flux_faces": flux,
+                    "flux_faces": flux_faces,
                     "weight": self.cell_weights,
                     "weight_inv": 1.0 / self.cell_weights,
                     "weighted_flux": weighted_flux_img,
@@ -753,6 +772,10 @@ class BeckmannProblem(darsia.EMD):
 
             # Average over the subcells using harmonic averaging
             flat_weighted_flux_norm = hmean(subcell_flux_norm, axis=1)
+            # Avoid division by zero
+            flat_weighted_flux_norm = np.maximum(
+                flat_weighted_flux_norm, self.regularization
+            )
 
             # Combine weights**2 / |weight * flux| on faces
             face_weights = harm_avg_face_weights**2 / flat_weighted_flux_norm
@@ -776,6 +799,11 @@ class BeckmannProblem(darsia.EMD):
                 harm_avg_face_weights, full_face_flux
             )
             norm_weighted_face_flux = np.linalg.norm(weighted_face_flux, 2, axis=1)
+            # Avoid division by zero (this safeguard existed in the pre-refactor code
+            # and was lost in the split into beckmann_problem.py).
+            norm_weighted_face_flux = np.maximum(
+                norm_weighted_face_flux, self.regularization
+            )
 
             # Combine weights**2 / |weight * flux| on faces
             face_weights = harm_avg_face_weights**2 / norm_weighted_face_flux
@@ -850,7 +878,7 @@ class BeckmannProblem(darsia.EMD):
             ) = self.eliminate_flux(matrix, rhs)
 
             # 2. Build linear solver for reduced system
-            if setup_linear_solver:
+            if setup_linear_solver and self.linear_solver_type != "dct":
                 self.linear_solver.setup(self.reduced_matrix)
 
             # Stop timer to measure setup time
@@ -858,7 +886,14 @@ class BeckmannProblem(darsia.EMD):
 
             # 3. Solve for the pressure and lagrange multiplier
             tic = time.time()
-            solution[self.reduced_system_slice] = self.linear_solver(self.reduced_rhs)
+            if self.linear_solver_type == "dct":
+                # solve removing lagrange multiplier
+                solution_pressure = self.linear_solver.solve(self.reduced_rhs[:-1])
+                solution[self.pressure_slice] = solution_pressure
+                solution[self.lagrange_multiplier_slice] = 0.0
+            else:
+                # solve without removing lagrange multiplier
+                solution[self.reduced_system_slice] = self.linear_solver.solve(self.reduced_rhs)
 
             # 4. Compute flux update
             solution[self.flux_slice] = self._compute_flux_update(solution, rhs)
@@ -895,21 +930,17 @@ class BeckmannProblem(darsia.EMD):
                 )
 
             # 1. Reduce flux block
-            (
-                self.reduced_matrix,
-                self.reduced_rhs,
-                self.matrix_flux_inv,
-            ) = self.eliminate_flux(matrix, rhs)
-
+            if setup_linear_solver:
+                self.reduced_matrix, self.matrix_flux_inv = self.eliminate_flux_lhs(matrix)
+            self.reduced_rhs = self.eliminate_flux_rhs(self.matrix_flux_inv, rhs)
+            
             # 2. Reduce to pure pressure system
-            (
-                self.fully_reduced_matrix,
-                self.fully_reduced_rhs,
-            ) = self.eliminate_lagrange_multiplier(
-                self.reduced_matrix,
+            if setup_linear_solver:
+                self.fully_reduced_matrix = self.eliminate_lagrange_multiplier_lhs(self.reduced_matrix)
+            self.fully_reduced_rhs = self.eliminate_lagrange_multiplier_rhs(
                 self.reduced_rhs,
             )
-
+            
             # 3. Build linear solver for pure pressure system
             if setup_linear_solver:
                 self.linear_solver.setup(self.fully_reduced_matrix)
@@ -922,6 +953,9 @@ class BeckmannProblem(darsia.EMD):
             solution[self.fully_reduced_system_indices_full] = self.linear_solver(
                 self.fully_reduced_rhs
             )
+            res = self.fully_reduced_matrix.dot(
+                solution[self.fully_reduced_system_indices_full]
+            ) - self.fully_reduced_rhs
 
             # 5. Compute lagrange multiplier - not required, as it is zero
             pass
@@ -972,6 +1006,41 @@ class BeckmannProblem(darsia.EMD):
         reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
 
         return reduced_jacobian, reduced_residual, J_inv
+    
+    def eliminate_flux_lhs(self, jacobian: sps.csc_matrix) -> tuple:
+        """Eliminate the flux block from the jacobian and residual.
+
+        Employ a Schur complement/block Gauss elimination approach.
+
+        Args:
+            jacobian (sps.csc_matrix): jacobian
+            residual (np.ndarray): residual
+
+        Returns:
+            tuple: reduced jacobian, reduced residual, inverse of flux block
+
+        """
+        # Make sure the setup routine has been called
+        if not hasattr(self, "jacobian_subblock"):
+            self._setup_eliminate_flux(jacobian)
+            assert hasattr(self, "jacobian_subblock")
+
+        # Build Schur complement wrt flux-block
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
+        schur_complement = self.D.dot(J_inv.dot(self.DT))
+
+        # Gauss eliminiation on matrices
+        reduced_jacobian = self.jacobian_subblock + schur_complement
+
+        return reduced_jacobian, J_inv
+
+    def eliminate_flux_rhs(self, J_inv: sps.diags, residual: np.ndarray) -> np.ndarray:
+        # Gauss elimination on vectors
+        reduced_residual = residual[self.reduced_system_slice].copy()
+        reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
+        return reduced_residual
+
+
 
     def _setup_eliminate_flux(self, matrix: sps.csc_matrix) -> None:
         """Setup the infrastructure for reduced systems through Gauss elimination.
@@ -1007,7 +1076,7 @@ class BeckmannProblem(darsia.EMD):
         # ! ---- Eliminate flux block ----
 
         # Build Schur complement wrt. flux-flux block
-        J_inv = sps.diags(self.flux_view(1.0 / jacobian.diagonal()))
+        J_inv = sps.diags(1.0 / self.flux_view(jacobian.diagonal()))
         schur_complement = D.dot(J_inv.dot(D.T))
 
         # Add Schur complement - use this to identify sparsity structure
@@ -1058,6 +1127,53 @@ class BeckmannProblem(darsia.EMD):
         ].copy()
 
         return self.fully_reduced_jacobian, fully_reduced_residual
+    
+    def eliminate_lagrange_multiplier_lhs(
+        self, reduced_jacobian
+    ) -> tuple:
+        """Eliminate the lagrange multiplier from the reduced system.
+
+        Employ a Schur complement/block Gauss elimination approach.
+
+        Args:
+            reduced_jacobian (sps.csc_matrix): reduced jacobian
+            reduced_residual (np.ndarray): reduced residual
+
+        Returns:
+            tuple: fully reduced jacobian, fully reduced residual
+
+        """
+        # Make sure the setup routine has been called
+        if not hasattr(self, "fully_reduced_jacobian"):
+            self._setup_eliminate_lagrange_multiplier()
+            assert hasattr(self, "fully_reduced_jacobian")
+
+        # Make sure the jacobian is a CSC matrix
+        assert isinstance(
+            reduced_jacobian, sps.csc_matrix
+        ), "Jacobian should be a CSC matrix."
+
+        # Effective Gauss-elimination for the particular case of the lagrange multiplier
+        self.fully_reduced_jacobian.data[:] = np.delete(
+            reduced_jacobian.data.copy(), self.rm_indices
+        )
+        # NOTE: The indices have to be restored if the LU factorization is to be used
+        # FIXME omit if not required
+        self.fully_reduced_jacobian.indices = self.fully_reduced_jacobian_indices.copy()
+        return self.fully_reduced_jacobian
+    
+    def eliminate_lagrange_multiplier_rhs(
+        self, reduced_residual
+        ) -> np.ndarray:
+        # Rhs is not affected by Gauss elimination as it is assumed that the residual
+        # is zero in the constrained cell, and the pressure is zero there as well.
+        # If not, we need to do a proper Gauss elimination on the right hand side!
+        if abs(reduced_residual[-1]) > 1e-6:
+            raise NotImplementedError("Implementation requires residual to be zero.")
+        fully_reduced_residual = reduced_residual[
+            self.fully_reduced_system_indices
+        ].copy()
+        return fully_reduced_residual
 
     def _setup_eliminate_lagrange_multiplier(self) -> None:
         """Additional setup of infrastructure for fully reduced systems.
