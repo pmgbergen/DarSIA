@@ -152,20 +152,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                 )
         rhs = self.mass_matrix_cells.dot(flat_mass_diff)
 
-        # This is always a space-varying (transport-density-weighted)
-        # Poisson problem -- always solved via KSP/hypre here (same backend
-        # used everywhere else in this codebase), never "dct", regardless of
-        # the main linear_solver option. DCTSolver's kernel is fixed at
-        # construction from grid geometry alone and structurally cannot
-        # represent a heterogeneous coefficient. This method is only called
-        # (see solve_beckmann_problem below) when the main linear_solver_type
-        # is "dct", for which self.linear_solve's "single Newton iteration"
-        # can't be trusted (beckmann_problem.py skips rebuilding the dct
-        # solver from the actual matrix) -- root cause of bregman_plain_dct's
-        # flat, non-shrinking Kantorovich-potential error (found 2026-09-29).
-        # ksp/kspfieldsplit variants never reach this method: their potential
-        # is already computed correctly via that same single-Newton-iteration
-        # path, since beckmann_problem.py *does* rebuild the ksp solver.
+        # setup linear solve for weighted elliptic problem with zero Neumann bc
         unit_kernel = np.ones(self.grid.num_cells) / np.sqrt(self.grid.num_cells)
         weighted_Poisson_solver = darsia.linalg.KSP(
             Laplacian_matrix,
@@ -448,32 +435,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
             old_distance = distance
 
         # Solve for the pressure by solving a single Newton iteration.
-        # NOTE: the residual must be negated before the linear solve, exactly
-        # as beckmann_newton_solver.py's main loop does (`self.linear_solve(
-        # jacobian, -residual, solution)` then `solution += increment`). This
-        # was missing here, giving a sign-flipped, garbage pressure that
-        # doesn't improve even once the Bregman flux itself has fully
-        # converged (traced 2026-08-21: e.g. pressure*forcing came out with
-        # the wrong sign relative to the true W1 distance).
-        #
-        # This path is correct whenever self.linear_solve actually rebuilds
-        # its solver from the true (weighted) Jacobian each call -- true for
-        # ksp/kspfieldsplit/direct. For linear_solver_type == "dct" it is
-        # NOT: beckmann_problem.py unconditionally skips the rebuild step for
-        # "dct", and DCTSolver's kernel is fixed at construction from grid
-        # geometry alone, so it silently applies the wrong (constant-
-        # coefficient) operator here -- root cause of bregman_plain_dct's
-        # flat, non-shrinking Kantorovich-potential error under refinement
-        # (found 2026-09-29). For that case only, fall back to the dedicated
-        # weighted-Poisson solve (KSP/hypre, always built from the true
-        # transport-density weighting) instead.
-        # NOTE: called once here, after convergence -- do not call the dct
-        # fallback per iteration from test callbacks, it's a full solve.
-        # Timed separately (mirrors beckmann_gprox_solver.py's
-        # time_kantorovich_potential) and folded into total_timings["total"]
-        # below -- this finalization solve used to be untimed entirely, which
-        # was invisible while the dct fallback was a near-free (and wrong)
-        # DCT solve, but now matters for fair cpu comparisons across solvers.
+        # NOTE: the residual must be negated before the linear solve
         tic_kp = time.time()
         solution = np.zeros_like(rhs)
         solution[self.flux_slice] = flux.copy()
