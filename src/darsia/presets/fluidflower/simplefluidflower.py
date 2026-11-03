@@ -160,7 +160,7 @@ class SimpleFluidFlower:
         # Specs of ROI
         self.width = specs.get("width", 0.92)
         self.height = specs.get("height", 0.55)
-        self.water_height = specs.get("water_height", 0.529)
+        self.water_height = specs.get("water_height", 0.50)  # 0.529) # TODO: RM!
         self.depth = specs.get("depth", 0.012)
         self.porosity = specs.get("porosity", 0.44)
         self.colorchecker_position = specs.get("colorchecker_position", "upper_right")
@@ -615,7 +615,7 @@ class SimpleFluidFlower:
         self.width = specs["width"]
         self.height = specs["height"]
         # self.water_height = specs["water_height"]
-        self.water_height = 0.529
+        self.water_height = 0.50  # 0.529 # TODO Rm hardcoded value - is sand!!!
         self.depth = specs["depth"]
         self.porosity = specs["porosity"]
 
