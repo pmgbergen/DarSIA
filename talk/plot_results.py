@@ -117,7 +117,8 @@ def fig_h_convergence(df, out, png):
             capped = ~d.converged.astype(bool)
             ax.loglog(d.h[capped], d.rel_error.abs()[capped], linestyle="none", marker=st["marker"], markersize=9,
                       markerfacecolor="white", markeredgecolor=st["color"])
-            rates = observed_rates(d.h, d.rel_error)
+            dc = d[d.converged.astype(bool)]
+            rates = observed_rates(dc.h, dc.rel_error)
             lines.append(f"{case:9s} {v:7s} " + " ".join(f"{r:5.2f}" for r in rates))
     hs = df[df.case.isin(["box_axis", "box_diag"])].h
     if len(hs):
@@ -148,7 +149,8 @@ def fig_wall_convergence(df, out, png):
         capped = ~d.converged.astype(bool)
         ax.loglog(d.h[capped], d.rel_error.abs()[capped], linestyle="none", marker=st["marker"], markersize=9,
                   markerfacecolor="white", markeredgecolor=st["color"])
-        lines.append(f"wall      {v:7s} " + " ".join(f"{r:5.2f}" for r in observed_rates(d.h, d.rel_error)))
+        dc = d[~capped]
+        lines.append(f"wall      {v:7s} " + " ".join(f"{r:5.2f}" for r in observed_rates(dc.h, dc.rel_error)))
     ref_slope(ax, sorted(d0.h.unique()), 0.5 * d0.rel_error.abs().min(), 1, r"$h$")
     ax.set_xlabel("$h$")
     ax.set_ylabel(r"$|W_h - W|/W$")
@@ -174,7 +176,7 @@ def fig_eps_convergence(df, out, png):
     epss = [e for e in sorted(df.eps.unique())[1:] if e <= 0.1]
     if len(epss) > 1 and ax.get_lines():
         y0 = ax.get_lines()[0].get_ydata()[0]  # first solid line, smallest eps > eps_min
-        ref_slope(ax, epss, 0.5 * y0, 1, r"$\varepsilon|\ln\varepsilon|$", logfactor=True)
+        ref_slope(ax, epss, 0.5 * y0, 1, r"$\varepsilon$")
     ax.set_xlabel(r"$\varepsilon$")
     ax.set_ylabel(r"relative error")
     handles = ax.get_legend_handles_labels()[0]
@@ -291,6 +293,17 @@ def balanced_eps(eps, err):
     return None
 
 
+def h_error(eps, err):
+    """h-error estimate: linear extrapolation of the signed error to eps = 0
+    from the two smallest eps (err ~ e_h + c eps). None if fewer than two."""
+    eps, err = np.asarray(eps, float), np.asarray(err, float)
+    if len(eps) < 2:
+        return None
+    order = np.argsort(eps)[:2]
+    (e1, e2), (r1, r2) = eps[order], err[order]
+    return float(r1 - (r2 - r1) / (e2 - e1) * e1)
+
+
 def fig_balance(df, out, png):
     """Error vs eps for each n: the plateau is the h-error, the slope the eps-error."""
     lines = []
@@ -299,6 +312,7 @@ def fig_balance(df, out, png):
         variants = [v for v in ["F", "C"] if v in set(dc.variant)]
         fig, axs = plt.subplots(1, len(variants), figsize=FULL, sharey=True, squeeze=False)
         for ax, v in zip(axs[0], variants):
+            hs, ehs = [], []
             for st, n in zip(N_STYLE, sorted(dc.n.unique())):
                 d = dc[(dc.variant == v) & (dc.n == n)].sort_values("eps")
                 if d.empty:
@@ -315,6 +329,14 @@ def fig_balance(df, out, png):
                              f"balance {case} {v} n={n}: error at eps_min: {plateau:.2e}; no plateau (eps-limited down to eps_min)")
                 if es:
                     ax.axvline(es, color=st["color"], linewidth=0.8, linestyle=":")
+                if (eh := h_error(dd.eps, dd.rel_error)) is not None:
+                    hs.append(dd.h.iloc[0])
+                    ehs.append(eh)
+            if len(hs) > 1:
+                order = np.argsort(hs)
+                hs, ehs = np.asarray(hs)[order], np.asarray(ehs)[order]
+                lines.append(f"h-error (eps -> 0, fine to coarse) {case} {v}: " + " ".join(f"{e:.2e}" for e in ehs)
+                             + "; rates " + " ".join(f"{r:5.2f}" for r in observed_rates(hs, ehs)))
             ax.set_xlabel(r"$\varepsilon$")
             ax.text(0.03, 0.95, VARIANT_STYLE[v]["label"], transform=ax.transAxes, fontsize=9, va="top")
         axs[0, 0].set_ylabel(r"$|W_{h,\varepsilon} - W|/W$")

@@ -324,16 +324,24 @@ def _anderson_mix(G: list[np.ndarray], R: list[np.ndarray]) -> np.ndarray:
 
 
 def _solve_darcy_direct(
-    problem: RegularizedBeckmann, A: sps.spmatrix, f: np.ndarray, hist: History
+    problem: RegularizedBeckmann,
+    A: sps.spmatrix,
+    f: np.ndarray,
+    hist: History,
+    b: np.ndarray | None = None,
 ) -> np.ndarray:
-    """Sparse LU on the KKT system, potential pinned in cell 0. Returns p."""
+    """Sparse LU on the KKT system, potential pinned in cell 0. Returns p.
+
+    b is the flux right-hand side (zero if None).
+    """
     tic = time.perf_counter()
     D0 = problem.D[1:]
     K = sps.bmat([[A, -D0.T], [D0, None]], format="csc")
     lu = sps.linalg.splu(K)
     hist.time_setup += time.perf_counter() - tic
     tic = time.perf_counter()
-    sol = lu.solve(np.concatenate([np.zeros(problem.num_faces), f[1:]]))
+    b = np.zeros(problem.num_faces) if b is None else b
+    sol = lu.solve(np.concatenate([b, f[1:]]))
     hist.time_solve += time.perf_counter() - tic
     hist.linear_iterations.append(1)
     return sol[: problem.num_faces]
@@ -348,8 +356,10 @@ def _solve_darcy_minres(
     hist: History,
     maxiter: int = 1000,
     lumped: bool = False,
+    b: np.ndarray | None = None,
 ) -> np.ndarray:
-    """MINRES on the symmetric KKT system [[A, -D^T], [-D, 0]] [p; phi] = [0; -f].
+    """MINRES on the symmetric KKT system [[A, -D^T], [-D, 0]] [p; phi] = [b; -f]
+    (b = 0 if None).
 
     Block-diagonal preconditioner Al^{-1} (+) AMG(S)^{-1}, with Al the row-sum
     lumped A (lumped=True; diag(A) otherwise) and the Schur complement
@@ -381,7 +391,8 @@ def _solve_darcy_minres(
     # Solve for the correction from the warm start, so that rtol is relative
     # to the initial residual (scipy's rtol is relative to ||rhs||).
     tic = time.perf_counter()
-    r0 = np.concatenate([np.zeros(nf), -f]) - K @ x0
+    b = np.zeros(nf) if b is None else b
+    r0 = np.concatenate([b, -f]) - K @ x0
     dx, _ = sps.linalg.minres(K, r0, rtol=rtol, M=M, maxiter=maxiter, callback=cb)
     x = x0 + dx
     p = x[:nf]
@@ -455,6 +466,63 @@ def lagged_diffusivity(
                     G, R = G[-1:], R[-1:]
         p = p_new
         x_prev[: problem.num_faces] = p  # warm start for next MINRES solve
+
+        hist.iterations += 1
+        res, phi = problem.kkt_residual(p)
+        _record(hist, problem, p, res, phi, f, tic)
+        if verbose:
+            print(f"{k:4d}  J_eps={hist.energy[-1]:.10e}  J_0={hist.energy0[-1]:.8e}  res={res:.3e}")
+        converged = res < tol
+
+    return p, phi, hist, converged
+
+
+def l_scheme_implicit(
+    problem: RegularizedBeckmann,
+    f: np.ndarray,
+    L: float | None = None,
+    tol: float = 1e-6,
+    maxiter: int = 10_000,
+    p0: np.ndarray | None = None,
+    linear_solver: str = "direct",
+    linear_rtol: float | None = None,
+    verbose: bool = False,
+    max_time: float = np.inf,
+) -> tuple[np.ndarray, np.ndarray, History, bool]:
+    """L-scheme of the paper (draft eq. 27), lagged coefficient on the new iterate:
+
+        (A(p^{k-1}) + L I) p^k - D^T phi^k = L p^{k-1},   D p^k = f.
+
+    Each step is a Darcy problem with mobility from A(p^{k-1}) + L I. L defaults
+    to problem.lipschitz() = 1/(kappa_min eps); L = 0 is lagged diffusivity.
+    Since the proximal term L/2 ||p - p^{k-1}||_M^2 is added to the quadratic
+    majorizer of J, J_eps decreases monotonically for every L >= 0.
+
+    linear_solver and linear_rtol as in lagged_diffusivity. History entries refer
+    to the iterate after each step; entry 0 is p0.
+    """
+    if linear_solver not in ("direct", "minres"):
+        raise ValueError(f"Unknown linear solver {linear_solver}")
+    L = problem.lipschitz() if L is None else L
+    f = f.ravel() - f.mean()
+    p = problem.darcy_init(f) if p0 is None else p0.copy()
+    hist = History(eps=problem.eps)
+    tic = time.perf_counter()
+    res, phi = problem.kkt_residual(p)
+    _record(hist, problem, p, res, phi, f, tic)
+    x_prev = np.concatenate([p, phi])
+    LI = L * sps.identity(problem.num_faces, format="csr")
+    converged = res < tol
+    for k in range(maxiter):
+        if converged or time.perf_counter() - tic > max_time:
+            break
+        A = (problem.lagged_operator(p) + LI).tocsr()
+        if linear_solver == "direct":
+            p = _solve_darcy_direct(problem, A, f, hist, b=L * p)
+        else:
+            rtol = 1e-6 if linear_rtol is None else linear_rtol
+            x_prev = _solve_darcy_minres(problem, A, f, x_prev, rtol, hist, b=L * p)
+            p = x_prev[: problem.num_faces]
 
         hist.iterations += 1
         res, phi = problem.kkt_residual(p)
