@@ -464,6 +464,56 @@ class CO2MassAnalysis:
         )
 
 
+class TracerMassAnalysis:
+    """Mass analysis of a single-phase tracer: there is no gas phase.
+
+    The concentration is relative to the injected solution. The mass is a density per
+    pore volume (like for CO2); integrating over the geometry yields the total mass of
+    the solution, i.e. the volume times the water density.
+    """
+
+    DEFAULT_DENSITY = 998.21
+    """Water density (kg/m3 at 20 deg Celsius).
+
+    TEMPORARY: to be replaced by the chemistry (PVT) tables, see docs/roadmap/03.
+    """
+
+    def __init__(self, scale: float = DEFAULT_DENSITY) -> None:
+        """Constructor.
+
+        Parameters
+        ----------
+        scale : float
+            Mass per pore volume (kg/m3) at relative concentration 1.
+        """
+        self.scale = float(scale)
+        """Mass per pore volume (kg/m3) at relative concentration 1."""
+
+    def mass_analysis(
+        self, c_aq: darsia.Image, s_g: darsia.Image | None = None
+    ) -> "darsia.SimpleMassAnalysisResults":
+        """Mass of the solution; `s_g` is ignored (there is no gas phase)."""
+        mass_aq_array = self.scale * c_aq.img
+        return darsia.SimpleMassAnalysisResults(
+            name=c_aq.name,
+            date=c_aq.date,
+            time=c_aq.time,
+            mass=darsia.full_like(c_aq, mass_aq_array),
+            mass_g=darsia.zeros_like(c_aq),
+            mass_aq=darsia.full_like(c_aq, mass_aq_array),
+            saturation_g=darsia.zeros_like(c_aq),
+            color_signal=None,
+            concentration_aq=c_aq,
+        )
+
+    def inverse_mass_analysis(
+        self, mass: darsia.Image
+    ) -> "darsia.SimpleMassAnalysisResults":
+        """Concentration from a (rescaled) mass map; never creates gas."""
+        c_aq_array = np.clip(mass.img / self.scale, 0.0, None)
+        return self.mass_analysis(darsia.full_like(mass, c_aq_array))
+
+
 class AdvancedCO2MassAnalysis:
     """CO2 mass analysis combining gas/aqueous concentration analyses and a flash."""
 
