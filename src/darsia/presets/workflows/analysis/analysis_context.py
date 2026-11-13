@@ -56,6 +56,31 @@ def infer_require_color_to_mass_from_config(
         return False
 
     config = FluidFlowerConfig(path, require_results=True, require_data=True)
+    return require_color_to_mass(
+        config,
+        include_segmentation=include_segmentation,
+        include_fingers=include_fingers,
+        include_thresholding=include_thresholding,
+    )
+
+
+def require_color_to_mass(
+    config: FluidFlowerConfig,
+    *,
+    include_segmentation: bool = False,
+    include_fingers: bool = False,
+    include_thresholding: bool = False,
+    include_mass: bool = False,
+    include_volume: bool = False,
+) -> bool:
+    """Whether the selected analyses of a loaded config need the color-to-mass analysis.
+
+    Same as :func:`infer_require_color_to_mass_from_config`, for an already loaded config.
+    """
+    if include_mass or include_volume:
+        return True
+    if not (include_segmentation or include_fingers or include_thresholding):
+        return False
     if config.analysis is None:
         return True
 
