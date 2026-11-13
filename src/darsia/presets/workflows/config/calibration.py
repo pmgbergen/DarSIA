@@ -392,7 +392,7 @@ class CalibrationMassConfig:
             "name": "Use expert knowledge",
             "help": (
                 "Apply expert-knowledge ROI masking to this calibration's "
-                "saturation_g/concentration_aq fields."
+                "concentration_aq field (and saturation_g for CO2)."
             ),
         },
     )

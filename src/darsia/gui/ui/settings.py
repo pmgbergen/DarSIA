@@ -2819,11 +2819,46 @@ class SettingsFactory:
 
             # Refresh the currently-displayed settings panel if one is open, so
             # newly added registry entries immediately appear in dropdowns etc.
+            # This also applies a changed [physics] fluid to the shown fields.
             self.refresh_current_view()
         else:
             self.main_window.print_log(
                 "Settings not saved, please choose a config file"
             )
+
+    def _filter_settings_by_fluid(self, settings_by_section):
+        """Drop settings that do not apply to the configured `[physics] fluid`.
+
+        A setting declares its fluids by the dataclass metadata `fluids` (default: all
+        fluids). A setting that has a value in the config stays visible, so an invalid
+        entry (e.g. a gas constraint in a tracer config) can still be seen and removed.
+        Hidden settings keep their values in config_dict, since only widgets are synced.
+        """
+        from .fluid import current_fluid, is_visible_for_fluid
+
+        config_dict = self.main_window.config_dict
+        fluid = current_fluid(config_dict)
+
+        def keep(setting):
+            if is_visible_for_fluid(setting, fluid):
+                return True
+            value = self.get_value(config_dict, setting.get("key", ""))
+            return value not in (None, "", [], {})
+
+        def filter_list(settings_list):
+            kept = []
+            for setting in settings_list:
+                if not keep(setting):
+                    continue
+                if isinstance(setting.get("fields"), list):
+                    setting = {**setting, "fields": filter_list(setting["fields"])}
+                kept.append(setting)
+            return kept
+
+        return {
+            section: filter_list(settings_list)
+            for section, settings_list in settings_by_section.items()
+        }
 
     def _render_settings_tabs(self, settings_by_section):
         """Render settings_by_section dict into tabbed layout.
@@ -2849,6 +2884,8 @@ class SettingsFactory:
                 child.widget().deleteLater()
 
         self.main_window.settings_inputs = {}
+
+        settings_by_section = self._filter_settings_by_fluid(settings_by_section)
 
         # If no sections, add a message and return
         if not settings_by_section:
