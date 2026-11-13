@@ -349,14 +349,6 @@ class CalibrationMassConfig:
             "options": ["manual", "auto"],
         },
     )
-    fluid: str | None = field(
-        default="co2",
-        metadata={
-            "name": "Fluid",
-            "help": "Fluid identifier for mass calibration (e.g. 'co2').",
-            "options": ["co2"],
-        },
-    )
     embedding: ColorEmbedding | None = field(
         default=None,
         metadata={
@@ -501,7 +493,6 @@ class CalibrationMassConfig:
         self.mode = self.mode.lower().strip()
         if self.mode not in {"manual", "auto"}:
             raise ValueError("calibration.mass.mode must be either 'manual' or 'auto'.")
-        self.fluid = _get_key(sec, "fluid", default="co2", required=False, type_=str)
         self.threshold = _get_key(
             sec, "threshold", default=0.2, required=False, type_=float
         )

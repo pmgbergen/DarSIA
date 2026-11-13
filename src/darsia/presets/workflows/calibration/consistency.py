@@ -50,7 +50,9 @@ def color_to_mass_inconsistencies(
     return inconsistencies
 
 
-def mass_calibration_info(embedding, mode: darsia.EvaluationMode | None = None) -> dict:
+def mass_calibration_info(
+    embedding, mode: darsia.EvaluationMode | None = None, quantity: str = "mass"
+) -> dict:
     """Describe the stored mass calibration of a color path embedding.
 
     Parameters
@@ -59,6 +61,8 @@ def mass_calibration_info(embedding, mode: darsia.EvaluationMode | None = None) 
         Embedding the mass calibration belongs to.
     mode : EvaluationMode, optional
         Evaluation mode; loaded from the calibration folder if not provided.
+    quantity : str
+        Quantity of the calibration (`[physics]` interpretation), selecting the folder.
 
     Returns
     -------
@@ -67,7 +71,7 @@ def mass_calibration_info(embedding, mode: darsia.EvaluationMode | None = None) 
         the default for calibrations without stored mode, and the time of saving.
 
     """
-    folder = Path(embedding.color_to_mass_folder)
+    folder = Path(embedding.calibration_folder(quantity))
     legacy = not (folder / darsia.EvaluationMode.FILE_NAME).exists()
     if mode is None:
         mode = darsia.EvaluationMode.load(folder)
@@ -135,9 +139,10 @@ def mass_calibration_status(config_path: Path) -> dict | None:
         embedding = config.color.resolve(config.analysis.mass.color)
         if not isinstance(embedding, ColorPathEmbedding):
             return None
-        if not Path(embedding.color_to_mass_folder).exists():
+        quantity = config.physics.interpretation.quantity
+        if not Path(embedding.calibration_folder(quantity)).exists():
             return None
-        info = mass_calibration_info(embedding)
+        info = mass_calibration_info(embedding, quantity=quantity)
         stored = darsia.EvaluationMode.from_dict(info["evaluation_mode"])
         requested = configured_evaluation_mode(config)
         info["config_description"] = None if requested is None else requested.describe()
@@ -184,7 +189,10 @@ def outdated_mass_calibration(config_path: Path) -> dict[int, str]:
             return {}
         if not Path(embedding.color_paths_csv_file).exists():
             return {}
-        folder = embedding.color_to_mass_folder / "color_path_interpretation"
+        folder = (
+            embedding.calibration_folder(config.physics.interpretation.quantity)
+            / "color_path_interpretation"
+        )
         color_paths = darsia.LabelColorPathMap.load_csv(embedding.color_paths_csv_file)
         interpretation = {
             label: darsia.ColorPathInterpolation.load(

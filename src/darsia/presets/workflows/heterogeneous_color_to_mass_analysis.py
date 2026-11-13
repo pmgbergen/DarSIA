@@ -13,13 +13,16 @@ from matplotlib.widgets import Button, Slider
 from scipy.optimize import minimize
 
 import darsia
+from darsia.multiphase.flash import load_flash
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.basis import label_ids_from_image
 from darsia.presets.workflows.calibration.metadata import (
     read_calibration_metadata,
     validate_basis_metadata,
+    validate_interpretation_metadata,
     write_calibration_metadata,
 )
+from darsia.presets.workflows.config.physics import Interpretation
 from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
@@ -2036,13 +2039,16 @@ class HeterogeneousColorToMassAnalysis:
             f"""min g: {self.flash.min_value_g}, max g: {self.flash.max_value_g}"""
         )
 
-    def save(self, folder: Path) -> None:
+    def save(self, folder: Path, interpretation: Interpretation) -> None:
         """Save the calibration data to json file.
 
         Parameters
         ----------
         folder : Path
             The folder to save the calibration data to.
+        interpretation : Interpretation
+            Quantity and closure of the calibration; stored in the metadata
+            and checked on load.
         """
         # Save the color path interpretation
         for label in np.unique(self.labels.img):
@@ -2081,6 +2087,7 @@ class HeterogeneousColorToMassAnalysis:
             "ignore_labels": ignore_labels,
             "basis": self.basis.value,
             "label_ids": label_ids,
+            "interpretation": interpretation.to_dict(),
         }
         write_calibration_metadata(
             folder / "metadata.json",
@@ -2131,6 +2138,7 @@ class HeterogeneousColorToMassAnalysis:
         folder: Path,
         baseline: darsia.Image,
         labels: darsia.Image,
+        interpretation: Interpretation,
         co2_mass_analysis: darsia.CO2MassAnalysis,
         geometry: darsia.ExtrudedPorousGeometry,
         restoration: darsia.Model | None = None,
@@ -2169,7 +2177,14 @@ class HeterogeneousColorToMassAnalysis:
             Current color path interpretations. If provided, they replace the stored
             ones, and stored signal models whose supports do not match the (possibly
             recalibrated) color path of their label are resampled onto its supports.
+        interpretation : Interpretation
+            The expected quantity and closure; must match the stored
+            calibration (checked first, before anything else is read).
         """
+        metadata = read_calibration_metadata(folder / "metadata.json")
+        validate_interpretation_metadata(
+            metadata=metadata, expected=interpretation, artifact="color_to_mass"
+        )
         stored_interpretation = color_path_interpretation is None
         if color_path_interpretation is None:
             color_path_interpretation = {
@@ -2189,10 +2204,10 @@ class HeterogeneousColorToMassAnalysis:
             stored = darsia.PWTransformation.load(
                 folder / "signal_model" / f"signal_model_{label}"
             )
-            interpretation = color_path_interpretation[label]
+            path_interpretation = color_path_interpretation[label]
             signal_functions[label] = evaluation_mode.signal_function(
-                interpretation.color_path,
-                interpretation.color_mode,
+                path_interpretation.color_path,
+                path_interpretation.color_mode,
                 stored.supports,
                 stored.values,
                 label=label,
@@ -2201,10 +2216,8 @@ class HeterogeneousColorToMassAnalysis:
             cls._resample_signal_functions(
                 signal_functions, color_path_interpretation, evaluation_mode
             )
-        flash = darsia.SimpleFlash.load(folder / "flash" / "flash")
+        flash = load_flash(interpretation.closure, folder / "flash" / "flash")
 
-        metadata_path = folder / "metadata.json"
-        metadata = read_calibration_metadata(metadata_path)
         validate_basis_metadata(
             metadata=metadata,
             expected_basis=parse_color_embedding_basis(basis),

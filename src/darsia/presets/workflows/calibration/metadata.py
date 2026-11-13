@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from warnings import warn
 
+from darsia.presets.workflows.config.physics import INTERPRETATIONS, Interpretation
 from darsia.signals.color.color_embedding import (
     ColorEmbeddingBasis,
     parse_color_embedding_basis,
@@ -37,6 +38,27 @@ def read_calibration_metadata(path: Path) -> dict | None:
     if not path.exists():
         return None
     return json.loads(path.read_text())
+
+
+def validate_interpretation_metadata(
+    *, metadata: dict | None, expected: Interpretation, artifact: str
+) -> None:
+    """Validate that a stored calibration has the expected interpretation.
+
+    The interpretation (quantity, closure) is stored in the metadata.
+    Calibrations without it predate the `[physics]` switch and are multiphase CO2.
+    """
+
+    stored = None if metadata is None else metadata.get("interpretation")
+    found = (
+        INTERPRETATIONS["co2"] if stored is None else Interpretation.from_dict(stored)
+    )
+    if found != expected:
+        raise ValueError(
+            f"{artifact} calibration interpretation mismatch: expected "
+            f"{expected.to_dict()}, but the stored calibration has {found.to_dict()}. "
+            "Recalibrate (reset) or point to a different calibration."
+        )
 
 
 def validate_basis_metadata(

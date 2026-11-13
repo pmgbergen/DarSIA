@@ -219,6 +219,47 @@ def select_image_paths(
     return image_paths
 
 
+def build_fluid_model(
+    config: FluidFlowerConfig,
+    experiment: darsia.ProtocolledExperiment,
+    rig: Rig,
+) -> darsia.CO2MassAnalysis | darsia.TracerMassAnalysis:
+    """Fluid model of the configured `[physics]` fluid.
+
+    A fluid model offers `mass_analysis(c_aq, s_g)` and `inverse_mass_analysis(mass)`,
+    returning a `SimpleMassAnalysisResults`. `[physics]` is the single decider.
+
+    Parameters
+    ----------
+    config : FluidFlowerConfig
+        Configuration providing the fluid.
+    experiment : darsia.ProtocolledExperiment
+        Experiment providing the pressure and temperature protocol (CO2).
+    rig : Rig
+        Rig providing the baseline.
+
+    Returns
+    -------
+        CO2 mass analysis (PVT) for `co2`, tracer mass analysis for `tracer`.
+    """
+    fluid = config.physics.fluid
+    if fluid == "tracer":
+        return darsia.TracerMassAnalysis()
+    if fluid == "co2":
+        start = experiment.experiment_start
+        protocol = experiment.pressure_temperature_protocol
+        state = protocol.get_state(start)
+        gradient = protocol.get_gradient(start)
+        return darsia.CO2MassAnalysis(
+            baseline=rig.baseline,
+            atmospheric_pressure=state.pressure,
+            atmospheric_temperature=state.temperature,
+            atmospheric_pressure_gradient=gradient.pressure,
+            atmospheric_temperature_gradient=gradient.temperature,
+        )
+    raise NotImplementedError(f"No fluid model for [physics] fluid = '{fluid}'.")
+
+
 def _build_color_to_mass_analysis(
     config: FluidFlowerConfig,
     experiment: darsia.ProtocolledExperiment,
@@ -226,6 +267,8 @@ def _build_color_to_mass_analysis(
     restoration: darsia.VolumeAveraging | darsia.TVD | None,
     expert_knowledge_adapter: ExpertKnowledgeAdapter | None,
 ) -> HeterogeneousColorToMassAnalysis:
+    interpretation = config.physics.interpretation
+
     # ! ---- COLOR EMBEDDING ----
     assert config.color is not None
     assert config.analysis is not None
@@ -239,24 +282,17 @@ def _build_color_to_mass_analysis(
     # ! ---- ANALYSIS LABELS ----
     analysis_labels = embedding.get_labels(rig)
 
-    # ! ---- CO2 MASS ANALYSIS ----
-    experiment_start = experiment.experiment_start
-    state = experiment.pressure_temperature_protocol.get_state(experiment_start)
-    gradient = experiment.pressure_temperature_protocol.get_gradient(experiment_start)
-    co2_mass_analysis = darsia.CO2MassAnalysis(
-        baseline=rig.baseline,
-        atmospheric_pressure=state.pressure,
-        atmospheric_temperature=state.temperature,
-        atmospheric_pressure_gradient=gradient.pressure,
-        atmospheric_temperature_gradient=gradient.temperature,
-    )
+    # ! ---- FLUID MODEL OF THE CONFIGURED FLUID ----
+    # NOTE: The attribute keeps its historic name co2_mass_analysis, as consumers read it.
+    fluid_model = build_fluid_model(config, experiment, rig)
 
     # ! ---- COLOR TO MASS ANALYSIS ----
     color_to_mass_analysis = HeterogeneousColorToMassAnalysis.load(
-        folder=embedding.color_to_mass_folder,
+        folder=embedding.calibration_folder(interpretation.quantity),
         baseline=rig.baseline,
         labels=analysis_labels,
-        co2_mass_analysis=co2_mass_analysis,
+        interpretation=interpretation,
+        co2_mass_analysis=fluid_model,
         geometry=rig.geometry,
         restoration=restoration,
         basis=embedding.basis,
@@ -264,7 +300,11 @@ def _build_color_to_mass_analysis(
     )
 
     # ! ---- EVALUATION MODE OF THE CALIBRATION ----
-    info = mass_calibration_info(embedding, color_to_mass_analysis.evaluation_mode)
+    info = mass_calibration_info(
+        embedding,
+        color_to_mass_analysis.evaluation_mode,
+        quantity=interpretation.quantity,
+    )
     logger.info(mass_calibration_status_line(info))
     requested = configured_evaluation_mode(config)
     if requested is not None and not requested.same_as(

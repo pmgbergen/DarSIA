@@ -157,10 +157,17 @@ def suggested_workflow_results_folder(
                 else None
             )
             if isinstance(embedding_id, str) and embedding_id.strip():
+                physics = merged.get("physics")
+                fluid = "co2"
+                if isinstance(physics, dict):
+                    fluid = str(physics.get("fluid", "co2")).lower()
+                # Mirrors the quantity of `INTERPRETATIONS` in `config/physics.py`
+                # (not imported: keeps this module light).
+                folder_name = "mass" if fluid == "co2" else "concentration_aq"
                 return (
                     _color_path_embedding_root(merged, results, embedding_id.strip())
                     / "interpolation"
-                    / "mass"
+                    / folder_name
                 )
             return None
         return None

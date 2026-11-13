@@ -4,8 +4,10 @@ from pathlib import Path
 import numpy as np
 
 import darsia
+from darsia.multiphase.flash import new_flash
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
+    build_fluid_model,
     select_image_paths,
 )
 from darsia.presets.workflows.basis import label_ids_from_image
@@ -137,6 +139,11 @@ def calibration_color_to_mass_analysis_from_context(
     assert config.calibration is not None
     assert config.calibration.mass is not None
     assert config.rig is not None
+    interpretation = config.physics.interpretation
+    if not default:
+        # The interactive calibration fits CO2 mass against the injection protocol
+        # and tunes flash parameters. Fail before loading anything else.
+        config.physics.require("Interactive mass calibration", supported=("co2",))
     mass_cfg = config.calibration.mass
     if not mass_cfg.expert_knowledge:
         expert_knowledge_adapter = None
@@ -302,16 +309,9 @@ def calibration_color_to_mass_analysis_from_context(
 
     # ! ---- FROM COLOR PATH TO MASS ----
 
-    experiment_start = experiment.experiment_start
-    state = experiment.pressure_temperature_protocol.get_state(experiment_start)
-    gradient = experiment.pressure_temperature_protocol.get_gradient(experiment_start)
-    co2_mass_analysis = darsia.CO2MassAnalysis(
-        baseline=fluidflower.baseline,
-        atmospheric_pressure=state.pressure,
-        atmospheric_temperature=state.temperature,
-        atmospheric_pressure_gradient=gradient.pressure,
-        atmospheric_temperature_gradient=gradient.temperature,
-    )
+    # NOTE: The keyword keeps its historic name co2_mass_analysis, as consumers read it.
+    fluid_model = build_fluid_model(config, experiment, fluidflower)
+    mass_folder = embedding.calibration_folder(interpretation.quantity)
 
     contour_smoother = mass_cfg.contour_smoother
     evaluation_mode = darsia.EvaluationMode.from_name(
@@ -330,14 +330,14 @@ def calibration_color_to_mass_analysis_from_context(
             raise NotImplementedError(
                 "Reference mass calibration currently supports only color path embeddings."
             )
-        assert (
-            ref_embedding.color_to_mass_folder.exists()
-        ), "Reference calibration folder does not exist."
+        ref_folder = ref_embedding.calibration_folder(interpretation.quantity)
+        assert ref_folder.exists(), "Reference calibration folder does not exist."
         color_analysis = HeterogeneousColorToMassAnalysis.load(
-            folder=ref_embedding.color_to_mass_folder,
+            folder=ref_folder,
             baseline=fluidflower.baseline,
             labels=selected_labels,
-            co2_mass_analysis=co2_mass_analysis,
+            interpretation=interpretation,
+            co2_mass_analysis=fluid_model,
             geometry=fluidflower.geometry,
             restoration=restoration,
             basis=selected_basis,
@@ -348,13 +348,14 @@ def calibration_color_to_mass_analysis_from_context(
             color_path_interpretation=color_path_interpretation,
         )
 
-    elif not reset and embedding.color_to_mass_folder.exists():
+    elif not reset and mass_folder.exists():
         # Start from existing calibration if available
         color_analysis = HeterogeneousColorToMassAnalysis.load(
-            folder=embedding.color_to_mass_folder,
+            folder=mass_folder,
             baseline=fluidflower.baseline,
             labels=selected_labels,
-            co2_mass_analysis=co2_mass_analysis,
+            interpretation=interpretation,
+            co2_mass_analysis=fluid_model,
             geometry=fluidflower.geometry,
             restoration=restoration,
             basis=selected_basis,
@@ -396,21 +397,14 @@ def calibration_color_to_mass_analysis_from_context(
                 )
                 ignore_labels.append(label)
                 logger.warning(f"Error processing label {label}: {e}")
-        flash = darsia.SimpleFlash(
-            min_value_aq=0,
-            max_value_aq=0.75,
-            min_value_g=0.75,
-            max_value_g=1.0,
-            restoration=None,
-        )
         color_analysis = HeterogeneousColorToMassAnalysis(
             baseline=fluidflower.baseline,
             labels=selected_labels,
             color_mode=embedding.mode,
             color_path_interpretation=color_path_interpretation,
             signal_functions=signal_functions,
-            flash=flash,
-            co2_mass_analysis=co2_mass_analysis,
+            flash=new_flash(interpretation.closure),
+            co2_mass_analysis=fluid_model,
             geometry=fluidflower.geometry,
             restoration=restoration,
             ignore_labels=calibration_ignore_labels + ignore_labels,
@@ -462,7 +456,7 @@ def calibration_color_to_mass_analysis_from_context(
             experiment=experiment,
             rois=rois,
             cmap=custom_cmap,
-            save=lambda: color_analysis.save(embedding.color_to_mass_folder),
+            save=lambda: color_analysis.save(mass_folder, interpretation),
         )
 
     for label in np.unique(selected_labels.img):
@@ -470,7 +464,7 @@ def calibration_color_to_mass_analysis_from_context(
             color_paths[label] = color_paths[reference_label]
 
     # Store calibration
-    color_analysis.save(embedding.color_to_mass_folder)
+    color_analysis.save(mass_folder, interpretation)
 
     # Test run on the calibration images; after the interactive calibration, ask
     run_test = show
