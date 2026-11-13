@@ -5,28 +5,34 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QMessageBox
 
-STEPS_USING_MASS_CALIBRATION = (
+STEPS_USING_COLOR_CALIBRATION = (
     "mass",
     "volume",
     "segmentation",
     "fingers",
     "thresholding",
 )
+"""Analysis steps that may use the interpretation calibration (color to signal) of the
+configured fluid."""
+
+STEPS_USING_MASS_CALIBRATION = STEPS_USING_COLOR_CALIBRATION
+"""Deprecated alias of STEPS_USING_COLOR_CALIBRATION."""
 
 
 def _confirm_outdated_mass_calibration(main_window, config_file: str, selected_id: str):
-    """Ask the user whether to continue if the mass calibration is outdated.
+    """Ask the user whether to continue if the interpretation calibration is outdated.
 
-    The mass calibration is outdated if the color paths were recalibrated after it
-    (e.g. a different number of key colors for some label).
+    The interpretation calibration is outdated if the color paths were recalibrated
+    after it (e.g. a different number of key colors for some label).
 
     Returns
     -------
         True if the analysis may start, False if the user cancelled.
 
     """
-    if selected_id not in STEPS_USING_MASS_CALIBRATION:
+    if selected_id not in STEPS_USING_COLOR_CALIBRATION:
         return True
+    name = "interpretation calibration"
     try:
         from darsia.presets.workflows.analysis.analysis_context import (
             infer_require_color_to_mass_from_config,
@@ -57,7 +63,7 @@ def _confirm_outdated_mass_calibration(main_window, config_file: str, selected_i
                 )
         inconsistencies = outdated_mass_calibration(path)
     except Exception as error:  # a check must never block the analysis
-        main_window.print_log(f"Skipped the mass calibration check: {error}")
+        main_window.print_log(f"Skipped the {name} check: {error}")
         return True
     if len(inconsistencies) == 0:
         return True
@@ -68,14 +74,12 @@ def _confirm_outdated_mass_calibration(main_window, config_file: str, selected_i
     )
     box = QMessageBox(main_window)
     box.setIcon(QMessageBox.Warning)
-    box.setWindowTitle("Mass calibration outdated")
-    box.setText(
-        "The color paths have been recalibrated after the last mass calibration."
-    )
+    box.setWindowTitle(f"{name.capitalize()} outdated")
+    box.setText(f"The color paths have been recalibrated after the last {name}.")
     box.setInformativeText(
-        "The analysis would use the color paths stored with the mass calibration, "
-        "not the current ones. It is recommended to recalibrate the mass "
-        "calibration first.\n\nAffected labels:\n" + details + "\n\nContinue anyway?"
+        f"The analysis would use the color paths stored with the {name}, "
+        f"not the current ones. It is recommended to recalibrate the {name} "
+        "first.\n\nAffected labels:\n" + details + "\n\nContinue anyway?"
     )
     continue_button = box.addButton("Continue anyway", QMessageBox.AcceptRole)
     cancel_button = box.addButton("Cancel", QMessageBox.RejectRole)
@@ -83,8 +87,7 @@ def _confirm_outdated_mass_calibration(main_window, config_file: str, selected_i
     box.exec()
     if box.clickedButton() is not continue_button:
         main_window.print_log(
-            "Analysis cancelled: recalibrate the mass calibration for the current "
-            "color paths."
+            f"Analysis cancelled: recalibrate the {name} for the current color paths."
         )
         return False
     return True
@@ -207,49 +210,32 @@ class AnalysisTab:
         )
 
     def sidebar_items(self):
-        """Return sidebar data structure for Analysis category."""
+        """Return sidebar data structure for Analysis category.
+
+        Names are fluid-neutral: what a step does is the same for all fluids, the
+        physical meaning comes from the configured interpretation. The id `mass` is
+        kept for the CLI flag (`--mass`).
+        """
         from .help_text import get_help_text
+
+        def item(checkbox_id, label):
+            return (
+                label,
+                checkbox_id,
+                "fa5s.circle",
+                get_help_text("analysis", checkbox_id, label),
+            )
 
         return [
             (
                 "Analysis steps",
                 [
-                    (
-                        "Cropping",
-                        "cropping",
-                        "fa5s.circle",
-                        get_help_text("analysis", "cropping", "Cropping"),
-                    ),
-                    (
-                        "Mass",
-                        "mass",
-                        "fa5s.circle",
-                        get_help_text("analysis", "mass", "Mass"),
-                    ),
-                    (
-                        "Segmentation",
-                        "segmentation",
-                        "fa5s.circle",
-                        get_help_text("analysis", "segmentation", "Segmentation"),
-                    ),
-                    (
-                        "Fingers",
-                        "fingers",
-                        "fa5s.circle",
-                        get_help_text("analysis", "fingers", "Fingers"),
-                    ),
-                    (
-                        "Thresholding",
-                        "thresholding",
-                        "fa5s.circle",
-                        get_help_text("analysis", "thresholding", "Thresholding"),
-                    ),
-                    (
-                        "Volume",
-                        "volume",
-                        "fa5s.circle",
-                        get_help_text("analysis", "volume", "Volume"),
-                    ),
+                    item("cropping", "Cropping"),
+                    item("mass", "Field maps"),
+                    item("segmentation", "Segmentation"),
+                    item("fingers", "Fingers"),
+                    item("thresholding", "Thresholding"),
+                    item("volume", "Volume"),
                 ],
             ),
         ]
