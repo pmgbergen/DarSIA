@@ -1029,23 +1029,8 @@ class HeterogeneousColorToMassAnalysis:
                         fontsize=8,
                         color="k",
                     )
-                else:
-                    # Single-phase: the signal is the concentration; a single
-                    # threshold (the contour threshold) is marked.
-                    threshold_line_y = ax_signal_function.axhline(
-                        y=contour_thresholds[0],
-                        color="k",
-                        linestyle="--",
-                        label="threshold",
-                        zorder=1,
-                    )
-                    threshold_line_x = ax_signal_function.axvline(
-                        x=curve_inverse(t_fine, y_fine, contour_thresholds[0]),
-                        color="k",
-                        linestyle="--",
-                        label="threshold",
-                        zorder=1,
-                    )
+                # Single-phase (tracer): no phase transition, hence no flash lines;
+                # the signal is the concentration itself.
                 # NOTE: Keep after the annotations above, which are accessed by index
                 used_indices = getattr(signal_func, "support_indices", None)
                 if used_indices is not None and len(used_indices) < len(
@@ -1566,13 +1551,6 @@ class HeterogeneousColorToMassAnalysis:
                             )
                             ax_signal_function.texts[2].set_position(
                                 (g_max_x + 0.1, 0.04)
-                            )
-                        else:
-                            # Single-phase: move the single threshold marker
-                            threshold = contour_thresholds[0]
-                            threshold_line_y.set_ydata([threshold])
-                            threshold_line_x.set_xdata(
-                                [curve_inverse(t_fine, y_fine, threshold)]
                             )
 
                     def update_mass_plot():

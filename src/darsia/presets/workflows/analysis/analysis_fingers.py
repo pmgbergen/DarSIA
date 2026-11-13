@@ -26,6 +26,7 @@ from darsia.presets.workflows.analysis.progress import (
     publish_image_progress,
 )
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
+from darsia.presets.workflows.config.physics import check_fluid_modes
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import (  # GradientBasedSegmentation,
@@ -131,6 +132,27 @@ def analysis_fingers_from_context(
 
     fluidflower = ctx.fluidflower
     experiment = ctx.experiment
+    finger_modes: dict[str, str | None] = {}
+    for name, cfg in ctx.config.analysis.fingers.config.items():
+        finger_modes[f"analysis.fingers.config.{name}.mode"] = cfg.mode
+        finger_modes[f"analysis.fingers.config.{name}.gradient_mode"] = (
+            cfg.gradient_mode
+        )
+    check_fluid_modes(ctx.config, "Fingers analysis", finger_modes)
+    # The fingers analysis works on the unscaled fields: rescaled and extensive modes are
+    # accepted by the config but cannot be resolved here.
+    unsupported = {
+        key: mode
+        for key, mode in finger_modes.items()
+        if mode is not None
+        and (mode.startswith("rescaled_") or mode.startswith("extensive_"))
+    }
+    if unsupported:
+        listed = ", ".join(f"{key} = '{mode}'" for key, mode in unsupported.items())
+        raise ValueError(
+            f"Fingers analysis: {listed} not supported; the fingers analysis uses the "
+            "unscaled fields, for example 'concentration_aq' or 'mass'."
+        )
 
     # Select image paths based on fingers config's data_selection
     image_paths = select_image_paths(

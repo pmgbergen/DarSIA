@@ -15,6 +15,7 @@ from darsia.presets.workflows.analysis.analysis_context import select_image_path
 from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.format_registry import ImageExportFormat
+from darsia.presets.workflows.config.physics import check_fluid_modes
 from darsia.presets.workflows.config.sections import required_sections
 from darsia.presets.workflows.rig import Rig
 
@@ -190,6 +191,9 @@ def helper_result_reader(
     assert config.helper.results is not None
 
     helper_config = config.helper.results
+    check_fluid_modes(
+        config, "Result helper", {"helper.results.mode": helper_config.mode}
+    )
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
     fluidflower = rig_cls.load(config.rig.path, config.corrections)
     fluidflower.load_experiment(experiment)

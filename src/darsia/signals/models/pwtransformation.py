@@ -118,8 +118,13 @@ class PWTransformation:
             return self._call_for_array(img)
         elif isinstance(img, darsia.Image):
             return darsia.full_like(img, fill_value=self._call_for_array(img.img))
+        elif np.isscalar(img):
+            return float(self._call_for_array(np.asarray(img, dtype=float)))
         else:
-            raise ValueError
+            raise ValueError(
+                "Input must be a float, np.ndarray or darsia.Image, "
+                f"got {type(img)}."
+            )
 
     def _call_for_array(self, arr: np.ndarray) -> np.ndarray:
         """Apply the transformation to a numpy array."""

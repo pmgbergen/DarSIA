@@ -37,21 +37,29 @@ def comparison_events(
 
         # Loop over events
         for event in config.events.events.values():
-            if event.mode in ["mass", "mass_g", "mass_aq"]:
+            if event.mode in ["mass", "mass_g", "mass_aq", "volume"]:
                 # Fetch mass analysis results
                 mass_path = (
                     run_config.data.results / "sparse_data" / "integrated_mass.csv"
                 )
                 mass_df = pd.read_csv(mass_path)
                 times = mass_df["time"]
-                # Find a column with "exact_mass" to get total injected mass
-                exact_mass_cols = [
-                    col for col in mass_df.columns if "exact_mass" in col
-                ]
-                if exact_mass_cols:
-                    total_mass = np.max(mass_df[exact_mass_cols[0]])
+                if event.mode == "volume":
+                    # Volume of a single-phase fluid (tracer), in m3
+                    assert "exact_volume_total_m3" in mass_df.columns, (
+                        "Volume events need the mass results of a single-phase fluid: "
+                        "column 'exact_volume_total_m3' not found."
+                    )
+                    total_mass = np.max(mass_df["exact_volume_total_m3"])
                 else:
-                    total_mass = 1.0  # fallback if no exact mass column found
+                    # Find a column with "exact_mass" to get total injected mass
+                    exact_mass_cols = [
+                        col for col in mass_df.columns if "exact_mass" in col
+                    ]
+                    if exact_mass_cols:
+                        total_mass = np.max(mass_df[exact_mass_cols[0]])
+                    else:
+                        total_mass = 1.0  # fallback if no exact mass column found
 
                 # Fetch detected mass for the event's ROI
                 if event.mode == "mass":
@@ -60,6 +68,8 @@ def comparison_events(
                     key = f"{event.roi_name}_detected_mass_g"
                 elif event.mode == "mass_aq":
                     key = f"{event.roi_name}_detected_mass_aq"
+                elif event.mode == "volume":
+                    key = f"{event.roi_name}_detected_volume_m3"
                 columns = mass_df.columns
                 assert key in columns, f"Key {key} not found in mass results."
                 detected_mass = mass_df[key]

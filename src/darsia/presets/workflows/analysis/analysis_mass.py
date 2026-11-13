@@ -24,12 +24,14 @@ from darsia.presets.workflows.analysis.progress import (
 )
 from darsia.presets.workflows.analysis.scalar_products import (
     analysis_scalar_products,
+    check_rescaling_possible,
     rescale_basis,
 )
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.config.analysis import (
     SUPPORTED_ANALYSIS_MASS_EXPORT_MODES,
 )
+from darsia.presets.workflows.config.physics import check_fluid_modes
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -94,6 +96,16 @@ def analysis_mass_from_context(
     # ! ---- ENSURE MASS CONFIGURATION ----
     if config.analysis.mass is None:
         raise ValueError("Mass analysis requires an explicit [analysis.mass] section.")
+    check_fluid_modes(
+        config,
+        "Mass analysis",
+        {
+            f"analysis.mass.export[{index}]": mode
+            for index, mode in enumerate(
+                getattr(config.analysis.mass, "export", None) or []
+            )
+        },
+    )
 
     # Respect this consumer's expert-knowledge toggle. Not restored afterwards,
     # so if color_to_mass_analysis/ctx are shared with other analysis types in one
@@ -115,6 +127,9 @@ def analysis_mass_from_context(
             "Mass rescaling requires 'co2_mass_analysis' on color_to_mass_analysis."
         )
     co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
+    check_rescaling_possible(
+        co2_mass_analysis, experiment.injection_protocol, "Mass analysis"
+    )
 
     # Resolve ROI registry keys to actual ROI configs
     resolved_roi = config.roi_registry.resolve_rois(config.analysis.mass.roi)
@@ -177,26 +192,34 @@ def analysis_mass_from_context(
         "rescaled_concentration_aq": {"vmin": 0.0, "vmax": 1.0},
     }
 
+    # Single-phase fluids (tracer) have no gas phase and are matched to the injected
+    # volume: no gas products or columns; the mass columns stay (exact mass = injected
+    # volume x model density) and volume columns (in m3) are added.
+    volume_basis = rescale_basis(co2_mass_analysis) == "volume"
+    has_gas = not volume_basis
+
     # Initialize DataFrame for storing integrated masses
     detected_cols = [
         f"{roi_config.name}_detected_mass" for roi_config in resolved_roi.values()
     ]
-    detected_cols_g = [
-        f"{roi_config.name}_detected_mass_g" for roi_config in resolved_roi.values()
-    ]
+    detected_cols_g = (
+        [f"{roi_config.name}_detected_mass_g" for roi_config in resolved_roi.values()]
+        if has_gas
+        else []
+    )
     detected_cols_aq = [
         f"{roi_config.name}_detected_mass_aq" for roi_config in resolved_roi.values()
     ]
     exact_cols = [
         f"{roi_config.name}_exact_mass" for roi_config in resolved_roi.values()
     ]
-    # Single-phase fluids (tracer) are matched to the injected volume: the mass columns
-    # stay (exact mass = injected volume x model density), volume columns are added.
-    volume_basis = rescale_basis(co2_mass_analysis) == "volume"
     volume_cols = (
-        ["detected_volume_total", "exact_volume_total"]
-        + [f"{roi_config.name}_exact_volume" for roi_config in resolved_roi.values()]
-        + [f"{roi_config.name}_detected_volume" for roi_config in resolved_roi.values()]
+        ["detected_volume_total_m3", "exact_volume_total_m3"]
+        + [f"{roi_config.name}_exact_volume_m3" for roi_config in resolved_roi.values()]
+        + [
+            f"{roi_config.name}_detected_volume_m3"
+            for roi_config in resolved_roi.values()
+        ]
         if volume_basis
         else []
     )
@@ -256,24 +279,25 @@ def analysis_mass_from_context(
             expert_knowledge_adapter=ctx.expert_knowledge_adapter,
         )
         mass = products["mass_total"]
-        mass_g = products["mass_g"]
         mass_aq = products["mass_aq"]
-        saturation_g = products["saturation_g"]
         concentration_aq = products["concentration_aq"]
         assert rescaled is not None
         rescaled_mass = products["rescaled_mass"]
-        rescaled_saturation_g = products["rescaled_saturation_g"]
         rescaled_concentration_aq = products["rescaled_concentration_aq"]
 
         # Store data to disk
         export_images: dict[str, darsia.Image] = {
             "mass": mass,
             "rescaled_mass": rescaled_mass,
-            "saturation_g": saturation_g,
-            "rescaled_saturation_g": rescaled_saturation_g,
             "concentration_aq": concentration_aq,
             "rescaled_concentration_aq": rescaled_concentration_aq,
         }
+        if has_gas:
+            mass_g = products["mass_g"]
+            saturation_g = products["saturation_g"]
+            rescaled_saturation_g = products["rescaled_saturation_g"]
+            export_images["saturation_g"] = saturation_g
+            export_images["rescaled_saturation_g"] = rescaled_saturation_g
         if "extensive_mass" in export_modes:
             export_images["extensive_mass"] = fluidflower.geometry.make_extensive(mass)
         if "extensive_rescaled_mass" in export_modes:
@@ -298,8 +322,8 @@ def analysis_mass_from_context(
         )
         row_data["mass_scaling_factor"] = rescaled.mass_scaling_factor
         if volume_basis:
-            row_data["detected_volume_total"] = rescaled.detected_volume_total
-            row_data["exact_volume_total"] = rescaled.exact_volume_total
+            row_data["detected_volume_total_m3"] = rescaled.detected_volume_total
+            row_data["exact_volume_total_m3"] = rescaled.exact_volume_total
 
         # Compute exact mass in ROIs and add to row data
         for roi_config in resolved_roi.values():
@@ -312,8 +336,8 @@ def analysis_mass_from_context(
                     date=img.date, roi=roi_config.roi
                 )
                 exact_mass_roi = exact_volume_roi * co2_mass_analysis.scale
-                row_data[f"{key}_exact_volume"] = exact_volume_roi
-                row_data[f"{key}_detected_volume"] = geometry[key].integrate(
+                row_data[f"{key}_exact_volume_m3"] = exact_volume_roi
+                row_data[f"{key}_detected_volume_m3"] = geometry[key].integrate(
                     concentration_aq.subregion(roi)
                 )
             else:
@@ -323,13 +347,15 @@ def analysis_mass_from_context(
 
             # Integrate over chosen roi
             mass_roi = geometry[key].integrate(mass.subregion(roi))
-            mass_g_roi = geometry[key].integrate(mass_g.subregion(roi))
             mass_aq_roi = geometry[key].integrate(mass_aq.subregion(roi))
 
             # Store
             row_data[f"{key}_exact_mass"] = exact_mass_roi
             row_data[f"{key}_detected_mass"] = mass_roi
-            row_data[f"{key}_detected_mass_g"] = mass_g_roi
+            if has_gas:
+                row_data[f"{key}_detected_mass_g"] = geometry[key].integrate(
+                    mass_g.subregion(roi)
+                )
             row_data[f"{key}_detected_mass_aq"] = mass_aq_roi
 
         # Add row to DataFrame using pd.concat for better performance
@@ -358,21 +384,24 @@ def analysis_mass_from_context(
 
             img.show(title=f"Image at {path.stem}", delay=True)
             mass.show(title=f"Mass at {path.stem}", delay=True)
-            mass_g.show(title=f"Mass G at {path.stem}", delay=True)
+            if has_gas:
+                mass_g.show(title=f"Mass G at {path.stem}", delay=True)
             mass_aq.show(title=f"Mass AQ at {path.stem}", delay=True)
             plt.show()
 
+        stream_payload = {
+            "mass_source_image": img,
+            "mass_total": mass,
+            "mass_aq": mass_aq,
+            "rescaled_mass": rescaled_mass,
+            "rescaled_concentration_aq": rescaled_concentration_aq,
+        }
+        if has_gas:
+            stream_payload["mass_g"] = mass_g
+            stream_payload["rescaled_saturation_g"] = rescaled_saturation_g
         publish_stream_images(
             stream_callback=stream_callback,
-            image_payload={
-                "mass_source_image": img,
-                "mass_total": mass,
-                "mass_g": mass_g,
-                "mass_aq": mass_aq,
-                "rescaled_mass": rescaled_mass,
-                "rescaled_saturation_g": rescaled_saturation_g,
-                "rescaled_concentration_aq": rescaled_concentration_aq,
-            },
+            image_payload=stream_payload,
             logger=logger,
             error_message=f"Failed to stream mass previews for image '{path}'.",
         )

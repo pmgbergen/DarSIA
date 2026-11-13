@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 
 import darsia
+from darsia.presets.workflows.analysis.analysis_context import build_fluid_model
+from darsia.presets.workflows.analysis.scalar_products import rescale_basis
 from darsia.presets.workflows.config.multi_fluidflower_config import (
     MultiFluidFlowerConfig,
 )
@@ -179,7 +181,7 @@ def _load_and_process_mass(
         logger.warning(
             f"Mass data for run {run_name} at time {time} not found. Skipping."
         )
-        return None, None
+        return None
 
     # Apply weight for 3D effect and porosity
     dimensionally_reduced_mass = mass * porosity_times_depth
@@ -266,22 +268,13 @@ def _compute_wasserstein_distances(
     # Fetch experimental protocol for defining reference values based on injection profile
     example_experiment = darsia.ProtocolledExperiment.init_from_config(example_config)
 
-    # Determine characteristic solubility distriburion
-    state = example_experiment.pressure_temperature_protocol.get_state(
-        example_experiment.experiment_start
-    )
-    gradient = example_experiment.pressure_temperature_protocol.get_gradient(
-        example_experiment.experiment_start
-    )
-    co2_mass_analysis = darsia.CO2MassAnalysis(
-        baseline=fluidflower.baseline,
-        atmospheric_pressure=state.pressure,
-        atmospheric_temperature=state.temperature,
-        atmospheric_pressure_gradient=gradient.pressure,
-        atmospheric_temperature_gradient=gradient.temperature,
-    )
-    example_solubility = co2_mass_analysis.solubility_co2
-    avg_solubility = np.average(example_solubility)
+    # Fluid model of the experiment: the characteristic solubility distribution of a
+    # multiphase fluid (CO2), the density of a single-phase fluid (tracer)
+    fluid_model = build_fluid_model(example_config, example_experiment, fluidflower)
+    single_phase = rescale_basis(fluid_model) == "volume"
+    if not single_phase:
+        avg_solubility = np.average(fluid_model.solubility_co2)
+    injection_protocol = example_experiment.injection_protocol
 
     # Count total computations for progress tracking
     for time, uncertainty in times:
@@ -296,12 +289,17 @@ def _compute_wasserstein_distances(
     for time, uncertainty in times:
         logger.info(f"Processing time {time} with uncertainty {uncertainty}")
 
-        # Obtain expected mass from injection profile at given time
-        exact_mass = example_experiment.injection_protocol.injected_mass(time=time)
+        # Obtain expected mass from injection profile at given time; a single-phase
+        # fluid is injected by volume, its mass is the volume times the fluid density
+        if single_phase:
+            avg_volume = injection_protocol.injected_volume(time=time)
+            exact_mass = avg_volume * fluid_model.scale
+        else:
+            exact_mass = injection_protocol.injected_mass(time=time)
+            avg_volume = exact_mass / avg_solubility
 
         # Determine refernce distance based on plume expansion
         avg_depth = np.average(geometry.depth.img)
-        avg_volume = exact_mass / avg_solubility
         avg_plume_area = avg_volume / avg_depth
         avg_plume_radius = np.sqrt(avg_plume_area / np.pi)
 
@@ -365,11 +363,17 @@ def _compute_wasserstein_distances(
                     # sub_roi_name = None # TODO rm?
 
                     # Obtain expected mass from injection profile at given time
-                    roi_exact_mass = (
-                        example_experiment.injection_protocol.injected_mass(
+                    if single_phase:
+                        roi_exact_mass = (
+                            injection_protocol.injected_volume(
+                                time=time, roi=roi_config.roi
+                            )
+                            * fluid_model.scale
+                        )
+                    else:
+                        roi_exact_mass = injection_protocol.injected_mass(
                             time=time, roi=roi_config.roi
                         )
-                    )
 
                     # Check if result already exists
                     result_file = WassersteinDistanceResult.get_filename(

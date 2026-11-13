@@ -87,21 +87,37 @@ def analysis_volume_from_context(
         }
     )
 
+    # A single-phase fluid (tracer) has no gas: no gas products or columns, and the
+    # volume (in m3) is the integrated aqueous concentration; the unit is in the names.
+    has_gas = getattr(color_to_mass_analysis, "has_gas", True)
+    unit = "" if has_gas else "_m3"
+
     # Initialize DataFrame for storing integrated masses
     detected_cols = [
-        f"{roi_config.name}_detected_volume" for roi_config in resolved_roi.values()
+        f"{roi_config.name}_detected_volume{unit}"
+        for roi_config in resolved_roi.values()
     ]
-    detected_cols_g = [
-        f"{roi_config.name}_detected_volume_g" for roi_config in resolved_roi.values()
-    ]
-    detected_cols_aq = [
-        f"{roi_config.name}_detected_volume_aq" for roi_config in resolved_roi.values()
-    ]
+    detected_cols_g = (
+        [f"{roi_config.name}_detected_volume_g" for roi_config in resolved_roi.values()]
+        if has_gas
+        else []
+    )
+    detected_cols_aq = (
+        [
+            f"{roi_config.name}_detected_volume_aq"
+            for roi_config in resolved_roi.values()
+        ]
+        if has_gas
+        else []
+    )
     # The injected volume is only known for protocols with a volumetric rate.
     injection_protocol = experiment.injection_protocol
     has_exact_volume = getattr(injection_protocol, "has_volume", False)
     exact_cols = (
-        [f"{roi_config.name}_exact_volume" for roi_config in resolved_roi.values()]
+        [
+            f"{roi_config.name}_exact_volume{unit}"
+            for roi_config in resolved_roi.values()
+        ]
         if has_exact_volume
         else []
     )
@@ -119,7 +135,8 @@ def analysis_volume_from_context(
     # Storing and plotting
     folder_saturation_g = config.data.results / "saturation_g"
     folder_concentration_aq = config.data.results / "concentration_aq"
-    folder_saturation_g.mkdir(parents=True, exist_ok=True)
+    if has_gas:
+        folder_saturation_g.mkdir(parents=True, exist_ok=True)
     folder_concentration_aq.mkdir(parents=True, exist_ok=True)
     exporter = ImageExportFormats(config, config.analysis.volume.formats or ["npz"])
 
@@ -148,18 +165,20 @@ def analysis_volume_from_context(
         image_time = mass_analysis_result.time
 
         # Fetch results
-        saturation_g = mass_analysis_result.saturation_g
         concentration_aq = mass_analysis_result.concentration_aq
-        saturation_aq = concentration_aq.copy()
-        saturation_aq.img *= 1 - saturation_g.img
+        if has_gas:
+            saturation_g = mass_analysis_result.saturation_g
+            saturation_aq = concentration_aq.copy()
+            saturation_aq.img *= 1 - saturation_g.img
 
         # Store coarse data to disk
-        exporter.export_image(
-            saturation_g,
-            folder_saturation_g,
-            path.stem,
-            supported_types={"jpg", "png", "npz", "npy", "csv"},
-        )
+        if has_gas:
+            exporter.export_image(
+                saturation_g,
+                folder_saturation_g,
+                path.stem,
+                supported_types={"jpg", "png", "npz", "npy", "csv"},
+            )
         exporter.export_image(
             concentration_aq,
             folder_concentration_aq,
@@ -176,18 +195,22 @@ def analysis_volume_from_context(
             roi = roi_config.roi
 
             # Integrate over chosen roi
-            volume_g_roi = geometry[key].integrate(saturation_g.subregion(roi))
-            volume_aq_roi = geometry[key].integrate(saturation_aq.subregion(roi))
-            volume_roi = volume_g_roi + volume_aq_roi
+            if has_gas:
+                volume_g_roi = geometry[key].integrate(saturation_g.subregion(roi))
+                volume_aq_roi = geometry[key].integrate(saturation_aq.subregion(roi))
+                volume_roi = volume_g_roi + volume_aq_roi
+            else:
+                volume_roi = geometry[key].integrate(concentration_aq.subregion(roi))
 
             # Store
             if has_exact_volume:
-                row_data[f"{key}_exact_volume"] = injection_protocol.injected_volume(
-                    date=img.date, roi=roi
+                row_data[f"{key}_exact_volume{unit}"] = (
+                    injection_protocol.injected_volume(date=img.date, roi=roi)
                 )
-            row_data[f"{key}_detected_volume"] = volume_roi
-            row_data[f"{key}_detected_volume_g"] = volume_g_roi
-            row_data[f"{key}_detected_volume_aq"] = volume_aq_roi
+            row_data[f"{key}_detected_volume{unit}"] = volume_roi
+            if has_gas:
+                row_data[f"{key}_detected_volume_g"] = volume_g_roi
+                row_data[f"{key}_detected_volume_aq"] = volume_aq_roi
 
         # Add row to DataFrame using pd.concat for better performance
         new_row = pd.DataFrame([row_data])
@@ -200,7 +223,10 @@ def analysis_volume_from_context(
         # Log the current analysis results
         for roi_config in resolved_roi.values():
             key = roi_config.name
-            detected = row_data[f"{key}_detected_volume"]
+            detected = row_data[f"{key}_detected_volume{unit}"]
+            if not has_gas:
+                logger.info(f"  {key}: detected = {detected:.6e} m3")
+                continue
             detected_g = row_data[f"{key}_detected_volume_g"]
             detected_aq = row_data[f"{key}_detected_volume_aq"]
             logger.info(
@@ -213,18 +239,21 @@ def analysis_volume_from_context(
             import matplotlib.pyplot as plt
 
             img.show(title=f"Image at {path.stem}", delay=True)
-            saturation_g.show(title=f"Saturation_g at {path.stem}", delay=True)
+            if has_gas:
+                saturation_g.show(title=f"Saturation_g at {path.stem}", delay=True)
             concentration_aq.show(title=f"Concentration_aq at {path.stem}", delay=True)
             plt.show()
 
+        stream_payload = {
+            "volume_source_image": img,
+            "concentration_aq": concentration_aq,
+        }
+        if has_gas:
+            stream_payload["saturation_g"] = saturation_g
+            stream_payload["saturation_aq"] = saturation_aq
         publish_stream_images(
             stream_callback=stream_callback,
-            image_payload={
-                "volume_source_image": img,
-                "saturation_g": saturation_g,
-                "concentration_aq": concentration_aq,
-                "saturation_aq": saturation_aq,
-            },
+            image_payload=stream_payload,
             logger=logger,
             error_message=f"Failed to stream volume previews for image '{path}'.",
         )

@@ -200,10 +200,14 @@ class SimpleFlash:
         max_value_g : float | None
             Maximum value for gas phase.
         """
-        self.min_value_aq = min_value_aq or self.min_value_aq
-        self.max_value_aq = max_value_aq or self.max_value_aq
-        self.min_value_g = min_value_g or self.min_value_g
-        self.max_value_g = max_value_g or self.max_value_g
+        if min_value_aq is not None:
+            self.min_value_aq = min_value_aq
+        if max_value_aq is not None:
+            self.max_value_aq = max_value_aq
+        if min_value_g is not None:
+            self.min_value_g = min_value_g
+        if max_value_g is not None:
+            self.max_value_g = max_value_g
 
     @darsia.timing_decorator
     def __call__(self, signal: darsia.Image) -> tuple[darsia.Image, darsia.Image]:
