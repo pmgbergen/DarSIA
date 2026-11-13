@@ -1,4 +1,16 @@
-"""Flash calculation for two-phase flow analysis."""
+"""Flash calculation for two-phase flow analysis.
+
+TODO (mid-term cleanup): This module grew historically and needs structure.
+- Common base class (or Protocol) for all flashes: `Flash`, `AdvancedFlash`,
+  `SimpleFlash` and `IdentityFlash` share no interface so far, although the workflows
+  treat them alike (`__call__(signal) -> (c_aq, s_g)`, `save`, `load`).
+- Parameter-free, uniform (de)serialization: each flash stores a "type" key in its
+  JSON, so that a single `load_flash(path)` can pick the class; `new_flash` and
+  `load_flash` below dispatch by a closure name only as a stop-gap.
+- A registry of flashes by name instead of if/else chains, so that new closures are
+  added in one place and can be fetched by the configuration.
+- Remove legacy/commented-out code and duplicated parameter handling.
+"""
 
 import json
 import logging
@@ -132,13 +144,30 @@ class SimpleFlash:
 
     def __init__(
         self,
-        min_value_aq: float,
-        max_value_aq: float,
-        min_value_g: float,
-        max_value_g: float,
+        min_value_aq: float = 0.0,
+        max_value_aq: float = 0.75,
+        min_value_g: float = 0.75,
+        max_value_g: float = 1.0,
         restoration=None,
     ) -> None:
-        """Constructor."""
+        """Constructor.
+
+        The default bounds split the signal range [0, 1] into an aqueous part [0, 0.75]
+        and a gaseous part [0.75, 1].
+
+        Parameters
+        ----------
+        min_value_aq : float
+            Signal value below which there is no dissolved CO2.
+        max_value_aq : float
+            Signal value from which the aqueous phase is saturated.
+        min_value_g : float
+            Signal value below which there is no gas.
+        max_value_g : float
+            Signal value from which the gas saturation is one.
+        restoration : optional
+            Restoration applied to the resulting concentration and saturation.
+        """
 
         self.min_value_aq = min_value_aq
         """Minimum value."""
@@ -293,3 +322,84 @@ class SimpleFlash:
         flash = cls.from_dict(data)
         logger.info(f"Loaded SimpleFlash parameters from {path}.")
         return flash
+
+
+class IdentityFlash:
+    """Flash of a single-phase tracer: the signal is the aqueous concentration.
+
+    There is no gas phase, hence the gas saturation is zero. The interface is the one of
+    SimpleFlash, but there are no parameters.
+    """
+
+    def __call__(self, signal: darsia.Image) -> tuple[darsia.Image, darsia.Image]:
+        """Aqueous concentration (clipped to non-negative values), gas saturation 0.
+
+        Parameters
+        ----------
+        signal : Image
+            Numerical signal.
+
+        Returns
+        -------
+        tuple
+            Volumetric concentration in aqueous phase, saturation in gas phase.
+        """
+        c_aq = darsia.full_like(signal, np.clip(signal.img, 0.0, None))
+        return c_aq, darsia.zeros_like(signal)
+
+    def save(self, path: Path) -> None:
+        """Save a marker file; there are no parameters to store.
+
+        Parameters
+        ----------
+        path : Path
+            The path to the file where the marker will be saved.
+        """
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path.with_suffix(".json"), "w") as f:
+            json.dump({"type": "identity"}, f)
+
+    @classmethod
+    def load(cls, path: Path) -> "IdentityFlash":
+        """Create an IdentityFlash; the path is only part of the common interface."""
+        return cls()
+
+
+def new_flash(closure: str) -> SimpleFlash | IdentityFlash:
+    """Flash with default parameters for a new calibration.
+
+    Parameters
+    ----------
+    closure : str
+        Closure from signal to fields: "flash" (thresholds) or "identity" (no gas).
+
+    Returns
+    -------
+        New flash of the closure.
+    """
+    if closure == "identity":
+        return IdentityFlash()
+    if closure == "flash":
+        return SimpleFlash()
+    raise NotImplementedError(f"Unknown closure '{closure}'.")
+
+
+def load_flash(closure: str, path: Path) -> SimpleFlash | IdentityFlash:
+    """Flash of a stored calibration.
+
+    Parameters
+    ----------
+    closure : str
+        Closure from signal to fields: "flash" (thresholds) or "identity" (no gas).
+    path : Path
+        Path of the stored flash.
+
+    Returns
+    -------
+        Loaded flash of the closure.
+    """
+    if closure == "identity":
+        return IdentityFlash.load(path)
+    if closure == "flash":
+        return SimpleFlash.load(path)
+    raise NotImplementedError(f"Unknown closure '{closure}'.")
