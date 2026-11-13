@@ -125,8 +125,10 @@ class RotationCorrection(darsia.BaseCorrection):
         src_voxels = anchor_extruded + self.rotation_inv.dot(
             target_voxels - anchor_extruded
         )
+        # Round (not truncate) to the nearest voxel; the rotation matrix carries
+        # floating-point noise (e.g. 0.9999999999999991), so truncation is off by one.
         src_voxels = np.clip(
-            src_voxels.astype(int),
+            np.round(src_voxels).astype(int),
             0,
             np.outer(np.array(shape) - 1, np.ones(num_voxels)),
         ).astype(int)
@@ -134,81 +136,6 @@ class RotationCorrection(darsia.BaseCorrection):
         rotated_img[tuple(target_voxels[j] for j in range(self.dim))] = img[
             tuple(src_voxels[j] for j in range(self.dim))
         ]
-        return rotated_img
-
-        # print(target_voxels[:,34], src_voxels[:,34], img[src_voxels[:,34].astype(int)])
-
-        print(self.anchor + self.rotation_inv.dot(np.array([3, 4]) - self.anchor))
-        # Determine which columns lie within the image
-        mask = np.logical_and(
-            np.all(src_voxels > -1e-3, axis=0),
-            np.all(
-                np.less(src_voxels, np.outer(np.array(shape) - 1, np.ones(num_voxels))),
-                axis=0,
-            ),
-        )
-
-        # Deactivate voxels outside range - continue only with valid ones
-        target_voxels = target_voxels[:, mask]
-        src_voxels = src_voxels[:, mask]
-        num_active_voxels = src_voxels.shape[1]
-
-        # Find related voxels in two opposite corners defining a voxel,
-        # containing src_voxels. Need to check whether the voxel is
-        # contained in the image.
-        base_corner = np.floor(src_voxels).astype(int)
-        opposite_corner = base_corner + 1
-        base_corner[
-            np.less(
-                opposite_corner,
-                np.outer(np.array(shape) - 1, np.ones(num_active_voxels)),
-            )
-        ] -= 1
-        opposite_corner[
-            np.less(
-                opposite_corner,
-                np.outer(np.array(shape) - 1, np.ones(num_active_voxels)),
-            )
-        ] -= 1
-
-        # Collect all corners of the marked voxels.
-        corners = [
-            np.vstack(comb)
-            for comb in list(
-                itertools.product(
-                    *[[base_corner[i], opposite_corner[i]] for i in range(self.dim)]
-                )
-            )
-        ]
-
-        # Evaluate standard Q1 basis functions, and scale them such that they sum to 1.
-        basis = [
-            np.prod(1 - np.absolute(corner - src_voxels), axis=0) for corner in corners
-        ]
-        basis_sum = sum(basis)
-        basis = [b / basis_sum for b in basis]
-
-        # Bilinear / trilinear interpolation: sum(data in voxels * basis)
-        q1_interpolation = sum(
-            [
-                np.multiply(
-                    basis[i],
-                    img[
-                        tuple(
-                            np.array(corners[i][j]).astype(int) for j in range(self.dim)
-                        )
-                    ],
-                )
-                for i in range(len(basis))
-            ]
-        )
-
-        # Finally assign interpolated values to the associated target voxels.
-        rotated_img = np.zeros(shape)
-        rotated_img[
-            tuple(np.floor(target_voxels[j]).astype(int) for j in range(self.dim))
-        ] = q1_interpolation
-
         return rotated_img
 
     # ! ---- I/O ----
