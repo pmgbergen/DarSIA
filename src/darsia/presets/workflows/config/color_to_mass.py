@@ -28,8 +28,6 @@ class ColorToMassConfig:
 
     mode: str = "manual"
     """Calibration mode (e.g., 'manual', 'automatic')."""
-    fluid: str | None = "co2"
-    """Fluid type for mass analysis (e.g., 'tracer', 'co2')."""
     data: TimeData | None = field(default=None, metadata={"hidden": True})
     """Calibration data configuration."""
     calibration_folder: Path = field(default_factory=Path)
@@ -66,9 +64,8 @@ class ColorToMassConfig:
         # Get section
         sec = _get_section_from_toml(path, "color_to_mass")
 
-        # Mode and fluid
+        # Mode
         self.mode = _get_key(sec, "mode", default="manual", required=False, type_=str)
-        self.fluid = _get_key(sec, "fluid", default="co2", required=False, type_=str)
         self.basis = parse_color_embedding_basis(
             _get_key(
                 sec, "basis", default=ColorEmbeddingBasis.LABELS.value, required=False

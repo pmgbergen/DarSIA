@@ -24,6 +24,7 @@ from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.config.labeling import LabelingConfig
 from darsia.presets.workflows.config.multi_fluidflower_config import EventsConfig
 from darsia.presets.workflows.config.options import OptionsConfig
+from darsia.presets.workflows.config.physics import PhysicsConfig
 from darsia.presets.workflows.config.protocols import ProtocolsConfig
 from darsia.presets.workflows.config.restoration import RestorationConfig
 from darsia.presets.workflows.config.rig import RigConfig
@@ -49,6 +50,7 @@ SECTION_TO_DATACLASS = {
     "image_porosity": ImagePorosityConfig,
     "labeling": LabelingConfig,
     "options": OptionsConfig,
+    "physics": PhysicsConfig,
     "protocols": ProtocolsConfig,
     "registry": DataRegistry,
     "restoration": RestorationConfig,
@@ -63,6 +65,7 @@ SECTION_TO_DATACLASS = {
 # Mirrors FluidFlowerConfig.__init__'s load order to maintain dependencies.
 ALL_SECTIONS = [
     "data",
+    "physics",
     "registry",
     "format_registry",
     "roi",

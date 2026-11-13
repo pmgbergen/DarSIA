@@ -19,6 +19,7 @@ from .helper import HelperConfig
 from .image_porosity import ImagePorosityConfig
 from .labeling import LabelingConfig
 from .options import OptionsConfig
+from .physics import PhysicsConfig
 from .protocols import ProtocolsConfig
 from .restoration import RestorationConfig
 from .rig import RigConfig
@@ -101,6 +102,7 @@ class FluidFlowerConfig:
         self.format_registry: FormatRegistry | None = None
         self.analysis: AnalysisConfig | None = None
         self.options: OptionsConfig | None = None
+        self.physics: PhysicsConfig = PhysicsConfig()
         self.helper: HelperConfig | None = None
         self.download: DownloadConfig | None = None
         self.workflow_utils: WorkflowUtilsConfig | None = None
@@ -267,6 +269,9 @@ class FluidFlowerConfig:
             lambda: self.options.load(path),
             warn_on_missing=False,
         )
+
+        # Always present: a missing [physics] section defaults to multiphase CO2.
+        self.physics = PhysicsConfig().load(path)
 
         _load_section(
             self,
