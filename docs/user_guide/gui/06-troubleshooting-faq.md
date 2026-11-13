@@ -61,6 +61,19 @@ a rig-geometry integral.
   `manual` with values from a previous known-good run (or an imported
   calibration bundle, `[utils.calibration].import_bundle`).
 
+## "What do the marks in the sidebar mean?"
+
+- plain dot: no output yet (missing);
+- green check: output exists and still matches its inputs (valid);
+- orange exclamation mark: output exists, but an input changed after it was made
+  (outdated). Hover the item to see why, e.g. "the color paths were recalibrated after
+  this calibration" or "the interpretation was recalibrated after this analysis".
+
+For now this covers the color chain: **Color path** → **Interpretation** → the analyses using
+it (**Field maps**, **Volume**, and **Segmentation** / **Fingers** / **Thresholding** with a
+calibrated mode). Rerun the outdated step to make it valid again. The marks are refreshed
+when a config is loaded and after each run.
+
 ## "My tracer config shows no gas fields"
 
 That is intended for `[physics] fluid = "tracer"` (single phase, no gas):
