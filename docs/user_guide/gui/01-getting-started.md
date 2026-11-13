@@ -5,13 +5,14 @@
 [DarSIA](https://github.com/pmgbergen/DarSIA) ("Darcy scale image analysis") is
 a Python toolbox for turning photographs of a lab experiment into quantitative
 scientific data. It is widely used on **FluidFlower** experiments:
-time-lapse photos of a transparent rig filled with sand, where CO₂ is injected
-and its migration is tracked from color changes in the images.
+time-lapse photos of a transparent rig filled with sand, where CO₂ (multiphase)
+or a dye tracer (single-phase) is injected and its migration is tracked from
+color changes in the images.
 
 Concretely, DarSIA takes a folder of JPEGs plus a small amount of metadata
 (the rig's physical dimensions, where the sand layers are, a color calibration)
-and turns each image into physical quantities: CO₂ concentration, mass,
-saturation. The GUI is a Qt application that wraps this pipeline so you never
+and turns each image into physical quantities: concentration, mass, volume and,
+for CO₂, gas saturation. The GUI is a Qt application that wraps this pipeline so you never
 have to write a driver script — you fill in a config file and click buttons.
 
 ## Installing

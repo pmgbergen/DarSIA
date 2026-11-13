@@ -155,6 +155,10 @@ pressure_temperature = "/path/to/experiment/protocols/pressure_temperature_proto
 `[data].folders`, with folder keys that must match exactly (for multiple
 folders, a value can also be `["<file>.xlsx", "Sheet1"]`).
 
+The pressure-temperature protocol is used for **every** fluid: densities (and, for
+CO₂, solubility) depend on pressure and temperature, including their gradients over
+the rig height (hydrostatic pressure, temperature gradient).
+
 ## Color embedding registry
 
 ```toml
@@ -196,7 +200,6 @@ ignore_labels = [0]
 
 [calibration.mass]
 mode = "manual"
-fluid = "co2"
 threshold = 0.2
 data_selection = ["all"]
 rois = ["calibration"]
@@ -208,6 +211,37 @@ active = false
 type = "savitzky_golay"
 ```
 Mass calibration currently supports only color-path embeddings.
+
+**Analysis type.** The top-level `[physics]` section decides how mass is computed in
+both mass calibration and mass analysis:
+
+```toml
+[physics]
+fluid = "co2"    # default when the section is absent; or "tracer"
+```
+
+`"co2"` is the multiphase analysis (dissolved concentration, gas saturation, flash);
+`"tracer"` is single-phase (no gas phase). The choice selects the interpretation of the
+calibration (quantity, closure), which is stored in the calibration folder
+(`interpolation/mass` for CO2, `interpolation/concentration_aq` for tracer) and its
+metadata, and checked on load. Color paths do not depend on it.
+
+For a tracer, the interactive calibration has no flash sliders and no gas saturation: you
+tune the concentration at the key colors (0 to 1) and one contour threshold for
+`concentration_aq`, and compare the detected volume with the injected volume. This needs a
+volumetric injection rate (`rate_mL/s`, `rate_mL/min` or `rate_mL/hr`) in the injection
+protocol; the density column is optional. `volume_unit` (`"auto"`, `"mL"`, `"L"` or `"m3"`)
+sets the unit of the volume axis, like `mass_unit` for CO2. The tracer mass is the volume
+times the water density, evaluated at the local pressure and temperature.
+
+The sidebar names are the same for every fluid, because the steps do the same thing:
+**Calibration > Interpretation** calibrates the color-to-signal interpretation of the
+color path (anchored on the injected mass for CO2, the injected volume for tracer), and
+**Analysis > Field maps** computes the dense per-pixel fields and their integrals. What a
+calibration represents is recorded in its metadata and folder. The fluid only changes the
+forms (applied when a config is loaded or saved): for a tracer, the gas-only
+`[expert_knowledge]` fields `saturation_g` / `no_saturation_g` are hidden (shown only if
+they are set, so that they can be removed).
 
 ## `[roi]`
 
