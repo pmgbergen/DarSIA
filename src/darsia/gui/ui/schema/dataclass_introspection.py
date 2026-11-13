@@ -337,6 +337,7 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "active_bool_default": active_bool_default,
                 "loadable": field.metadata.get("loadable", None),
                 "depends_on": field.metadata.get("depends_on", None),
+                "fluids": field.metadata.get("fluids", None),
                 "fields": _build_fields(inner_type, storage_key),
             }
         else:
@@ -360,6 +361,7 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "pair": field.metadata.get("pair", None),
                 "group_name": field.metadata.get("group", None),
                 "depends_on": field.metadata.get("depends_on", None),
+                "fluids": field.metadata.get("fluids", None),
                 "format_types": field.metadata.get("format_types", None),
                 "key_list_sources": field.metadata.get("key_list_sources", None),
                 "max_rows": field.metadata.get("max_rows", None),

@@ -26,9 +26,10 @@ class ExpertKnowledgeConfig:
         default_factory=list,
         metadata={
             "name": "Saturation ROIs",
-            "help": "ROI keys where saturation_g constraints apply.",
+            "help": "ROI keys where saturation_g constraints apply (CO2 only).",
             "widget": "key_list",
             "key_list_sources": ROI_SOURCES,
+            "fluids": ("co2",),
         },
     )
     """ROI registry keys constraining where saturation_g may be non-zero."""
@@ -46,9 +47,10 @@ class ExpertKnowledgeConfig:
         default_factory=list,
         metadata={
             "name": "No-Saturation ROIs",
-            "help": "ROI keys where saturation_g is forced to zero.",
+            "help": "ROI keys where saturation_g is forced to zero (CO2 only).",
             "widget": "key_list",
             "key_list_sources": ROI_SOURCES,
+            "fluids": ("co2",),
         },
     )
     """ROI registry keys where saturation_g is forced to zero (exclusion)."""
