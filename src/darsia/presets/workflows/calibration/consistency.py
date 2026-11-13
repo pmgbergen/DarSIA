@@ -153,6 +153,102 @@ def mass_calibration_status(config_path: Path) -> dict | None:
         return None
 
 
+def calibration_embedding(config, prefer_analysis: bool = False):
+    """Color path embedding of the interpretation calibration of a loaded config.
+
+    By default `[calibration.mass].embedding`, falling back to the embedding of
+    `[analysis.mass]`; with `prefer_analysis` the other way round (the embedding an
+    analysis actually uses). None if neither resolves to a color path embedding.
+    """
+    from darsia.signals.color import ColorPathEmbedding
+
+    def from_calibration():
+        if config.calibration is not None and config.calibration.mass is not None:
+            return config.calibration.mass.embedding
+        return None
+
+    def from_analysis():
+        if (
+            config.color is not None
+            and config.analysis is not None
+            and config.analysis.mass is not None
+        ):
+            return config.color.resolve(config.analysis.mass.color)
+        return None
+
+    first, second = (
+        (from_analysis, from_calibration)
+        if prefer_analysis
+        else (from_calibration, from_analysis)
+    )
+    embedding = first()
+    if embedding is None:
+        embedding = second()
+    return embedding if isinstance(embedding, ColorPathEmbedding) else None
+
+
+def _stored_interpretation_inconsistencies(embedding, folder: Path) -> dict[int, str]:
+    """Compare the color paths stored with a calibration with the current ones."""
+    if not Path(embedding.color_paths_csv_file).exists():
+        return {}
+    color_paths = darsia.LabelColorPathMap.load_csv(embedding.color_paths_csv_file)
+    interpretation_folder = Path(folder) / "color_path_interpretation"
+    interpretation = {
+        label: darsia.ColorPathInterpolation.load(
+            interpretation_folder / f"color_path_interpretation_{label}"
+        )
+        for label in color_paths
+        if (interpretation_folder / f"color_path_interpretation_{label}.json").exists()
+    }
+    return color_to_mass_inconsistencies(color_paths, interpretation)
+
+
+def interpretation_calibration_folder(config, prefer_analysis: bool = False):
+    """Calibration folder of the configured interpretation, or None (no color path)."""
+    embedding = calibration_embedding(config, prefer_analysis=prefer_analysis)
+    if embedding is None:
+        return None
+    return Path(embedding.calibration_folder(config.physics.interpretation.quantity))
+
+
+def calibration_outdated_reason(config, prefer_analysis: bool = False) -> str | None:
+    """Why the interpretation calibration of a loaded config is outdated, or None.
+
+    Uses the color path fingerprint stored in the calibration metadata (content hash of
+    `color_paths.csv`); calibrations without it fall back to comparing the stored key
+    colors with the current color paths. None also if there is nothing to compare.
+    """
+    from darsia.presets.workflows.calibration.metadata import (
+        COLOR_PATHS_HASH_KEY,
+        file_sha256,
+        read_calibration_metadata,
+    )
+
+    embedding = calibration_embedding(config, prefer_analysis=prefer_analysis)
+    if embedding is None:
+        return None
+    folder = Path(embedding.calibration_folder(config.physics.interpretation.quantity))
+    if not folder.exists():
+        return None
+    metadata = read_calibration_metadata(folder / "metadata.json") or {}
+    stored = (metadata.get("inputs") or {}).get(COLOR_PATHS_HASH_KEY)
+    if stored is not None:
+        current = file_sha256(embedding.color_paths_csv_file)
+        if current is None:
+            return "the color paths of this calibration are missing"
+        if current != stored:
+            return "the color paths were recalibrated after this calibration"
+        return None
+    inconsistencies = _stored_interpretation_inconsistencies(embedding, folder)
+    if not inconsistencies:
+        return None
+    details = "; ".join(
+        f"label {label}: {message}"
+        for label, message in sorted(inconsistencies.items())
+    )
+    return f"the color paths changed after this calibration ({details})"
+
+
 def outdated_mass_calibration(config_path: Path) -> dict[int, str]:
     """Check the stored mass calibration of a config against its color paths.
 
@@ -172,36 +268,16 @@ def outdated_mass_calibration(config_path: Path) -> dict[int, str]:
 
     """
     from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
-    from darsia.signals.color import ColorPathEmbedding
 
     try:
         config = FluidFlowerConfig(
             config_path, require_data=False, require_results=False
         )
-        if (
-            config.color is None
-            or config.analysis is None
-            or config.analysis.mass is None
-        ):
+        embedding = calibration_embedding(config, prefer_analysis=True)
+        if embedding is None:
             return {}
-        embedding = config.color.resolve(config.analysis.mass.color)
-        if not isinstance(embedding, ColorPathEmbedding):
-            return {}
-        if not Path(embedding.color_paths_csv_file).exists():
-            return {}
-        folder = (
-            embedding.calibration_folder(config.physics.interpretation.quantity)
-            / "color_path_interpretation"
-        )
-        color_paths = darsia.LabelColorPathMap.load_csv(embedding.color_paths_csv_file)
-        interpretation = {
-            label: darsia.ColorPathInterpolation.load(
-                folder / f"color_path_interpretation_{label}"
-            )
-            for label in color_paths
-            if (folder / f"color_path_interpretation_{label}.json").exists()
-        }
-        return color_to_mass_inconsistencies(color_paths, interpretation)
+        folder = embedding.calibration_folder(config.physics.interpretation.quantity)
+        return _stored_interpretation_inconsistencies(embedding, folder)
     except Exception as error:  # a check must never block the workflow
         logger.debug("Could not check the mass calibration: %s", error)
         return {}
