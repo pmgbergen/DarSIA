@@ -14,7 +14,13 @@ from PySide6.QtWidgets import (
 
 from .help import HelpPopup
 from .icons import themed_icon
-from .theme import danger_color, muted_text_color, success_color, theme_signal
+from .theme import (
+    danger_color,
+    muted_text_color,
+    success_color,
+    theme_signal,
+    warning_color,
+)
 
 
 class SidebarRow(QWidget):
@@ -34,6 +40,7 @@ class SidebarRow(QWidget):
         self._is_selected = False
         self._is_hovering = False
         self._completion_state = "none"
+        self._state_reason = None
         self._help_timer = None
         self._help_popup = None
         self._original_icon = None
@@ -86,7 +93,10 @@ class SidebarRow(QWidget):
     def _show_help_popup(self):
         """Display the help popup near the cursor."""
         if not self._help_popup:
-            self._help_popup = HelpPopup(self.help_text)
+            text = self.help_text
+            if self._completion_state == "outdated" and self._state_reason:
+                text = f"{text}\n\nOutdated: {self._state_reason}."
+            self._help_popup = HelpPopup(text)
 
         # Position popup below and to the right of this row
         pos = self.mapToGlobal(self.rect().bottomRight())
@@ -98,25 +108,33 @@ class SidebarRow(QWidget):
         self._is_selected = selected
         self.update_selection_style()
 
-    def set_completion_state(self, state: str):
-        """Set per-step completion state: 'none', 'done', or 'error'.
+    def set_completion_state(self, state: str, reason: str | None = None):
+        """Set per-step completion state: 'none', 'done', 'outdated' or 'error'.
 
         Swaps the row's bullet icon (fa5s.circle) for a check/exclamation
         variant and tints it accordingly, leaving the icon untouched (and the
         original icon_name) for 'none' so items with no known state keep
-        today's plain-dot look.
+        today's plain-dot look. For 'outdated', `reason` (the changed input) is
+        appended to the hover help.
         """
-        if state not in ("none", "done", "error"):
+        if state not in ("none", "done", "outdated", "error"):
             raise ValueError(f"Unknown completion state: {state!r}")
-        if state == self._completion_state:
+        if state == self._completion_state and reason == self._state_reason:
             return
         self._completion_state = state
+        self._state_reason = reason
+        # Rebuild the help popup with the new reason on next hover
+        if self._help_popup is not None:
+            self._help_popup.hide()
+            self._help_popup.deleteLater()
+            self._help_popup = None
         self.refresh_style()
 
     def refresh_style(self):
         """Rebuild icon and selection styling from current palette."""
         icon_name = {
             "done": "fa5s.check-circle",
+            "outdated": "fa5s.exclamation-circle",
             "error": "fa5s.exclamation-circle",
         }.get(self._completion_state, self.icon_name)
         icon = themed_icon(icon_name, scale_factor=1.0)
@@ -164,6 +182,9 @@ class SidebarRow(QWidget):
             # signal stays a quiet glance-able hint, not a loud row recolor.
             text_color = pal.color(QPalette.WindowText).name()
             icon_color = success_color(pal)
+        elif self._completion_state == "outdated":
+            text_color = pal.color(QPalette.WindowText).name()
+            icon_color = warning_color(pal)
         elif self._completion_state == "error":
             text_color = pal.color(QPalette.WindowText).name()
             icon_color = danger_color(pal)
@@ -335,11 +356,13 @@ class CategorySection(QWidget):
         """Get a specific row by checkbox_id."""
         return self._rows.get(checkbox_id)
 
-    def set_item_state(self, checkbox_id: str, state: str) -> None:
+    def set_item_state(
+        self, checkbox_id: str, state: str, reason: str | None = None
+    ) -> None:
         """Set completion state on one row, if present in this category."""
         row = self._rows.get(checkbox_id)
         if row:
-            row.set_completion_state(state)
+            row.set_completion_state(state, reason)
 
     def deselect_all(self):
         """Clear selection from all rows in this category."""
@@ -446,8 +469,10 @@ class Sidebar(QWidget):
         self._selected_action = None
         self._selected_checkbox_id = None
 
-    def set_item_state(self, action: str, checkbox_id: str, state: str) -> None:
+    def set_item_state(
+        self, action: str, checkbox_id: str, state: str, reason: str | None = None
+    ) -> None:
         """Set completion state on one (action, checkbox_id) row, if present."""
         section = self._sections.get(action)
         if section:
-            section.set_item_state(checkbox_id, state)
+            section.set_item_state(checkbox_id, state, reason)

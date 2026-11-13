@@ -21,6 +21,12 @@ from PySide6.QtWidgets import (
 
 from darsia.presets.workflows.analysis.progress import try_decode_progress_line
 from darsia.presets.workflows.results_folder import has_workflow_output
+from darsia.presets.workflows.status import (
+    MISSING,
+    OUTDATED,
+    VALID,
+    step_statuses,
+)
 
 from .about_dialog import AboutDialog
 from .analysis import AnalysisTab
@@ -570,14 +576,35 @@ class MainWindow(QMainWindow):
             "comparison": self.comparison_tab,
             "utils": self.utils_tab,
         }
-        for category, tab_manager in tab_managers.items():
-            for _group_label, items in tab_manager.sidebar_items():
-                for _label, checkbox_id, _icon, _help in items:
-                    action_label = self.action_label_for(category, checkbox_id)
-                    done = has_workflow_output(category, config_path, [action_label])
-                    self.sidebar.set_item_state(
-                        category, checkbox_id, "done" if done else "none"
-                    )
+        # Calibration and analysis rows get missing/valid/outdated from the status
+        # layer (config loaded once); the other rows only report existing output.
+        status_categories = ("calibration", "analysis")
+        rows = [
+            (category, checkbox_id, self.action_label_for(category, checkbox_id))
+            for category, tab_manager in tab_managers.items()
+            for _group_label, items in tab_manager.sidebar_items()
+            for _label, checkbox_id, _icon, _help in items
+        ]
+        statuses = step_statuses(
+            config_path,
+            [
+                (category, action)
+                for category, _id, action in rows
+                if category in status_categories
+            ],
+        )
+        gui_state = {MISSING: "none", VALID: "done", OUTDATED: "outdated"}
+        for category, checkbox_id, action_label in rows:
+            status = statuses.get((category, action_label))
+            if status is None:
+                done = has_workflow_output(category, config_path, [action_label])
+                self.sidebar.set_item_state(
+                    category, checkbox_id, "done" if done else "none"
+                )
+            else:
+                self.sidebar.set_item_state(
+                    category, checkbox_id, gui_state[status.state], status.reason
+                )
         self.streaming_panel.refresh_results()
 
     def run_selected_workflow(self):
