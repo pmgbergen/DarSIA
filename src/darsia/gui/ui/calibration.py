@@ -99,42 +99,35 @@ class CalibrationTab:
         )
 
     def sidebar_items(self):
-        """Return sidebar data structure for Calibration category."""
+        """Return sidebar data structure for Calibration category.
+
+        Names are fluid-neutral: the second step calibrates the interpretation of the
+        color path (color to signal); only its anchor depends on the fluid (injected mass
+        for CO2, injected volume for tracer). The ids are kept for the CLI flags.
+        """
         from .help_text import get_help_text
+
+        def item(checkbox_id, label):
+            return (
+                label,
+                checkbox_id,
+                "fa5s.circle",
+                get_help_text("calibration", checkbox_id, label),
+            )
 
         return [
             (
                 "Actions",
                 [
-                    (
-                        "Color Path",
-                        "color",
-                        "fa5s.circle",
-                        get_help_text("calibration", "color", "Color Path"),
-                    ),
-                    (
-                        "Mass",
-                        "mass",
-                        "fa5s.circle",
-                        get_help_text("calibration", "mass", "Mass"),
-                    ),
-                    (
-                        "Default mass",
-                        "default_mass",
-                        "fa5s.circle",
-                        get_help_text("calibration", "default_mass", "Default mass"),
-                    ),
+                    item("color", "Color Path"),
+                    item("mass", "Interpretation"),
+                    item("default_mass", "Default interpretation"),
                 ],
             ),
             (
                 "Danger zone",
                 [
-                    (
-                        "Reset mass calibration",
-                        "reset",
-                        "fa5s.circle",
-                        get_help_text("calibration", "reset", "Reset mass calibration"),
-                    ),
+                    item("reset", "Reset interpretation"),
                     (
                         "Delete all calibrations",
                         "delete",

@@ -28,10 +28,13 @@ HELP_TEXT_PREPROCESSING = {
 
 HELP_TEXT_CALIBRATION = {
     "color": "Calibrate color paths for RGB image analysis using color targets.",
-    "mass": "Calibrate color intensity to CO₂ mass relationships.",
-    "default_mass": "Set default mass calibration parameters for analysis.",
+    "mass": (
+        "Calibrate the interpretation of the color path (color to signal to fields). "
+        "Anchored on the injected mass for CO₂ and the injected volume for tracer."
+    ),
+    "default_mass": "Set default interpretation parameters for analysis.",
     "delete": "Remove all existing calibration data (cannot be undone).",
-    "reset": "Reset mass calibration to default values.",
+    "reset": "Reset the interpretation calibration to default values.",
     "show": "Display calibration plots and verification figures.",
 }
 
@@ -39,7 +42,10 @@ HELP_TEXT_ANALYSIS = {
     "cropping": "Crop images to region of interest for focused analysis.",
     "segmentation": "Segment images to identify and map fluid phases.",
     "fingers": "Analyze viscous fingering features at fluid interfaces.",
-    "mass": "Quantify CO₂ mass distribution from segmented images.",
+    "mass": (
+        "Dense per-pixel field maps of the configured interpretation (concentration, "
+        "saturation, mass density) and their integrals (volume, mass)."
+    ),
     "volume": "Calculate volume metrics from segmented phases.",
     "thresholding": "Apply intensity thresholding for phase separation.",
     "show": "Display analysis results and plots.",
