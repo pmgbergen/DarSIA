@@ -243,12 +243,17 @@ def build_fluid_model(
         CO2 mass analysis (PVT) for `co2`, tracer mass analysis for `tracer`.
     """
     fluid = config.physics.fluid
+    system = config.physics.system
+    start = experiment.experiment_start
+    protocol = experiment.pressure_temperature_protocol
+    state = protocol.get_state(start)
     if fluid == "tracer":
-        return darsia.TracerMassAnalysis()
+        return darsia.TracerMassAnalysis(
+            atmospheric_pressure=state.pressure,
+            atmospheric_temperature=state.temperature,
+            system=system,
+        )
     if fluid == "co2":
-        start = experiment.experiment_start
-        protocol = experiment.pressure_temperature_protocol
-        state = protocol.get_state(start)
         gradient = protocol.get_gradient(start)
         return darsia.CO2MassAnalysis(
             baseline=rig.baseline,
@@ -256,6 +261,7 @@ def build_fluid_model(
             atmospheric_temperature=state.temperature,
             atmospheric_pressure_gradient=gradient.pressure,
             atmospheric_temperature_gradient=gradient.temperature,
+            system=system,
         )
     raise NotImplementedError(f"No fluid model for [physics] fluid = '{fluid}'.")
 
