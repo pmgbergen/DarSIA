@@ -12,6 +12,81 @@ import darsia
 
 EPSILON = 1e-12
 
+GRAVITY = 9.81
+"""Gravitational acceleration in m/s^2."""
+
+PA2BAR = 1e-5
+"""Conversion factor from Pascal to bar."""
+
+
+class HydrostaticState:
+    """Pressure and temperature fields in the rig, shared by all fluid models.
+
+    The temperature varies with height by its gradient. The pressure is the
+    atmospheric pressure at the top plus the hydrostatic pressure of the aqueous phase.
+    """
+
+    def __init__(
+        self,
+        baseline: darsia.Image,
+        pressure: float,
+        temperature: float,
+        pressure_gradient: float = 0.0,
+        temperature_gradient: float = 0.0,
+    ) -> None:
+        """Constructor.
+
+        Parameters
+        ----------
+        baseline : Image
+            Baseline image, defining the geometry.
+        pressure : float
+            Atmospheric pressure in bar.
+        temperature : float
+            Temperature in Celsius.
+        pressure_gradient : float
+            Pressure gradient in bar per unit height.
+        temperature_gradient : float
+            Temperature gradient in Celsius per unit height.
+        """
+        self.baseline = baseline
+        self.pressure = pressure
+        self.temperature = temperature
+        self.pressure_gradient = pressure_gradient
+        self.temperature_gradient = temperature_gradient
+
+    @property
+    def height_map(self) -> np.ndarray:
+        """Height of each voxel (along the first axis of the baseline)."""
+        return np.linspace(0, self.baseline.dimensions[0], self.baseline.num_voxels[0])[
+            :, None
+        ] * np.ones(self.baseline.num_voxels)
+
+    def temperature_map(self) -> np.ndarray:
+        """Temperature in Celsius in each voxel, due to the gradient."""
+        return np.ones_like(self.height_map) * self.temperature + (
+            self.temperature_gradient * self.height_map
+        )
+
+    def top_pressure(self) -> float:
+        """Atmospheric pressure in bar at the top of the rig."""
+        return self.pressure + (self.pressure_gradient * self.baseline.dimensions[0])
+
+    def pressure_map(self, system: darsia.FluidSystem) -> np.ndarray:
+        """Hydrostatic pressure in bar in each voxel.
+
+        The aqueous density is taken at the top pressure and the local temperature.
+
+        Parameters
+        ----------
+        system : darsia.FluidSystem
+            Fluid system providing the density of the aqueous phase.
+        """
+        water_density = system.density_aqueous(
+            self.top_pressure(), self.temperature_map()
+        )
+        return self.top_pressure() + water_density * GRAVITY * self.height_map * PA2BAR
+
 
 class CO2MassAnalysis:
     """Mass analysis of CO2 in water, with properties from the fluid system."""
@@ -86,16 +161,23 @@ class CO2MassAnalysis:
         # Setup density of gaseous CO2
         self.setup_density_gaseous_co2()
 
-    def atmospheric_temperature_map(self) -> np.ndarray:
-        """Return atmospheric temperature map due to gradient."""
-        return np.ones_like(self.height_map) * self.atmospheric_temperature + (
-            self.atmospheric_temperature_gradient * self.height_map
+    @property
+    def hydrostatic_state(self) -> HydrostaticState:
+        """Pressure and temperature fields of the current state."""
+        return HydrostaticState(
+            self.baseline,
+            self.atmospheric_pressure,
+            self.atmospheric_temperature,
+            self.atmospheric_pressure_gradient,
+            self.atmospheric_temperature_gradient,
         )
 
+    def atmospheric_temperature_map(self) -> np.ndarray:
+        """Return atmospheric temperature map due to gradient."""
+        return self.hydrostatic_state.temperature_map()
+
     def top_atmospheric_pressure(self) -> float:
-        return self.atmospheric_pressure + (
-            self.atmospheric_pressure_gradient * self.baseline.dimensions[0]
-        )
+        return self.hydrostatic_state.top_pressure()
 
     @property
     def max_density(self) -> float:
@@ -114,9 +196,7 @@ class CO2MassAnalysis:
 
     @property
     def height_map(self) -> np.ndarray:
-        return np.linspace(0, self.baseline.dimensions[0], self.baseline.num_voxels[0])[
-            :, None
-        ] * np.ones(self.baseline.num_voxels)
+        return self.hydrostatic_state.height_map
 
     def log(self, path: Path) -> None:
         """Plot density, solubility, hydrostatic pressure, temperature.
@@ -154,23 +234,9 @@ class CO2MassAnalysis:
         aqueous phase. Density and solubility are looked up in the fluid system.
         """
 
-        # Hydrostatic pressure distribution
-        g = 9.81  # m/s^2
-        pa2bar = 1e-5  # Conversion factor from Pascal to bar
-
-        # Determine the temperature distribution due to temperature gradient
-        atmospheric_temperature_map = self.atmospheric_temperature_map()
-
-        # Density of the aqueous phase depending on temperature
-        water_density = self.system.density_aqueous(
-            self.top_atmospheric_pressure(), atmospheric_temperature_map
-        )
-
-        # Determine hydrostatic pressure
-        hydrostatic_pressure = (
-            self.top_atmospheric_pressure()
-            + water_density * g * self.height_map * pa2bar
-        )
+        state = self.hydrostatic_state
+        atmospheric_temperature_map = state.temperature_map()
+        hydrostatic_pressure = state.pressure_map(self.system)
 
         # Density of gaseous CO2 and CO2 solubility at hydrostatic pressure
         self.density_gaseous_co2 = self.system.density_gas(
@@ -296,41 +362,86 @@ class TracerMassAnalysis:
     The concentration is relative to the injected solution. The mass is a density per
     pore volume (like for CO2); integrating over the geometry yields the total mass of
     the solution, i.e. the volume times the water density.
+
+    Like for CO2, the density depends on pressure and temperature, including their
+    gradients (`HydrostaticState`), so it may vary in space.
     """
 
     def __init__(
         self,
+        baseline: darsia.Image | None = None,
         atmospheric_pressure: float = 1.010,
         atmospheric_temperature: float = 20.0,
+        atmospheric_pressure_gradient: float = 0.0,
+        atmospheric_temperature_gradient: float = 0.0,
         system: darsia.FluidSystem | None = None,
     ) -> None:
         """Constructor.
 
         Parameters
         ----------
+        baseline : Image, optional
+            Baseline image, defining the geometry of the pressure and temperature
+            fields. Without it, the density is uniform at the atmospheric state.
         atmospheric_pressure : float
             Atmospheric pressure in bar.
         atmospheric_temperature : float
             Temperature in Celsius.
+        atmospheric_pressure_gradient : float
+            Atmospheric pressure gradient in bar per unit height.
+        atmospheric_temperature_gradient : float
+            Temperature gradient in Celsius per unit height.
         system : darsia.FluidSystem, optional
             Fluids and their properties; default is single-phase water.
         """
         self.system = darsia.FluidSystem.single_phase() if system is None else system
         """Fluid system providing the density of the aqueous phase."""
+        self.baseline = baseline
+        """Baseline image (geometry of the pressure and temperature fields)."""
         self.atmospheric_pressure = atmospheric_pressure
         """Atmospheric pressure in bar."""
         self.atmospheric_temperature = atmospheric_temperature
         """Temperature in Celsius."""
-        self.setup_scale()
+        self.atmospheric_pressure_gradient = atmospheric_pressure_gradient
+        """Atmospheric pressure gradient in bar per unit height."""
+        self.atmospheric_temperature_gradient = atmospheric_temperature_gradient
+        """Temperature gradient in Celsius per unit height."""
+        self.setup_density()
 
-    def setup_scale(self) -> None:
+    @property
+    def hydrostatic_state(self) -> HydrostaticState | None:
+        """Pressure and temperature fields of the current state (None without baseline)."""
+        if self.baseline is None:
+            return None
+        return HydrostaticState(
+            self.baseline,
+            self.atmospheric_pressure,
+            self.atmospheric_temperature,
+            self.atmospheric_pressure_gradient,
+            self.atmospheric_temperature_gradient,
+        )
+
+    def setup_density(self) -> None:
         """Setup the mass per pore volume at relative concentration 1."""
         self.scale = float(
             self.system.density_aqueous(
                 self.atmospheric_pressure, self.atmospheric_temperature
             )
         )
-        """Mass per pore volume (kg/m3) at relative concentration 1 (water density)."""
+        """Reference density (kg/m3) of the solution at the atmospheric state, e.g. to
+        convert an injected volume to a mass."""
+
+        state = self.hydrostatic_state
+        if state is None:
+            self.density_aqueous = np.asarray(self.scale)
+        else:
+            self.density_aqueous = np.asarray(
+                self.system.density_aqueous(
+                    state.pressure_map(self.system), state.temperature_map()
+                ),
+                dtype=float,
+            )
+        """Mass per pore volume (kg/m3) at relative concentration 1 in each voxel."""
 
     def update_state(
         self,
@@ -339,10 +450,7 @@ class TracerMassAnalysis:
         atmospheric_pressure_gradient: float | None = None,
         atmospheric_temperature_gradient: float | None = None,
     ) -> None:
-        """Update atmospheric pressure and temperature.
-
-        The gradients are accepted for compatibility with `CO2MassAnalysis` and
-        ignored: the density of the solution is taken at the atmospheric state.
+        """Update atmospheric pressure and temperature, and their gradients.
 
         Parameters
         ----------
@@ -350,23 +458,53 @@ class TracerMassAnalysis:
             Atmospheric pressure in bar.
         atmospheric_temperature : float, optional
             Temperature in Celsius.
+        atmospheric_pressure_gradient : float, optional
+            Atmospheric pressure gradient in bar per unit height.
+        atmospheric_temperature_gradient : float, optional
+            Temperature gradient in Celsius per unit height.
         """
         if atmospheric_pressure is not None:
             self.atmospheric_pressure = atmospheric_pressure
         if atmospheric_temperature is not None:
             self.atmospheric_temperature = atmospheric_temperature
-        self.setup_scale()
+        if atmospheric_pressure_gradient is not None:
+            self.atmospheric_pressure_gradient = atmospheric_pressure_gradient
+        if atmospheric_temperature_gradient is not None:
+            self.atmospheric_temperature_gradient = atmospheric_temperature_gradient
+        self.setup_density()
 
     @property
     def max_density(self) -> float:
         """Largest mass per volume of a phase in kg/m3 (for example for plot ranges)."""
-        return self.scale
+        values = np.ravel(self.density_aqueous).astype(float)
+        finite = values[np.isfinite(values)]
+        if finite.size == 0:
+            raise ValueError("The aqueous density contains no finite values.")
+        return float(np.max(finite))
+
+    def log(self, path: Path) -> None:
+        """Plot the density of the solution.
+
+        Parameters
+        ----------
+        path : Path
+            Path to save the plot.
+        """
+        plt.figure("density")
+        plt.imshow(np.atleast_2d(self.density_aqueous))
+        plt.colorbar()
+        plt.title(
+            f"density aqueous - {self.atmospheric_pressure}"
+            + f" bar - {self.atmospheric_temperature} deg Celsius"
+        )
+        plt.savefig(path / "density_aqueous.png")
+        plt.close()
 
     def mass_analysis(
         self, c_aq: darsia.Image, s_g: darsia.Image | None = None
     ) -> "darsia.SimpleMassAnalysisResults":
         """Mass of the solution; `s_g` is ignored (there is no gas phase)."""
-        mass_aq_array = self.scale * c_aq.img
+        mass_aq_array = self.density_aqueous * c_aq.img
         return darsia.SimpleMassAnalysisResults(
             name=c_aq.name,
             date=c_aq.date,
@@ -383,7 +521,14 @@ class TracerMassAnalysis:
         self, mass: darsia.Image
     ) -> "darsia.SimpleMassAnalysisResults":
         """Concentration from a (rescaled) mass map; never creates gas."""
-        c_aq_array = np.clip(mass.img / self.scale, 0.0, 1.0)
+        density = np.broadcast_to(self.density_aqueous, mass.img.shape)
+        c_aq_array = np.divide(
+            mass.img,
+            density,
+            out=np.zeros_like(mass.img, dtype=float),
+            where=np.abs(density) > EPSILON,
+        )
+        c_aq_array = np.clip(c_aq_array, 0.0, 1.0)
         return self.mass_analysis(darsia.full_like(mass, c_aq_array))
 
 
