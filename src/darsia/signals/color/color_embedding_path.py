@@ -53,9 +53,25 @@ class ColorPathEmbedding(ColorEmbedding):
     def baseline_color_spectrum_folder(self) -> Path:
         return self.root / "baseline_color_spectrum"
 
-    @property
-    def color_to_mass_folder(self) -> Path:
-        return self.root / "interpolation" / "mass"
+    def calibration_folder(self, quantity: str) -> Path:
+        """Calibration folder of a quantity (signal interpretation).
+
+        Calibrations are stored per quantity below the color path, so one color path
+        can carry several interpretations.
+
+        Parameters
+        ----------
+        quantity : str
+            Physical quantity the color path signal is interpreted as, e.g. "mass"
+            (CO2) or "concentration_aq" (tracer). It names the subfolder below
+            "interpolation" and matches ``Interpretation.quantity`` of the
+            selected fluid preset.
+
+        Returns
+        -------
+            Folder holding the calibration of this quantity.
+        """
+        return self.root / "interpolation" / quantity
 
     def canonical_transform(
         self, runtime: ColorEmbeddingRuntime
