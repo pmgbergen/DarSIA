@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from warnings import warn
@@ -30,6 +31,33 @@ def write_calibration_metadata(
         metadata.update(extra)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(metadata, indent=2))
+
+
+COLOR_PATHS_HASH_KEY = "color_paths_sha256"
+"""Key of the colour path fingerprint in `metadata["inputs"]` of a calibration."""
+
+
+def file_sha256(path: Path) -> str | None:
+    """SHA-256 of a file's content, or None if the file does not exist."""
+    path = Path(path)
+    if not path.is_file():
+        return None
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def color_paths_csv_of_calibration(calibration_folder: Path) -> Path:
+    """Colour paths CSV that a calibration folder (`<root>/interpolation/<q>`) uses."""
+    return Path(calibration_folder).parent.parent / "color_paths.csv"
+
+
+def calibration_inputs(calibration_folder: Path) -> dict:
+    """Fingerprints of the inputs of a calibration, stored in its metadata.
+
+    Content hashes (not modification times): recalibrating an input to the same result
+    keeps the calibration valid, any change makes it outdated.
+    """
+    digest = file_sha256(color_paths_csv_of_calibration(calibration_folder))
+    return {} if digest is None else {COLOR_PATHS_HASH_KEY: digest}
 
 
 def read_calibration_metadata(path: Path) -> dict | None:
