@@ -24,6 +24,7 @@ from darsia.presets.workflows.analysis.scalar_products import (
     requires_rescaled_modes,
 )
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.physics import check_fluid_modes
 from darsia.presets.workflows.config.sections import required_sections
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
@@ -239,6 +240,7 @@ def helper_roi(cls: type[Rig], path: Path | list[Path], show: bool = False) -> N
     assert config.helper.roi is not None
 
     helper_config = config.helper.roi
+    check_fluid_modes(config, "ROI helper", {"helper.roi.mode": helper_config.mode})
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
     fluidflower = cls.load(config.rig.path, config.corrections)
     fluidflower.load_experiment(experiment)

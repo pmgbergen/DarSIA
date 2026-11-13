@@ -41,6 +41,30 @@ INTERPRETATIONS = {
 }
 """Default interpretation (preset) of each supported fluid."""
 
+GAS_MODES = ("saturation_g", "rescaled_saturation_g", "mass_g")
+"""Analysis modes that only exist with a gas phase."""
+
+GAS_EXPERT_KNOWLEDGE_KEYS = ("saturation_g", "no_saturation_g")
+"""Keys of [expert_knowledge] constraining the gas saturation."""
+
+
+def check_fluid_modes(config, step: str, modes: dict[str, str | None]) -> None:
+    """Raise if a mode is not available for the configured fluid.
+
+    Parameters
+    ----------
+    config : FluidFlowerConfig
+        Configuration; ignored if it has no `[physics]` (for example test doubles).
+    step : str
+        Name of the step, for the error message.
+    modes : dict[str, str | None]
+        Configured modes by the key they were configured at, for example
+        `{"analysis.thresholding.layers.plume.mode": "saturation_g"}`.
+    """
+    physics = getattr(config, "physics", None)
+    if physics is not None:
+        physics.check_modes(step, modes)
+
 
 @dataclass
 class PhysicsConfig:
@@ -75,6 +99,53 @@ class PhysicsConfig:
     def interpretation(self) -> Interpretation:
         """Interpretation of the color path signal for the configured fluid."""
         return INTERPRETATIONS[self.fluid]
+
+    @property
+    def unavailable_modes(self) -> tuple[str, ...]:
+        """Analysis modes that are not available for the configured fluid."""
+        return () if self.system.is_multiphase else GAS_MODES
+
+    def check_modes(self, step: str, modes: dict[str, str | None]) -> None:
+        """Raise if a configured mode is not available for the configured fluid.
+
+        Parameters
+        ----------
+        step : str
+            Name of the step, for the error message.
+        modes : dict[str, str | None]
+            Configured modes by the key they were configured at.
+        """
+        unavailable = self.unavailable_modes
+        offending = {key: mode for key, mode in modes.items() if mode in unavailable}
+        if offending:
+            listed = ", ".join(f"{key} = '{mode}'" for key, mode in offending.items())
+            raise ValueError(
+                f"{step}: {listed} not available for [physics] fluid = "
+                f"'{self.fluid}' (no gas phase). Use a concentration or mass mode, "
+                "for example 'concentration_aq' or 'rescaled_concentration_aq'."
+            )
+
+    def check_expert_knowledge(self, expert_knowledge) -> None:
+        """Raise if [expert_knowledge] constrains the gas saturation of a single phase.
+
+        Parameters
+        ----------
+        expert_knowledge : ExpertKnowledgeConfig | None
+            Loaded [expert_knowledge] section.
+        """
+        if self.system.is_multiphase or expert_knowledge is None:
+            return
+        offending = [
+            key
+            for key in GAS_EXPERT_KNOWLEDGE_KEYS
+            if getattr(expert_knowledge, key, None)
+        ]
+        if offending:
+            raise ValueError(
+                f"[expert_knowledge] {', '.join(offending)} constrain the gas "
+                f"saturation, which does not exist for [physics] fluid = "
+                f"'{self.fluid}' (no gas phase). Remove the key(s)."
+            )
 
     def require(self, step: str, supported: tuple[str, ...] = ("co2",)) -> None:
         """Raise if `step` is not implemented for the configured fluid.

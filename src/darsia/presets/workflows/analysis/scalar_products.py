@@ -62,6 +62,32 @@ def rescale_basis(co2_mass_analysis: Any) -> str:
     return "mass"
 
 
+def check_rescaling_possible(
+    co2_mass_analysis: Any, injection_protocol: Any, step: str
+) -> None:
+    """Raise early if rescaling needs a volumetric injection rate that is missing.
+
+    A single-phase fluid is rescaled on the injected volume.
+
+    Parameters
+    ----------
+    co2_mass_analysis : Any
+        Fluid model.
+    injection_protocol : Any
+        Injection protocol; protocols without `has_volume` (test doubles) pass.
+    step : str
+        Name of the step, for the error message.
+    """
+    if rescale_basis(co2_mass_analysis) == "volume" and not getattr(
+        injection_protocol, "has_volume", True
+    ):
+        raise ValueError(
+            f"{step}: rescaled products of a single-phase fluid need a volumetric "
+            "injection rate (rate_mL/s, rate_mL/min or rate_mL/hr) in the injection "
+            "protocol."
+        )
+
+
 def _apply_expert_knowledge_constraints(
     products: dict[str, darsia.Image],
     expert_knowledge_adapter: "ExpertKnowledgeAdapter | None",
@@ -168,6 +194,11 @@ def analysis_scalar_products(
         "mass_g": mass_analysis_result.mass_g,
         "mass_aq": mass_analysis_result.mass_aq,
     }
+    # A single-phase fluid has no gas: there are no gas products
+    single_phase = rescale_basis(co2_mass_analysis) == "volume"
+    if single_phase:
+        del products["saturation_g"]
+        del products["mass_g"]
     products = _apply_expert_knowledge_constraints(products, expert_knowledge_adapter)
 
     requested_modes = set(requested_modes or [])
@@ -189,7 +220,8 @@ def analysis_scalar_products(
         basis=basis,
     )
     products["rescaled_mass"] = rescaled.rescaled_result.mass
-    products["rescaled_saturation_g"] = rescaled.rescaled_result.saturation_g
+    if not single_phase:
+        products["rescaled_saturation_g"] = rescaled.rescaled_result.saturation_g
     products["rescaled_concentration_aq"] = rescaled.rescaled_result.concentration_aq
     products = _apply_expert_knowledge_constraints(products, expert_knowledge_adapter)
     return products, rescaled

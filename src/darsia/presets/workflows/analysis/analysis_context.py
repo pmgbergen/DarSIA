@@ -413,6 +413,7 @@ def prepare_analysis_context(
         path, require_results=require_results, require_data=require_data
     )
     config.check(*list_required_sections(prepare_analysis_context, section=section))
+    config.physics.check_expert_knowledge(config.expert_knowledge)
 
     # Mypy type checking
     assert config.rig is not None

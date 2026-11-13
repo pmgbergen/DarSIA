@@ -201,6 +201,7 @@ class ColorPathInterpolation(ColorPathFunction):
                 f"""got {type(image)}."""
             )
 
+    @darsia.timing_decorator
     def _parametrize_colors(self, colors: np.ndarray) -> np.ndarray:
         """Parametrize the image in terms of the color path.
 
@@ -218,40 +219,22 @@ class ColorPathInterpolation(ColorPathFunction):
             Parametrization of the input image in terms of the color path.
         """
         # Fit in terms of the color path
-        import time
-
-        # Determine
-        tic = time.time()
         if self.ignore_spectrum is None or colors.ndim == 1:
             parametrization = self.color_path.fit(
                 colors=colors, color_mode=self.color_mode, mode="equidistant"
             )
         else:
-            tic = time.time()
-            color_mask = (
-                np.linalg.norm(colors, axis=1) > 1e-1
-            )  # self.ignore_spectrum.in_spectrum(colors, self.color_mode)
+            # Pixels without a color change (relative color of norm below 0.1) are
+            # not fitted and keep the parametrization 0.
+            # TODO: Use the membership in the ignore spectrum instead of the norm,
+            # see the backlog (changes which pixels are ignored).
+            color_mask = np.linalg.norm(colors, axis=1) > 1e-1
             parametrization = np.zeros(colors.shape[0])
-            print(f"Color mask took {time.time() - tic:.2f} seconds.")
-
-            tic = time.time()
             parametrization[color_mask] = self.color_path.fit(
                 colors=colors[color_mask],
                 color_mode=self.color_mode,
                 mode="equidistant",
             )
-            print(f"Fitting colors took {time.time() - tic:.2f} seconds.")
-            tic = time.time()
-            sub_colors = colors[color_mask]
-            sub_parametrization = self.color_path.fit(
-                colors=sub_colors,
-                color_mode=self.color_mode,
-                mode="equidistant",
-            )
-            parametrization[color_mask] = sub_parametrization
-            print(f"Fitting colors took {time.time() - tic:.2f} seconds.")
-
-        print(f"Fitting colors took {time.time() - tic:.2f} seconds.")
 
         # Linear interpolation based on values
         result = np.zeros_like(parametrization)

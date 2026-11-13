@@ -24,6 +24,7 @@ from darsia.presets.workflows.analysis.scalar_products import (
     requires_rescaled_modes,
 )
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
+from darsia.presets.workflows.config.physics import check_fluid_modes
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SegmentationContours
@@ -56,6 +57,14 @@ def analysis_segmentation_from_context(
 
     # Extract segmentation config (asserted not None above)
     segmentation_config = ctx.config.analysis.segmentation
+    check_fluid_modes(
+        ctx.config,
+        "Segmentation",
+        {
+            f"analysis.segmentation.config.{name}.mode": cfg.mode
+            for name, cfg in segmentation_config.config.items()
+        },
+    )
 
     # Select image paths based on segmentation config's data_selection
     image_paths = select_image_paths(

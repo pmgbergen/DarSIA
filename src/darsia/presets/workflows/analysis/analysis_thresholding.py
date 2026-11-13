@@ -34,6 +34,7 @@ from darsia.presets.workflows.analysis.streaming import (
     publish_stream_images,
 )
 from darsia.presets.workflows.config.analysis import AnalysisThresholdingConfig
+from darsia.presets.workflows.config.physics import check_fluid_modes
 from darsia.presets.workflows.mode_resolution import (
     mode_requires_color_to_mass,
     resolve_mode_image,
@@ -168,6 +169,14 @@ def analysis_thresholding_from_context(
         )
 
     thresholding_config = config.analysis.thresholding
+    check_fluid_modes(
+        config,
+        "Thresholding",
+        {
+            f"analysis.thresholding.layers.{name}.mode": layer.mode
+            for name, layer in thresholding_config.layers.items()
+        },
+    )
 
     # Select image paths based on thresholding config's data_selection
     image_paths = select_image_paths(
