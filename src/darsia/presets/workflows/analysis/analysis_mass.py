@@ -155,10 +155,7 @@ def analysis_mass_from_context(
         config, config.analysis.mass.formats or ["npz", "jpg"]
     )
 
-    vmax_mass = max(
-        _safe_finite_max("solubility_co2", co2_mass_analysis.solubility_co2),
-        _safe_finite_max("density_gaseous_co2", co2_mass_analysis.density_gaseous_co2),
-    )
+    vmax_mass = co2_mass_analysis.max_density
     geometry_voxel_size = float(np.prod(np.asarray(fluidflower.geometry.voxel_size)))
     depth = getattr(fluidflower.geometry, "depth", 1.0)
     if hasattr(depth, "img"):

@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from darsia.pvt import FluidSystem
+
 from .utils import _get_key, _get_section_from_toml
 
 SUPPORTED_FLUIDS = ("co2", "tracer")
@@ -59,6 +61,15 @@ class PhysicsConfig:
             "options": list(SUPPORTED_FLUIDS),
         },
     )
+
+    @property
+    def system(self) -> FluidSystem:
+        """Fluids of the configured fluid: two-phase water and CO2, or water only."""
+        if self.fluid == "co2":
+            return FluidSystem.two_phase(aqueous="water", gas="co2")
+        if self.fluid == "tracer":
+            return FluidSystem.single_phase(aqueous="water")
+        raise ValueError(f"No fluid system for [physics] fluid = '{self.fluid}'.")
 
     @property
     def interpretation(self) -> Interpretation:
