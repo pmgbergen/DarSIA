@@ -68,6 +68,11 @@ def success_color(pal: QPalette, weight: float = 0.5) -> QColor:
     return _blend_toward_text(pal, QColor(46, 139, 87), weight)
 
 
+def warning_color(pal: QPalette, weight: float = 0.35) -> QColor:
+    """Theme-adapted color for outdated state (e.g. sidebar dots), orange."""
+    return _blend_toward_text(pal, QColor(230, 140, 20), weight)
+
+
 def apply_theme(app, mode: str) -> None:
     """Apply a theme (System/Light/Dark) to the application.
 
