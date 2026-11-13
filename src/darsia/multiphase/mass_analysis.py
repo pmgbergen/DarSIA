@@ -4,11 +4,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
-from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import interpolate
 
 import darsia
 
@@ -16,7 +14,7 @@ EPSILON = 1e-12
 
 
 class CO2MassAnalysis:
-    """Interpolation routines, based on NIST data."""
+    """Mass analysis of CO2 in water, with properties from the fluid system."""
 
     def __init__(
         self,
@@ -25,6 +23,7 @@ class CO2MassAnalysis:
         atmospheric_temperature: float = 23.0,
         atmospheric_pressure_gradient: float = 0.0,
         atmospheric_temperature_gradient: float = 0.0,
+        system: darsia.FluidSystem | None = None,
     ) -> None:
         """Initialization of mass analysis.
 
@@ -36,7 +35,15 @@ class CO2MassAnalysis:
             Atmospheric pressure in bar.
         atmospheric_temperature : float
             Temperature in Celsius.
+        atmospheric_pressure_gradient : float
+            Atmospheric pressure gradient in bar per unit height.
+        atmospheric_temperature_gradient : float
+            Temperature gradient in Celsius per unit height.
+        system : darsia.FluidSystem, optional
+            Fluids and their properties; default is water and CO2.
         """
+        self.system = darsia.FluidSystem.two_phase() if system is None else system
+        """Fluid system providing densities and solubility."""
         self.baseline = baseline
         """Baseline image."""
         self.atmospheric_pressure = atmospheric_pressure
@@ -48,11 +55,7 @@ class CO2MassAnalysis:
         self.atmospheric_temperature_gradient = atmospheric_temperature_gradient
         """Temperature gradient in Celsius."""
 
-        # Setup water density at 20 and 23 degrees Celsius
-        self.setup_20_degrees_celsius()
-        self.setup_23_degrees_celsius()
-
-        # Setup density of gaseous CO2
+        # Setup density of gaseous CO2 and solubility
         self.setup_density_gaseous_co2()
 
     def update_state(
@@ -71,16 +74,14 @@ class CO2MassAnalysis:
         atmospheric_temperature : float
             Temperature in Celsius.
         """
-        self.atmospheric_pressure = atmospheric_pressure or self.atmospheric_pressure
-        self.atmospheric_temperature = (
-            atmospheric_temperature or self.atmospheric_temperature
-        )
-        self.atmospheric_pressure_gradient = (
-            atmospheric_pressure_gradient or self.atmospheric_pressure_gradient
-        )
-        self.atmospheric_temperature_gradient = (
-            atmospheric_temperature_gradient or self.atmospheric_temperature_gradient
-        )
+        if atmospheric_pressure is not None:
+            self.atmospheric_pressure = atmospheric_pressure
+        if atmospheric_temperature is not None:
+            self.atmospheric_temperature = atmospheric_temperature
+        if atmospheric_pressure_gradient is not None:
+            self.atmospheric_pressure_gradient = atmospheric_pressure_gradient
+        if atmospheric_temperature_gradient is not None:
+            self.atmospheric_temperature_gradient = atmospheric_temperature_gradient
 
         # Setup density of gaseous CO2
         self.setup_density_gaseous_co2()
@@ -95,6 +96,21 @@ class CO2MassAnalysis:
         return self.atmospheric_pressure + (
             self.atmospheric_pressure_gradient * self.baseline.dimensions[0]
         )
+
+    @property
+    def max_density(self) -> float:
+        """Largest mass per volume of a phase in kg/m3 (for example for plot ranges).
+
+        This is the larger one of the maximal solubility and gas density; non-finite
+        values are ignored.
+        """
+        values = np.concatenate(
+            [np.ravel(self.solubility_co2), np.ravel(self.density_gaseous_co2)]
+        ).astype(float)
+        finite = values[np.isfinite(values)]
+        if finite.size == 0:
+            raise ValueError("Solubility and gas density contain no finite values.")
+        return float(np.max(finite))
 
     @property
     def height_map(self) -> np.ndarray:
@@ -130,171 +146,12 @@ class CO2MassAnalysis:
         plt.savefig(path / "solubility_co2.png")
         plt.close()
 
-    def setup_20_degrees_celsius(self) -> None:
-        """Setup water density at 20 degrees Celsius and NIST data for CO2 density."""
-
-        self.water_density_20 = 998.21  # kg/m^3 at 20 deg Celsius
-        """Water derisity at 20 degrees Celsius."""
-
-        # NIST data for co2 density at fixed temperature and varying pressure
-        self.data_NIST_20 = (
-            # pressure (bar), density (kg/m^3); at 20 deg Celsius
-            [0.90 + 0.01 * i for i in range(61)],
-            [
-                1.6328,
-                1.6510,
-                1.6692,
-                1.6875,
-                1.7057,
-                1.7239,
-                1.7422,
-                1.7604,
-                1.7787,
-                1.7969,
-                1.8152,
-                1.8334,
-                1.8517,
-                1.8699,
-                1.8882,
-                1.9064,
-                1.9247,
-                1.9429,
-                1.9612,
-                1.9795,
-                1.9977,
-                2.0160,
-                2.0343,
-                2.0526,
-                2.0708,
-                2.0891,
-                2.1074,
-                2.1257,
-                2.1439,
-                2.1622,
-                2.1805,
-                2.1988,
-                2.2171,
-                2.2354,
-                2.2537,
-                2.2720,
-                2.2903,
-                2.3086,
-                2.3269,
-                2.3452,
-                2.3635,
-                2.3818,
-                2.4001,
-                2.4186,
-                2.4367,
-                2.4550,
-                2.4734,
-                2.4917,
-                2.5100,
-                2.5283,
-                2.5467,
-                2.5650,
-                2.5833,
-                2.6016,
-                2.6200,
-                2.6383,
-                2.6566,
-                2.6750,
-                2.6933,
-                2.7117,
-                2.7300,
-            ],
-        )
-
-        self.solubility_co2_20 = (
-            # pressure (bar), solubility (kg/m^3); at 20 deg Celsius
-            [0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            [1.53, 1.7, 1.87, 2.04, 2.21, 2.37, 2.54],
-        )
-
-    def setup_23_degrees_celsius(self) -> None:
-        self.water_density_23 = 997.62  # kg/m^3 at 23 deg Celsius
-
-        # NIST data for co2 density at fixed temperature and varying pressure
-        self.data_NIST_23 = (
-            # pressure (bar), density (kg/m^3); at 23 deg Celsius
-            [0.90 + 0.01 * i for i in range(61)],
-            [
-                1.6160,
-                1.6340,
-                1.6521,
-                1.6701,
-                1.6882,
-                1.7062,
-                1.7242,
-                1.7423,
-                1.7604,
-                1.7784,
-                1.7965,
-                1.8145,
-                1.8326,
-                1.8506,
-                1.8687,
-                1.8868,
-                1.9048,
-                1.9229,
-                1.9410,
-                1.9590,
-                1.9771,
-                1.9952,
-                2.0133,
-                2.0314,
-                2.0494,
-                2.0675,
-                2.0856,
-                2.1037,
-                2.1218,
-                2.1399,
-                2.1580,
-                2.1761,
-                2.1942,
-                2.2123,
-                2.2304,
-                2.2485,
-                2.2666,
-                2.2847,
-                2.3028,
-                2.3209,
-                2.3390,
-                2.3571,
-                2.3752,
-                2.3934,
-                2.4115,
-                2.4296,
-                2.4477,
-                2.4658,
-                2.4840,
-                2.5021,
-                2.5202,
-                2.5384,
-                2.5565,
-                2.5746,
-                2.5928,
-                2.6109,
-                2.6291,
-                2.6472,
-                2.6653,
-                2.6835,
-                2.7016,
-            ],
-        )
-
-        self.solubility_co2_23 = (
-            # pressure (bar), solubility (kg/m^3); at 23 deg Celsius
-            [0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            # [1.44, 1.6, 1.76, 1.92, 2.08],
-            [1.30, 1.45, 1.60, 1.75, 1.90, 2.05, 2.18],
-        )
-
     def setup_density_gaseous_co2(self) -> None:
-        """Setup density of gaseous CO2 taking into account pressure variation.
+        """Setup density of gaseous CO2 and CO2 solubility under hydrostatic pressure.
 
-        NOTE: Fixed temperature at 23 deg Celsius.
-
+        The temperature varies with height due to the temperature gradient. The pressure
+        is the atmospheric pressure at the top plus the hydrostatic pressure of the
+        aqueous phase. Density and solubility are looked up in the fluid system.
         """
 
         # Hydrostatic pressure distribution
@@ -304,10 +161,10 @@ class CO2MassAnalysis:
         # Determine the temperature distribution due to temperature gradient
         atmospheric_temperature_map = self.atmospheric_temperature_map()
 
-        # Interpolate water density depending on temperature
-        water_density = self.water_density_20 * (
-            23 - atmospheric_temperature_map
-        ) / 3 + (self.water_density_23 * (atmospheric_temperature_map - 20) / 3)
+        # Density of the aqueous phase depending on temperature
+        water_density = self.system.density_aqueous(
+            self.top_atmospheric_pressure(), atmospheric_temperature_map
+        )
 
         # Determine hydrostatic pressure
         hydrostatic_pressure = (
@@ -315,44 +172,13 @@ class CO2MassAnalysis:
             + water_density * g * self.height_map * pa2bar
         )
 
-        # Interpolate NIST data: pressure -> density
-        self.co2_density_interpolator_20 = interpolate.interp1d(
-            self.data_NIST_20[0], self.data_NIST_20[1], kind="linear"
+        # Density of gaseous CO2 and CO2 solubility at hydrostatic pressure
+        self.density_gaseous_co2 = self.system.density_gas(
+            hydrostatic_pressure, atmospheric_temperature_map
         )
-
-        # Interpolate NIST data: pressure -> density
-        self.co2_density_interpolator_23 = interpolate.interp1d(
-            self.data_NIST_23[0], self.data_NIST_23[1], kind="linear"
+        self.solubility_co2 = self.system.solubility(
+            hydrostatic_pressure, atmospheric_temperature_map
         )
-
-        self.co2_solubility_interpolator_20 = interpolate.interp1d(
-            self.solubility_co2_20[0], self.solubility_co2_20[1], kind="linear"
-        )
-
-        self.co2_solubility_interpolator_23 = interpolate.interp1d(
-            self.solubility_co2_23[0], self.solubility_co2_23[1], kind="linear"
-        )
-
-        # Define density of gaseous CO2 at hydrostatic pressure
-        density_gaseous_co2_20 = self.co2_density_interpolator_20(hydrostatic_pressure)
-        density_gaseous_co2_23 = self.co2_density_interpolator_23(hydrostatic_pressure)
-        solubility_co2_20 = self.co2_solubility_interpolator_20(hydrostatic_pressure)
-        solubility_co2_23 = self.co2_solubility_interpolator_23(hydrostatic_pressure)
-
-        # Interpolate density of gaseous CO2 depending on atmospheric_temperature
-        self.density_gaseous_co2 = (
-            density_gaseous_co2_20 * (23 - atmospheric_temperature_map) / 3
-            + density_gaseous_co2_23 * (atmospheric_temperature_map - 20) / 3
-        )
-
-        self.solubility_co2 = (
-            solubility_co2_20 * (23 - atmospheric_temperature_map) / 3
-            + solubility_co2_23 * (atmospheric_temperature_map - 20) / 3
-        )
-
-        if False:
-            self.solubility_co2[:, :] = 1.8
-            warn("constant solubility?")
 
     def __call__(
         self,
@@ -472,22 +298,69 @@ class TracerMassAnalysis:
     the solution, i.e. the volume times the water density.
     """
 
-    DEFAULT_DENSITY = 998.21
-    """Water density (kg/m3 at 20 deg Celsius).
-
-    TEMPORARY: to be replaced by the chemistry (PVT) tables, see docs/roadmap/03.
-    """
-
-    def __init__(self, scale: float = DEFAULT_DENSITY) -> None:
+    def __init__(
+        self,
+        atmospheric_pressure: float = 1.010,
+        atmospheric_temperature: float = 20.0,
+        system: darsia.FluidSystem | None = None,
+    ) -> None:
         """Constructor.
 
         Parameters
         ----------
-        scale : float
-            Mass per pore volume (kg/m3) at relative concentration 1.
+        atmospheric_pressure : float
+            Atmospheric pressure in bar.
+        atmospheric_temperature : float
+            Temperature in Celsius.
+        system : darsia.FluidSystem, optional
+            Fluids and their properties; default is single-phase water.
         """
-        self.scale = float(scale)
-        """Mass per pore volume (kg/m3) at relative concentration 1."""
+        self.system = darsia.FluidSystem.single_phase() if system is None else system
+        """Fluid system providing the density of the aqueous phase."""
+        self.atmospheric_pressure = atmospheric_pressure
+        """Atmospheric pressure in bar."""
+        self.atmospheric_temperature = atmospheric_temperature
+        """Temperature in Celsius."""
+        self.setup_scale()
+
+    def setup_scale(self) -> None:
+        """Setup the mass per pore volume at relative concentration 1."""
+        self.scale = float(
+            self.system.density_aqueous(
+                self.atmospheric_pressure, self.atmospheric_temperature
+            )
+        )
+        """Mass per pore volume (kg/m3) at relative concentration 1 (water density)."""
+
+    def update_state(
+        self,
+        atmospheric_pressure: float | None = None,
+        atmospheric_temperature: float | None = None,
+        atmospheric_pressure_gradient: float | None = None,
+        atmospheric_temperature_gradient: float | None = None,
+    ) -> None:
+        """Update atmospheric pressure and temperature.
+
+        The gradients are accepted for compatibility with `CO2MassAnalysis` and
+        ignored: the density of the solution is taken at the atmospheric state.
+
+        Parameters
+        ----------
+        atmospheric_pressure : float, optional
+            Atmospheric pressure in bar.
+        atmospheric_temperature : float, optional
+            Temperature in Celsius.
+        """
+        if atmospheric_pressure is not None:
+            self.atmospheric_pressure = atmospheric_pressure
+        if atmospheric_temperature is not None:
+            self.atmospheric_temperature = atmospheric_temperature
+        self.setup_scale()
+
+    @property
+    def max_density(self) -> float:
+        """Largest mass per volume of a phase in kg/m3 (for example for plot ranges)."""
+        return self.scale
 
     def mass_analysis(
         self, c_aq: darsia.Image, s_g: darsia.Image | None = None
