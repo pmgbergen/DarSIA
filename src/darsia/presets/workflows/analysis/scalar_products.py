@@ -32,6 +32,34 @@ class RescaledMassProducts:
     mass_scaling_factor: float
     detected_mass_total: float
     exact_mass_total: float
+    detected_volume_total: float | None = None
+    """Integrated aqueous concentration (volume basis only)."""
+    exact_volume_total: float | None = None
+    """Injected volume (volume basis only)."""
+    basis: str = "mass"
+    """Quantity the rescaling matches the injection protocol on: 'mass' or 'volume'."""
+
+
+def rescale_basis(co2_mass_analysis: Any) -> str:
+    """Quantity the rescaling matches the injection protocol on.
+
+    A single-phase fluid model (for example a tracer) is rescaled on the injected
+    volume, a multiphase one on the injected mass. Models without a fluid system
+    (for example test doubles) use the mass.
+
+    Parameters
+    ----------
+    co2_mass_analysis : Any
+        Fluid model, optionally with a `system` of type `darsia.FluidSystem`.
+
+    Returns
+    -------
+        "volume" or "mass".
+    """
+    system = getattr(co2_mass_analysis, "system", None)
+    if system is not None and not system.is_multiphase:
+        return "volume"
+    return "mass"
 
 
 def _apply_expert_knowledge_constraints(
@@ -68,14 +96,40 @@ def compute_rescaled_mass_products(
     co2_mass_analysis: darsia.CO2MassAnalysis,
     date: Any = None,
     epsilon: float = EPSILON,
+    basis: str | None = None,
 ) -> RescaledMassProducts:
-    """Compute rescaled mass products and scaling metadata."""
+    """Compute rescaled mass products and scaling metadata.
+
+    The mass basis matches the integrated mass to the injected mass. The volume basis
+    (default for single-phase fluids) matches the integrated aqueous concentration to
+    the injected volume; for a tracer this gives the same factor as the mass, since the
+    density cancels, and the exact mass is the injected volume times the model density.
+
+    Parameters
+    ----------
+    basis : str, optional
+        "mass" or "volume"; by default derived from the fluid model.
+    """
+    basis = rescale_basis(co2_mass_analysis) if basis is None else basis
+    if basis not in ("mass", "volume"):
+        raise ValueError(f"Unknown rescaling basis '{basis}', use 'mass' or 'volume'.")
+
     detected_mass_total = geometry.integrate(mass_analysis_result.mass)
-    exact_mass_total = injection_protocol.injected_mass(date=date)
+    detected_volume_total = None
+    exact_volume_total = None
+    if basis == "mass":
+        exact_mass_total = injection_protocol.injected_mass(date=date)
+        detected_total, exact_total = detected_mass_total, exact_mass_total
+    else:
+        detected_volume_total = float(
+            geometry.integrate(mass_analysis_result.concentration_aq)
+        )
+        exact_volume_total = float(injection_protocol.injected_volume(date=date))
+        exact_mass_total = exact_volume_total * co2_mass_analysis.scale
+        detected_total, exact_total = detected_volume_total, exact_volume_total
+
     mass_scaling_factor = (
-        exact_mass_total / detected_mass_total
-        if np.abs(detected_mass_total) > epsilon
-        else 1.0
+        exact_total / detected_total if np.abs(detected_total) > epsilon else 1.0
     )
     rescaled_mass = darsia.weight(mass_analysis_result.mass, mass_scaling_factor)
     rescaled_result = co2_mass_analysis.inverse_mass_analysis(rescaled_mass)
@@ -84,6 +138,9 @@ def compute_rescaled_mass_products(
         mass_scaling_factor=mass_scaling_factor,
         detected_mass_total=float(detected_mass_total),
         exact_mass_total=float(exact_mass_total),
+        detected_volume_total=detected_volume_total,
+        exact_volume_total=exact_volume_total,
+        basis=basis,
     )
 
 
@@ -96,10 +153,12 @@ def analysis_scalar_products(
     co2_mass_analysis: darsia.CO2MassAnalysis | None = None,
     date: Any = None,
     expert_knowledge_adapter: "ExpertKnowledgeAdapter | None" = None,
+    basis: str | None = None,
 ) -> tuple[dict[str, darsia.Image], RescaledMassProducts | None]:
     """Map workflow analysis mode keys to scalar products.
 
-    Returns all base products and computes rescaled products only when requested.
+    Returns all base products and computes rescaled products only when requested. The
+    rescaling basis ("mass" or "volume") is derived from the fluid model unless given.
     """
     products: dict[str, darsia.Image] = {
         "concentration_aq": mass_analysis_result.concentration_aq,
@@ -127,6 +186,7 @@ def analysis_scalar_products(
         injection_protocol=injection_protocol,
         co2_mass_analysis=co2_mass_analysis,
         date=date,
+        basis=basis,
     )
     products["rescaled_mass"] = rescaled.rescaled_result.mass
     products["rescaled_saturation_g"] = rescaled.rescaled_result.saturation_g

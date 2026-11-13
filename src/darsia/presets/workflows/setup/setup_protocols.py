@@ -277,9 +277,9 @@ def _write_csv(df: pd.DataFrame, path: Path) -> None:
     df.to_csv(path, index=False)
 
 
-# Volumetric rate units whose csv column needs a paired "density kg/m3" column
-# for DarSIA's read side to convert to kg/s (see InjectionProtocol._load_protocol
-# in experiment/protocols.py).
+# Volumetric rate units. DarSIA's read side keeps the volume rate; a paired
+# "density kg/m3" column is optional and only needed for a mass (see
+# InjectionProtocol._load_protocol in experiment/protocols.py).
 _VOLUMETRIC_INJECTION_RATE_UNITS = ("mL/s", "mL/min", "mL/hr")
 
 
@@ -296,8 +296,9 @@ def _write_injection_template(
 
     `rate_unit` selects the csv column DarSIA's read side expects for that unit;
     the raw value is written as entered, unconverted. `density` (kg/m3) is only
-    written when `rate_unit` is volumetric (mL/s, mL/min, mL/hr), which need it
-    to convert to kg/s on read.
+    written when `rate_unit` is volumetric (mL/s, mL/min, mL/hr) and the density is
+    positive: it lets DarSIA also derive an injected mass; without it the protocol
+    only provides the injected volume.
     """
     rate_column = f"rate_{rate_unit}"
     columns = {
@@ -308,7 +309,7 @@ def _write_injection_template(
         "end": [end],
         rate_column: [rate],
     }
-    if rate_unit in _VOLUMETRIC_INJECTION_RATE_UNITS:
+    if rate_unit in _VOLUMETRIC_INJECTION_RATE_UNITS and density > 0:
         columns["density kg/m3"] = [density]
     df = pd.DataFrame(columns)
     _write_csv(df, path)

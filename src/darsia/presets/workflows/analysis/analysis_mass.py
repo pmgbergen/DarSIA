@@ -22,7 +22,10 @@ from darsia.presets.workflows.analysis.progress import (
     AnalysisProgressEvent,
     publish_image_progress,
 )
-from darsia.presets.workflows.analysis.scalar_products import analysis_scalar_products
+from darsia.presets.workflows.analysis.scalar_products import (
+    analysis_scalar_products,
+    rescale_basis,
+)
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.config.analysis import (
     SUPPORTED_ANALYSIS_MASS_EXPORT_MODES,
@@ -187,6 +190,16 @@ def analysis_mass_from_context(
     exact_cols = [
         f"{roi_config.name}_exact_mass" for roi_config in resolved_roi.values()
     ]
+    # Single-phase fluids (tracer) are matched to the injected volume: the mass columns
+    # stay (exact mass = injected volume x model density), volume columns are added.
+    volume_basis = rescale_basis(co2_mass_analysis) == "volume"
+    volume_cols = (
+        ["detected_volume_total", "exact_volume_total"]
+        + [f"{roi_config.name}_exact_volume" for roi_config in resolved_roi.values()]
+        + [f"{roi_config.name}_detected_volume" for roi_config in resolved_roi.values()]
+        if volume_basis
+        else []
+    )
     columns = (
         [
             "time",
@@ -201,6 +214,7 @@ def analysis_mass_from_context(
         + detected_cols
         + detected_cols_g
         + detected_cols_aq
+        + volume_cols
     )
     mass_df = pd.DataFrame(columns=columns)
     # TODO control this path through toml/config.
@@ -283,15 +297,29 @@ def analysis_mass_from_context(
             rescaled_mass
         )
         row_data["mass_scaling_factor"] = rescaled.mass_scaling_factor
+        if volume_basis:
+            row_data["detected_volume_total"] = rescaled.detected_volume_total
+            row_data["exact_volume_total"] = rescaled.exact_volume_total
 
         # Compute exact mass in ROIs and add to row data
         for roi_config in resolved_roi.values():
             key = roi_config.name
             roi = roi_config.roi
-            # Fetch exact mass from injection protocol
-            exact_mass_roi = experiment.injection_protocol.injected_mass(
-                date=img.date, roi=roi_config.roi
-            )
+            # Fetch exact mass from injection protocol; for a volume basis the mass is
+            # the injected volume times the density of the fluid model
+            if volume_basis:
+                exact_volume_roi = experiment.injection_protocol.injected_volume(
+                    date=img.date, roi=roi_config.roi
+                )
+                exact_mass_roi = exact_volume_roi * co2_mass_analysis.scale
+                row_data[f"{key}_exact_volume"] = exact_volume_roi
+                row_data[f"{key}_detected_volume"] = geometry[key].integrate(
+                    concentration_aq.subregion(roi)
+                )
+            else:
+                exact_mass_roi = experiment.injection_protocol.injected_mass(
+                    date=img.date, roi=roi_config.roi
+                )
 
             # Integrate over chosen roi
             mass_roi = geometry[key].integrate(mass.subregion(roi))

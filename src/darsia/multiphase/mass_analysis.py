@@ -383,7 +383,7 @@ class TracerMassAnalysis:
         self, mass: darsia.Image
     ) -> "darsia.SimpleMassAnalysisResults":
         """Concentration from a (rescaled) mass map; never creates gas."""
-        c_aq_array = np.clip(mass.img / self.scale, 0.0, None)
+        c_aq_array = np.clip(mass.img / self.scale, 0.0, 1.0)
         return self.mass_analysis(darsia.full_like(mass, c_aq_array))
 
 

@@ -195,8 +195,9 @@ STEPS = [
         (
             "'constant' writes a single row spanning the whole run at the rate and "
             "coordinates you give — right when the experiment injected steadily from "
-            "one port. Pick the rate's unit alongside it; if it's mL/s, mL/min or "
-            "mL/hr, also give the fluid density so it can be converted to kg/s. "
+            "one port. Pick the rate's unit alongside it; a mass rate (kg/s, g/s, ...) "
+            "or a volume rate (mL/s, mL/min, mL/hr, for example for a tracer). The "
+            "fluid density is optional and only gives a volume rate an injected mass. "
             "Coordinates (x, y) are in meters, in the same physical frame as the "
             "rig's width/height. For anything time-varying, choose 'Load from CSV': "
             "an existing file is left untouched, and if none exists yet you get an "

@@ -415,7 +415,11 @@ class ImagingProtocol:
 
 
 class InjectionProtocol:
-    """Injection protocol: the sequence of injection events and their masses."""
+    """Injection protocol: the sequence of injection events and their rates.
+
+    The rates are mass rates (kg/s) and/or volume rates (m3/s), depending on the
+    columns of the protocol file.
+    """
 
     def __init__(self, path: Path | tuple[Path, str]) -> None:
         self.df = self._load_protocol(path)
@@ -423,6 +427,16 @@ class InjectionProtocol:
 
         self.num_injections = len(self.df)
         """Number of injections in the protocol."""
+
+    @property
+    def has_mass(self) -> bool:
+        """Whether the protocol defines a mass rate for every injection."""
+        return bool(self.df["rate_kg_s"].notna().all())
+
+    @property
+    def has_volume(self) -> bool:
+        """Whether the protocol defines a volume rate for every injection."""
+        return bool(self.df["rate_m3_s"].notna().all())
 
     def injected_mass(
         self,
@@ -437,7 +451,7 @@ class InjectionProtocol:
         date : datetime
             Date to get the cumulative injected mass for.
         time : float
-            Time (in seconds) to get the cumulative injected mass for.
+            Time (in hours) to get the cumulative injected mass for.
         roi : Optional[darsia.Image]
             Region of interest for the mass calculation.
 
@@ -446,19 +460,81 @@ class InjectionProtocol:
         float
             Cumulative injected mass [kg] until the given date.
         """
+        if not self.has_mass:
+            raise ValueError(
+                "The injection protocol has no mass rate: volumetric rates need a "
+                "column 'density kg/m3' to give a mass. Use injected_volume or add "
+                "the density column."
+            )
+        return self._injected("rate_kg_s", date=date, time=time, roi=roi)
+
+    def injected_volume(
+        self,
+        date: datetime | None = None,
+        time: float | None = None,
+        roi: Optional[darsia.Image | darsia.CoordinateArray] = None,
+    ) -> float:
+        """Get the cumulative injected volume until the given date.
+
+        Parameters
+        ----------
+        date : datetime
+            Date to get the cumulative injected volume for.
+        time : float
+            Time (in hours) to get the cumulative injected volume for.
+        roi : Optional[darsia.Image]
+            Region of interest for the volume calculation.
+
+        Returns
+        -------
+        float
+            Cumulative injected volume [m3] until the given date.
+        """
+        if not self.has_volume:
+            raise ValueError(
+                "The injection protocol has no volume rate: use a volumetric rate "
+                "column (rate_mL/s, rate_mL/min or rate_mL/hr) to get a volume."
+            )
+        return self._injected("rate_m3_s", date=date, time=time, roi=roi)
+
+    def _injected(
+        self,
+        rate_column: str,
+        date: datetime | None = None,
+        time: float | None = None,
+        roi: Optional[darsia.Image | darsia.CoordinateArray] = None,
+    ) -> float:
+        """Cumulative injected quantity of a rate column until a date or time.
+
+        Parameters
+        ----------
+        rate_column : str
+            Column of the protocol with the rate per second.
+        date : datetime
+            Date to get the cumulative injected quantity for.
+        time : float
+            Time (in hours) to get the cumulative injected quantity for.
+        roi : Optional[darsia.Image]
+            Region of interest; only injections located inside are counted.
+
+        Returns
+        -------
+        float
+            Cumulative injected quantity until the given date.
+        """
         if date is None and time is None:
             raise ValueError("Either date or time must be provided.")
         if date is not None and time is not None:
             raise ValueError("Only one of date or time must be provided.")
 
         # Loop over all injection intervals and sum up the contributions
-        mass = 0.0
+        total = 0.0
         for _, row in self.df.iterrows():
             location_x = row["location_x"]
             location_y = row["location_y"]
             start = row["start"]
             end = row["end"]
-            rate_mass = row["rate_kg_s"]  # kg/s
+            rate = row[rate_column]
 
             # Check if the injection location is within the ROI
             if isinstance(roi, darsia.Image):
@@ -497,18 +573,9 @@ class InjectionProtocol:
                     time_in_seconds, 0.0, (end - start).total_seconds()
                 )
 
-            mass += time_passed * rate_mass
+            total += time_passed * rate
 
-        return mass
-
-    # def injected_volume(
-    #    self, date: datetime, roi: Optional[darsia.Image] = None
-    # ) -> float:
-    #    """Determine the cumulative injected volume until the given date.
-    #
-    #    NOTE: This function assumes that the injection is given in standard conditions.
-
-    #    """
+        return total
 
     def _load_protocol(self, path: Path | tuple[Path, str]) -> pd.DataFrame:
         if isinstance(path, list) or isinstance(path, tuple):
@@ -539,34 +606,38 @@ class InjectionProtocol:
         ), "Column 'Location_Y' not found in the protocol file."
         assert "start" in df.columns, "Column 'Start' not found in the protocol."
         assert "end" in df.columns, "Column 'End' not found in the protocol file."
+        # Mass rate in kg/s and volume rate in m3/s. Volumetric rates give a mass rate
+        # only if the density is provided (column 'density kg/m3'); mass rates give no
+        # volume rate. Missing rates are NaN.
+        nan_rate = pd.Series(np.nan, index=df.index)
+        mass_rate_kg_s = nan_rate
+        volume_rate_m3_s = nan_rate
+        density = (
+            df["density kg/m3"].astype(float) if "density kg/m3" in df.columns else None
+        )
         if "rate_sccm" in df.columns:
+            # Standard cubic centimeters: the volume depends on the reference state,
+            # hence only a mass rate is defined, and it needs the density.
             assert (
-                "density kg/m3" in df.columns
+                density is not None
             ), "Column 'Density kg/m3' not found in the protocol file."
             rate = df["rate_sccm"].astype(float)
-            density = df["density kg/m3"].astype(float)
             mass_rate_kg_s = rate * density * 1e-6 / 60.0  # kg/s
         elif "rate_ml/min" in df.columns:
-            assert (
-                "density kg/m3" in df.columns
-            ), "Column 'Density kg/m3' not found in the protocol file."
             rate = df["rate_ml/min"].astype(float)
-            density = df["density kg/m3"].astype(float)
-            mass_rate_kg_s = rate * density * 1e-6 / 60.0  # kg/s
+            volume_rate_m3_s = rate * 1e-6 / 60.0  # m3/s
+            if density is not None:
+                mass_rate_kg_s = rate * density * 1e-6 / 60.0  # kg/s
         elif "rate_ml/s" in df.columns:
-            assert (
-                "density kg/m3" in df.columns
-            ), "Column 'Density kg/m3' not found in the protocol file."
             rate = df["rate_ml/s"].astype(float)
-            density = df["density kg/m3"].astype(float)
-            mass_rate_kg_s = rate * density * 1e-6  # kg/s
+            volume_rate_m3_s = rate * 1e-6  # m3/s
+            if density is not None:
+                mass_rate_kg_s = rate * density * 1e-6  # kg/s
         elif "rate_ml/hr" in df.columns:
-            assert (
-                "density kg/m3" in df.columns
-            ), "Column 'Density kg/m3' not found in the protocol file."
             rate = df["rate_ml/hr"].astype(float)
-            density = df["density kg/m3"].astype(float)
-            mass_rate_kg_s = rate * density * 1e-6 / 3600.0  # kg/s
+            volume_rate_m3_s = rate * 1e-6 / 3600.0  # m3/s
+            if density is not None:
+                mass_rate_kg_s = rate * density * 1e-6 / 3600.0  # kg/s
         elif "rate_g/min" in df.columns:
             rate = df["rate_g/min"].astype(float)
             mass_rate_kg_s = rate * 1e-3 / 60.0  # kg/s
@@ -595,6 +666,7 @@ class InjectionProtocol:
                 "start": starts,
                 "end": ends,
                 "rate_kg_s": mass_rate_kg_s,
+                "rate_m3_s": volume_rate_m3_s,
             }
         )
 

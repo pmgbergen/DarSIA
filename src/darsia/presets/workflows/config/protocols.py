@@ -270,10 +270,10 @@ class InjectionProtocolConfig:
             "help": (
                 "Unit the rate below is entered in; picks the matching csv "
                 "column for the constant template. mL/s, mL/min and mL/hr are "
-                "volumetric and need the fluid density below to convert to "
-                "kg/s. sccm is only accepted in a hand-authored 'Load from "
-                "CSV' protocol file, where DarSIA converts any supported unit "
-                "to kg/s on read."
+                "volumetric: the protocol then provides the injected volume "
+                "(for example for a tracer); a mass additionally needs the "
+                "fluid density below. sccm is only accepted in a hand-authored "
+                "'Load from CSV' protocol file, together with a density column."
             ),
             "options": sorted(_SUPPORTED_INJECTION_RATE_UNITS),
             "depends_on": {"field": "injection_mode", "value": "constant"},
@@ -286,8 +286,8 @@ class InjectionProtocolConfig:
         metadata={
             "name": "Injection rate",
             "help": (
-                "Constant mass injection rate written to the injection "
-                "template, in the unit selected above."
+                "Constant injection rate (a mass or a volume rate, depending on "
+                "the unit selected above) written to the injection template."
             ),
             "depends_on": {"field": "injection_mode", "value": "constant"},
             "group": "Operating conditions",
@@ -299,9 +299,10 @@ class InjectionProtocolConfig:
         metadata={
             "name": "Injection fluid density (kg/m3)",
             "help": (
-                "Density of the injected fluid, used to convert a volumetric "
-                "injection rate (mL/s, mL/min or mL/hr) to the kg/s DarSIA "
-                "uses internally. Ignored for mass-based units (kg/s, g/s, "
+                "Optional density of the injected fluid. With it, a volumetric "
+                "injection rate (mL/s, mL/min or mL/hr) also gives an injected "
+                "mass; leave it at 0 for a tracer, where the mass follows from "
+                "the fluid model. Ignored for mass-based units (kg/s, g/s, "
                 "g/min, g/hr)."
             ),
             "depends_on": {
@@ -311,7 +312,7 @@ class InjectionProtocolConfig:
             "group": "Operating conditions",
         },
     )
-    """Injected fluid density in kg/m3 (only used for volumetric rate units)."""
+    """Injected fluid density in kg/m3 (optional; volumetric rate units only, 0 = none)."""
     injection_coordinates: tuple[float, float] = field(
         default=(0.0, 0.0),
         metadata={

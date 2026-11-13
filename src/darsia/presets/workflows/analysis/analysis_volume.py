@@ -97,8 +97,17 @@ def analysis_volume_from_context(
     detected_cols_aq = [
         f"{roi_config.name}_detected_volume_aq" for roi_config in resolved_roi.values()
     ]
+    # The injected volume is only known for protocols with a volumetric rate.
+    injection_protocol = experiment.injection_protocol
+    has_exact_volume = getattr(injection_protocol, "has_volume", False)
+    exact_cols = (
+        [f"{roi_config.name}_exact_volume" for roi_config in resolved_roi.values()]
+        if has_exact_volume
+        else []
+    )
     columns = (
         ["time", "datetime", "stem"]
+        + exact_cols
         + detected_cols
         + detected_cols_g
         + detected_cols_aq
@@ -172,6 +181,10 @@ def analysis_volume_from_context(
             volume_roi = volume_g_roi + volume_aq_roi
 
             # Store
+            if has_exact_volume:
+                row_data[f"{key}_exact_volume"] = injection_protocol.injected_volume(
+                    date=img.date, roi=roi
+                )
             row_data[f"{key}_detected_volume"] = volume_roi
             row_data[f"{key}_detected_volume_g"] = volume_g_roi
             row_data[f"{key}_detected_volume_aq"] = volume_aq_roi
