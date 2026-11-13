@@ -17,6 +17,7 @@ from darsia.multiphase.flash import load_flash
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.basis import label_ids_from_image
 from darsia.presets.workflows.calibration.metadata import (
+    calibration_inputs,
     read_calibration_metadata,
     validate_basis_metadata,
     validate_interpretation_metadata,
@@ -2216,6 +2217,8 @@ class HeterogeneousColorToMassAnalysis:
             "basis": self.basis.value,
             "label_ids": label_ids,
             "interpretation": interpretation.to_dict(),
+            # Fingerprints of the inputs, for the missing/valid/outdated status
+            "inputs": calibration_inputs(folder),
         }
         write_calibration_metadata(
             folder / "metadata.json",
