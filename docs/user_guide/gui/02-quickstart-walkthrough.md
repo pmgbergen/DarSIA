@@ -108,8 +108,10 @@ ignore_labels = [0]
 
 ![Calibration → Color Path settings](images/placeholder.png)
 
-**Mass** (`[calibration.mass]`) — selecting *Mass* pulls in the same color
-embedding plus the mass-specific fields further down the form:
+**Interpretation** (`[calibration.mass]`; until 2026-11 labelled *Mass*) — selecting
+*Interpretation* pulls in the same color
+embedding plus the interpretation fields further down the form (anchored on the
+injected mass for CO₂, the injected volume for tracer):
 
 ```toml
 [calibration.mass]
@@ -122,7 +124,7 @@ embedding = "color_path"
 active = ["contour_smoother_selection"]
 ```
 
-![Calibration → Mass settings, with the referenced color embedding above it](images/placeholder.png)
+![Calibration → Interpretation settings, with the referenced color embedding above it](images/placeholder.png)
 
 `calibration_mode = "auto"` fits the color-path automatically from the
 calibration images; `mode = "manual"` for mass calibration means the
@@ -144,7 +146,8 @@ uv run python -m darsia.presets.workflows.user_interface_calibration \
 Sidebar → **Analysis**. This is where images actually get processed in bulk.
 `sample_config.toml` enables mass, segmentation, and fingers.
 
-**Mass** (`[analysis.mass]`):
+**Field maps** (`[analysis.mass]`; until 2026-11 labelled *Mass*): dense per-pixel
+fields of the interpretation and their integrals.
 
 ```toml
 [analysis.mass]
@@ -159,7 +162,7 @@ embedding = "color_path"
 color = "color_path"
 ```
 
-![Analysis → Mass settings: export fields, color embedding, data selection, formats, ROI](images/placeholder.png)
+![Analysis → Field maps settings: export fields, color embedding, data selection, formats, ROI](images/placeholder.png)
 
 Each entry in `export` becomes its own output folder under
 `<results>/<mode>/<format>/`, e.g. `results/mass/jpg/`.

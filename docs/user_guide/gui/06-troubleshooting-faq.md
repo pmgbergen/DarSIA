@@ -61,6 +61,14 @@ a rig-geometry integral.
   `manual` with values from a previous known-good run (or an imported
   calibration bundle, `[utils.calibration].import_bundle`).
 
+## "My tracer config shows no gas fields"
+
+That is intended for `[physics] fluid = "tracer"` (single phase, no gas):
+`[expert_knowledge] saturation_g` / `no_saturation_g` are hidden. If one of them is still
+set, it stays visible: remove it, since a tracer config with gas constraints is rejected
+on load. After changing the fluid, **Save Settings** to apply it to the forms. The sidebar
+names (**Interpretation**, **Field maps**) are the same for all fluids.
+
 ## "Can I use my own experiment?"
 
 Yes — this guide's config, `sample_config.toml`, is a real run config, not a
