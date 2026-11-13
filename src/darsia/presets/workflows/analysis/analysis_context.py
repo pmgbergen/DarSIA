@@ -234,7 +234,7 @@ def build_fluid_model(
     config : FluidFlowerConfig
         Configuration providing the fluid.
     experiment : darsia.ProtocolledExperiment
-        Experiment providing the pressure and temperature protocol (CO2).
+        Experiment providing the pressure and temperature protocol (all fluids).
     rig : Rig
         Rig providing the baseline.
 
@@ -247,14 +247,18 @@ def build_fluid_model(
     start = experiment.experiment_start
     protocol = experiment.pressure_temperature_protocol
     state = protocol.get_state(start)
+    # All fluids depend on pressure and temperature, including their gradients.
+    gradient = protocol.get_gradient(start)
     if fluid == "tracer":
         return darsia.TracerMassAnalysis(
+            baseline=rig.baseline,
             atmospheric_pressure=state.pressure,
             atmospheric_temperature=state.temperature,
+            atmospheric_pressure_gradient=gradient.pressure,
+            atmospheric_temperature_gradient=gradient.temperature,
             system=system,
         )
     if fluid == "co2":
-        gradient = protocol.get_gradient(start)
         return darsia.CO2MassAnalysis(
             baseline=rig.baseline,
             atmospheric_pressure=state.pressure,

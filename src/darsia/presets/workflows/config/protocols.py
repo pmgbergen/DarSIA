@@ -372,7 +372,11 @@ class PressureTemperatureProtocolConfig:
         default=None,
         metadata={
             "name": "Pressure/Temperature protocol",
-            "help": "Path to the pressure-temperature protocol file, or [file, sheet].",
+            "help": (
+                "Path to the pressure-temperature protocol file, or [file, sheet]. "
+                "Used for all fluids: densities (and CO2 solubility) depend on "
+                "pressure and temperature, including their gradients."
+            ),
             "widget": "file",
             "group": "Experimental conditions",
             "table_viewer": "csv",
