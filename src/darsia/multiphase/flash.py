@@ -332,7 +332,7 @@ class IdentityFlash:
     """
 
     def __call__(self, signal: darsia.Image) -> tuple[darsia.Image, darsia.Image]:
-        """Aqueous concentration (clipped to non-negative values), gas saturation 0.
+        """Aqueous concentration (clipped to [0, 1]), gas saturation 0.
 
         Parameters
         ----------
@@ -344,7 +344,7 @@ class IdentityFlash:
         tuple
             Volumetric concentration in aqueous phase, saturation in gas phase.
         """
-        c_aq = darsia.full_like(signal, np.clip(signal.img, 0.0, None))
+        c_aq = darsia.full_like(signal, np.clip(signal.img, 0.0, 1.0))
         return c_aq, darsia.zeros_like(signal)
 
     def save(self, path: Path) -> None:

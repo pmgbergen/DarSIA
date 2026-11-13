@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import darsia
-from darsia.utils.units import MASS_UNIT_FACTORS, TIME_UNIT_FACTORS
+from darsia.utils.units import MASS_UNIT_FACTORS, TIME_UNIT_FACTORS, VOLUME_UNIT_FACTORS
 
 from ._key_list_sources import COLOR_EMBEDDING_SOURCES, REGISTRY_SOURCES, ROI_SOURCES
 from .contour_smoother import ContourSmootherSelection
@@ -407,6 +407,16 @@ class CalibrationMassConfig:
             "options": ["auto"] + list(MASS_UNIT_FACTORS),
         },
     )
+    volume_unit: str = field(
+        default="auto",
+        metadata={
+            "name": "Volume unit",
+            "help": "Unit for volume axes/values in tracer calibration plots. "
+            "'auto' rescales dynamically to keep displayed numbers readable; or "
+            "pin a fixed unit.",
+            "options": ["auto"] + list(VOLUME_UNIT_FACTORS),
+        },
+    )
     time_unit: str = field(
         default="auto",
         metadata={
@@ -518,6 +528,14 @@ class CalibrationMassConfig:
             raise ValueError(
                 "calibration.mass.mass_unit must be 'auto' or one of "
                 f"{sorted(MASS_UNIT_FACTORS)}."
+            )
+        self.volume_unit = _get_key(
+            sec, "volume_unit", required=False, default="auto", type_=str
+        )
+        if self.volume_unit not in {"auto", *VOLUME_UNIT_FACTORS}:
+            raise ValueError(
+                "calibration.mass.volume_unit must be 'auto' or one of "
+                f"{sorted(VOLUME_UNIT_FACTORS)}."
             )
         self.time_unit = _get_key(
             sec, "time_unit", required=False, default="auto", type_=str

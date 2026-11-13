@@ -40,10 +40,13 @@ from darsia.utils.figure_window import maximize_figure_window
 from darsia.utils.units import (
     choose_mass_unit,
     choose_time_unit,
+    choose_volume_unit,
     convert_mass,
     convert_time,
+    convert_volume,
     mass_label,
     time_label,
+    volume_label,
 )
 
 logger = logging.getLogger(__name__)
@@ -84,6 +87,7 @@ class HeterogeneousColorToMassAnalysis:
         mass_unit: str = "auto",
         time_unit: str = "auto",
         evaluation_mode: darsia.EvaluationMode | None = None,
+        volume_unit: str = "auto",
     ):
         self.evaluation_mode = (
             darsia.LinearEvaluation() if evaluation_mode is None else evaluation_mode
@@ -91,6 +95,8 @@ class HeterogeneousColorToMassAnalysis:
         """How colors are turned into a signal (stored with the calibration)."""
         self.mass_unit = mass_unit
         """Unit for mass axes/values in calibration plots ('auto' or a fixed unit)."""
+        self.volume_unit = volume_unit
+        """Unit for volume axes/values in tracer calibration plots ('auto' or fixed)."""
         self.time_unit = time_unit
         """Unit for time axes/values in calibration plots ('auto' or a fixed unit)."""
 
@@ -108,6 +114,11 @@ class HeterogeneousColorToMassAnalysis:
 
         self.co2_mass_analysis = co2_mass_analysis
         """Mass computation tool."""
+
+        self.has_gas = bool(
+            getattr(getattr(co2_mass_analysis, "system", None), "is_multiphase", True)
+        )
+        """Whether there is a gas phase; single-phase (tracer) has no flash parameters."""
 
         self.geometry = geometry
         """Geometry of the experiment - for the integration of mass during calibration."""
@@ -359,6 +370,16 @@ class HeterogeneousColorToMassAnalysis:
             "porosity": "Porosity",
             "effective_depth": "Effective Depth",
         }
+        if not self.has_gas:
+            # Single-phase (tracer): no gas saturation or CO2 properties; the signal
+            # is the aqueous concentration.
+            signal_options = {
+                key: label
+                for key, label in signal_options.items()
+                if key not in ("s_g", "rho_co2(g)", "solubility_co2(aq)")
+            }
+            signal_options["rho_co2"] = "Mass Density"
+            signal_options["c_aq"] = "Concentration"
         signal_option_idx = 0
         signal_option_ptr = list(signal_options.keys())
 
@@ -516,34 +537,37 @@ class HeterogeneousColorToMassAnalysis:
             pH, density, c_aq, s_g = detailed_mass_analysis(
                 color_interpretation_of(image_idx)
             )
-            co2_g_density = darsia.full_like(
-                pH, self.co2_mass_analysis.density_gaseous_co2
-            )
-            co2_aq_solubility = darsia.full_like(
-                pH, self.co2_mass_analysis.solubility_co2
-            )
 
             def coarsen(img: darsia.Image) -> darsia.Image:
                 return darsia.resize(img, shape=coarse_shape)
+
+            signals = {
+                "color": coarse_color_interpretations[image_idx],
+                "pH": coarsen(pH),
+                "rho_co2": coarsen(density),
+                "c_aq": coarsen(c_aq),
+                "labels": coarse_labels,
+                "depth": coarse_depth,
+                "porosity": coarse_porosity,
+                "effective_depth": coarse_effective_depth,
+            }
+            if self.has_gas:
+                co2_g_density = darsia.full_like(
+                    pH, self.co2_mass_analysis.density_gaseous_co2
+                )
+                co2_aq_solubility = darsia.full_like(
+                    pH, self.co2_mass_analysis.solubility_co2
+                )
+                signals["s_g"] = coarsen(s_g)
+                signals["rho_co2(g)"] = coarsen(co2_g_density)
+                signals["solubility_co2(aq)"] = coarsen(co2_aq_solubility)
 
             return {
                 "image_idx": image_idx,
                 "pH": pH,
                 "c_aq": coarsen(c_aq),
                 "s_g": coarsen(s_g),
-                "signals": {
-                    "color": coarse_color_interpretations[image_idx],
-                    "pH": coarsen(pH),
-                    "rho_co2": coarsen(density),
-                    "c_aq": coarsen(c_aq),
-                    "s_g": coarsen(s_g),
-                    "labels": coarse_labels,
-                    "depth": coarse_depth,
-                    "rho_co2(g)": coarsen(co2_g_density),
-                    "solubility_co2(aq)": coarsen(co2_aq_solubility),
-                    "porosity": coarse_porosity,
-                    "effective_depth": coarse_effective_depth,
-                },
+                "signals": signals,
             }
 
         def contour_overlay(
@@ -553,26 +577,25 @@ class HeterogeneousColorToMassAnalysis:
             thresholds: list[float],
         ) -> darsia.Image:
             """Contours of the phase segmentation on top of the coarse image."""
+            masks = [
+                coarse_c_aq > thresholds[0],
+                coarse_c_aq > 0.1,
+                coarse_c_aq > 0.25,
+                coarse_c_aq > 0.5,
+                coarse_c_aq > 0.9,
+            ]
+            colors = [(255, 0, 0)] * 5
+            alphas = [0.2, 0.3, 0.4, 0.5, 1.0]
+            if self.has_gas:
+                masks.append(coarse_s_g > thresholds[1])
+                colors.append((0, 255, 0))
+                alphas.append(1.0)
             return darsia.plot_contour_on_image(
                 coarse_image,
-                mask=[
-                    coarse_c_aq > thresholds[0],
-                    coarse_c_aq > 0.1,
-                    coarse_c_aq > 0.25,
-                    coarse_c_aq > 0.5,
-                    coarse_c_aq > 0.9,
-                    coarse_s_g > thresholds[1],
-                ],
+                mask=masks,
                 contour_smoother=self.contour_smoother,
-                color=[
-                    (255, 0, 0),
-                    (255, 0, 0),
-                    (255, 0, 0),
-                    (255, 0, 0),
-                    (255, 0, 0),
-                    (0, 255, 0),
-                ],
-                alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
+                color=colors,
+                alpha=alphas,
                 return_image=True,
             )
 
@@ -614,6 +637,11 @@ class HeterogeneousColorToMassAnalysis:
                 roi_key: SimpleRunAnalysis(self.geometry.subregion(roi))
                 for roi_key, roi in rois.items()
             }
+            # Single-phase (tracer): the reference is the injected volume, compared
+            # with the integrated aqueous concentration (a volume).
+            volume_series = {
+                roi_key: {"time": [], "exact": [], "detected": []} for roi_key in rois
+            }
             for idx, img in enumerate(images):
                 color_interpretation = color_interpretation_of(idx)
 
@@ -639,8 +667,23 @@ class HeterogeneousColorToMassAnalysis:
                     # Subregion mass
                     roi_mass_analysis_result = mass_analysis_result.subregion(roi)
 
-                    # Compute expected mass
                     assert isinstance(roi, darsia.CoordinateArray)
+                    if not self.has_gas:
+                        series = volume_series[roi_key]
+                        series["time"].append(roi_mass_analysis_result.time)
+                        series["exact"].append(
+                            experiment.injection_protocol.injected_volume(
+                                date=img.date, roi=roi
+                            )
+                        )
+                        series["detected"].append(
+                            analysis[roi_key].geometry.integrate(
+                                roi_mass_analysis_result.concentration_aq
+                            )
+                        )
+                        continue
+
+                    # Compute expected mass
                     roi_exact_mass = experiment.injection_protocol.injected_mass(
                         date=img.date, roi=roi
                     )
@@ -655,11 +698,20 @@ class HeterogeneousColorToMassAnalysis:
 
             # Monitor mass evolution over time
             for roi_key in rois:
-                times[roi_key] = [t / 3600 for t in analysis[roi_key].data.time]
-                expected_mass[roi_key] = analysis[roi_key].data.exact_mass_tot
-                integrated_mass[roi_key] = analysis[roi_key].data.mass_tot
-                integrated_mass_g[roi_key] = analysis[roi_key].data.mass_g
-                integrated_mass_aq[roi_key] = analysis[roi_key].data.mass_aq
+                if self.has_gas:
+                    times[roi_key] = [t / 3600 for t in analysis[roi_key].data.time]
+                    expected_mass[roi_key] = analysis[roi_key].data.exact_mass_tot
+                    integrated_mass[roi_key] = analysis[roi_key].data.mass_tot
+                    integrated_mass_g[roi_key] = analysis[roi_key].data.mass_g
+                    integrated_mass_aq[roi_key] = analysis[roi_key].data.mass_aq
+                else:
+                    # For tracer the "mass" series hold volumes (m3); there is no gas.
+                    series = volume_series[roi_key]
+                    times[roi_key] = [t / 3600 for t in series["time"]]
+                    expected_mass[roi_key] = series["exact"]
+                    integrated_mass[roi_key] = series["detected"]
+                    integrated_mass_g[roi_key] = [0.0] * len(series["time"])
+                    integrated_mass_aq[roi_key] = series["detected"]
 
                 # Errors
                 relative_error = (
@@ -679,14 +731,23 @@ class HeterogeneousColorToMassAnalysis:
             for label in self.signal_model.model[1].keys()
         }
         initial_flash = (
-            self.flash.min_value_aq,
-            self.flash.max_value_aq,
-            self.flash.min_value_g,
-            self.flash.max_value_g,
+            (
+                self.flash.min_value_aq,
+                self.flash.max_value_aq,
+                self.flash.min_value_g,
+                self.flash.max_value_g,
+            )
+            if self.has_gas
+            else None
         )
         default_contour_threshold = 0.05
-        # Current contour thresholds (c_aq, s_g); kept when the figure is rebuilt
-        contour_thresholds = [default_contour_threshold, default_contour_threshold]
+        # Current contour thresholds (c_aq, and s_g if there is a gas phase); kept when
+        # the figure is rebuilt
+        contour_thresholds = (
+            [default_contour_threshold, default_contour_threshold]
+            if self.has_gas
+            else [default_contour_threshold]
+        )
 
         # ! ---- GRID FOR PLOTTING ----
 
@@ -764,7 +825,9 @@ class HeterogeneousColorToMassAnalysis:
             # Top right: Contour/Secondary visualization
             ax_contour = plt.subplot(gs[0, 2])
             ax_contour.axis("off")
-            ax_contour.set_title("Phase Segmentation")
+            ax_contour.set_title(
+                "Phase Segmentation" if self.has_gas else "Concentration Contours"
+            )
 
             # Bottom left: Signal function plot
             ax_signal_function = plt.subplot(gs[1, 0])
@@ -772,7 +835,7 @@ class HeterogeneousColorToMassAnalysis:
 
             # Bottom middle: Mass evolution plots
             ax_mass = plt.subplot(gs[1, 1])
-            ax_mass.set_title("Mass Evolution")
+            ax_mass.set_title("Mass Evolution" if self.has_gas else "Volume Evolution")
 
             # Bottom right: Parameter sliders (will be subdivided)
             ax_sliders = plt.subplot(gs[1, 2])
@@ -868,103 +931,121 @@ class HeterogeneousColorToMassAnalysis:
                     linewidth=1,
                 )
 
-                # Indicate cut-off and max value from flash model
-                signal_function_aq_min_y = ax_signal_function.axhline(
-                    y=self.flash.min_value_aq,
-                    color="k",
-                    linestyle="--",
-                    label="aq_min",
-                    zorder=1,
-                )
-                signal_function_aq_max_y = ax_signal_function.axhline(
-                    y=self.flash.max_value_aq,
-                    color="k",
-                    linestyle="--",
-                    label="aq_max",
-                    zorder=1,
-                )
-                signal_function_g_max_y = ax_signal_function.axhline(
-                    y=self.flash.max_value_g,
-                    color="k",
-                    linestyle="--",
-                    label="g_max",
-                    zorder=1,
-                )
+                if self.has_gas:
+                    # Indicate cut-off and max value from flash model
+                    signal_function_aq_min_y = ax_signal_function.axhline(
+                        y=self.flash.min_value_aq,
+                        color="k",
+                        linestyle="--",
+                        label="aq_min",
+                        zorder=1,
+                    )
+                    signal_function_aq_max_y = ax_signal_function.axhline(
+                        y=self.flash.max_value_aq,
+                        color="k",
+                        linestyle="--",
+                        label="aq_max",
+                        zorder=1,
+                    )
+                    signal_function_g_max_y = ax_signal_function.axhline(
+                        y=self.flash.max_value_g,
+                        color="k",
+                        linestyle="--",
+                        label="g_max",
+                        zorder=1,
+                    )
 
-                signal_function_g_min_y = ax_signal_function.axhline(
-                    y=self.flash.min_value_g,
-                    color="k",
-                    linestyle="--",
-                    label="g_min",
-                    zorder=1,
-                )
+                    signal_function_g_min_y = ax_signal_function.axhline(
+                        y=self.flash.min_value_g,
+                        color="k",
+                        linestyle="--",
+                        label="g_min",
+                        zorder=1,
+                    )
 
-                # Find the corresponding x-values for the cut-off and max value lines as
-                # solution to the signal_function(x) = cut_off and
-                # signal_function(x) = max_value
-                aq_min_x = curve_inverse(t_fine, y_fine, self.flash.min_value_aq)
-                aq_max_x = curve_inverse(t_fine, y_fine, self.flash.max_value_aq)
-                g_max_x = curve_inverse(t_fine, y_fine, self.flash.max_value_g)
-                g_min_x = curve_inverse(t_fine, y_fine, self.flash.min_value_g)
+                    # Find the corresponding x-values for the cut-off and max value lines as
+                    # solution to the signal_function(x) = cut_off and
+                    # signal_function(x) = max_value
+                    aq_min_x = curve_inverse(t_fine, y_fine, self.flash.min_value_aq)
+                    aq_max_x = curve_inverse(t_fine, y_fine, self.flash.max_value_aq)
+                    g_max_x = curve_inverse(t_fine, y_fine, self.flash.max_value_g)
+                    g_min_x = curve_inverse(t_fine, y_fine, self.flash.min_value_g)
 
-                # Add vertical lines for cut-off and max value
-                signal_function_aq_min_x = ax_signal_function.axvline(
-                    x=aq_min_x,
-                    color="k",
-                    linestyle="--",
-                    label="min value aq",
-                    zorder=1,
-                )
-                signal_function_aq_max_x = ax_signal_function.axvline(
-                    x=aq_max_x,
-                    color="k",
-                    linestyle="--",
-                    label="max value aq",
-                    zorder=1,
-                )
-                signal_function_g_max_x = ax_signal_function.axvline(
-                    x=g_max_x,
-                    color="k",
-                    linestyle="--",
-                    label="max value g",
-                    zorder=1,
-                )
-                signal_function_g_min_x = ax_signal_function.axvline(
-                    x=g_min_x,
-                    color="k",
-                    linestyle="--",
-                    label="min value g",
-                    zorder=1,
-                )
+                    # Add vertical lines for cut-off and max value
+                    signal_function_aq_min_x = ax_signal_function.axvline(
+                        x=aq_min_x,
+                        color="k",
+                        linestyle="--",
+                        label="min value aq",
+                        zorder=1,
+                    )
+                    signal_function_aq_max_x = ax_signal_function.axvline(
+                        x=aq_max_x,
+                        color="k",
+                        linestyle="--",
+                        label="max value aq",
+                        zorder=1,
+                    )
+                    signal_function_g_max_x = ax_signal_function.axvline(
+                        x=g_max_x,
+                        color="k",
+                        linestyle="--",
+                        label="max value g",
+                        zorder=1,
+                    )
+                    signal_function_g_min_x = ax_signal_function.axvline(
+                        x=g_min_x,
+                        color="k",
+                        linestyle="--",
+                        label="min value g",
+                        zorder=1,
+                    )
 
-                # Make text annotations "CO2(aq)" and "CO2(g)" below and above the cut-off line
-                ax_signal_function.text(
-                    x=aq_max_x - 0.05,
-                    y=0.04,
-                    s="CO2(aq)",
-                    ha="center",
-                    va="center",
-                    fontsize=8,
-                    color="k",
-                )
-                ax_signal_function.text(
-                    x=aq_max_x + 0.05,
-                    y=0.04,
-                    s="CO2(g)",
-                    ha="center",
-                    va="center",
-                    fontsize=8,
-                    color="k",
-                )
-                ax_signal_function.text(
-                    x=g_max_x + 0.1,
-                    y=0.04,
-                    s="CO2(g) - 100%",
-                    ha="center",
-                    va="center",
-                    fontsize=8,
-                    color="k",
-                )
+                    # Annotate "CO2(aq)" and "CO2(g)" below and above the cut-off
+                    ax_signal_function.text(
+                        x=aq_max_x - 0.05,
+                        y=0.04,
+                        s="CO2(aq)",
+                        ha="center",
+                        va="center",
+                        fontsize=8,
+                        color="k",
+                    )
+                    ax_signal_function.text(
+                        x=aq_max_x + 0.05,
+                        y=0.04,
+                        s="CO2(g)",
+                        ha="center",
+                        va="center",
+                        fontsize=8,
+                        color="k",
+                    )
+                    ax_signal_function.text(
+                        x=g_max_x + 0.1,
+                        y=0.04,
+                        s="CO2(g) - 100%",
+                        ha="center",
+                        va="center",
+                        fontsize=8,
+                        color="k",
+                    )
+                else:
+                    # Single-phase: the signal is the concentration; a single
+                    # threshold (the contour threshold) is marked.
+                    threshold_line_y = ax_signal_function.axhline(
+                        y=contour_thresholds[0],
+                        color="k",
+                        linestyle="--",
+                        label="threshold",
+                        zorder=1,
+                    )
+                    threshold_line_x = ax_signal_function.axvline(
+                        x=curve_inverse(t_fine, y_fine, contour_thresholds[0]),
+                        color="k",
+                        linestyle="--",
+                        label="threshold",
+                        zorder=1,
+                    )
                 # NOTE: Keep after the annotations above, which are accessed by index
                 used_indices = getattr(signal_func, "support_indices", None)
                 if used_indices is not None and len(used_indices) < len(
@@ -1005,18 +1086,31 @@ class HeterogeneousColorToMassAnalysis:
             max_time = max(
                 (max(times[k]) for k in rois if len(times[k]) > 0), default=0.0
             )
-            mass_unit = (
-                choose_mass_unit(max_expected)
-                if self.mass_unit == "auto"
-                else self.mass_unit
-            )
+            # Quantity compared with the injection protocol: the mass (CO2), or the
+            # volume (tracer; the "mass" series below then hold volumes in m3).
+            if self.has_gas:
+                mass_unit = (
+                    choose_mass_unit(max_expected)
+                    if self.mass_unit == "auto"
+                    else self.mass_unit
+                )
+                convert_quantity, quantity_label = convert_mass, mass_label
+                total_name = "total"
+            else:
+                mass_unit = (
+                    choose_volume_unit(max_expected)
+                    if self.volume_unit == "auto"
+                    else self.volume_unit
+                )
+                convert_quantity, quantity_label = convert_volume, volume_label
+                total_name = "detected"
             time_unit = (
                 choose_time_unit(max_time)
                 if self.time_unit == "auto"
                 else self.time_unit
             )
             ax_mass.set_xlabel(time_label(time_unit))
-            ax_mass.set_ylabel(mass_label(mass_unit))
+            ax_mass.set_ylabel(quantity_label(mass_unit))
 
             # Store plot objects for updates
             integrated_mass_plots = {}
@@ -1044,30 +1138,31 @@ class HeterogeneousColorToMassAnalysis:
                     # Plot lines
                     [integrated_mass_plots[roi_key]] = ax_mass.plot(
                         plot_times,
-                        convert_mass(integrated_mass[roi_key], mass_unit),
+                        convert_quantity(integrated_mass[roi_key], mass_unit),
                         color=color,
-                        label=f"total ({roi_label})",
+                        label=f"{total_name} ({roi_label})",
                         linewidth=2,
                     )
-                    [integrated_mass_plots_g[roi_key]] = ax_mass.plot(
-                        plot_times,
-                        convert_mass(integrated_mass_g[roi_key], mass_unit),
-                        color=color,
-                        label=f"gas ({roi_label})",
-                        linestyle=":",
-                        linewidth=2,
-                    )
-                    [integrated_mass_plots_aq[roi_key]] = ax_mass.plot(
-                        plot_times,
-                        convert_mass(integrated_mass_aq[roi_key], mass_unit),
-                        color=color,
-                        label=f"aqueous ({roi_label})",
-                        linestyle="-.",
-                        linewidth=2,
-                    )
+                    if self.has_gas:
+                        [integrated_mass_plots_g[roi_key]] = ax_mass.plot(
+                            plot_times,
+                            convert_quantity(integrated_mass_g[roi_key], mass_unit),
+                            color=color,
+                            label=f"gas ({roi_label})",
+                            linestyle=":",
+                            linewidth=2,
+                        )
+                        [integrated_mass_plots_aq[roi_key]] = ax_mass.plot(
+                            plot_times,
+                            convert_quantity(integrated_mass_aq[roi_key], mass_unit),
+                            color=color,
+                            label=f"aqueous ({roi_label})",
+                            linestyle="-.",
+                            linewidth=2,
+                        )
                     [expected_mass_plots[roi_key]] = ax_mass.plot(
                         plot_times,
-                        convert_mass(expected_mass[roi_key], mass_unit),
+                        convert_quantity(expected_mass[roi_key], mass_unit),
                         linestyle="--",
                         color=color,
                         label=f"injected ({roi_label})",
@@ -1077,31 +1172,32 @@ class HeterogeneousColorToMassAnalysis:
                     # Plot scatter points
                     integrated_mass_scatters[roi_key] = ax_mass.scatter(
                         plot_times,
-                        convert_mass(integrated_mass[roi_key], mass_unit),
+                        convert_quantity(integrated_mass[roi_key], mass_unit),
                         color=color,
                         s=20,
                         alpha=0.8,
                     )
-                    integrated_mass_scatters_g[roi_key] = ax_mass.scatter(
-                        plot_times,
-                        convert_mass(integrated_mass_g[roi_key], mass_unit),
-                        color=color,
-                        s=15,
-                        alpha=0.6,
-                        marker="^",
-                    )
-                    integrated_mass_scatters_aq[roi_key] = ax_mass.scatter(
-                        plot_times,
-                        convert_mass(integrated_mass_aq[roi_key], mass_unit),
-                        color=color,
-                        s=15,
-                        alpha=0.6,
-                        marker="s",
-                    )
+                    if self.has_gas:
+                        integrated_mass_scatters_g[roi_key] = ax_mass.scatter(
+                            plot_times,
+                            convert_quantity(integrated_mass_g[roi_key], mass_unit),
+                            color=color,
+                            s=15,
+                            alpha=0.6,
+                            marker="^",
+                        )
+                        integrated_mass_scatters_aq[roi_key] = ax_mass.scatter(
+                            plot_times,
+                            convert_quantity(integrated_mass_aq[roi_key], mass_unit),
+                            color=color,
+                            s=15,
+                            alpha=0.6,
+                            marker="s",
+                        )
 
             # Set y-axis limits based on maximum expected mass across all ROIs
             if max_expected > 0:
-                ax_mass.set_ylim(0.0, convert_mass(2.0 * max_expected, mass_unit))
+                ax_mass.set_ylim(0.0, convert_quantity(2.0 * max_expected, mass_unit))
             else:
                 ax_mass.autoscale()
             ax_mass.legend()
@@ -1120,7 +1216,9 @@ class HeterogeneousColorToMassAnalysis:
             )
             path_colors = self.color_path_interpretation[label_idx].color_path.colors
             num_values = len(signal_values)
-            row_height = controls_box.height / (num_values + 9)
+            # Rows: signal values (title, values), flash (title, 4 sliders; CO2 only),
+            # contours (title, one threshold per phase)
+            row_height = controls_box.height / (num_values + (9 if self.has_gas else 3))
 
             def make_row(row, name, valinit, vmin, vmax, color, active=True):
                 """Create a labeled slider (with value text) in a row."""
@@ -1177,7 +1275,7 @@ class HeterogeneousColorToMassAnalysis:
                     f"Value {i}" + ("" if i in used_values else " (unused)"),
                     val,
                     0.0,
-                    2.0,
+                    2.0 if self.has_gas else 1.0,
                     np.clip(path_colors[i], 0, 1) if i < len(path_colors) else "gray",
                     active=i in used_values,
                 )
@@ -1185,20 +1283,24 @@ class HeterogeneousColorToMassAnalysis:
             ]
 
             flash_row = num_values + 1
-            section_title(flash_row, "Flash")
-            sliders_flash = [
-                make_row(flash_row + 1 + i, name, value, 0.0, 2.0, "darkgray")
-                for i, (name, value) in enumerate(
-                    [
-                        ("Min aq", self.flash.min_value_aq),
-                        ("Max aq", self.flash.max_value_aq),
-                        ("Min g", self.flash.min_value_g),
-                        ("Max g", self.flash.max_value_g),
-                    ]
-                )
-            ]
-
-            contour_row = flash_row + 5
+            if self.has_gas:
+                section_title(flash_row, "Flash")
+                sliders_flash = [
+                    make_row(flash_row + 1 + i, name, value, 0.0, 2.0, "darkgray")
+                    for i, (name, value) in enumerate(
+                        [
+                            ("Min aq", self.flash.min_value_aq),
+                            ("Max aq", self.flash.max_value_aq),
+                            ("Min g", self.flash.min_value_g),
+                            ("Max g", self.flash.max_value_g),
+                        ]
+                    )
+                ]
+                contour_row = flash_row + 5
+            else:
+                # Single-phase: no flash parameters, the signal is the concentration
+                sliders_flash = []
+                contour_row = flash_row
             section_title(contour_row, "Contours")
             sliders_threshold = [
                 make_row(
@@ -1208,16 +1310,19 @@ class HeterogeneousColorToMassAnalysis:
                     0.0,
                     1.0,
                     (1, 0, 0),
-                ),
-                make_row(
-                    contour_row + 2,
-                    "Threshold s_g",
-                    contour_thresholds[1],
-                    0.0,
-                    1.0,
-                    (0, 1, 0),
-                ),
+                )
             ]
+            if self.has_gas:
+                sliders_threshold.append(
+                    make_row(
+                        contour_row + 2,
+                        "Threshold s_g",
+                        contour_thresholds[1],
+                        0.0,
+                        1.0,
+                        (0, 1, 0),
+                    )
+                )
 
             for i, slider in enumerate(sliders_threshold):
                 slider.on_changed(
@@ -1411,8 +1516,10 @@ class HeterogeneousColorToMassAnalysis:
                             # current flash max (never zoom in tighter than the
                             # flash thresholds, but grow if the curve exceeds
                             # them)
-                            flash_max = max(
-                                self.flash.max_value_aq, self.flash.max_value_g
+                            flash_max = (
+                                max(self.flash.max_value_aq, self.flash.max_value_g)
+                                if self.has_gas
+                                else 1.0
                             )
                             ax_signal_function.set_ylim(
                                 self.signal_model_extents[1][0],
@@ -1423,32 +1530,50 @@ class HeterogeneousColorToMassAnalysis:
                                 ),
                             )
 
-                        # Update flash cut-off and max value lines
-                        signal_function_aq_min_y.set_ydata([self.flash.min_value_aq])
-                        signal_function_aq_max_y.set_ydata([self.flash.max_value_aq])
-                        signal_function_g_max_y.set_ydata([self.flash.max_value_g])
-                        signal_function_g_min_y.set_ydata([self.flash.min_value_g])
-                        aq_max_x = curve_inverse(
-                            t_fine, y_fine, self.flash.max_value_aq
-                        )
-                        aq_min_x = curve_inverse(
-                            t_fine, y_fine, self.flash.min_value_aq
-                        )
-                        g_max_x = curve_inverse(t_fine, y_fine, self.flash.max_value_g)
-                        g_min_x = curve_inverse(t_fine, y_fine, self.flash.min_value_g)
-                        signal_function_aq_max_x.set_xdata([aq_max_x])
-                        signal_function_aq_min_x.set_xdata([aq_min_x])
-                        signal_function_g_max_x.set_xdata([g_max_x])
-                        signal_function_g_min_x.set_xdata([g_min_x])
+                        if self.has_gas:
+                            # Update flash cut-off and max value lines
+                            signal_function_aq_min_y.set_ydata(
+                                [self.flash.min_value_aq]
+                            )
+                            signal_function_aq_max_y.set_ydata(
+                                [self.flash.max_value_aq]
+                            )
+                            signal_function_g_max_y.set_ydata([self.flash.max_value_g])
+                            signal_function_g_min_y.set_ydata([self.flash.min_value_g])
+                            aq_max_x = curve_inverse(
+                                t_fine, y_fine, self.flash.max_value_aq
+                            )
+                            aq_min_x = curve_inverse(
+                                t_fine, y_fine, self.flash.min_value_aq
+                            )
+                            g_max_x = curve_inverse(
+                                t_fine, y_fine, self.flash.max_value_g
+                            )
+                            g_min_x = curve_inverse(
+                                t_fine, y_fine, self.flash.min_value_g
+                            )
+                            signal_function_aq_max_x.set_xdata([aq_max_x])
+                            signal_function_aq_min_x.set_xdata([aq_min_x])
+                            signal_function_g_max_x.set_xdata([g_max_x])
+                            signal_function_g_min_x.set_xdata([g_min_x])
 
-                        # Update the position of the annotaion
-                        ax_signal_function.texts[0].set_position(
-                            (aq_max_x - 0.05, 0.04)
-                        )
-                        ax_signal_function.texts[1].set_position(
-                            (aq_max_x + 0.05, 0.04)
-                        )
-                        ax_signal_function.texts[2].set_position((g_max_x + 0.1, 0.04))
+                            # Update the position of the annotaion
+                            ax_signal_function.texts[0].set_position(
+                                (aq_max_x - 0.05, 0.04)
+                            )
+                            ax_signal_function.texts[1].set_position(
+                                (aq_max_x + 0.05, 0.04)
+                            )
+                            ax_signal_function.texts[2].set_position(
+                                (g_max_x + 0.1, 0.04)
+                            )
+                        else:
+                            # Single-phase: move the single threshold marker
+                            threshold = contour_thresholds[0]
+                            threshold_line_y.set_ydata([threshold])
+                            threshold_line_x.set_xdata(
+                                [curve_inverse(t_fine, y_fine, threshold)]
+                            )
 
                     def update_mass_plot():
                         """Update the mass evolution plots."""
@@ -1465,11 +1590,23 @@ class HeterogeneousColorToMassAnalysis:
                             (max(times[k]) for k in rois if len(times[k]) > 0),
                             default=0.0,
                         )
-                        mass_unit = (
-                            choose_mass_unit(max_expected)
-                            if self.mass_unit == "auto"
-                            else self.mass_unit
-                        )
+                        if self.has_gas:
+                            mass_unit = (
+                                choose_mass_unit(max_expected)
+                                if self.mass_unit == "auto"
+                                else self.mass_unit
+                            )
+                            convert_quantity, quantity_label = convert_mass, mass_label
+                        else:
+                            mass_unit = (
+                                choose_volume_unit(max_expected)
+                                if self.volume_unit == "auto"
+                                else self.volume_unit
+                            )
+                            convert_quantity, quantity_label = (
+                                convert_volume,
+                                volume_label,
+                            )
                         time_unit = (
                             choose_time_unit(max_time)
                             if self.time_unit == "auto"
@@ -1479,44 +1616,54 @@ class HeterogeneousColorToMassAnalysis:
                             plot_times = convert_time(times[roi_key], time_unit)
                             integrated_mass_plots[roi_key].set_data(
                                 plot_times,
-                                convert_mass(integrated_mass[roi_key], mass_unit),
+                                convert_quantity(integrated_mass[roi_key], mass_unit),
                             )
-                            integrated_mass_plots_g[roi_key].set_data(
-                                plot_times,
-                                convert_mass(integrated_mass_g[roi_key], mass_unit),
-                            )
-                            integrated_mass_plots_aq[roi_key].set_data(
-                                plot_times,
-                                convert_mass(integrated_mass_aq[roi_key], mass_unit),
-                            )
+                            if self.has_gas:
+                                integrated_mass_plots_g[roi_key].set_data(
+                                    plot_times,
+                                    convert_quantity(
+                                        integrated_mass_g[roi_key], mass_unit
+                                    ),
+                                )
+                                integrated_mass_plots_aq[roi_key].set_data(
+                                    plot_times,
+                                    convert_quantity(
+                                        integrated_mass_aq[roi_key], mass_unit
+                                    ),
+                                )
                             integrated_mass_scatters[roi_key].set_offsets(
                                 np.c_[
                                     plot_times,
-                                    convert_mass(integrated_mass[roi_key], mass_unit),
-                                ]
-                            )
-                            integrated_mass_scatters_g[roi_key].set_offsets(
-                                np.c_[
-                                    plot_times,
-                                    convert_mass(integrated_mass_g[roi_key], mass_unit),
-                                ]
-                            )
-                            integrated_mass_scatters_aq[roi_key].set_offsets(
-                                np.c_[
-                                    plot_times,
-                                    convert_mass(
-                                        integrated_mass_aq[roi_key], mass_unit
+                                    convert_quantity(
+                                        integrated_mass[roi_key], mass_unit
                                     ),
                                 ]
                             )
+                            if self.has_gas:
+                                integrated_mass_scatters_g[roi_key].set_offsets(
+                                    np.c_[
+                                        plot_times,
+                                        convert_quantity(
+                                            integrated_mass_g[roi_key], mass_unit
+                                        ),
+                                    ]
+                                )
+                                integrated_mass_scatters_aq[roi_key].set_offsets(
+                                    np.c_[
+                                        plot_times,
+                                        convert_quantity(
+                                            integrated_mass_aq[roi_key], mass_unit
+                                        ),
+                                    ]
+                                )
                         if max_expected > 0:
                             ax_mass.set_ylim(
-                                0.0, convert_mass(2.0 * max_expected, mass_unit)
+                                0.0, convert_quantity(2.0 * max_expected, mass_unit)
                             )
                         else:
                             ax_mass.autoscale()
                         ax_mass.set_xlabel(time_label(time_unit))
-                        ax_mass.set_ylabel(mass_label(mass_unit))
+                        ax_mass.set_ylabel(quantity_label(mass_unit))
 
                     def refresh(recompute=True, signal_function=False, mass_plot=False):
                         """Update the displayed panels.
@@ -1622,25 +1769,27 @@ class HeterogeneousColorToMassAnalysis:
                                 )
                             ]
                         )
-                        need_update = need_update or any(
-                            [
-                                sliders_flash[0].val != self.flash.min_value_aq,
-                                sliders_flash[1].val != self.flash.max_value_aq,
-                                sliders_flash[2].val != self.flash.min_value_g,
-                                sliders_flash[3].val != self.flash.max_value_g,
-                            ]
-                        )
+                        if self.has_gas:
+                            need_update = need_update or any(
+                                [
+                                    sliders_flash[0].val != self.flash.min_value_aq,
+                                    sliders_flash[1].val != self.flash.max_value_aq,
+                                    sliders_flash[2].val != self.flash.min_value_g,
+                                    sliders_flash[3].val != self.flash.max_value_g,
+                                ]
+                            )
 
                         # Update parameters
                         self.signal_model.model[1][_label_idx].update(
                             values=[slider.val for slider in sliders_color_to_signal]
                         )
-                        self.flash.update(
-                            min_value_aq=sliders_flash[0].val,
-                            max_value_aq=sliders_flash[1].val,
-                            min_value_g=sliders_flash[2].val,
-                            max_value_g=sliders_flash[3].val,
-                        )
+                        if self.has_gas:
+                            self.flash.update(
+                                min_value_aq=sliders_flash[0].val,
+                                max_value_aq=sliders_flash[1].val,
+                                min_value_g=sliders_flash[2].val,
+                                max_value_g=sliders_flash[3].val,
+                            )
                         return need_update
 
                     unsaved_text = "Changes not saved."
@@ -1674,8 +1823,9 @@ class HeterogeneousColorToMassAnalysis:
                             sliders_color_to_signal, initial_values[_label_idx]
                         ):
                             slider.set_val(value)
-                        for slider, value in zip(sliders_flash, initial_flash):
-                            slider.set_val(value)
+                        if self.has_gas:
+                            for slider, value in zip(sliders_flash, initial_flash):
+                                slider.set_val(value)
                         for slider in sliders_threshold:
                             slider.set_val(default_contour_threshold)
                         update_analysis()
@@ -2150,6 +2300,7 @@ class HeterogeneousColorToMassAnalysis:
         color_path_interpretation: (
             dict[int, darsia.ColorPathInterpolation] | None
         ) = None,
+        volume_unit: str = "auto",
     ) -> "HeterogeneousColorToMassAnalysis":
         """Load the calibration data from json file.
 
@@ -2177,6 +2328,8 @@ class HeterogeneousColorToMassAnalysis:
             Current color path interpretations. If provided, they replace the stored
             ones, and stored signal models whose supports do not match the (possibly
             recalibrated) color path of their label are resampled onto its supports.
+        volume_unit : str, optional
+            Unit for volume axes in tracer calibration plots ('auto' or a fixed unit).
         interpretation : Interpretation
             The expected quantity and closure; must match the stored
             calibration (checked first, before anything else is read).
@@ -2252,4 +2405,5 @@ class HeterogeneousColorToMassAnalysis:
             mass_unit=mass_unit,
             time_unit=time_unit,
             evaluation_mode=evaluation_mode,
+            volume_unit=volume_unit,
         )

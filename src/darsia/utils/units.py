@@ -1,10 +1,10 @@
-"""Unit conversion and auto-scaling for mass/time values shown in plots.
+"""Unit conversion and auto-scaling for mass/volume/time values shown in plots.
 
 All mass values in this codebase are computed in kilograms (density in
-kg/m^3 integrated over a meter-based geometry); all time values reaching
-plots are already converted to hours upstream. These are therefore the
-canonical internal units that every conversion factor below is relative
-to.
+kg/m^3 integrated over a meter-based geometry), all volumes in cubic meters; all
+time values reaching plots are already converted to hours upstream. These are
+therefore the canonical internal units that every conversion factor below is
+relative to.
 """
 
 import numpy as np
@@ -18,6 +18,13 @@ MASS_UNIT_FACTORS: dict[str, float] = {
     "Gt": 1e-12,
 }
 """Multiplier from kg to each named mass unit."""
+
+VOLUME_UNIT_FACTORS: dict[str, float] = {
+    "mL": 1e6,
+    "L": 1e3,
+    "m3": 1.0,
+}
+"""Multiplier from m3 to each named volume unit."""
 
 TIME_UNIT_FACTORS: dict[str, float] = {
     "s": 3600.0,
@@ -33,6 +40,11 @@ def convert_mass(value_kg, unit: str):
     return np.multiply(value_kg, MASS_UNIT_FACTORS[unit])
 
 
+def convert_volume(value_m3, unit: str):
+    """Convert a volume value (scalar, list, or array), given in m3, to `unit`."""
+    return np.multiply(value_m3, VOLUME_UNIT_FACTORS[unit])
+
+
 def convert_time(value_h, unit: str):
     """Convert a time value (scalar, list, or array), given in hours, to `unit`."""
     return np.multiply(value_h, TIME_UNIT_FACTORS[unit])
@@ -43,6 +55,11 @@ def mass_label(unit: str) -> str:
     return f"Mass ({unit})"
 
 
+def volume_label(unit: str) -> str:
+    """Axis label for a volume value expressed in `unit`."""
+    return f"Volume ({unit})"
+
+
 def time_label(unit: str) -> str:
     """Axis label for a time value expressed in `unit`."""
     return f"Time ({unit})"
@@ -51,7 +68,7 @@ def time_label(unit: str) -> str:
 def choose_unit(value: float, factors: dict[str, float], default: str) -> str:
     """Pick the unit (key of `factors`) that keeps `value` closest to 1.
 
-    `value` is expressed in the canonical unit (kg or h) that `factors` is
+    `value` is expressed in the canonical unit (kg, m3 or h) that `factors` is
     relative to. The chosen unit is whichever makes the converted
     magnitude closest to 1 in log-space, i.e. keeps the displayed number
     as close as possible to a single/double digit.
@@ -65,6 +82,11 @@ def choose_unit(value: float, factors: dict[str, float], default: str) -> str:
 def choose_mass_unit(value_kg: float) -> str:
     """Pick the mass unit that keeps `value_kg` closest to 1 in log-space."""
     return choose_unit(value_kg, MASS_UNIT_FACTORS, default="kg")
+
+
+def choose_volume_unit(value_m3: float) -> str:
+    """Pick the volume unit that keeps `value_m3` closest to 1 in log-space."""
+    return choose_unit(value_m3, VOLUME_UNIT_FACTORS, default="L")
 
 
 def choose_time_unit(value_h: float) -> str:

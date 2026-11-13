@@ -141,9 +141,21 @@ def calibration_color_to_mass_analysis_from_context(
     assert config.rig is not None
     interpretation = config.physics.interpretation
     if not default:
-        # The interactive calibration fits CO2 mass against the injection protocol
-        # and tunes flash parameters. Fail before loading anything else.
-        config.physics.require("Interactive mass calibration", supported=("co2",))
+        # The interactive calibration matches the injected quantity: the mass for CO2
+        # (with flash parameters), the volume for a single-phase tracer. Fail before
+        # loading anything else.
+        config.physics.require(
+            "Interactive mass calibration", supported=("co2", "tracer")
+        )
+        if (
+            not config.physics.system.is_multiphase
+            and not experiment.injection_protocol.has_volume
+        ):
+            raise ValueError(
+                "The tracer calibration needs a volumetric injection rate "
+                "(rate_mL/s, rate_mL/min or rate_mL/hr) in the injection protocol: it "
+                "matches the integrated concentration to the injected volume."
+            )
     mass_cfg = config.calibration.mass
     if not mass_cfg.expert_knowledge:
         expert_knowledge_adapter = None
@@ -344,6 +356,7 @@ def calibration_color_to_mass_analysis_from_context(
             expert_knowledge_adapter=expert_knowledge_adapter,
             contour_smoother=contour_smoother,
             mass_unit=mass_cfg.mass_unit,
+            volume_unit=mass_cfg.volume_unit,
             time_unit=mass_cfg.time_unit,
             color_path_interpretation=color_path_interpretation,
         )
@@ -362,6 +375,7 @@ def calibration_color_to_mass_analysis_from_context(
             expert_knowledge_adapter=expert_knowledge_adapter,
             contour_smoother=contour_smoother,
             mass_unit=mass_cfg.mass_unit,
+            volume_unit=mass_cfg.volume_unit,
             time_unit=mass_cfg.time_unit,
             color_path_interpretation=color_path_interpretation,
         )
@@ -412,6 +426,7 @@ def calibration_color_to_mass_analysis_from_context(
             expert_knowledge_adapter=expert_knowledge_adapter,
             contour_smoother=contour_smoother,
             mass_unit=mass_cfg.mass_unit,
+            volume_unit=mass_cfg.volume_unit,
             time_unit=mass_cfg.time_unit,
             evaluation_mode=evaluation_mode,
         )
@@ -477,5 +492,14 @@ def calibration_color_to_mass_analysis_from_context(
         run_test = run_test if answer is None else answer
     if run_test:
         for img in calibration_images:
-            mass = color_analysis(img).mass
-            mass.show(title=f"Mass image {img.time}", cmap=custom_cmap, delay=False)
+            result = color_analysis(img)
+            if color_analysis.has_gas:
+                result.mass.show(
+                    title=f"Mass image {img.time}", cmap=custom_cmap, delay=False
+                )
+            else:
+                result.concentration_aq.show(
+                    title=f"Concentration image {img.time}",
+                    cmap=custom_cmap,
+                    delay=False,
+                )
