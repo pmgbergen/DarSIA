@@ -47,6 +47,43 @@ def _results_folder_from_merged_config(merged: dict[str, Any]) -> Path | None:
     return Path(results_raw).expanduser()
 
 
+_FIELD_MAPS_DEFAULT_EXPORT = ["mass"]
+"""Default export modes of the field maps (mass) analysis (see analysis_mass.py)."""
+
+FIELD_MAPS_CSV = Path("sparse_data") / "integrated_mass.csv"
+"""Integrated values of the field maps analysis, relative to [data].results."""
+
+
+def _is_non_empty_dir(path: Path) -> bool:
+    try:
+        return path.is_dir() and any(path.iterdir())
+    except OSError:
+        return False
+
+
+def _field_maps_results_folder(analysis: Any, results: Path) -> Path:
+    """Output folder of the field maps (mass) analysis.
+
+    The analysis writes one folder per export mode (`<results>/<mode>`, e.g. `mass` for
+    CO2 or `concentration_aq` for tracer) and the integrated values to
+    `<results>/sparse_data/integrated_mass.csv`. Returns the first non-empty export
+    folder, else the sparse data folder if the CSV exists, else the first export folder.
+    """
+    section = analysis.get("mass") if isinstance(analysis, dict) else None
+    export = section.get("export") if isinstance(section, dict) else None
+    if isinstance(export, str):
+        export = [export]
+    if not isinstance(export, list) or not export:
+        export = _FIELD_MAPS_DEFAULT_EXPORT
+    folders = [results / str(mode) for mode in export]
+    for folder in folders:
+        if _is_non_empty_dir(folder):
+            return folder
+    if (results / FIELD_MAPS_CSV).exists():
+        return (results / FIELD_MAPS_CSV).parent
+    return folders[0]
+
+
 def suggested_analysis_results_folder(
     config_path: Path, actions: list[str]
 ) -> Path | None:
@@ -65,6 +102,8 @@ def suggested_analysis_results_folder(
         return results / "cropping"
 
     analysis = merged.get("analysis")
+    if mode == "mass":
+        return _field_maps_results_folder(analysis, results)
     if isinstance(analysis, dict):
         mode_section = analysis.get(mode)
         if isinstance(mode_section, dict):
