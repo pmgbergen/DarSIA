@@ -130,7 +130,8 @@ class ProcessRunner:
                 self._show_error_dialog(workflow, exit_code, output_lines)
             else:
                 self.main_window.print_log("Completed successfully!")
-                self.main_window.config_controller.load_config()
+                # Pick up config values the run wrote, but stay in the current view.
+                self.main_window.config_controller.reload_config()
                 self._show_done_dialog(workflow, actions, config_path)
 
         process.readyReadStandardOutput.connect(handle_output)

@@ -99,6 +99,29 @@ class ConfigController:
             self.main_window.print_log(f"Error loading config file: {e}")
             return
 
+    def reload_config(self):
+        """Re-read the current config file from disk, keeping the user's place.
+
+        Used after a workflow run, which may have written the config (e.g. an
+        interactive crop correction). Unlike load_config (File > Open), the sidebar
+        selection, the open category and the shown settings view and tab stay; only
+        the values, the completion marks and the results are refreshed.
+        """
+        file = self.main_window.config_file
+        if not file:
+            return
+        try:
+            with open(file, "r") as f:
+                self.main_window.config_dict = toml.load(f)
+        except Exception as e:
+            self.main_window.print_log(f"Error reloading config file: {e}")
+            return
+        # Clear settings_inputs so the rebuild does not sync stale widgets back into
+        # config_dict, overwriting values the run wrote (same as apply_partial_preset).
+        self.main_window.settings_inputs.clear()
+        self.main_window.settings_factory.refresh_current_view()
+        self.main_window.refresh_sidebar_progress()
+
     def apply_series_preset(self, preset, enabled: dict[str, bool]) -> list[str]:
         """Apply the checked pieces of an experiment-series preset to the config.
 
