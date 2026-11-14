@@ -86,7 +86,6 @@ class FileDialogHelper:
         if selected_path:
             self.main_window.chosen_files[key]["path"] = selected_path
             file_info["label"].setText(selected_path)
-            file_info["label"].setStyleSheet("color: white;")
             self.main_window.print_log(f"Selected {key}: {selected_path}")
 
     def _remove_form_row(
