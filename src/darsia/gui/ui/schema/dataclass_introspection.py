@@ -366,6 +366,8 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "key_list_sources": field.metadata.get("key_list_sources", None),
                 "max_rows": field.metadata.get("max_rows", None),
                 "array_key": field.metadata.get("array_key", None),
+                "name_pattern": field.metadata.get("name_pattern", None),
+                "name_hint": field.metadata.get("name_hint", None),
                 "checkable": field.metadata.get("checkable", None),
                 "auto_add_empty": field.metadata.get("auto_add_empty", None),
                 "loadable": field.metadata.get("loadable", None),
