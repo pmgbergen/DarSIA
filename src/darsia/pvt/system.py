@@ -103,6 +103,18 @@ class FluidSystem:
             return np.zeros(np.broadcast(pressure, temperature).shape)
         return self._solubility(pressure, temperature)
 
+    def aqueous_capacity(
+        self, pressure: float | np.ndarray, temperature: float | np.ndarray
+    ) -> float | np.ndarray:
+        """Mass of the injected component per aqueous volume at c_aq = 1 in kg/m3.
+
+        Two-phase: the dissolved gas at saturation (the solubility). Single-phase: the
+        injected solution itself (the aqueous density).
+        """
+        if self.is_multiphase:
+            return self.solubility(pressure, temperature)
+        return self.density_aqueous(pressure, temperature)
+
     def __repr__(self) -> str:
         gas = None if self.gas is None else self.gas.name
         return f"FluidSystem(aqueous={self.aqueous.name!r}, gas={gas!r})"

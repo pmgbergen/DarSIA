@@ -268,12 +268,12 @@ def _compute_wasserstein_distances(
     # Fetch experimental protocol for defining reference values based on injection profile
     example_experiment = darsia.ProtocolledExperiment.init_from_config(example_config)
 
-    # Fluid model of the experiment: the characteristic solubility distribution of a
+    # Fluid model of the experiment: the characteristic aqueous capacity (solubility) of a
     # multiphase fluid (CO2), the density of a single-phase fluid (tracer)
     fluid_model = build_fluid_model(example_config, example_experiment, fluidflower)
     single_phase = rescale_basis(fluid_model) == "volume"
     if not single_phase:
-        avg_solubility = np.average(fluid_model.solubility_co2)
+        avg_solubility = np.average(fluid_model.aqueous_capacity)
     injection_protocol = example_experiment.injection_protocol
 
     # Count total computations for progress tracking

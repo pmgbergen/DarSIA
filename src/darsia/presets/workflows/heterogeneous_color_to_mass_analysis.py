@@ -1,6 +1,7 @@
 # TODO review noqa F824 usage
 
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, Tuple
 
@@ -78,7 +79,7 @@ class HeterogeneousColorToMassAnalysis:
         color_path_interpretation: dict[int, darsia.ColorPathInterpolation],
         signal_functions: dict[int, darsia.ColorPathFunction],
         flash: darsia.SimpleFlash,
-        co2_mass_analysis: darsia.CO2MassAnalysis,
+        co2_mass_analysis: darsia.FluidMassAnalysis,
         geometry: darsia.ExtrudedPorousGeometry,
         restoration: darsia.Model | None = None,
         ignore_labels: list[int] | None = None,
@@ -114,7 +115,12 @@ class HeterogeneousColorToMassAnalysis:
         """Flash model for converting pH to concentrations."""
 
         self.co2_mass_analysis = co2_mass_analysis
-        """Mass computation tool."""
+        """Mass computation tool (fluid model)."""
+
+        self.pressure_temperature_protocol: (
+            darsia.PressureTemperatureProtocol | None
+        ) = None
+        """Protocol setting the state of the fluid model for each analyzed image."""
 
         self.has_gas = bool(
             getattr(getattr(co2_mass_analysis, "system", None), "is_multiphase", True)
@@ -290,9 +296,40 @@ class HeterogeneousColorToMassAnalysis:
         )
         return mass_analysis_result
 
+    def update_state(
+        self,
+        date: datetime | None,
+        protocol: "darsia.PressureTemperatureProtocol | None" = None,
+    ) -> None:
+        """Set pressure and temperature (and gradients) of the fluid model at a date.
+
+        Densities and solubility depend on the state, which may change during the
+        experiment (weather, room temperature). Nothing happens without a protocol or
+        a date; an unchanged state is not evaluated again.
+
+        Parameters
+        ----------
+        date : datetime, optional
+            Date of the image.
+        protocol : darsia.PressureTemperatureProtocol, optional
+            Protocol to use; default is `pressure_temperature_protocol`.
+        """
+        protocol = self.pressure_temperature_protocol if protocol is None else protocol
+        if protocol is None or date is None:
+            return
+        state = protocol.get_state(date)
+        gradient = protocol.get_gradient(date)
+        self.co2_mass_analysis.update_state(
+            atmospheric_pressure=state.pressure,
+            atmospheric_temperature=state.temperature,
+            atmospheric_pressure_gradient=gradient.pressure,
+            atmospheric_temperature_gradient=gradient.temperature,
+        )
+
     @darsia.timing_decorator
     def __call__(self, image: darsia.Image) -> SimpleMassAnalysisResults:
-        """Run the analysis on a single image."""
+        """Run the analysis on a single image, at the state of its date."""
+        self.update_state(image.date)
         color_interpretation = self.call_color_interpretation(image)
         pH = self.call_pH_analysis(color_interpretation)
         mass_analysis_result = self.call_flash_and_mass_analysis(pH)
@@ -526,14 +563,8 @@ class HeterogeneousColorToMassAnalysis:
             The thermodynamic state is set for the date of the current image.
 
             """
-            date = images[image_idx].date
-            state = experiment.pressure_temperature_protocol.get_state(date)
-            gradient = experiment.pressure_temperature_protocol.get_gradient(date)
-            self.co2_mass_analysis.update_state(
-                atmospheric_pressure=state.pressure,
-                atmospheric_temperature=state.temperature,
-                atmospheric_pressure_gradient=gradient.pressure,
-                atmospheric_temperature_gradient=gradient.temperature,
+            self.update_state(
+                images[image_idx].date, experiment.pressure_temperature_protocol
             )
             pH, density, c_aq, s_g = detailed_mass_analysis(
                 color_interpretation_of(image_idx)
@@ -553,11 +584,9 @@ class HeterogeneousColorToMassAnalysis:
                 "effective_depth": coarse_effective_depth,
             }
             if self.has_gas:
-                co2_g_density = darsia.full_like(
-                    pH, self.co2_mass_analysis.density_gaseous_co2
-                )
+                co2_g_density = darsia.full_like(pH, self.co2_mass_analysis.density_gas)
                 co2_aq_solubility = darsia.full_like(
-                    pH, self.co2_mass_analysis.solubility_co2
+                    pH, self.co2_mass_analysis.aqueous_capacity
                 )
                 signals["s_g"] = coarsen(s_g)
                 signals["rho_co2(g)"] = coarsen(co2_g_density)
@@ -647,16 +676,7 @@ class HeterogeneousColorToMassAnalysis:
                 color_interpretation = color_interpretation_of(idx)
 
                 # Update thermodynamic state
-                state = experiment.pressure_temperature_protocol.get_state(img.date)
-                gradient = experiment.pressure_temperature_protocol.get_gradient(
-                    img.date
-                )
-                self.co2_mass_analysis.update_state(
-                    atmospheric_pressure=state.pressure,
-                    atmospheric_temperature=state.temperature,
-                    atmospheric_pressure_gradient=gradient.pressure,
-                    atmospheric_temperature_gradient=gradient.temperature,
-                )
+                self.update_state(img.date, experiment.pressure_temperature_protocol)
 
                 # Signal analysis
                 pH = self.call_pH_analysis(color_interpretation)
@@ -2037,16 +2057,7 @@ class HeterogeneousColorToMassAnalysis:
             }
             for img, color_interpretation in zip(images, color_interpretations):
                 # Update thermodynamic state
-                state = experiment.pressure_temperature_protocol.get_state(img.date)
-                gradient = experiment.pressure_temperature_protocol.get_gradient(
-                    img.date
-                )
-                self.co2_mass_analysis.update_state(
-                    atmospheric_pressure=state.pressure,
-                    atmospheric_temperature=state.temperature,
-                    atmospheric_pressure_gradient=gradient.pressure,
-                    atmospheric_temperature_gradient=gradient.temperature,
-                )
+                self.update_state(img.date, experiment.pressure_temperature_protocol)
 
                 # Signal analysis
                 pH = self.call_pH_analysis(color_interpretation)
@@ -2270,7 +2281,7 @@ class HeterogeneousColorToMassAnalysis:
         baseline: darsia.Image,
         labels: darsia.Image,
         interpretation: Interpretation,
-        co2_mass_analysis: darsia.CO2MassAnalysis,
+        co2_mass_analysis: darsia.FluidMassAnalysis,
         geometry: darsia.ExtrudedPorousGeometry,
         restoration: darsia.Model | None = None,
         basis: ColorEmbeddingBasis = ColorEmbeddingBasis.LABELS,
@@ -2293,7 +2304,7 @@ class HeterogeneousColorToMassAnalysis:
             Baseline image.
         labels : darsia.Image
             Labeled image.
-        co2_mass_analysis : darsia.CO2MassAnalysis
+        co2_mass_analysis : darsia.FluidMassAnalysis
             The CO2 mass analysis tool.
         geometry : darsia.ExtrudedPorousGeometry
             The geometry used for mass computation.
