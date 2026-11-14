@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -18,6 +19,29 @@ from darsia.signals.color import (
 
 from .restoration import RestorationConfig
 from .utils import _convert_none
+
+EMBEDDING_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
+"""Allowed color embedding names: letters, digits, '_' and '-'. A name is a folder on
+disk and a reference in other keys (e.g. cmap = "color_path.<name>.<label>")."""
+
+
+def check_embedding_name(name: str, context: str) -> None:
+    """Raise if a color embedding name contains other than letters, digits, '_', '-'.
+
+    Parameters
+    ----------
+    name : str
+        Embedding name (registry key).
+    context : str
+        Where the name was found, for the error message.
+    """
+    if not EMBEDDING_NAME_PATTERN.match(name):
+        suggestion = re.sub(r"[^A-Za-z0-9_-]+", "_", name).strip("_") or "color_path"
+        raise ValueError(
+            f"{context}: color embedding name '{name}' may only contain letters, "
+            f"digits, '_' and '-' (no spaces or dots), e.g. '{suggestion}'. Renaming "
+            "also renames its results folder; move an existing calibration along."
+        )
 
 
 def _parse_mode(value: str, *, context: str) -> darsia.ColorMode:
@@ -262,6 +286,7 @@ class ColorEmbeddingRegistry:
                         )
 
                     entry_name = str(entry_name).strip()
+                    check_embedding_name(entry_name, f"[[{array_name}]] entry {idx}")
                     if entry_name in self._embeddings:
                         raise ValueError(
                             f"Color embedding name '{entry_name}' is duplicated. "

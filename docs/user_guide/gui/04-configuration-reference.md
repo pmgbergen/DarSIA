@@ -168,6 +168,12 @@ basis = "facies"        # or "labels" (global is not implemented for path)
 reference_label = 2
 ```
 
+The `name` is the registry key: other keys refer to it (`[calibration.color] embedding`,
+`[analysis.mass] color`, a format's `cmap`) and it names the results folder
+`<results>/color/color_path/<name>`. It may only contain letters, digits, `_` and `-`
+(no spaces or dots). Renaming an embedding renames its folder; move an existing
+calibration along.
+
 Full field set for `color_path` entries (not all used by `sample_config.toml`):
 `mode` (`relative`/`absolute`), `baseline`, `data`, `num_segments`,
 `ignore_labels`, `resolution`, `threshold_baseline`, `threshold_calibration`,
