@@ -40,7 +40,7 @@ class ColorPathCalibrationConfig:
         },
     )
     calibration_mode: str = field(
-        default="auto",
+        default="manual",
         metadata={
             "name": "Calibration mode",
             "help": "Calibration mode: 'manual' or 'auto'.",
@@ -202,7 +202,7 @@ class CalibrationColorConfig:
                 color_path_sec,
                 "calibration_mode",
                 required=False,
-                default="auto",
+                default="manual",
                 type_=str,
             )
             if self.color_path.calibration_mode not in {"manual", "auto"}:
