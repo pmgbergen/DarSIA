@@ -77,8 +77,7 @@ class ImageExportFormat:
             "help": "Colormap (jpg, png only): 'matplotlib.<name>' (e.g. "
             "matplotlib.viridis), or the colors of a calibrated color path, "
             "'color_path.<embedding_id>[.<label>]' (default label: the embedding's "
-            "reference label). Legacy: 'color_path.from_facies.<label>' / "
-            "'color_path.from_labels.<label>' (the single color path of that basis).",
+            "reference label).",
             "depends_on": {"field": "type", "value": ["jpg", "png"]},
         },
     )
