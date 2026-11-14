@@ -12,7 +12,7 @@ from matplotlib.widgets import Button
 
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
-from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
+from darsia.presets.workflows.analysis.colormaps import resolve_cmap
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.format_registry import ImageExportFormat
 from darsia.presets.workflows.config.physics import check_fluid_modes
@@ -101,8 +101,7 @@ def _compute_statistics(
 def _resolve_cmap(config: FluidFlowerConfig, cmap: str | None):
     if cmap is None:
         return "viridis"
-    exporter = ImageExportFormats(config, [])
-    resolved = exporter._resolve_cmap(cmap)
+    resolved = resolve_cmap(cmap, getattr(config, "color", None))
     return resolved if resolved is not None else "viridis"
 
 

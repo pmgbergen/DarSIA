@@ -292,6 +292,13 @@ Supported `type` values: `jpg`, `png`, `npz`, `npy`, `csv`. Reference by
 `<results>/<mode>/<type>_<identifier>/` (or `<type>/` when identifier equals
 type, as here).
 
+`cmap` (jpg/png) is `matplotlib.<name>` or `color_path.<embedding_id>[.<label>]`.
+Recommended: sequential `viridis`, `cividis`, `plasma`, `inferno`, `magma`,
+`turbo`, `gray` for non-negative quantities (mass, concentration, saturation);
+diverging `coolwarm`, `seismic`, `berlin`, `managua` for signed quantities such
+as differences. Any other matplotlib name works too. Calibrated colour paths
+reproduce the dye colours seen in the rig.
+
 ## `[analysis]`
 
 Each mode owns its own `data_selection` and `formats`.
