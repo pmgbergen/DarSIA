@@ -77,7 +77,11 @@ class ImageExportFormat:
             "help": "Colormap (jpg, png only): 'matplotlib.<name>' (e.g. "
             "matplotlib.viridis), or the colors of a calibrated color path, "
             "'color_path.<embedding_id>[.<label>]' (default label: the embedding's "
-            "reference label).",
+            "reference label). The list offers recommended matplotlib colormaps and "
+            "the calibrated color paths of the saved config; other matplotlib names "
+            "can be typed in. Empty: default colormap.",
+            "options_provider": "cmaps",
+            "editable": True,
             "depends_on": {"field": "type", "value": ["jpg", "png"]},
         },
     )

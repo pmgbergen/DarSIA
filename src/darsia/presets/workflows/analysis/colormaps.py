@@ -25,6 +25,7 @@ CURATED_MATPLOTLIB_CMAPS = (
     "magma",
     "turbo",
     "gray",
+    "gray_r",
     # Diverging: signed quantities with a meaningful zero (e.g. differences)
     "coolwarm",
     "seismic",

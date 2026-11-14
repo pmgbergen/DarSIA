@@ -28,7 +28,7 @@ from .schema.dataclass_introspection import (
     get_section_fields,
 )
 from .schema.section_registry import filter_visible_sections, get_required_sections
-from .widgets import NoScrollComboBox
+from .widgets import CmapComboBox, NoScrollComboBox
 
 
 def unwrap_composite_widget(value):
@@ -140,6 +140,32 @@ def _set_field_error(edit, message=None):
     """Mark an input red with the message as tooltip, or clear the mark (None)."""
     edit.setStyleSheet("border: 1px solid #d32f2f;" if message else "")
     edit.setToolTip(message or "")
+
+
+def _check_cmap_text(combo, text):
+    """Mark a colormap combo red unless empty, offered, or a matplotlib colormap."""
+    import matplotlib
+
+    text = text.strip()
+    valid = (
+        not text
+        or text in combo.options
+        or (
+            text.startswith("matplotlib.")
+            and text.split(".", 1)[1] in matplotlib.colormaps
+        )
+    )
+    _set_field_error(
+        combo,
+        (
+            None
+            if valid
+            else (
+                "Unknown colormap. Use matplotlib.<name> or a calibrated "
+                "color_path.<id>[.<label>]."
+            )
+        ),
+    )
 
 
 class SettingsFactory:
@@ -712,8 +738,9 @@ class SettingsFactory:
         options = setting_dict.get("options")
         free_value_types = ("int", "float", "string", "list")
 
-        # If field has options, use dropdown regardless of type
-        if options and setting_type in free_value_types:
+        # If field has (static or computed) options, use dropdown regardless of type
+        has_options = options or setting_dict.get("options_provider")
+        if has_options and setting_type in free_value_types:
             return self.create_dropdown_input(setting_dict)
         # Otherwise, dispatch based on type
         elif setting_type == "time":
@@ -1663,6 +1690,41 @@ class SettingsFactory:
 
         return display_name, field_widget
 
+    def _cmap_options_source(self):
+        """Colormap options and color registry of the saved config (CmapComboBox).
+
+        Color paths are read from the saved config file: they are only offered once
+        calibrated, which requires a saved config. On any failure, only the matplotlib
+        colormaps are offered.
+        """
+        from pathlib import Path
+
+        from darsia.presets.workflows.analysis.colormaps import (
+            cmap_options,
+            matplotlib_cmap_options,
+        )
+        from darsia.presets.workflows.config.color_embedding_registry import (
+            ColorEmbeddingRegistry,
+        )
+        from darsia.presets.workflows.results_folder import (
+            _results_folder_from_merged_config,
+        )
+
+        try:
+            config_file = Path(self.main_window.config_path_label.text())
+            results = _results_folder_from_merged_config(self.main_window.config_dict)
+            if not config_file.is_file() or results is None:
+                return matplotlib_cmap_options(), None
+            registry = ColorEmbeddingRegistry().load(
+                config_file, data=None, results=results
+            )
+            return cmap_options(registry), registry
+        except Exception as error:  # noqa: BLE001 - never break the settings panel
+            self.main_window.print_log(
+                f"Colormap options: color paths unavailable ({error})"
+            )
+            return matplotlib_cmap_options(), None
+
     def create_dropdown_input(self, setting_dict):
         """Create a combobox input with predefined options.
 
@@ -1681,10 +1743,16 @@ class SettingsFactory:
         if value is None:
             value = setting_dict.get("default")
 
-        options = setting_dict["options"]
-        setting_combo = NoScrollComboBox()
-        setting_combo.addItems([str(option) for option in options])
-        setting_combo.setEditable(bool(setting_dict.get("editable")))
+        if setting_dict.get("options_provider") == "cmaps":
+            setting_combo = CmapComboBox(self._cmap_options_source)
+            setting_combo.editTextChanged.connect(
+                lambda text, combo=setting_combo: _check_cmap_text(combo, text)
+            )
+        else:
+            options = setting_dict["options"]
+            setting_combo = NoScrollComboBox()
+            setting_combo.addItems([str(option) for option in options])
+            setting_combo.setEditable(bool(setting_dict.get("editable")))
 
         if value is not None:
             value = str(value)

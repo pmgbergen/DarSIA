@@ -294,10 +294,13 @@ type, as here).
 
 `cmap` (jpg/png) is `matplotlib.<name>` or `color_path.<embedding_id>[.<label>]`.
 Recommended: sequential `viridis`, `cividis`, `plasma`, `inferno`, `magma`,
-`turbo`, `gray` for non-negative quantities (mass, concentration, saturation);
+`turbo`, `gray`, `gray_r` for non-negative quantities (mass, concentration, saturation);
 diverging `coolwarm`, `seismic`, `berlin`, `managua` for signed quantities such
 as differences. Any other matplotlib name works too. Calibrated colour paths
-reproduce the dye colours seen in the rig.
+reproduce the dye colours seen in the rig. In the GUI, `cmap` is a dropdown
+with a colour band per option: the maps above and the calibrated colour paths
+of the saved config. Other names can be typed in (unknown names turn red);
+empty means the default colormap.
 
 ## `[analysis]`
 
