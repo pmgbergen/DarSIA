@@ -199,7 +199,7 @@ Each analysis mode owns its own `data_selection` and `formats`:
   - `data`: selector key(s) resolved from top-level `[data.*]` registry.
   - `mode`: result mode folder name under `<results>/` (for example `rescaled_mass`).
   - `format`: `npz`/`csv` or format registry key resolving to `npz`/`csv`.
-  - `cmap` (optional): `matplotlib.<name>` or `color_path.from_<basis>.<label>`.
+  - `cmap` (optional): `matplotlib.<name>`, or the colours of a calibrated colour path, `color_path.<embedding_id>[.<label>]` (default label: the embedding's `reference_label`); legacy `color_path.from_<basis>.<label>` uses the single colour-path embedding of that basis.
   - `roi` (optional): ROI key/list from top-level `[roi.*]`; omitted means full image.
 
 Shorthand is supported for ROI Viewer:
