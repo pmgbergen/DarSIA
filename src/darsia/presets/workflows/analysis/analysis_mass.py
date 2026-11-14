@@ -192,6 +192,23 @@ def analysis_mass_from_context(
         "rescaled_concentration_aq": {"vmin": 0.0, "vmax": 1.0},
     }
 
+    # Live preview: colormap and fixed value ranges of the exports, so preview colors
+    # match the exported images and are comparable across frames. The phase masses
+    # are parts of the total mass density and share its bound.
+    def _range(mode: str) -> tuple[float, float]:
+        kwargs = scalar_write_kwargs_by_mode[mode]
+        return kwargs["vmin"], kwargs["vmax"]
+
+    stream_cmap = exporter.preview_cmap()
+    stream_value_ranges = {
+        "mass_total": _range("mass"),
+        "mass_aq": _range("mass"),
+        "mass_g": _range("mass"),
+        "rescaled_mass": _range("rescaled_mass"),
+        "rescaled_concentration_aq": _range("rescaled_concentration_aq"),
+        "rescaled_saturation_g": _range("rescaled_saturation_g"),
+    }
+
     # Single-phase fluids (tracer) have no gas phase and are matched to the injected
     # volume: no gas products or columns; the mass columns stay (exact mass = injected
     # volume x model density) and volume columns (in m3) are added.
@@ -404,6 +421,8 @@ def analysis_mass_from_context(
             image_payload=stream_payload,
             logger=logger,
             error_message=f"Failed to stream mass previews for image '{path}'.",
+            cmap=stream_cmap,
+            value_ranges=stream_value_ranges,
         )
         publish_image_progress(
             progress_callback,

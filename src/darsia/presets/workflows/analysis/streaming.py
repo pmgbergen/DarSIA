@@ -36,8 +36,56 @@ def _to_uint8_gray(array: np.ndarray) -> np.ndarray:
     return np.clip(normalized * 255.0, 0, 255).astype(np.uint8)
 
 
-def _to_bgr_array(image_like: Any) -> np.ndarray:
-    """Convert darsia-like image objects or arrays to BGR uint8 arrays."""
+def _scalar_to_bgr(
+    array: np.ndarray,
+    cmap: Any = None,
+    value_range: tuple[float, float] | None = None,
+) -> np.ndarray:
+    """Color scalar data as BGR uint8, like the exported images.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        2D scalar data.
+    cmap : matplotlib colormap, optional
+        Colormap of the exports; default viridis.
+    value_range : tuple[float, float], optional
+        Fixed (vmin, vmax) of the exports, so colors are comparable across frames;
+        default: min-max of this array. Non-finite values map to the lowest color.
+    """
+    if value_range is None:
+        gray = _to_uint8_gray(array)
+        if cmap is None:
+            return cv2.applyColorMap(gray, cv2.COLORMAP_VIRIDIS)
+        normalized = gray.astype(np.float32) / 255.0
+    else:
+        scalar = np.asarray(array)
+        if scalar.ndim != 2:
+            raise ValueError(f"Expected 2D scalar array, got shape {scalar.shape}.")
+        scalar = scalar.astype(np.float32, copy=False)
+        lower, upper = (float(v) for v in value_range)
+        normalized = np.zeros_like(scalar, dtype=np.float32)
+        finite_mask = np.isfinite(scalar)
+        if upper > lower:
+            normalized[finite_mask] = (scalar[finite_mask] - lower) / (upper - lower)
+        normalized = np.clip(normalized, 0.0, 1.0)
+    if cmap is None:
+        import matplotlib
+
+        cmap = matplotlib.colormaps["viridis"]
+    rgb = np.round(np.asarray(cmap(normalized))[..., :3] * 255.0).astype(np.uint8)
+    return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+
+
+def _to_bgr_array(
+    image_like: Any,
+    cmap: Any = None,
+    value_range: tuple[float, float] | None = None,
+) -> np.ndarray:
+    """Convert darsia-like image objects or arrays to BGR uint8 arrays.
+
+    Scalar data is colored with `cmap` and `value_range` (see `_scalar_to_bgr`).
+    """
     if hasattr(image_like, "to_trichromatic"):
         try:
             bgr_image = image_like.to_trichromatic("BGR", return_image=True)
@@ -57,11 +105,9 @@ def _to_bgr_array(image_like: Any) -> np.ndarray:
 
     array = np.asarray(image_like.img if hasattr(image_like, "img") else image_like)
     if array.ndim == 2:
-        gray = _to_uint8_gray(array)
-        return cv2.applyColorMap(gray, cv2.COLORMAP_VIRIDIS)
+        return _scalar_to_bgr(array, cmap, value_range)
     if array.ndim == 3 and array.shape[2] == 1:
-        gray = _to_uint8_gray(array[..., 0])
-        return cv2.applyColorMap(gray, cv2.COLORMAP_VIRIDIS)
+        return _scalar_to_bgr(array[..., 0], cmap, value_range)
     if array.ndim == 3 and array.shape[2] >= 3:
         rgb_or_bgr = array[..., :3]
         if rgb_or_bgr.dtype == np.uint8:
@@ -93,9 +139,14 @@ def encode_low_resolution_png(
     image_like: Any,
     max_width: int = 640,
     max_height: int = 480,
+    cmap: Any = None,
+    value_range: tuple[float, float] | None = None,
 ) -> bytes:
-    """Encode an image-like object as low-resolution PNG bytes."""
-    bgr_array = _to_bgr_array(image_like)
+    """Encode an image-like object as low-resolution PNG bytes.
+
+    Scalar data is colored with `cmap` and `value_range` (see `_scalar_to_bgr`).
+    """
+    bgr_array = _to_bgr_array(image_like, cmap=cmap, value_range=value_range)
     height, width = bgr_array.shape[:2]
     if width == 0 or height == 0:
         raise ValueError(
@@ -140,13 +191,22 @@ def publish_stream_images(
     image_payload: dict[str, Any],
     logger: logging.Logger,
     error_message: str,
+    cmap: Any = None,
+    value_ranges: dict[str, tuple[float, float]] | None = None,
 ) -> None:
-    """Encode image payload and publish it via stream callback."""
+    """Encode image payload and publish it via stream callback.
+
+    Scalar images are colored with `cmap` (default viridis) and, per key, the fixed
+    range `value_ranges[key]` of the exports (default: min-max of each image).
+    """
     if stream_callback is None:
         return
+    value_ranges = value_ranges or {}
     try:
         encoded_payload = {
-            key: encode_low_resolution_png(image)
+            key: encode_low_resolution_png(
+                image, cmap=cmap, value_range=value_ranges.get(key)
+            )
             for key, image in image_payload.items()
         }
         publish_stream_payload(
