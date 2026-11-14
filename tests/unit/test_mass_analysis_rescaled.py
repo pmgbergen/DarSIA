@@ -8,7 +8,6 @@ from typing import Any
 import numpy as np
 
 import darsia
-from darsia import make_coordinate
 from darsia.multiphase.mass_analysis import CO2MassAnalysis
 from darsia.presets.workflows.analysis import analysis_mass as analysis_mass_module
 from darsia.presets.workflows.analysis.analysis_mass import analysis_mass_from_context
