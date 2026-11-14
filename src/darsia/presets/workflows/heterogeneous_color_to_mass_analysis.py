@@ -79,7 +79,7 @@ class HeterogeneousColorToMassAnalysis:
         color_path_interpretation: dict[int, darsia.ColorPathInterpolation],
         signal_functions: dict[int, darsia.ColorPathFunction],
         flash: darsia.SimpleFlash,
-        co2_mass_analysis: darsia.FluidMassAnalysis,
+        fluid_model: darsia.FluidMassAnalysis,
         geometry: darsia.ExtrudedPorousGeometry,
         restoration: darsia.Model | None = None,
         ignore_labels: list[int] | None = None,
@@ -114,7 +114,7 @@ class HeterogeneousColorToMassAnalysis:
         self.flash = flash
         """Flash model for converting pH to concentrations."""
 
-        self.co2_mass_analysis = co2_mass_analysis
+        self.fluid_model = fluid_model
         """Mass computation tool (fluid model)."""
 
         self.pressure_temperature_protocol: (
@@ -123,7 +123,7 @@ class HeterogeneousColorToMassAnalysis:
         """Protocol setting the state of the fluid model for each analyzed image."""
 
         self.has_gas = bool(
-            getattr(getattr(co2_mass_analysis, "system", None), "is_multiphase", True)
+            getattr(getattr(fluid_model, "system", None), "is_multiphase", True)
         )
         """Whether there is a gas phase; single-phase (tracer) has no flash parameters."""
 
@@ -266,6 +266,11 @@ class HeterogeneousColorToMassAnalysis:
         self._build_stages(signal_functions)
 
     @property
+    def co2_mass_analysis(self) -> darsia.FluidMassAnalysis:
+        """Deprecated name of `fluid_model` (read-only), kept for older scripts."""
+        return self.fluid_model
+
+    @property
     def labels(self) -> darsia.Image:
         """Labels image - refer to attribute of color analysis."""
         assert self.color_analysis.labels is not None
@@ -289,7 +294,7 @@ class HeterogeneousColorToMassAnalysis:
             c_aq = self.expert_knowledge_adapter.apply(c_aq, "concentration_aq")
             s_g = self.expert_knowledge_adapter.apply(s_g, "saturation_g")
         mass_analysis_result: SimpleMassAnalysisResults = (
-            self.co2_mass_analysis.mass_analysis(
+            self.fluid_model.mass_analysis(
                 c_aq=c_aq,
                 s_g=s_g,
             )
@@ -319,7 +324,7 @@ class HeterogeneousColorToMassAnalysis:
             return
         state = protocol.get_state(date)
         gradient = protocol.get_gradient(date)
-        self.co2_mass_analysis.update_state(
+        self.fluid_model.update_state(
             atmospheric_pressure=state.pressure,
             atmospheric_temperature=state.temperature,
             atmospheric_pressure_gradient=gradient.pressure,
@@ -547,7 +552,7 @@ class HeterogeneousColorToMassAnalysis:
                 c_aq = self.expert_knowledge_adapter.apply(c_aq, "concentration_aq")
                 s_g = self.expert_knowledge_adapter.apply(s_g, "saturation_g")
             mass_analysis_result: SimpleMassAnalysisResults = (
-                self.co2_mass_analysis.mass_analysis(
+                self.fluid_model.mass_analysis(
                     c_aq=c_aq,
                     s_g=s_g,
                 )
@@ -584,9 +589,9 @@ class HeterogeneousColorToMassAnalysis:
                 "effective_depth": coarse_effective_depth,
             }
             if self.has_gas:
-                co2_g_density = darsia.full_like(pH, self.co2_mass_analysis.density_gas)
+                co2_g_density = darsia.full_like(pH, self.fluid_model.density_gas)
                 co2_aq_solubility = darsia.full_like(
-                    pH, self.co2_mass_analysis.aqueous_capacity
+                    pH, self.fluid_model.aqueous_capacity
                 )
                 signals["s_g"] = coarsen(s_g)
                 signals["rho_co2(g)"] = coarsen(co2_g_density)
@@ -2281,7 +2286,7 @@ class HeterogeneousColorToMassAnalysis:
         baseline: darsia.Image,
         labels: darsia.Image,
         interpretation: Interpretation,
-        co2_mass_analysis: darsia.FluidMassAnalysis,
+        fluid_model: darsia.FluidMassAnalysis,
         geometry: darsia.ExtrudedPorousGeometry,
         restoration: darsia.Model | None = None,
         basis: ColorEmbeddingBasis = ColorEmbeddingBasis.LABELS,
@@ -2304,7 +2309,7 @@ class HeterogeneousColorToMassAnalysis:
             Baseline image.
         labels : darsia.Image
             Labeled image.
-        co2_mass_analysis : darsia.FluidMassAnalysis
+        fluid_model : darsia.FluidMassAnalysis
             The CO2 mass analysis tool.
         geometry : darsia.ExtrudedPorousGeometry
             The geometry used for mass computation.
@@ -2387,7 +2392,7 @@ class HeterogeneousColorToMassAnalysis:
             color_path_interpretation=color_path_interpretation,
             signal_functions=signal_functions,
             flash=flash,
-            co2_mass_analysis=co2_mass_analysis,
+            fluid_model=fluid_model,
             geometry=geometry,
             restoration=restoration,
             ignore_labels=ignore_labels,

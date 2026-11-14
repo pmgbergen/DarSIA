@@ -64,7 +64,7 @@ def _scalar_image_for_mode(
         scalar_kwargs = {
             "geometry": fluidflower.geometry,
             "injection_protocol": experiment.injection_protocol,
-            "co2_mass_analysis": color_to_mass_analysis.co2_mass_analysis,
+            "fluid_model": color_to_mass_analysis.fluid_model,
             "date": img_date,
         }
     mode_images, _ = analysis_scalar_products(

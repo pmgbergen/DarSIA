@@ -313,7 +313,6 @@ def _build_color_to_mass_analysis(
     analysis_labels = embedding.get_labels(rig)
 
     # ! ---- FLUID MODEL OF THE CONFIGURED FLUID ----
-    # NOTE: The attribute keeps its historic name co2_mass_analysis, as consumers read it.
     fluid_model = build_fluid_model(config, experiment, rig)
 
     # ! ---- COLOR TO MASS ANALYSIS ----
@@ -322,7 +321,7 @@ def _build_color_to_mass_analysis(
         baseline=rig.baseline,
         labels=analysis_labels,
         interpretation=interpretation,
-        co2_mass_analysis=fluid_model,
+        fluid_model=fluid_model,
         geometry=rig.geometry,
         restoration=restoration,
         basis=embedding.basis,

@@ -92,7 +92,7 @@ def test_scalar_image_for_mode_maps_mass_to_mass_total(monkeypatch) -> None:
         result=SimpleNamespace(),
         fluidflower=SimpleNamespace(geometry=SimpleNamespace()),
         experiment=SimpleNamespace(injection_protocol=SimpleNamespace()),
-        color_to_mass_analysis=SimpleNamespace(co2_mass_analysis=SimpleNamespace()),
+        color_to_mass_analysis=SimpleNamespace(fluid_model=SimpleNamespace()),
         img_date=None,
     )
     assert called["requested_modes"] == {"mass_total"}

@@ -332,7 +332,7 @@ def test_thresholding_supports_rescaled_layer_modes(
 
     class _FakeColorToMass:
         def __init__(self) -> None:
-            self.co2_mass_analysis = _FakeCo2Mass()
+            self.fluid_model = _FakeCo2Mass()
 
         def __call__(self, img):
             del img
