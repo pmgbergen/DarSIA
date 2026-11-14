@@ -9,6 +9,7 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.widgets import Button, TextBox
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 from sklearn.manifold import LocallyLinearEmbedding
@@ -19,6 +20,50 @@ from darsia.utils.figure_window import maximize_figure_window
 from .utils import get_mean_color
 
 logger = logging.getLogger(__name__)
+
+
+def _voxel_faces(
+    filled: np.ndarray, edges: list[np.ndarray]
+) -> tuple[np.ndarray, np.ndarray]:
+    """Visible faces of filled voxels, as quads in the coordinates of the bin edges.
+
+    A face is visible if the neighboring voxel across it is not filled (as in
+    ``Axes3D.voxels``). Faces are oriented outwards, for shading.
+
+    Parameters
+    ----------
+    filled : np.ndarray
+        Boolean 3D array of filled voxels.
+    edges : list[np.ndarray]
+        Bin edges per axis (length = shape + 1).
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Quads of shape (n, 4, 3) and the voxel index (n, 3) of each quad.
+    """
+    voxels = np.argwhere(filled)
+    padded = np.pad(filled, 1)
+    square = np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
+    quads, owners = [], []
+    for a in range(3):
+        b, c = (a + 1) % 3, (a + 2) % 3
+        for side in (0, 1):
+            neighbor = voxels + 1  # index into the padded array
+            neighbor[:, a] += 1 if side else -1
+            visible = voxels[~padded[tuple(neighbor.T)]]
+            if len(visible) == 0:
+                continue
+            order = square if side else square[::-1]
+            quad = np.empty((len(visible), 4, 3))
+            quad[:, :, a] = edges[a][visible[:, a] + side][:, None]
+            quad[:, :, b] = edges[b][visible[:, b][:, None] + order[None, :, 0]]
+            quad[:, :, c] = edges[c][visible[:, c][:, None] + order[None, :, 1]]
+            quads.append(quad)
+            owners.append(visible)
+    if not quads:
+        return np.empty((0, 4, 3)), np.empty((0, 3), dtype=int)
+    return np.concatenate(quads), np.concatenate(owners)
 
 
 def _parse_index_selection(text: str, size: int) -> list[list[int]]:
@@ -301,96 +346,25 @@ class LabelColorPathMapRegression:
 
         # Plot the histogram as a 3D voxel plot
         if verbose:
-            # Prepare reusable data
-            _, edges = np.histogramdd(
-                np.zeros((1, 3)),
-                bins=self._shape,
-                range=self.color_range.range,
-            )
-            # Define the respective meshgrid for the histogram
-            x_edges = edges[0][:-1] + 0.5 * (edges[0][1] - edges[0][0])
-            y_edges = edges[1][:-1] + 0.5 * (edges[1][1] - edges[1][0])
-            z_edges = edges[2][:-1] + 0.5 * (edges[2][1] - edges[2][0])
-            x_mesh, y_mesh, z_mesh = np.meshgrid(
-                x_edges, y_edges, z_edges, indexing="ij"
-            )
-
             for label in np.unique(self.labels.img):
                 if not np.any(color_spectrum_map[label].spectrum):
                     logger.info(f"Skip plotting color spectrum for label {label}.")
                     continue
                 ax = plt.figure().add_subplot(projection="3d")
                 ax.set_title(f"Color Spectrum for Label {label}")
-
-                # Add colors to each mesh point
-                c_mesh = np.clip(
-                    color_spectrum_map[label].base_color
-                    + np.vstack(
-                        (x_mesh.flatten(), y_mesh.flatten(), z_mesh.flatten())
-                    ).T,
-                    0.0,
-                    1.0,
-                ).reshape(self._shape + (3,))
-
-                # Use histogram values for alpha transparency
-                histogram = color_spectrum_map[label].histogram
-                # Normalize histogram to [0, 1] range for alpha values
-                alpha_mesh = np.zeros(self._shape, dtype=float)
-                hist_max = np.max(histogram[color_spectrum_map[label].spectrum])
-                if hist_max > 0:
-                    alpha_mesh = histogram / hist_max
-                else:
-                    alpha_mesh[color_spectrum_map[label].spectrum] = 1.0
-
-                # Block alpha into 10 discrete levels.
-                num_alpha_levels = 10
-                alpha_min = np.min(alpha_mesh)
-                alpha_max = np.max(alpha_mesh)
-                alpha_levels = np.linspace(alpha_min, alpha_max, num_alpha_levels)
-                alpha_blocked = (
-                    np.digitize(alpha_mesh, bins=alpha_levels) / num_alpha_levels
-                )
-                alpha_blocked = np.clip(alpha_blocked, alpha_min, alpha_max)
-
-                # Plot voxels for each alpha level separately
-                for alpha_level in alpha_levels:
-                    # Create mask for voxels at this alpha level
-                    alpha_tolerance = (alpha_max - alpha_min) / (2 * num_alpha_levels)
-                    mask_at_level = color_spectrum_map[label].spectrum & (
-                        np.abs(alpha_blocked - alpha_level) < alpha_tolerance
-                    )
-                    # Rescale such that levels span 0..1
-                    alpha_level_rescaled = (alpha_level - alpha_min) / (
-                        alpha_max - alpha_min
-                    )
-
-                    if np.any(mask_at_level):
-                        ax.voxels(
-                            mask_at_level,
-                            facecolors=c_mesh,
-                            alpha=alpha_level_rescaled,
-                        )
-
-                # Mark the ignored colors
-                if ignore is not None:
-                    ax.voxels(
-                        (
-                            ignore[label].spectrum
+                self._plot_spectrum_voxels(
+                    ax,
+                    color_spectrum_map[label],
+                    ignore=(
+                        None
+                        if ignore is None
+                        else (
+                            ignore[label]
                             if isinstance(ignore, darsia.LabelColorSpectrumMap)
-                            else ignore.spectrum
-                        ),
-                        facecolors="red",
-                        alpha=0.1,
-                    )
-                # Highlight the (relative) origin
-                origin = np.zeros_like(color_spectrum_map[label].spectrum, dtype=bool)
-                origin_index = self.discrete_color_range.color_to_index(
-                    np.zeros(3)
-                    if self.color_mode == darsia.ColorMode.RELATIVE
-                    else color_spectrum_map[label].base_color
+                            else ignore
+                        )
+                    ),
                 )
-                origin[tuple(origin_index)] = True
-                ax.voxels(origin, facecolors="red")
                 if path is not None:
                     path.mkdir(parents=True, exist_ok=True)
                     plt.savefig(
@@ -404,6 +378,89 @@ class LabelColorPathMapRegression:
 
         logger.info("Done. Color spectrum analysis.")
         return color_spectrum_map
+
+    def _plot_spectrum_voxels(
+        self,
+        ax,
+        spectrum: darsia.ColorSpectrum,
+        ignore: darsia.ColorSpectrum | None = None,
+    ) -> None:
+        """Draw a color spectrum as voxels at their (relative) RGB coordinates.
+
+        Each voxel has the color it represents; its opacity follows the histogram in
+        10 levels. Ignored colors are faint red, the origin (zero relative color) is
+        red.
+
+        Parameters
+        ----------
+        ax : Axes3D
+            3D axes to draw into.
+        spectrum : darsia.ColorSpectrum
+            Spectrum (and histogram) of one label.
+        ignore : darsia.ColorSpectrum, optional
+            Spectrum of ignored colors of the same label.
+        """
+        # Voxel edges and centers in color coordinates (same binning as the spectrum)
+        _, edges = np.histogramdd(
+            np.zeros((1, 3)), bins=self._shape, range=self.color_range.range
+        )
+        centers = np.meshgrid(*[0.5 * (e[:-1] + e[1:]) for e in edges], indexing="ij")
+
+        # Each voxel in the color it represents; opacity by the histogram, normalized
+        # to the most frequent color and blocked into 10 levels
+        histogram = spectrum.histogram
+        hist_max = (
+            np.max(histogram[spectrum.spectrum]) if np.any(spectrum.spectrum) else 0.0
+        )
+        alpha = (
+            np.ceil(10 * np.clip(histogram / hist_max, 0.0, 1.0)) / 10
+            if hist_max > 0
+            else np.ones(self._shape)
+        )
+        spectrum_colors = np.concatenate(
+            [
+                np.clip(spectrum.base_color + np.stack(centers, axis=-1), 0.0, 1.0),
+                np.maximum(alpha, 0.1)[..., None],
+            ],
+            axis=-1,
+        )
+
+        # Highlighted (relative) origin
+        origin = np.zeros(self._shape, dtype=bool)
+        origin_index = self.discrete_color_range.color_to_index(
+            np.zeros(3)
+            if self.color_mode == darsia.ColorMode.RELATIVE
+            else spectrum.base_color
+        )
+        origin[tuple(origin_index)] = True
+
+        # One shaded collection per layer (built from the visible faces only; much
+        # faster than ax.voxels, which loops over the whole grid)
+        layers = [(spectrum.spectrum, spectrum_colors)]
+        if ignore is not None:
+            layers.append((ignore.spectrum, np.array([1.0, 0.0, 0.0, 0.1])))
+        layers.append((origin, np.array([1.0, 0.0, 0.0, 1.0])))
+        points = []
+        for filled, colors in layers:
+            quads, owners = _voxel_faces(filled, edges)
+            if len(quads) == 0:
+                continue
+            face_colors = (
+                colors[tuple(owners.T)]
+                if colors.ndim > 1
+                else np.tile(colors, (len(quads), 1))
+            )
+            ax.add_collection3d(
+                Poly3DCollection(quads, facecolors=face_colors, shade=True)
+            )
+            points.append(quads.reshape(-1, 3))
+        if points:
+            points = np.concatenate(points)
+            ax.auto_scale_xyz(points[:, 0], points[:, 1], points[:, 2])
+
+        ax.set_xlabel("R")
+        ax.set_ylabel("G")
+        ax.set_zlabel("B")
 
     @darsia.timing_decorator
     def expand_color_spectrum(
@@ -1390,49 +1447,26 @@ class LabelColorPathMapRegression:
             for i, (color, rel) in enumerate(zip(key_colors, key_relative_colors)):
                 print(f"Key color {i + 1}: RGB = {color}, relative: {rel}")
 
-        # Visualize
+        # Visualize: the spectrum as voxels (as in get_color_spectrum), the path on top.
+        # Without computed z-order, artists are drawn in zorder, so 3D depth sorting
+        # cannot hide the path behind voxels.
         fig = plt.figure(figsize=(8, 4))
-        ax = fig.add_subplot(111, projection="3d")
-
-        # Plot all significant colors
-        ax.scatter(
-            relative_colors[:, 0],
-            relative_colors[:, 1],
-            relative_colors[:, 2],
-            c=np.clip(colors, 0, 1),
-            s=10,
-            alpha=0.5,
-        )
+        ax = fig.add_subplot(111, projection="3d", computed_zorder=False)
+        self._plot_spectrum_voxels(ax, spectrum, ignore=ignore)
 
         # Plot key colors and connecting lines
         if len(key_relative_colors) >= 2:
-            ax.plot(*np.array(key_relative_colors).T, c="black", linewidth=2)
+            ax.plot(*np.array(key_relative_colors).T, c="black", linewidth=2, zorder=10)
             ax.scatter(
                 *np.array(key_relative_colors).T,
                 c=np.clip(key_colors, 0, 1),
                 s=100,
+                edgecolors="black",
+                depthshade=False,
+                zorder=11,
             )
 
-        # Plot connecting lines for all points along the sorted embedding
-        ax.plot(*np.array(relative_colors).T, c="gray", linewidth=1, alpha=0.5)
-
-        # Band of ignored colors (in red)
-        if ignore is not None:
-            base_relative_colors = ignore.relative_colors
-            ax.scatter(
-                base_relative_colors[:, 0],
-                base_relative_colors[:, 1],
-                base_relative_colors[:, 2],
-                c="r",
-                s=10,
-                alpha=0.1,
-            )
-
-        # Some plot settings
         ax.set_title(name)
-        ax.set_xlabel("R")
-        ax.set_ylabel("G")
-        ax.set_zlabel("B")
 
         plt.tight_layout()
         if directory:
