@@ -2,6 +2,7 @@
 
 import ast
 
+from PySide6.QtCore import QSize
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -166,6 +167,31 @@ def _check_cmap_text(combo, text):
             )
         ),
     )
+
+
+LABEL_PATH_ICON_SIZE = QSize(160, 14)
+"""Size of the color path band next to each label (reference label dropdown)."""
+
+
+def _check_label_text(combo, text):
+    """Mark a label combo red unless empty or an integer that is a calibrated label.
+
+    Before the color path calibration (no options), any integer is accepted.
+    """
+    text = text.strip()
+    if not text:
+        message = None
+    elif not text.lstrip("-").isdigit():
+        message = "Not a label. Enter an integer label."
+    elif combo.options and text not in combo.options:
+        message = (
+            "Not a calibrated label of this color path. Choose one of "
+            + ", ".join(combo.options)
+            + "."
+        )
+    else:
+        message = None
+    _set_field_error(combo, message)
 
 
 class SettingsFactory:
@@ -1052,10 +1078,16 @@ class SettingsFactory:
                             field_schema["key"],
                             entry_data[field_name],
                         )
+                    # The reference label dropdown lists the labels of this entry's
+                    # color path: pass it the (live) entry name
+                    edit_schema = field_schema
+                    if field_schema.get("options_provider") == "color_path_labels":
+                        edit_schema = {
+                            **field_schema,
+                            "entry_name": lambda: name_edit.text().strip(),
+                        }
                     try:
-                        label_text, field_widget = self.create_setting_edit(
-                            field_schema
-                        )
+                        label_text, field_widget = self.create_setting_edit(edit_schema)
                     finally:
                         if injected_group:
                             self.main_window.config_dict.pop("entry", None)
@@ -1690,19 +1722,14 @@ class SettingsFactory:
 
         return display_name, field_widget
 
-    def _cmap_options_source(self):
-        """Colormap options and color registry of the saved config (CmapComboBox).
+    def _saved_color_registry(self, purpose):
+        """Color embedding registry of the saved config file, or None.
 
-        Color paths are read from the saved config file: they are only offered once
-        calibrated, which requires a saved config. On any failure, only the matplotlib
-        colormaps are offered.
+        Color paths are read from the saved config file: they only exist once
+        calibrated, which requires a saved config. Failures are logged, never raised.
         """
         from pathlib import Path
 
-        from darsia.presets.workflows.analysis.colormaps import (
-            cmap_options,
-            matplotlib_cmap_options,
-        )
         from darsia.presets.workflows.config.color_embedding_registry import (
             ColorEmbeddingRegistry,
         )
@@ -1714,16 +1741,62 @@ class SettingsFactory:
             config_file = Path(self.main_window.config_path_label.text())
             results = _results_folder_from_merged_config(self.main_window.config_dict)
             if not config_file.is_file() or results is None:
-                return matplotlib_cmap_options(), None
-            registry = ColorEmbeddingRegistry().load(
+                return None
+            return ColorEmbeddingRegistry().load(
                 config_file, data=None, results=results
             )
-            return cmap_options(registry), registry
+        except Exception as error:  # noqa: BLE001 - never break the settings panel
+            self.main_window.print_log(f"{purpose}: color paths unavailable ({error})")
+            return None
+
+    def _cmap_options_source(self):
+        """Colormap names with their color bands (CmapComboBox).
+
+        Calibrated color paths of the saved config come after the curated matplotlib
+        colormaps; without a registry, only the matplotlib colormaps are offered.
+        """
+        from darsia.presets.workflows.analysis.colormaps import (
+            cmap_options,
+            resolve_cmap,
+        )
+
+        registry = self._saved_color_registry("Colormap options")
+        return [(name, resolve_cmap(name, registry)) for name in cmap_options(registry)]
+
+    def _reference_label_options(self, embedding_name):
+        """Calibrated labels of a color path with their color bands, or [].
+
+        Read once from the saved ``color_paths.csv`` of the embedding; empty before
+        the color path calibration (the field then takes any number).
+        """
+        from pathlib import Path
+
+        import darsia
+        from darsia.signals.color import ColorPathEmbedding
+
+        if not embedding_name:
+            return []
+        registry = self._saved_color_registry("Reference label options")
+        # A new or renamed (unsaved) entry is not in the saved registry yet
+        if registry is None or embedding_name not in registry.resolve_all():
+            return []
+        try:
+            embedding = registry.resolve(embedding_name)
+            if not isinstance(embedding, ColorPathEmbedding):
+                return []
+            csv_file = Path(embedding.color_paths_csv_file)
+            if not csv_file.is_file():
+                return []
+            color_paths = darsia.LabelColorPathMap.load_csv(csv_file)
         except Exception as error:  # noqa: BLE001 - never break the settings panel
             self.main_window.print_log(
-                f"Colormap options: color paths unavailable ({error})"
+                f"Reference label options: color paths unavailable ({error})"
             )
-            return matplotlib_cmap_options(), None
+            return []
+        return [
+            (str(label), color_paths[label].get_color_map())
+            for label in sorted(color_paths.keys())
+        ]
 
     def create_dropdown_input(self, setting_dict):
         """Create a combobox input with predefined options.
@@ -1743,10 +1816,22 @@ class SettingsFactory:
         if value is None:
             value = setting_dict.get("default")
 
-        if setting_dict.get("options_provider") == "cmaps":
+        provider = setting_dict.get("options_provider")
+        if provider == "cmaps":
             setting_combo = CmapComboBox(self._cmap_options_source)
             setting_combo.editTextChanged.connect(
                 lambda text, combo=setting_combo: _check_cmap_text(combo, text)
+            )
+        elif provider == "color_path_labels":
+            # The embedding is the one of the [[color_path]] entry holding the field
+            entry_name = setting_dict.get("entry_name") or (lambda: "")
+            setting_combo = CmapComboBox(
+                lambda: self._reference_label_options(entry_name()),
+                empty_option=False,
+                icon_size=LABEL_PATH_ICON_SIZE,
+            )
+            setting_combo.editTextChanged.connect(
+                lambda text, combo=setting_combo: _check_label_text(combo, text)
             )
         else:
             options = setting_dict["options"]
@@ -1764,6 +1849,9 @@ class SettingsFactory:
                 # values (e.g. a custom "color.<id>" reference) — show it as-is
                 # rather than silently falling back to the first preset.
                 setting_combo.setCurrentText(value)
+        if provider == "color_path_labels":
+            # Selecting the already current item emits no text change
+            _check_label_text(setting_combo, setting_combo.currentText())
 
         # Build composite field widget with help button
         field_widget = QWidget()
@@ -2813,6 +2901,13 @@ class SettingsFactory:
                             text_value = unwrapped_widget.currentText().strip()
                             if text_value:
                                 extracted_value = text_value
+                                # Int fields with a dropdown (e.g. reference label)
+                                # are stored as numbers, not as their text
+                                if field_type == "int":
+                                    try:
+                                        extracted_value = int(text_value)
+                                    except ValueError:
+                                        pass
                                 # Required fields are always written, even when the
                                 # selected/typed value equals the schema default (see
                                 # the "time" branch above for the same issue/fix).

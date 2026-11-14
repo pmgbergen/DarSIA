@@ -174,6 +174,13 @@ The `name` is the registry key: other keys refer to it (`[calibration.color] emb
 (no spaces or dots). Renaming an embedding renames its folder; move an existing
 calibration along.
 
+`reference_label` picks the label whose colour path is the default colormap
+(`cmap = "color_path.<name>"`) and against which the start values of a new
+interpretation calibration are scaled. Choose a facies where the tracer shows its full
+colour range. An existing interpretation calibration does not depend on it. Once the
+colour paths are calibrated, the GUI shows a dropdown of the calibrated labels with
+their colour bands; a label without a colour path is marked red.
+
 Full field set for `color_path` entries (not all used by `sample_config.toml`):
 `mode` (`relative`/`absolute`), `baseline`, `data`, `num_segments`,
 `ignore_labels`, `resolution`, `threshold_baseline`, `threshold_calibration`,
