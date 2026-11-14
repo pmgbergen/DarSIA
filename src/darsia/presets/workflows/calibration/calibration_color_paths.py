@@ -312,6 +312,11 @@ def calibration_color_paths_from_context(
     )
     label_color_path_map.save_csv(embedding.color_paths_csv_file)
 
+    # Store the colormap of each color path (format registry: color_path.<id>.<label>)
+    label_color_path_map.save_cmaps(
+        embedding.figures_folder, name=f"color_path.{embedding.embedding_id}"
+    )
+
     # Display the color paths
     # if show:
     # print(label_color_path_map)

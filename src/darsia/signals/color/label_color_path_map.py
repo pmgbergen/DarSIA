@@ -43,6 +43,21 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
         for _, color_path in self.items():
             color_path.show_cmap()
 
+    def save_cmaps(self, directory: Path, name: str) -> None:
+        """Save the colormap of each color path as directory/colormap_<label>.png.
+
+        Parameters
+        ----------
+        directory : Path
+            Folder to write the images to.
+        name : str
+            Colormap name prefix; each band is titled <name>.<label>.
+        """
+        for label, color_path in self.items():
+            color_path.save_cmap(
+                Path(directory) / f"colormap_{label}.png", title=f"{name}.{label}"
+            )
+
     def show_paths(self) -> None:
         """Show the color paths."""
         for _, color_path in self.items():

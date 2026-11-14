@@ -245,6 +245,38 @@ class ColorPath:
         plt.axis("off")
         plt.show()
 
+    def save_cmap(self, path: Path, title: str = "") -> None:
+        """Save the colormap of the color path as a labelled color band.
+
+        Left: baseline color (no tracer); right: end of the color path. Drawn without
+        pyplot, so no window opens and no figure stays open.
+
+        Parameters
+        ----------
+        path : Path
+            Image file to write (e.g. figures/colormap_<label>.png).
+        title : str
+            Title of the band, e.g. the colormap name color_path.<id>.<label>.
+        """
+        from matplotlib.figure import Figure
+
+        fig = Figure(figsize=(6, 1.3))
+        ax = fig.add_subplot(111)
+        ax.imshow(
+            np.linspace(0.0, 1.0, 256)[np.newaxis],
+            cmap=self.get_color_map(name=title or "color_path"),
+            aspect="auto",
+            extent=(0.0, 1.0, 0.0, 1.0),
+        )
+        ax.set_yticks([])
+        ax.set_xlabel("0: baseline colour (no tracer) → 1: end of colour path")
+        if title:
+            ax.set_title(title)
+        fig.tight_layout()
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(path, dpi=150)
+
     def show_path(
         self,
         name: str = "",
