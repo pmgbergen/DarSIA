@@ -140,6 +140,13 @@ def analysis_volume_from_context(
     folder_concentration_aq.mkdir(parents=True, exist_ok=True)
     exporter = ImageExportFormats(config, config.analysis.volume.formats or ["npz"])
 
+    # Live preview: colormap of the exports; saturations and concentration are
+    # fractions in [0, 1] (as the exports assume), fixed so frames are comparable.
+    stream_cmap = exporter.preview_cmap()
+    stream_value_ranges = {
+        key: (0.0, 1.0) for key in ("concentration_aq", "saturation_g", "saturation_aq")
+    }
+
     # ! ---- ANALYSIS ----
 
     # Loop over images and analyze
@@ -256,6 +263,8 @@ def analysis_volume_from_context(
             image_payload=stream_payload,
             logger=logger,
             error_message=f"Failed to stream volume previews for image '{path}'.",
+            cmap=stream_cmap,
+            value_ranges=stream_value_ranges,
         )
         publish_image_progress(
             progress_callback,

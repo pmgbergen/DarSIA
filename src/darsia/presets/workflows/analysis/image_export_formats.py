@@ -116,6 +116,13 @@ class ImageExportFormats:
             self._cmaps[cmap_name] = resolve_cmap(cmap_name, registry)
         return self._cmaps[cmap_name]
 
+    def preview_cmap(self):
+        """Colormap of the first jpg/png format with a cmap (live preview), or None."""
+        for spec in self.formats:
+            if spec.type in {"jpg", "png"} and spec.cmap:
+                return self._resolve_cmap(spec.cmap)
+        return None
+
     def _prepare_image(
         self, image: darsia.Image, spec: ImageExportFormat
     ) -> darsia.Image:
