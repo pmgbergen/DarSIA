@@ -392,8 +392,12 @@ class ColorPathEmbeddingConfig:
         default=0,
         metadata={
             "name": "Reference Label",
-            "help": "Reference label index used to define color mapping, e.g., for plotting.",
+            "help": "Label whose color path is the default colormap (color_path.<name>) "
+            "and the scale for the start values of a new interpretation calibration. "
+            "Once calibrated, the dropdown lists the labels with their color paths.",
             "group": "Properties",
+            "options_provider": "color_path_labels",
+            "editable": True,
         },
     )
     root: Path | None = field(

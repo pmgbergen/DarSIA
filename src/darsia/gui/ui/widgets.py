@@ -33,43 +33,53 @@ def cmap_icon(cmap, size: QSize = CMAP_ICON_SIZE) -> QIcon:
 
 
 class CmapComboBox(NoScrollComboBox):
-    """Editable colormap dropdown with a color band per option.
+    """Editable dropdown with a color band per option.
 
-    The options are recomputed whenever the list is opened, so color paths calibrated
-    during the session show up without reloading the config. The first entry is empty
-    (default colormap); values not in the list can be typed in.
+    Used for colormap names and for the labels of a calibrated color path. The options
+    are recomputed whenever the list is opened, so color paths calibrated during the
+    session show up without reloading the config. Values not in the list can be typed.
 
     Parameters
     ----------
     options_source : callable
-        Returns ``(options, color_registry)``: the colormap names to offer and the
-        registry needed to resolve ``color_path.*`` names (or None).
+        Returns a list of ``(text, cmap)`` pairs: the option text and the matplotlib
+        colormap shown as its band (None: no band).
+    empty_option : bool
+        Whether the list starts with an empty entry (e.g. "default colormap").
+    icon_size : QSize
+        Size of the color bands.
     """
 
-    def __init__(self, options_source, parent=None):
+    def __init__(
+        self,
+        options_source,
+        empty_option: bool = True,
+        icon_size: QSize = CMAP_ICON_SIZE,
+        parent=None,
+    ):
         super().__init__(parent)
         self._options_source = options_source
+        self._empty_option = empty_option
+        self._icon_size = icon_size
         self.options: list[str] = []
         self.setEditable(True)
-        self.setIconSize(CMAP_ICON_SIZE)
+        self.setIconSize(icon_size)
         self.refresh()
 
     def refresh(self) -> None:
         """Rebuild the option list (keeping the current text) with color bands."""
-        from darsia.presets.workflows.analysis.colormaps import resolve_cmap
-
-        options, registry = self._options_source()
+        options = self._options_source()
         text = self.currentText()
         self.blockSignals(True)
         self.clear()
-        self.addItem("")
-        for name in options:
-            cmap = resolve_cmap(name, registry)
+        if self._empty_option:
+            self.addItem("")
+        for name, cmap in options:
             if cmap is None:
                 self.addItem(name)
             else:
-                self.addItem(cmap_icon(cmap), name)
-        self.options = list(options)
+                self.addItem(cmap_icon(cmap, self._icon_size), name)
+        self.options = [name for name, _ in options]
         self.setCurrentText(text)
         self.blockSignals(False)
 
