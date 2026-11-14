@@ -17,6 +17,9 @@ from darsia.presets.workflows.config.format_registry import (
 
 logger = logging.getLogger(__name__)
 
+LEGACY_COLOR_PATH_BASES = {"from_facies": "facies", "from_labels": "labels"}
+"""Legacy cmap keys (color_path.from_<basis>.<label>) and the embedding basis they mean."""
+
 
 def _parse_numpy_dtype(dtype_value: str | None):
     if dtype_value is None:
@@ -105,25 +108,81 @@ class ImageExportFormats:
                 resolved.append(spec)
         return resolved
 
+    def _color_path_embedding(self, key: str):
+        """Colour-path embedding of a cmap key: an embedding id, or (legacy)
+        'from_facies'/'from_labels' meaning the single embedding of that basis."""
+        from darsia.signals.color import ColorPathEmbedding
+
+        registry = getattr(self.config, "color", None)
+        embeddings = {} if registry is None else registry.resolve_all()
+        paths = {
+            name: emb
+            for name, emb in embeddings.items()
+            if isinstance(emb, ColorPathEmbedding)
+        }
+        if key in paths:
+            return paths[key]
+        if key in LEGACY_COLOR_PATH_BASES:
+            basis = LEGACY_COLOR_PATH_BASES[key]
+            matching = [n for n, emb in paths.items() if emb.basis == basis]
+            if len(matching) == 1:
+                return paths[matching[0]]
+            raise KeyError(
+                f"'{key}' needs exactly one colour-path embedding with basis "
+                f"'{basis}', found {matching or 'none'}; name one instead "
+                "(color_path.<embedding_id>.<label>)."
+            )
+        raise KeyError(
+            f"no colour-path embedding '{key}' (available: {sorted(paths) or 'none'})."
+        )
+
     def _load_color_path_cmap(self, cmap_name: str):
-        # Supported pattern: color_path.from_facies.5 or color_path.from_labels.5
+        """Colormap of a calibrated colour path: color_path.<embedding_id>[.<label>].
+
+        Without a label, the embedding's reference label is used. Legacy form:
+        color_path.from_facies.<label> / color_path.from_labels.<label>.
+        """
         parts = cmap_name.split(".")
-        if len(parts) != 3:
-            return None
-        basis = parts[1]
         try:
-            label = int(parts[2])
-        except ValueError:
+            if len(parts) not in (2, 3):
+                raise ValueError("expected color_path.<embedding_id>[.<label>]")
+            key = parts[1]
+            label = int(parts[2]) if len(parts) == 3 else None
+
+            # Legacy layout: one JSON per label below <results>/calibration
+            data = getattr(self.config, "data", None)
+            if (
+                key in LEGACY_COLOR_PATH_BASES
+                and label is not None
+                and data is not None
+            ):
+                legacy = (
+                    Path(data.results)
+                    / "calibration"
+                    / "color_paths"
+                    / key
+                    / f"color_path_{label}.json"
+                )
+                if legacy.exists():
+                    return darsia.ColorPath.load(legacy).get_color_map(name=cmap_name)
+
+            embedding = self._color_path_embedding(key)
+            label = embedding.reference_label if label is None else label
+            csv = Path(embedding.color_paths_csv_file)
+            if not csv.exists():
+                raise FileNotFoundError(f"colour paths not calibrated yet ({csv}).")
+            color_paths = darsia.LabelColorPathMap.load_csv(csv)
+            if label not in color_paths:
+                raise KeyError(
+                    f"no colour path for label {label} "
+                    f"(labels: {sorted(color_paths)})."
+                )
+            return color_paths[label].get_color_map(name=cmap_name)
+        except (ValueError, KeyError, FileNotFoundError) as error:
+            logger.warning(
+                "Colormap '%s' not available, using the default: %s", cmap_name, error
+            )
             return None
-        if basis not in {"from_facies", "from_labels"}:
-            return None
-        if getattr(self.config, "data", None) is None:
-            return None
-        folder = self.config.data.results / "calibration" / "color_paths" / basis
-        path = folder / f"color_path_{label}.json"
-        if not path.exists():
-            return None
-        return darsia.ColorPath.load(path).get_color_map()
 
     def _resolve_cmap(self, cmap_name: str | None):
         if cmap_name is None:
@@ -134,6 +193,11 @@ class ImageExportFormats:
             return matplotlib.colormaps[cmap_name.split(".", 1)[1]]
         if cmap_name.startswith("color_path."):
             return self._load_color_path_cmap(cmap_name)
+        logger.warning(
+            "Colormap '%s' not recognized (use matplotlib.<name> or "
+            "color_path.<embedding_id>[.<label>]), using the default.",
+            cmap_name,
+        )
         return None
 
     def _prepare_image(

@@ -27,7 +27,7 @@ python -m darsia.presets.workflows.user_interface_helper --roi --config /abs/pat
   - `data`: selector key(s) from top-level `[data.*]` registry
   - `mode`: result mode folder (for example `rescaled_mass`)
   - `format`: `npz`/`csv` or a format registry key resolving to `npz`/`csv`
-  - `cmap`: optional colormap (`matplotlib.*` or `color_path.*`)
+  - `cmap`: optional colormap (`matplotlib.<name>` or `color_path.<embedding_id>[.<label>]`)
   - `roi`: optional ROI key(s) from top-level `[roi.*]` (first key is used)
 - ROI helper supports:
   - direct rectangle selection
