@@ -248,11 +248,12 @@ def build_fluid_model(
     config: FluidFlowerConfig,
     experiment: darsia.ProtocolledExperiment,
     rig: Rig,
-) -> darsia.CO2MassAnalysis | darsia.TracerMassAnalysis:
+) -> darsia.FluidMassAnalysis:
     """Fluid model of the configured `[physics]` fluid.
 
-    A fluid model offers `mass_analysis(c_aq, s_g)` and `inverse_mass_analysis(mass)`,
-    returning a `SimpleMassAnalysisResults`. `[physics]` is the single decider.
+    One model for all fluids (`FluidMassAnalysis`), with the fluid system of the
+    `[physics]` preset. It offers `mass_analysis(c_aq, s_g)` and
+    `inverse_mass_analysis(mass)`, returning a `SimpleMassAnalysisResults`.
 
     Parameters
     ----------
@@ -265,34 +266,28 @@ def build_fluid_model(
 
     Returns
     -------
-        CO2 mass analysis (PVT) for `co2`, tracer mass analysis for `tracer`.
+        Fluid mass analysis at the state of `experiment_start`; the state of each
+        image is set by `HeterogeneousColorToMassAnalysis.update_state`.
+
+    Raises
+    ------
+    ValueError
+        If the fluid has no fluid system.
     """
-    fluid = config.physics.fluid
     system = config.physics.system
     start = experiment.experiment_start
     protocol = experiment.pressure_temperature_protocol
     state = protocol.get_state(start)
     # All fluids depend on pressure and temperature, including their gradients.
     gradient = protocol.get_gradient(start)
-    if fluid == "tracer":
-        return darsia.TracerMassAnalysis(
-            baseline=rig.baseline,
-            atmospheric_pressure=state.pressure,
-            atmospheric_temperature=state.temperature,
-            atmospheric_pressure_gradient=gradient.pressure,
-            atmospheric_temperature_gradient=gradient.temperature,
-            system=system,
-        )
-    if fluid == "co2":
-        return darsia.CO2MassAnalysis(
-            baseline=rig.baseline,
-            atmospheric_pressure=state.pressure,
-            atmospheric_temperature=state.temperature,
-            atmospheric_pressure_gradient=gradient.pressure,
-            atmospheric_temperature_gradient=gradient.temperature,
-            system=system,
-        )
-    raise NotImplementedError(f"No fluid model for [physics] fluid = '{fluid}'.")
+    return darsia.FluidMassAnalysis(
+        baseline=rig.baseline,
+        atmospheric_pressure=state.pressure,
+        atmospheric_temperature=state.temperature,
+        atmospheric_pressure_gradient=gradient.pressure,
+        atmospheric_temperature_gradient=gradient.temperature,
+        system=system,
+    )
 
 
 def _build_color_to_mass_analysis(
@@ -332,6 +327,11 @@ def _build_color_to_mass_analysis(
         restoration=restoration,
         basis=embedding.basis,
         expert_knowledge_adapter=expert_knowledge_adapter,
+    )
+    # Pressure and temperature may change during the experiment: each analyzed image
+    # sets the state of the fluid model at its date.
+    color_to_mass_analysis.pressure_temperature_protocol = (
+        experiment.pressure_temperature_protocol
     )
 
     # ! ---- EVALUATION MODE OF THE CALIBRATION ----
