@@ -210,8 +210,9 @@ class SettingsFactory:
             }
             if "max_rows" in field_or_result:
                 result_dict["max_rows"] = field_or_result["max_rows"]
-            if "source_type_map" in field_or_result:
-                result_dict["source_type_map"] = field_or_result["source_type_map"]
+            for extra in ("source_type_map", "initial_keys", "prefill_state"):
+                if extra in field_or_result:
+                    result_dict[extra] = field_or_result[extra]
             return result_dict
         else:
             return field_or_result["rows"]
@@ -231,6 +232,19 @@ class SettingsFactory:
                 result.append(text)
                 seen.add(text)
         return result
+
+    @classmethod
+    def _key_list_value(cls, info):
+        """Selected names of a ``key_list`` widget.
+
+        Multi-row key lists fill their rows one event-loop tick after rendering; until
+        then the stored selection is returned, so an immediate sync (e.g. two saves in
+        a row) cannot erase it.
+        """
+        state = info.get("prefill_state")
+        if state is not None and not state["done"]:
+            return list(info.get("initial_keys", []))
+        return cls._extract_key_list_rows(info.get("rows", []))
 
     def __init__(self, main_window):
         self.main_window = main_window
@@ -1319,6 +1333,9 @@ class SettingsFactory:
 
         row_data_list = []
         row_combos = []  # List of QComboBox widgets for save_settings
+        # The rows are filled one event-loop tick later (see deferred_prefill). A sync
+        # before that must keep the stored selection instead of reading empty rows.
+        prefill_state = {"done": False}
 
         def refresh_remove_buttons():
             for row_data in row_data_list:
@@ -1404,6 +1421,7 @@ class SettingsFactory:
             # adds a row explicitly via "Add selection" if they want one.
             for key_name in current_keys:
                 add_row(key_name)
+            prefill_state["done"] = True
 
         QTimer.singleShot(0, deferred_prefill)
 
@@ -1412,6 +1430,8 @@ class SettingsFactory:
             "key_list": True,
             "rows": row_combos,
             "source_type_map": source_type_map,
+            "initial_keys": list(current_keys),
+            "prefill_state": prefill_state,
         }
         if max_rows is not None:
             result_dict["max_rows"] = max_rows
@@ -2353,6 +2373,11 @@ class SettingsFactory:
 
         # First pass: collect group checkbox states and determine which sub-inputs to skip
         group_active_names: dict[str, set[str]] = {}
+        # Groups of an active list that are displayed (checked or not), and the active
+        # names before this sync with whether the list was absent. A view may show only
+        # some groups of a section (e.g. a wizard page); the others keep their state.
+        group_displayed_names: dict[str, set[str]] = {}
+        active_list_base: dict[str, tuple[set[str], bool]] = {}
         skip_keys: set[str] = set()
 
         for key, value in self.main_window.settings_inputs.items():
@@ -2372,6 +2397,13 @@ class SettingsFactory:
                 # This is a group dict; record its active state
                 active_list_key = value["active_list_key"]
                 group_active_names.setdefault(active_list_key, set())
+                group_displayed_names.setdefault(active_list_key, set()).add(
+                    value["name"]
+                )
+                if active_list_key not in active_list_base:
+                    active_list_base[active_list_key] = self._active_list_base(
+                        active_list_key
+                    )
                 if value["checkbox"].isChecked():
                     group_active_names[active_list_key].add(value["name"])
                 else:
@@ -2573,7 +2605,7 @@ class SettingsFactory:
         # when the field is max_rows==1). Empty selection writes None.
         for key, value in self.main_window.settings_inputs.items():
             if isinstance(value, dict) and "key_list" in value:
-                result = self._extract_key_list_rows(value["rows"])
+                result = self._key_list_value(value)
                 if value.get("max_rows") == 1:
                     self.set_value(
                         self.main_window.config_dict, key, result[0] if result else None
@@ -2663,9 +2695,7 @@ class SettingsFactory:
                             isinstance(field_widget, dict)
                             and "key_list" in field_widget
                         ):
-                            result_list = self._extract_key_list_rows(
-                                field_widget.get("rows", [])
-                            )
+                            result_list = self._key_list_value(field_widget)
                             if result_list:
                                 entry_dict[field_name] = result_list
                             continue
@@ -2766,9 +2796,30 @@ class SettingsFactory:
                     # which require [[<key>]] entries with a "name" field.
                     self.set_value(self.main_window.config_dict, key, result)
 
-        # Seventh pass: write all active lists
-        for active_list_key, names in group_active_names.items():
+        # Seventh pass: write all active lists. Only the displayed groups are updated;
+        # an absent list stays absent if the displayed groups did not change it.
+        for active_list_key, checked in group_active_names.items():
+            base, was_absent = active_list_base[active_list_key]
+            names = (base - group_displayed_names[active_list_key]) | checked
+            if was_absent and names == base:
+                continue
             self.set_value(self.main_window.config_dict, active_list_key, sorted(names))
+
+    def _active_list_base(self, active_list_key: str) -> tuple[set[str], bool]:
+        """Active names of an active list before a sync, and whether it was absent.
+
+        An absent list means every sub-table present in the section is active (the
+        same rule the group checkboxes use when rendering).
+        """
+        stored = self.get_value(self.main_window.config_dict, active_list_key)
+        if isinstance(stored, list):
+            return set(stored), False
+        section = self.get_value(
+            self.main_window.config_dict, active_list_key.rsplit(".", 1)[0]
+        )
+        if not isinstance(section, dict):
+            return set(), True
+        return {name for name, sub in section.items() if isinstance(sub, dict)}, True
 
     def refresh_current_view(self):
         """Refresh the currently-displayed settings tab/view, preserving tab index.
