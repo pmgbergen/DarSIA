@@ -122,13 +122,13 @@ def analysis_mass_from_context(
         all=False,
         sub_config=config.analysis.mass,
     )
-    if not hasattr(color_to_mass_analysis, "co2_mass_analysis"):
+    if not hasattr(color_to_mass_analysis, "fluid_model"):
         raise AttributeError(
-            "Mass rescaling requires 'co2_mass_analysis' on color_to_mass_analysis."
+            "Mass rescaling requires 'fluid_model' on color_to_mass_analysis."
         )
-    co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
+    fluid_model = color_to_mass_analysis.fluid_model
     check_rescaling_possible(
-        co2_mass_analysis, experiment.injection_protocol, "Mass analysis"
+        fluid_model, experiment.injection_protocol, "Mass analysis"
     )
 
     # Resolve ROI registry keys to actual ROI configs
@@ -173,7 +173,7 @@ def analysis_mass_from_context(
         config, config.analysis.mass.formats or ["npz", "jpg"]
     )
 
-    vmax_mass = co2_mass_analysis.max_density
+    vmax_mass = fluid_model.max_density
     geometry_voxel_size = float(np.prod(np.asarray(fluidflower.geometry.voxel_size)))
     depth = getattr(fluidflower.geometry, "depth", 1.0)
     if hasattr(depth, "img"):
@@ -195,7 +195,7 @@ def analysis_mass_from_context(
     # Single-phase fluids (tracer) have no gas phase and are matched to the injected
     # volume: no gas products or columns; the mass columns stay (exact mass = injected
     # volume x model density) and volume columns (in m3) are added.
-    volume_basis = rescale_basis(co2_mass_analysis) == "volume"
+    volume_basis = rescale_basis(fluid_model) == "volume"
     has_gas = not volume_basis
 
     # Initialize DataFrame for storing integrated masses
@@ -274,7 +274,7 @@ def analysis_mass_from_context(
             },
             geometry=fluidflower.geometry,
             injection_protocol=experiment.injection_protocol,
-            co2_mass_analysis=co2_mass_analysis,
+            fluid_model=fluid_model,
             date=img.date,
             expert_knowledge_adapter=ctx.expert_knowledge_adapter,
         )
@@ -335,7 +335,7 @@ def analysis_mass_from_context(
                 exact_volume_roi = experiment.injection_protocol.injected_volume(
                     date=img.date, roi=roi_config.roi
                 )
-                exact_mass_roi = exact_volume_roi * co2_mass_analysis.scale
+                exact_mass_roi = exact_volume_roi * fluid_model.scale
                 row_data[f"{key}_exact_volume_m3"] = exact_volume_roi
                 row_data[f"{key}_detected_volume_m3"] = geometry[key].integrate(
                     concentration_aq.subregion(roi)

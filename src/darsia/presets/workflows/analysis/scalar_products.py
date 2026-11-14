@@ -40,7 +40,7 @@ class RescaledMassProducts:
     """Quantity the rescaling matches the injection protocol on: 'mass' or 'volume'."""
 
 
-def rescale_basis(co2_mass_analysis: Any) -> str:
+def rescale_basis(fluid_model: Any) -> str:
     """Quantity the rescaling matches the injection protocol on.
 
     A single-phase fluid model (for example a tracer) is rescaled on the injected
@@ -49,21 +49,21 @@ def rescale_basis(co2_mass_analysis: Any) -> str:
 
     Parameters
     ----------
-    co2_mass_analysis : Any
+    fluid_model : Any
         Fluid model, optionally with a `system` of type `darsia.FluidSystem`.
 
     Returns
     -------
         "volume" or "mass".
     """
-    system = getattr(co2_mass_analysis, "system", None)
+    system = getattr(fluid_model, "system", None)
     if system is not None and not system.is_multiphase:
         return "volume"
     return "mass"
 
 
 def check_rescaling_possible(
-    co2_mass_analysis: Any, injection_protocol: Any, step: str
+    fluid_model: Any, injection_protocol: Any, step: str
 ) -> None:
     """Raise early if rescaling needs a volumetric injection rate that is missing.
 
@@ -71,14 +71,14 @@ def check_rescaling_possible(
 
     Parameters
     ----------
-    co2_mass_analysis : Any
+    fluid_model : Any
         Fluid model.
     injection_protocol : Any
         Injection protocol; protocols without `has_volume` (test doubles) pass.
     step : str
         Name of the step, for the error message.
     """
-    if rescale_basis(co2_mass_analysis) == "volume" and not getattr(
+    if rescale_basis(fluid_model) == "volume" and not getattr(
         injection_protocol, "has_volume", True
     ):
         raise ValueError(
@@ -119,7 +119,7 @@ def compute_rescaled_mass_products(
     mass_analysis_result: darsia.SimpleMassAnalysisResults,
     geometry: darsia.Geometry,
     injection_protocol: Any,
-    co2_mass_analysis: darsia.FluidMassAnalysis,
+    fluid_model: darsia.FluidMassAnalysis,
     date: Any = None,
     epsilon: float = EPSILON,
     basis: str | None = None,
@@ -136,7 +136,7 @@ def compute_rescaled_mass_products(
     basis : str, optional
         "mass" or "volume"; by default derived from the fluid model.
     """
-    basis = rescale_basis(co2_mass_analysis) if basis is None else basis
+    basis = rescale_basis(fluid_model) if basis is None else basis
     if basis not in ("mass", "volume"):
         raise ValueError(f"Unknown rescaling basis '{basis}', use 'mass' or 'volume'.")
 
@@ -151,14 +151,14 @@ def compute_rescaled_mass_products(
             geometry.integrate(mass_analysis_result.concentration_aq)
         )
         exact_volume_total = float(injection_protocol.injected_volume(date=date))
-        exact_mass_total = exact_volume_total * co2_mass_analysis.scale
+        exact_mass_total = exact_volume_total * fluid_model.scale
         detected_total, exact_total = detected_volume_total, exact_volume_total
 
     mass_scaling_factor = (
         exact_total / detected_total if np.abs(detected_total) > epsilon else 1.0
     )
     rescaled_mass = darsia.weight(mass_analysis_result.mass, mass_scaling_factor)
-    rescaled_result = co2_mass_analysis.inverse_mass_analysis(rescaled_mass)
+    rescaled_result = fluid_model.inverse_mass_analysis(rescaled_mass)
     return RescaledMassProducts(
         rescaled_result=rescaled_result,
         mass_scaling_factor=mass_scaling_factor,
@@ -176,7 +176,7 @@ def analysis_scalar_products(
     requested_modes: set[str] | list[str] | tuple[str, ...] | None = None,
     geometry: darsia.Geometry | None = None,
     injection_protocol: Any | None = None,
-    co2_mass_analysis: darsia.FluidMassAnalysis | None = None,
+    fluid_model: darsia.FluidMassAnalysis | None = None,
     date: Any = None,
     expert_knowledge_adapter: "ExpertKnowledgeAdapter | None" = None,
     basis: str | None = None,
@@ -195,7 +195,7 @@ def analysis_scalar_products(
         "mass_aq": mass_analysis_result.mass_aq,
     }
     # A single-phase fluid has no gas: there are no gas products
-    single_phase = rescale_basis(co2_mass_analysis) == "volume"
+    single_phase = rescale_basis(fluid_model) == "volume"
     if single_phase:
         del products["saturation_g"]
         del products["mass_g"]
@@ -205,17 +205,17 @@ def analysis_scalar_products(
     if not requires_rescaled_modes(requested_modes):
         return products, None
 
-    if geometry is None or injection_protocol is None or co2_mass_analysis is None:
+    if geometry is None or injection_protocol is None or fluid_model is None:
         raise ValueError(
             "Rescaled modes requested but missing geometry/injection_protocol/"
-            "co2_mass_analysis."
+            "fluid_model."
         )
 
     rescaled = compute_rescaled_mass_products(
         mass_analysis_result=mass_analysis_result,
         geometry=geometry,
         injection_protocol=injection_protocol,
-        co2_mass_analysis=co2_mass_analysis,
+        fluid_model=fluid_model,
         date=date,
         basis=basis,
     )

@@ -48,7 +48,7 @@ def test_analysis_scalar_products_skips_rescaling_if_not_requested() -> None:
         requested_modes={"mass_total"},
         geometry=darsia.Geometry(space_dim=2, num_voxels=(2, 2), dimensions=[1.0, 1.0]),
         injection_protocol=SimpleNamespace(injected_mass=lambda **kwargs: 10.0),
-        co2_mass_analysis=co2,
+        fluid_model=co2,
     )
 
     assert rescaled is None
@@ -81,7 +81,7 @@ def test_analysis_scalar_products_zero_detected_mass_uses_unit_scaling() -> None
         requested_modes={"rescaled_mass"},
         geometry=darsia.Geometry(space_dim=2, num_voxels=(2, 2), dimensions=[1.0, 1.0]),
         injection_protocol=SimpleNamespace(injected_mass=lambda **kwargs: 10.0),
-        co2_mass_analysis=co2,
+        fluid_model=co2,
     )
 
     assert rescaled is not None
@@ -116,7 +116,7 @@ def test_analysis_scalar_products_applies_expert_knowledge_to_rescaled_fields() 
         requested_modes={"rescaled_saturation_g", "rescaled_concentration_aq"},
         geometry=darsia.Geometry(space_dim=2, num_voxels=(2, 2), dimensions=[1.0, 1.0]),
         injection_protocol=SimpleNamespace(injected_mass=lambda **kwargs: 1.0),
-        co2_mass_analysis=_Co2Mass(),
+        fluid_model=_Co2Mass(),
         expert_knowledge_adapter=adapter,
     )
 

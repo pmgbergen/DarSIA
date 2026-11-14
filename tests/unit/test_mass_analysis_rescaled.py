@@ -91,7 +91,7 @@ def test_analysis_mass_writes_default_artifacts_only(
 
     class _FakeColorToMass:
         def __init__(self, co2_mass_analysis: CO2MassAnalysis) -> None:
-            self.co2_mass_analysis = co2_mass_analysis
+            self.fluid_model = co2_mass_analysis
 
         def __call__(self, image: darsia.Image) -> darsia.SimpleMassAnalysisResults:
             c_aq = darsia.ScalarImage(
@@ -108,7 +108,7 @@ def test_analysis_mass_writes_default_artifacts_only(
                 date=image.date,
                 name=image.name,
             )
-            return self.co2_mass_analysis.mass_analysis(c_aq=c_aq, s_g=s_g)
+            return self.fluid_model.mass_analysis(c_aq=c_aq, s_g=s_g)
 
     co2 = _make_co2_mass_analysis((4, 4))
     co2.solubility_co2 = np.full((4, 4), 2.0)
@@ -200,7 +200,7 @@ def test_analysis_mass_writes_configured_export_subset_with_extensive_modes(
 
     class _FakeColorToMass:
         def __init__(self, co2_mass_analysis: CO2MassAnalysis) -> None:
-            self.co2_mass_analysis = co2_mass_analysis
+            self.fluid_model = co2_mass_analysis
 
         def __call__(self, image: darsia.Image) -> darsia.SimpleMassAnalysisResults:
             c_aq = darsia.ScalarImage(
@@ -217,7 +217,7 @@ def test_analysis_mass_writes_configured_export_subset_with_extensive_modes(
                 date=image.date,
                 name=image.name,
             )
-            return self.co2_mass_analysis.mass_analysis(c_aq=c_aq, s_g=s_g)
+            return self.fluid_model.mass_analysis(c_aq=c_aq, s_g=s_g)
 
     co2 = _make_co2_mass_analysis((4, 4))
     co2.solubility_co2 = np.full((4, 4), 2.0)
@@ -306,7 +306,7 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
 
     class _FakeColorToMass:
         def __init__(self, co2_mass_analysis: CO2MassAnalysis) -> None:
-            self.co2_mass_analysis = co2_mass_analysis
+            self.fluid_model = co2_mass_analysis
 
         def __call__(self, image: darsia.Image) -> darsia.SimpleMassAnalysisResults:
             c_aq = darsia.ScalarImage(
@@ -323,7 +323,7 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
                 date=image.date,
                 name=image.name,
             )
-            return self.co2_mass_analysis.mass_analysis(c_aq=c_aq, s_g=s_g)
+            return self.fluid_model.mass_analysis(c_aq=c_aq, s_g=s_g)
 
     co2 = _make_co2_mass_analysis((4, 4))
     co2.solubility_co2 = np.full((4, 4), 2.0)
@@ -410,7 +410,7 @@ def test_analysis_mass_passes_natural_scalar_write_bounds(
 
     class _FakeColorToMass:
         def __init__(self, co2_mass_analysis: CO2MassAnalysis) -> None:
-            self.co2_mass_analysis = co2_mass_analysis
+            self.fluid_model = co2_mass_analysis
 
         def __call__(self, image: darsia.Image) -> darsia.SimpleMassAnalysisResults:
             c_aq = darsia.ScalarImage(
@@ -427,7 +427,7 @@ def test_analysis_mass_passes_natural_scalar_write_bounds(
                 date=image.date,
                 name=image.name,
             )
-            return self.co2_mass_analysis.mass_analysis(c_aq=c_aq, s_g=s_g)
+            return self.fluid_model.mass_analysis(c_aq=c_aq, s_g=s_g)
 
     co2 = _make_co2_mass_analysis((4, 4))
     co2.solubility_co2 = np.full((4, 4), 2.0)

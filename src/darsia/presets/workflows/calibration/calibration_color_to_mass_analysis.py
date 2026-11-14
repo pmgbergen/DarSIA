@@ -321,7 +321,6 @@ def calibration_color_to_mass_analysis_from_context(
 
     # ! ---- FROM COLOR PATH TO MASS ----
 
-    # NOTE: The keyword keeps its historic name co2_mass_analysis, as consumers read it.
     fluid_model = build_fluid_model(config, experiment, fluidflower)
     mass_folder = embedding.calibration_folder(interpretation.quantity)
 
@@ -349,7 +348,7 @@ def calibration_color_to_mass_analysis_from_context(
             baseline=fluidflower.baseline,
             labels=selected_labels,
             interpretation=interpretation,
-            co2_mass_analysis=fluid_model,
+            fluid_model=fluid_model,
             geometry=fluidflower.geometry,
             restoration=restoration,
             basis=selected_basis,
@@ -368,7 +367,7 @@ def calibration_color_to_mass_analysis_from_context(
             baseline=fluidflower.baseline,
             labels=selected_labels,
             interpretation=interpretation,
-            co2_mass_analysis=fluid_model,
+            fluid_model=fluid_model,
             geometry=fluidflower.geometry,
             restoration=restoration,
             basis=selected_basis,
@@ -418,7 +417,7 @@ def calibration_color_to_mass_analysis_from_context(
             color_path_interpretation=color_path_interpretation,
             signal_functions=signal_functions,
             flash=new_flash(interpretation.closure),
-            co2_mass_analysis=fluid_model,
+            fluid_model=fluid_model,
             geometry=fluidflower.geometry,
             restoration=restoration,
             ignore_labels=calibration_ignore_labels + ignore_labels,

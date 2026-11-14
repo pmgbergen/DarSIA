@@ -250,13 +250,13 @@ def analysis_thresholding_from_context(
         if result is not None:
             scalar_kwargs = {}
             if need_rescaled:
-                co2_mass_analysis = None
-                if hasattr(color_to_mass_analysis, "co2_mass_analysis"):
-                    co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
+                fluid_model = None
+                if hasattr(color_to_mass_analysis, "fluid_model"):
+                    fluid_model = color_to_mass_analysis.fluid_model
                 scalar_kwargs = {
                     "geometry": fluidflower.geometry,
                     "injection_protocol": experiment.injection_protocol,
-                    "co2_mass_analysis": co2_mass_analysis,
+                    "fluid_model": fluid_model,
                     "date": img.date,
                 }
             mode_images, _ = analysis_scalar_products(
