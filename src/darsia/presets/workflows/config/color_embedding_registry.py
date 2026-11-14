@@ -24,23 +24,25 @@ EMBEDDING_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 """Allowed color embedding names: letters, digits, '_' and '-'. A name is a folder on
 disk and a reference in other keys (e.g. cmap = "color_path.<name>.<label>")."""
 
+EMBEDDING_NAME_HINT = "Use only letters, digits, '_' and '-' (no spaces or dots)"
+"""Rule of EMBEDDING_NAME_PATTERN in words (error message and GUI tooltip)."""
 
-def check_embedding_name(name: str, context: str) -> None:
+
+def check_embedding_name(name: str, kind: str = "Color embedding") -> None:
     """Raise if a color embedding name contains other than letters, digits, '_', '-'.
 
     Parameters
     ----------
     name : str
         Embedding name (registry key).
-    context : str
-        Where the name was found, for the error message.
+    kind : str
+        Kind of embedding for the message, e.g. "Color path".
     """
     if not EMBEDDING_NAME_PATTERN.match(name):
         suggestion = re.sub(r"[^A-Za-z0-9_-]+", "_", name).strip("_") or "color_path"
         raise ValueError(
-            f"{context}: color embedding name '{name}' may only contain letters, "
-            f"digits, '_' and '-' (no spaces or dots), e.g. '{suggestion}'. Renaming "
-            "also renames its results folder; move an existing calibration along."
+            f"{kind} name '{name}' is not allowed. {EMBEDDING_NAME_HINT}, "
+            f"e.g. '{suggestion}'."
         )
 
 
@@ -286,7 +288,9 @@ class ColorEmbeddingRegistry:
                         )
 
                     entry_name = str(entry_name).strip()
-                    check_embedding_name(entry_name, f"[[{array_name}]] entry {idx}")
+                    check_embedding_name(
+                        entry_name, array_name.replace("_", " ").capitalize()
+                    )
                     if entry_name in self._embeddings:
                         raise ValueError(
                             f"Color embedding name '{entry_name}' is duplicated. "
@@ -539,6 +543,8 @@ class ColorEmbeddingRegistryConfig:
             "help": "Color path embeddings for calibration and analysis.",
             "widget": "dataclass_group_map",
             "array_key": "color_path",
+            "name_pattern": EMBEDDING_NAME_PATTERN.pattern,
+            "name_hint": EMBEDDING_NAME_HINT,
         },
     )
     """Dict of color path embeddings, keyed by name."""
@@ -550,6 +556,8 @@ class ColorEmbeddingRegistryConfig:
             "help": "Color range embeddings (HSV/RGB bounds).",
             "widget": "dataclass_group_map",
             "array_key": "color_range",
+            "name_pattern": EMBEDDING_NAME_PATTERN.pattern,
+            "name_hint": EMBEDDING_NAME_HINT,
         },
     )
     """Dict of color range embeddings, keyed by name."""
@@ -561,6 +569,8 @@ class ColorEmbeddingRegistryConfig:
             "help": "Color channel embeddings with optional masks.",
             "widget": "dataclass_group_map",
             "array_key": "color_channel",
+            "name_pattern": EMBEDDING_NAME_PATTERN.pattern,
+            "name_hint": EMBEDDING_NAME_HINT,
         },
     )
     """Dict of color channel embeddings, keyed by name."""

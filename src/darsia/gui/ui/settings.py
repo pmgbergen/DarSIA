@@ -132,6 +132,16 @@ def _format_list_text(value):
     return ", ".join(str(v) for v in value)
 
 
+TIME_HINT = "Use HH:MM:SS, HH:MM, DD:HH:MM:SS or hours, e.g. 00:30:00 or 0.5"
+"""Accepted time formats in words (GUI tooltip)."""
+
+
+def _set_field_error(edit, message=None):
+    """Mark an input red with the message as tooltip, or clear the mark (None)."""
+    edit.setStyleSheet("border: 1px solid #d32f2f;" if message else "")
+    edit.setToolTip(message or "")
+
+
 class SettingsFactory:
     """Factory for creating settings input widgets and managing settings."""
 
@@ -898,6 +908,28 @@ class SettingsFactory:
 
                 name_edit.textChanged.connect(update_group_title)
 
+                # Optional name rule of the registry (e.g. color embeddings): mark an
+                # invalid name red while typing, with the rule as tooltip.
+                name_pattern = setting_dict.get("name_pattern")
+                if name_pattern:
+                    import re
+
+                    name_regex = re.compile(name_pattern)
+                    name_hint = setting_dict.get("name_hint") or (
+                        f"Name must match {name_pattern}"
+                    )
+
+                    def check_name(text):
+                        text = text.strip()
+                        invalid = text and not name_regex.match(text)
+                        _set_field_error(
+                            name_edit,
+                            f"Invalid name. {name_hint}." if invalid else None,
+                        )
+
+                    name_edit.textChanged.connect(check_name)
+                    check_name(name_edit.text())
+
                 # Build one widget per schema field using create_setting_edit
                 field_widgets = {}  # name -> composite widget dict
                 field_row_map = {}
@@ -1506,14 +1538,12 @@ class SettingsFactory:
                 def normalize_list(se=setting_edit, lt=list_type, fl=fixed_length):
                     text = se.text()
                     if not text.strip():
-                        se.setStyleSheet("")
-                        se.setToolTip("")
+                        _set_field_error(se)
                         return
                     try:
                         parsed = _parse_list_text(text, lt)
                     except (ValueError, SyntaxError) as e:
-                        se.setStyleSheet("border: 1px solid #d32f2f;")
-                        se.setToolTip(f"Invalid list value: {e}")
+                        _set_field_error(se, f"Invalid list value: {e}")
                         return
 
                     # Truncate to fixed length if too long
@@ -1523,13 +1553,11 @@ class SettingsFactory:
 
                     # Mark red if too short
                     if len(parsed) < fl:
-                        se.setStyleSheet("border: 1px solid #d32f2f;")
-                        se.setToolTip(
-                            f"Expected exactly {fl} entries, got {len(parsed)}."
+                        _set_field_error(
+                            se, f"Expected exactly {fl} entries, got {len(parsed)}."
                         )
                     else:
-                        se.setStyleSheet("")
-                        se.setToolTip("")
+                        _set_field_error(se)
 
                 setting_edit.editingFinished.connect(normalize_list)
 
@@ -1563,29 +1591,29 @@ class SettingsFactory:
 
         required = bool(setting_dict.get("required"))
 
-        # Wire normalization on blur
+        # Mark an invalid (or missing required) time red while typing and at load
+        def check_time(text):
+            text = text.strip()
+            if not text:
+                message = f"{display_name} is required." if required else None
+            else:
+                try:
+                    _normalize_time_string(text)
+                    message = None
+                except (ValueError, AssertionError):
+                    message = f"Invalid time. {TIME_HINT}."
+            _set_field_error(setting_edit, message)
+            return message is None
+
+        # Rewrite a valid time to canonical HH:MM:SS on blur (not while typing)
         def normalize_time():
             text = setting_edit.text().strip()
-            if not text:
-                if required:
-                    setting_edit.setStyleSheet("border: 1px solid #d32f2f;")
-                    setting_edit.setToolTip(f"{display_name} is required.")
-                else:
-                    setting_edit.setStyleSheet("")
-                    setting_edit.setToolTip("")
-                return
-            try:
-                normalized = _normalize_time_string(text)
-                setting_edit.setText(normalized)
-                # Clear error styling on success
-                setting_edit.setStyleSheet("")
-                setting_edit.setToolTip("")
-            except (ValueError, AssertionError) as e:
-                # Show error state but don't crash or lose the text
-                setting_edit.setStyleSheet("border: 1px solid #d32f2f;")
-                setting_edit.setToolTip(f"Invalid time format: {e}")
+            if text and check_time(text):
+                setting_edit.setText(_normalize_time_string(text))
 
+        setting_edit.textChanged.connect(check_time)
         setting_edit.editingFinished.connect(normalize_time)
+        check_time(setting_edit.text())
 
         # Build composite field widget with type label and help button
         field_widget = QWidget()
