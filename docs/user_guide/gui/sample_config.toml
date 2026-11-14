@@ -30,7 +30,7 @@ name = "jpg"
 type = "jpg"
 filename_pattern = "spatial_map_HH:MM"
 resolution = [1080, 4]
-cmap = "color_path.from_facies.7"
+cmap = "color_path.color_path.7"
 keep_ratio = true
 quality = 100
 

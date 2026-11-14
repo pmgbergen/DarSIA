@@ -273,7 +273,7 @@ which corner is listed first. Reference by `name` from `analysis.*.roi`,
 name = "jpg"
 type = "jpg"
 resolution = [1080, 4]
-cmap = "color_path.color_path.7"  # color_path.<embedding_id>[.<label>]; legacy: color_path.from_facies.7
+cmap = "color_path.color_path.7"  # color_path.<embedding_id>[.<label>]
 keep_ratio = true
 quality = 100
 
