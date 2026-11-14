@@ -186,12 +186,12 @@ def calibration_color_to_mass_analysis_from_context(
 
     color_paths = darsia.LabelColorPathMap.load_csv(embedding.color_paths_csv_file)
 
-    # Pick a reference color path - merely for visualization
+    # Reference color path: colormap of the calibration plots, and scale for the
+    # start values of a new calibration (Util 2 below). A stored calibration does
+    # not depend on it.
     reference_label = embedding.reference_label
     reference_color_path = color_paths[reference_label]
     custom_cmap = reference_color_path.get_color_map()
-    if show and False:
-        reference_color_path.show_path()
 
     baseline_color_spectrum = _load_baseline_color_spectrum_for_color_to_mass(
         baseline_color_spectrum_folder=embedding.baseline_color_spectrum_folder,
@@ -291,11 +291,6 @@ def calibration_color_to_mass_analysis_from_context(
     for label in color_path_interpolation:
         if interpolation_values[label] > 0:
             color_path_interpolation[label].values *= interpolation_values[label]
-
-    # Overwrite the color paths with updated interpolation values
-    for label in np.unique(selected_labels.img):
-        if label in calibration_ignore_labels or label in ignore_labels:
-            color_path_interpolation[label] = color_path_interpolation[reference_label]
 
     # ! ---- COLOR PATH INTERPRETATION ---- ! #
 
@@ -472,10 +467,6 @@ def calibration_color_to_mass_analysis_from_context(
             cmap=custom_cmap,
             save=lambda: color_analysis.save(mass_folder, interpretation),
         )
-
-    for label in np.unique(selected_labels.img):
-        if label in calibration_ignore_labels or label in ignore_labels:
-            color_paths[label] = color_paths[reference_label]
 
     # Store calibration
     color_analysis.save(mass_folder, interpretation)
