@@ -173,7 +173,7 @@ data = "analysis_imgs"
 mode = "rescaled_mass"
 # Either direct type (csv/npz) or a [format.*.*] registry key resolving to csv/npz.
 format = "csv"
-# Optional colormap (matplotlib.<name> or color_path.from_<basis>.<label>)
+# Optional colormap (matplotlib.<name> or color_path.<embedding_id>[.<label>])
 # cmap = "matplotlib.viridis"
 # Optional ROI keys from top-level [roi.*]; when omitted, full image is used.
 # roi = ["main"]
