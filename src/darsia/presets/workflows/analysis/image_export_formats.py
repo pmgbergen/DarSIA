@@ -9,6 +9,7 @@ from typing import Any
 import numpy as np
 
 import darsia
+from darsia.presets.workflows.analysis.colormaps import resolve_cmap
 from darsia.presets.workflows.config.format_registry import (
     NAME_IDENTIFIER_PATTERN,
     SUPPORTED_EXPORT_FORMATS,
@@ -106,74 +107,14 @@ class ImageExportFormats:
                 resolved.append(spec)
         return resolved
 
-    def _color_path_embedding(self, key: str):
-        """Colour-path embedding with id `key` in the color registry."""
-        from darsia.signals.color import ColorPathEmbedding
-
-        registry = getattr(self.config, "color", None)
-        embeddings = {} if registry is None else registry.resolve_all()
-        paths = {
-            name: emb
-            for name, emb in embeddings.items()
-            if isinstance(emb, ColorPathEmbedding)
-        }
-        if key in paths:
-            return paths[key]
-        raise KeyError(
-            f"no colour-path embedding '{key}' (available: {sorted(paths) or 'none'})."
-        )
-
-    def _load_color_path_cmap(self, cmap_name: str):
-        """Colormap of a calibrated colour path: color_path.<embedding_id>[.<label>].
-
-        Without a label, the embedding's reference label is used.
-        """
-        parts = cmap_name.split(".")
-        try:
-            if len(parts) not in (2, 3):
-                raise ValueError("expected color_path.<embedding_id>[.<label>]")
-            key = parts[1]
-            label = int(parts[2]) if len(parts) == 3 else None
-
-            embedding = self._color_path_embedding(key)
-            label = embedding.reference_label if label is None else label
-            csv = Path(embedding.color_paths_csv_file)
-            if not csv.exists():
-                raise FileNotFoundError(f"colour paths not calibrated yet ({csv}).")
-            color_paths = darsia.LabelColorPathMap.load_csv(csv)
-            if label not in color_paths:
-                raise KeyError(
-                    f"no colour path for label {label} "
-                    f"(labels: {sorted(color_paths)})."
-                )
-            return color_paths[label].get_color_map(name=cmap_name)
-        except (ValueError, KeyError, FileNotFoundError) as error:
-            logger.warning(
-                "Colormap '%s' not available, using the default: %s", cmap_name, error
-            )
-            return None
-
     def _resolve_cmap(self, cmap_name: str | None):
         """Colormap of a cmap name (None: default), resolved once per name."""
         if cmap_name is None:
             return None
         if cmap_name not in self._cmaps:
-            self._cmaps[cmap_name] = self._resolve_cmap_uncached(cmap_name)
+            registry = getattr(self.config, "color", None)
+            self._cmaps[cmap_name] = resolve_cmap(cmap_name, registry)
         return self._cmaps[cmap_name]
-
-    def _resolve_cmap_uncached(self, cmap_name: str):
-        if cmap_name.startswith("matplotlib."):
-            import matplotlib
-
-            return matplotlib.colormaps[cmap_name.split(".", 1)[1]]
-        if cmap_name.startswith("color_path."):
-            return self._load_color_path_cmap(cmap_name)
-        logger.warning(
-            "Colormap '%s' not recognized (use matplotlib.<name> or "
-            "color_path.<embedding_id>[.<label>]), using the default.",
-            cmap_name,
-        )
-        return None
 
     def _prepare_image(
         self, image: darsia.Image, spec: ImageExportFormat
