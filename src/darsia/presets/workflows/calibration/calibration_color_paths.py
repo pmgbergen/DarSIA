@@ -130,20 +130,33 @@ def calibration_color_paths_from_context(
         sub_config=color_cfg,
     )
 
-    # Resolve baseline image paths from the calibration config's baseline field
-    baseline_sub_config = SimpleNamespace(data_selection=color_cfg.baseline)
-    baseline_image_paths = select_image_paths(
-        config,
-        experiment,
-        all=False,
-        sub_config=baseline_sub_config,
+    # Baseline images (no tracer) are only needed to ignore their color fluctuations.
+    # Without any, the rig baseline stands in: an empty list, for which all relative
+    # colors are zero (see LabelColorPathMapRegression.get_color_spectrum).
+    baseline_images: list[darsia.Image] = []
+    uses_baseline_spectrum = color_cfg.color_path is not None and (
+        color_cfg.color_path.ignore_baseline_spectrum in ("baseline", "expanded")
     )
-    baseline_images: list[darsia.Image] = load_images_with_cache(
-        rig=fluidflower,
-        paths=baseline_image_paths,
-        use_cache=config.data.use_cache,
-        cache_dir=config.data.cache,
-    )
+    if uses_baseline_spectrum and color_cfg.baseline:
+        baseline_sub_config = SimpleNamespace(data_selection=color_cfg.baseline)
+        baseline_image_paths = select_image_paths(
+            config,
+            experiment,
+            all=False,
+            sub_config=baseline_sub_config,
+        )
+        baseline_images = load_images_with_cache(
+            rig=fluidflower,
+            paths=baseline_image_paths,
+            use_cache=config.data.use_cache,
+            cache_dir=config.data.cache,
+        )
+    elif uses_baseline_spectrum:
+        logger.info(
+            "No baseline images configured (calibration.color.baseline): the rig "
+            "baseline is used, i.e. only its own colors (zero relative colors) are "
+            "ignored."
+        )
 
     # Cache calibration images for performance
     calibration_images: list[darsia.Image] = load_images_with_cache(

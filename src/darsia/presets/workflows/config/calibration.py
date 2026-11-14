@@ -113,7 +113,8 @@ class CalibrationColorConfig:
         default=None,
         metadata={
             "name": "Baseline",
-            "help": "Registry key name(s) for baseline images.",
+            "help": "Registry key name(s) for baseline images (no tracer), whose color "
+            "fluctuations are ignored. Optional: without, the rig baseline is used.",
             "widget": "key_list",
             "key_list_sources": REGISTRY_SOURCES,
         },

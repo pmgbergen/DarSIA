@@ -151,7 +151,9 @@ mass calibration step; `sample_config.toml` uses `manual` with a hand-picked
 `ignore_baseline_spectrum` (`none`/`baseline`/`expanded`) controls whether —
 and how much of — the baseline (pre-injection) image's own color spectrum is
 excluded from the fit; useful when the baseline itself has a slight
-non-uniform tint that shouldn't be mistaken for a calibration signal.
+non-uniform tint that shouldn't be mistaken for a calibration signal. The baseline
+images (`[calibration.color] baseline`) are optional: without them the rig baseline is
+used, so only its own colors (zero relative color) are excluded.
 
 ## Related reference material
 
