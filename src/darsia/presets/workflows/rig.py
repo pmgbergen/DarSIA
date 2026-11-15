@@ -1183,43 +1183,52 @@ class Rig:
         rig.baseline_path = Path(meta_data["baseline_path"])
 
         # Load data for reading images
-        rig.baseline = darsia.imread(folder / "baseline.npz")
-        if (folder / "shape_corrected_baseline.npz").exists():
-            rig.shape_corrected_baseline = darsia.imread(
-                folder / "shape_corrected_baseline.npz"
-            )
-        else:
-            rig.shape_corrected_baseline = rig.baseline.copy()
+        with darsia.timed("baseline"):
+            rig.baseline = darsia.imread(folder / "baseline.npz")
+            if (folder / "shape_corrected_baseline.npz").exists():
+                rig.shape_corrected_baseline = darsia.imread(
+                    folder / "shape_corrected_baseline.npz"
+                )
+            else:
+                rig.shape_corrected_baseline = rig.baseline.copy()
         logger.info("Baseline setup complete.")
 
         # Load corrections
-        rig.load_corrections(folder, corrections_config=corrections_config)
+        with darsia.timed("corrections"):
+            rig.load_corrections(folder, corrections_config=corrections_config)
 
         # Load depth map
-        rig.setup_depth(path=folder / "depth.npz")
+        with darsia.timed("depth"):
+            rig.setup_depth(path=folder / "depth.npz")
 
         # Load labels information - corrections not needed assuming labels are aligned with
         # the corrected baseline.
-        rig.setup_labels(path=folder / "labels.npz", apply_corrections=False)
+        with darsia.timed("labels"):
+            rig.setup_labels(path=folder / "labels.npz", apply_corrections=False)
 
         # Setup inner labels information
-        rig.setup_inner_labels()
+        with darsia.timed("inner labels"):
+            rig.setup_inner_labels()
 
         # Load facies information - corrections not needed assuming facies are aligned with
-        rig.setup_facies(path=folder / "facies.npz", apply_corrections=False)
+        with darsia.timed("facies"):
+            rig.setup_facies(path=folder / "facies.npz", apply_corrections=False)
 
         # Load facies properties
-        rig.setup_facies_props(
-            porosity=folder / "porosity.npz",
-            permeability=folder / "permeability.npz",
-        )
+        with darsia.timed("facies properties"):
+            rig.setup_facies_props(
+                porosity=folder / "porosity.npz",
+                permeability=folder / "permeability.npz",
+            )
 
         # Setup geometry information
-        rig.setup_geometry()
+        with darsia.timed("geometry"):
+            rig.setup_geometry()
 
         # Load image porosity information
-        rig.setup_image_porosity(path=folder / "image_porosity.npz")
-        rig.setup_boolean_image_porosity()
+        with darsia.timed("image porosity"):
+            rig.setup_image_porosity(path=folder / "image_porosity.npz")
+            rig.setup_boolean_image_porosity()
 
         # TODO setup color_analysis, and pw_transformation.
 
@@ -1310,6 +1319,7 @@ class Rig:
         else:
             return darsia.ScalarImage(values_reshaped, **metadata)
 
+    @darsia.timed("read image")
     def read_image(self, path: Path) -> darsia.Image:
         """Read image from file and apply corrections.
 

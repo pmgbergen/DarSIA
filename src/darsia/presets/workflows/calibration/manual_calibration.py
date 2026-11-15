@@ -185,23 +185,25 @@ class CalibrationState:
         self.coarse_shape = tuple[int]((coarse_rows, coarse_cols))
 
         # Coarsen the image and labels for better visualization
-        self.coarse_labels = darsia.resize(
-            labels,
-            shape=self.coarse_shape,
-            interpolation="inter_nearest",
-        )
-        self.coarse_images = [
-            darsia.resize(image, shape=self.coarse_shape) for image in images
-        ]
-        self.coarse_depth = darsia.resize(
-            analysis.geometry.depth, shape=self.coarse_shape
-        )
-        self.coarse_porosity = darsia.resize(
-            analysis.geometry.porosity, shape=self.coarse_shape
-        )
-        self.coarse_effective_depth = darsia.resize(
-            analysis.geometry.weight, shape=self.coarse_shape
-        )
+        with darsia.timed("display images"):
+            self.coarse_labels = darsia.resize(
+                labels,
+                shape=self.coarse_shape,
+                interpolation="inter_nearest",
+            )
+            self.coarse_images = [
+                darsia.resize(image, shape=self.coarse_shape) for image in images
+            ]
+        with darsia.timed("display geometry"):
+            self.coarse_depth = darsia.resize(
+                analysis.geometry.depth, shape=self.coarse_shape
+            )
+            self.coarse_porosity = darsia.resize(
+                analysis.geometry.porosity, shape=self.coarse_shape
+            )
+            self.coarse_effective_depth = darsia.resize(
+                analysis.geometry.weight, shape=self.coarse_shape
+            )
 
         # ! ---- INITIAL STATE (restored by the Reset button) ----
 
@@ -296,33 +298,39 @@ class CalibrationState:
         """
         if factor in self._levels:
             return self._levels[factor]
-        if factor == 1:
-            analysis, images = self.analysis, self.images
-        else:
-            analysis = self.analysis.reduced(factor)
-            shape = analysis.labels.img.shape[:2]
-            images = [
-                darsia.resize(image, shape=shape, interpolation="inter_area")
-                for image in self.images
-            ]
-        # The projection onto the color path is expensive, so the color interpretations
-        # of the images are cached. Without projection, they are merely the baseline
-        # relative colors (3 channels, i.e., larger), cheap to compute and not cached.
-        color_interpretations = (
-            [analysis.call_color_interpretation(image) for image in images]
-            if analysis.evaluation_mode.projects_onto_path
-            else None
-        )
-        level = ResolutionLevel(factor, analysis, images, color_interpretations, [])
-        self._levels[factor] = level
-        level.coarse_color_interpretations = [
-            self._display_color_interpretation(
-                color_interpretations[idx]
-                if color_interpretations is not None
-                else analysis.call_color_interpretation(images[idx])
-            )
-            for idx in range(len(images))
-        ]
+        with darsia.timed(f"resolution level {factor}"):
+            if factor == 1:
+                analysis, images = self.analysis, self.images
+            else:
+                with darsia.timed("reduce analysis"):
+                    analysis = self.analysis.reduced(factor)
+                shape = analysis.labels.img.shape[:2]
+                with darsia.timed("reduce images"):
+                    images = [
+                        darsia.resize(image, shape=shape, interpolation="inter_area")
+                        for image in self.images
+                    ]
+            # The projection onto the color path is expensive, so the color
+            # interpretations of the images are cached. Without projection, they are
+            # merely the baseline relative colors (3 channels, i.e., larger), cheap to
+            # compute and not cached.
+            with darsia.timed("color interpretations"):
+                color_interpretations = (
+                    [analysis.call_color_interpretation(image) for image in images]
+                    if analysis.evaluation_mode.projects_onto_path
+                    else None
+                )
+            level = ResolutionLevel(factor, analysis, images, color_interpretations, [])
+            self._levels[factor] = level
+            with darsia.timed("display interpretations"):
+                level.coarse_color_interpretations = [
+                    self._display_color_interpretation(
+                        color_interpretations[idx]
+                        if color_interpretations is not None
+                        else analysis.call_color_interpretation(images[idx])
+                    )
+                    for idx in range(len(images))
+                ]
         return level
 
     def set_resolution(self, factor: int) -> bool:
@@ -468,6 +476,7 @@ class CalibrationState:
             "s_g": self._coarsen(result.saturation_g),
         }
 
+    @darsia.timed("maps of the shown image")
     def compute_maps(self) -> dict:
         """Analyze the current image at the current resolution, resized for display.
 
@@ -601,6 +610,7 @@ class CalibrationState:
         return geometries[roi_key]
 
     @darsia.timing_decorator
+    @darsia.timed("mass series (all images)")
     def update_mass_analysis(self) -> None:
         """Update the series (per roi) of detected and injected mass over all images."""
         analysis = self.level.analysis

@@ -11,6 +11,7 @@ import logging
 import sys
 from pathlib import Path
 
+import darsia
 from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_context
 from darsia.presets.workflows.calibration.calibration_color_paths import (
     calibration_color_paths_from_context,
@@ -79,6 +80,22 @@ def print_help_for_flags(args, parser):
             print("The --volume flag activates the calibration of volume. ")
 
 
+def report_timings(config, /, **info) -> None:
+    """Log the timed stages of the run and append them to the timing history.
+
+    The history is `<results>/log/timings.jsonl` (one line per run); it is skipped
+    without a results folder. Reporting never fails a run.
+
+    """
+    try:
+        logger.info("Timings of the run:\n%s", darsia.timings.report())
+        results = getattr(getattr(config, "data", None), "results", None)
+        if results is not None and Path(results).is_dir():
+            darsia.timings.write(Path(results) / "log" / "timings.jsonl", **info)
+    except Exception as error:
+        logger.debug("Could not report the timings: %s", error)
+
+
 def preset_calibration(rig=Rig, **kwargs):
     parser = build_parser_for_calibration()
     args = parser.parse_args()
@@ -109,13 +126,16 @@ def preset_calibration(rig=Rig, **kwargs):
     if args.mass or args.default_mass:
         print("Running mass calibration...", flush=True)
         ref_config = Path(args.ref_config) if args.ref_config else None
-        calibration_color_to_mass_analysis_from_context(
-            ctx,
-            ref_path=ref_config,
-            reset=args.reset,
-            show=args.show,
-            default=args.default_mass,
-        )
+        try:
+            calibration_color_to_mass_analysis_from_context(
+                ctx,
+                ref_path=ref_config,
+                reset=args.reset,
+                show=args.show,
+                default=args.default_mass,
+            )
+        finally:
+            report_timings(ctx.config, workflow="calibration mass", config=args.config)
 
 
 if __name__ == "__main__":
