@@ -38,6 +38,7 @@ classifiers = [
 dependencies = [
   "natsort",
   "numpy",
+  "numba",
   "opencv-python",
   "scipy",
   "matplotlib",
