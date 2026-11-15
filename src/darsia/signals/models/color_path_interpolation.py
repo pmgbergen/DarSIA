@@ -9,9 +9,12 @@ from typing import Literal, overload
 import numpy as np
 
 import darsia
-import darsia.signals.color.color_path_kernels as kernels
+import darsia.signals.color.color_path_kernels as _kernels
 
 logger = logging.getLogger(__name__)
+
+IGNORE_MODES = ("norm", "spectrum")
+"""Ways to identify colors without a signal, see `ColorPathInterpolation`."""
 
 
 class ColorPathFunction(darsia.Model):
@@ -58,7 +61,30 @@ class ColorPathInterpolation(ColorPathFunction):
         color_mode: darsia.ColorMode,
         values: np.ndarray | list[float] | None = None,
         ignore_spectrum: darsia.ColorSpectrum | None = None,
+        ignore_mode: Literal["norm", "spectrum"] = "norm",
     ):
+        """Constructor.
+
+        Parameters
+        ----------
+        color_path : darsia.ColorPath
+            Color path onto which colors are projected.
+        color_mode : darsia.ColorMode
+            Color mode of the colors to be interpreted.
+        values : array-like, optional
+            Values at the key colors; default are their equidistant positions.
+        ignore_spectrum : darsia.ColorSpectrum, optional
+            Colors without a signal, e.g. the spectrum of the baseline. Without it, all
+            colors are projected.
+        ignore_mode : str
+            Which colors are not projected (value at position 0), if an ignore spectrum
+            is given: "norm" for colors with a norm below 0.1 (the same for all
+            labels), "spectrum" for the colors in the ignore spectrum.
+        """
+        if ignore_mode not in IGNORE_MODES:
+            raise ValueError(f"ignore_mode must be one of {IGNORE_MODES}.")
+        self.ignore_mode = ignore_mode
+        """Which colors are not projected: by their norm or by the ignore spectrum."""
         self.color_path = color_path
         self.color_mode = color_mode
         self.values = np.array(
@@ -108,6 +134,7 @@ class ColorPathInterpolation(ColorPathFunction):
             "ignore_spectrum": (
                 self.ignore_spectrum.to_dict() if self.ignore_spectrum else None
             ),
+            "ignore_mode": self.ignore_mode,
         }
 
     @classmethod
@@ -133,6 +160,8 @@ class ColorPathInterpolation(ColorPathFunction):
                 if data["ignore_spectrum"] is not None
                 else None
             ),
+            # Calibrations stored before the choice existed used the norm.
+            ignore_mode=data.get("ignore_mode", "norm"),
         )
 
     def save(self, path: Path) -> None:
@@ -202,15 +231,15 @@ class ColorPathInterpolation(ColorPathFunction):
                 f"""got {type(image)}."""
             )
 
-    def kernel_tables(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, bool]:
+    def kernel_data(self) -> _kernels.PathData:
         """Data of the model for the compiled evaluation (`color_path_kernels`).
 
         Returns
         -------
-        tuple
+        _kernels.PathData
             Key colors in the color mode of the model, their (equidistant) positions
-            on the path, the values at the key colors, and whether colors without a
-            color change are not fitted.
+            on the path, the values at the key colors, and the colors which are not
+            fitted.
 
         """
         supports = (
@@ -218,12 +247,21 @@ class ColorPathInterpolation(ColorPathFunction):
             if self.color_mode == darsia.ColorMode.ABSOLUTE
             else self.color_path.relative_colors
         )
-        return (
-            np.asarray(supports, dtype=float),
-            np.asarray(self.color_path.equidistant_distances, dtype=float),
-            np.asarray(self.values, dtype=float),
-            self.ignore_spectrum is not None,
+        data = _kernels.PathData(
+            supports=np.asarray(supports, dtype=float),
+            distances=np.asarray(self.color_path.equidistant_distances, dtype=float),
+            values=np.asarray(self.values, dtype=float),
         )
+        if self.ignore_spectrum is None:
+            return data
+        if self.ignore_mode == "norm":
+            data.mask = _kernels.MASK_NORM
+            return data
+        data.mask = _kernels.MASK_SPECTRUM
+        data.spectrum = np.asarray(self.ignore_spectrum.spectrum, dtype=bool)
+        data.edges = self.ignore_spectrum.bin_edges()
+        data.offset = self.ignore_spectrum.frame_offset(self.color_mode)
+        return data
 
     @darsia.timing_decorator
     def _parametrize_colors(self, colors: np.ndarray) -> np.ndarray:
@@ -244,12 +282,12 @@ class ColorPathInterpolation(ColorPathFunction):
         """
         # One compiled pass over the colors, if available (same result up to rounding)
         if (
-            kernels.NUMBA_AVAILABLE
+            _kernels.NUMBA_AVAILABLE
             and colors.ndim == 2
             and colors.shape[1] == 3
             and colors.dtype == np.float64
         ):
-            return kernels.evaluate_colors(colors, *self.kernel_tables())
+            return _kernels.evaluate_colors(colors, self.kernel_data())
 
         # Fit in terms of the color path
         if self.ignore_spectrum is None or colors.ndim == 1:
@@ -257,11 +295,12 @@ class ColorPathInterpolation(ColorPathFunction):
                 colors=colors, color_mode=self.color_mode, mode="equidistant"
             )
         else:
-            # Pixels without a color change (relative color of norm below 0.1) are
-            # not fitted and keep the parametrization 0.
-            # TODO: Use the membership in the ignore spectrum instead of the norm,
-            # see the backlog (changes which pixels are ignored).
-            color_mask = np.linalg.norm(colors, axis=1) > kernels.NORM_THRESHOLD
+            # Pixels without a signal are not fitted and keep the parametrization 0:
+            # relative colors of norm below 0.1, or colors in the ignore spectrum.
+            if self.ignore_mode == "norm":
+                color_mask = np.linalg.norm(colors, axis=1) > _kernels.NORM_THRESHOLD
+            else:
+                color_mask = ~self.ignore_spectrum.contains(colors, self.color_mode)
             parametrization = np.zeros(colors.shape[0])
             parametrization[color_mask] = self.color_path.fit(
                 colors=colors[color_mask],

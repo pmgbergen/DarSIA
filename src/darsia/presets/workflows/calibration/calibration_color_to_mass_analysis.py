@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 
@@ -28,6 +29,18 @@ from darsia.signals.color import ColorPathEmbedding
 from darsia.utils.figure_window import ask_yes_no
 
 logger = logging.getLogger(__name__)
+
+
+def _stored_ignore_mask(mass_folder: Path) -> str | None:
+    """Ignore mask of the stored calibration (None without stored calibration)."""
+    files = sorted((mass_folder / "color_path_interpretation").glob("*.json"))
+    if len(files) == 0:
+        return None
+    try:
+        with open(files[0], "r") as f:
+            return json.load(f).get("ignore_mode", "norm")
+    except (OSError, ValueError):
+        return None
 
 
 def _load_baseline_color_spectrum_for_color_to_mass(
@@ -312,6 +325,7 @@ def calibration_color_to_mass_analysis_from_context(
                 if baseline_color_spectrum is not None
                 else None
             ),
+            ignore_mode=mass_cfg.ignore_mask,
         )
         for label, color_path in color_paths.items()
     }
@@ -320,6 +334,23 @@ def calibration_color_to_mass_analysis_from_context(
 
     fluid_model = build_fluid_model(config, experiment, fluidflower)
     mass_folder = embedding.calibration_folder(interpretation.quantity)
+
+    # The ignore mask of the config applies; a stored calibration tuned with the other
+    # one keeps its values, which then belong to slightly different signals.
+    stored_ignore_mask = _stored_ignore_mask(mass_folder)
+    if (
+        not reset
+        and baseline_color_spectrum is not None
+        and stored_ignore_mask is not None
+        and stored_ignore_mask != mass_cfg.ignore_mask
+    ):
+        logger.warning(
+            "The stored calibration was tuned with the ignore mask '%s', the config "
+            "asks for '%s' ([calibration.mass] ignore_mask), which is used now. The "
+            "detected mass changes slightly; check the calibration before saving.",
+            stored_ignore_mask,
+            mass_cfg.ignore_mask,
+        )
 
     contour_smoother = mass_cfg.contour_smoother
     evaluation_mode = darsia.EvaluationMode.from_name(
