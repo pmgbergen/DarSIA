@@ -9,7 +9,8 @@ window itself lives in `HeterogeneousColorToMassAnalysis.manual_calibration`.
 """
 
 import logging
-from typing import TYPE_CHECKING, Tuple
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Callable, Tuple
 
 import numpy as np
 
@@ -30,6 +31,30 @@ if TYPE_CHECKING:
 
 DEFAULT_CONTOUR_THRESHOLD = 0.05
 """Start value (and reset value) of the contour thresholds."""
+
+
+class LazyMaps(Mapping):
+    """Maps which are computed when they are first asked for.
+
+    Only one map is displayed at a time, and coarsening a full resolution map takes
+    time, so the maps of an image are not all prepared in advance.
+
+    """
+
+    def __init__(self, factories: dict[str, Callable[[], darsia.Image]]) -> None:
+        self._factories = factories
+        self._maps: dict[str, darsia.Image] = {}
+
+    def __getitem__(self, key: str) -> darsia.Image:
+        if key not in self._maps:
+            self._maps[key] = self._factories[key]()
+        return self._maps[key]
+
+    def __iter__(self):
+        return iter(self._factories)
+
+    def __len__(self) -> int:
+        return len(self._factories)
 
 
 class CalibrationState:
@@ -203,6 +228,10 @@ class CalibrationState:
         """Maps of the current image, see :meth:`compute_maps`."""
         self.mass_analysis_done = False
         """Whether the mass series have been computed at least once."""
+        self._analyzed: dict | None = None
+        """Last analysis of the current image, see :meth:`_keep_analyzed`."""
+        self._roi_geometries: dict = {}
+        """Geometry of each roi (for the integration), see :meth:`_roi_geometry`."""
 
     # ! ---- COLOR INTERPRETATIONS ----
 
@@ -281,29 +310,50 @@ class CalibrationState:
 
     # ! ---- MAPS OF THE CURRENT IMAGE ----
 
-    def detailed_mass_analysis(
-        self, _color_interpretation: darsia.Image
-    ) -> Tuple[darsia.Image, darsia.Image, darsia.Image, darsia.Image]:
-        """Signal, mass density, aqueous concentration and gas saturation."""
+    def _coarsen(self, img: darsia.Image) -> darsia.Image:
+        return darsia.resize(img, shape=self.coarse_shape)
+
+    def _parameter_key(self) -> tuple:
+        """All calibrated parameters (signal values of all labels, flash)."""
         analysis = self.analysis
-        pH = analysis.call_pH_analysis(_color_interpretation)
-        c_aq, s_g = analysis.flash(pH)
-        if analysis.expert_knowledge_adapter is not None:
-            c_aq = analysis.expert_knowledge_adapter.apply(c_aq, "concentration_aq")
-            s_g = analysis.expert_knowledge_adapter.apply(s_g, "saturation_g")
-        mass_analysis_result: SimpleMassAnalysisResults = (
-            analysis.fluid_model.mass_analysis(
-                c_aq=c_aq,
-                s_g=s_g,
-            )
+        functions = analysis.signal_model.model[1]
+        key = tuple(
+            (label, tuple(float(value) for value in functions[label].values))
+            for label in functions.keys()
         )
-        density = mass_analysis_result.mass
-        return pH, density, c_aq, s_g
+        if analysis.has_gas:
+            flash = analysis.flash
+            key += (
+                float(flash.min_value_aq),
+                float(flash.max_value_aq),
+                float(flash.min_value_g),
+                float(flash.max_value_g),
+            )
+        return key
+
+    def _keep_analyzed(
+        self, image_idx: int, pH: darsia.Image, result: SimpleMassAnalysisResults
+    ) -> None:
+        """Keep the analysis of an image for :meth:`compute_maps`.
+
+        The mass series analyze all images, including the displayed one; its maps
+        then need no second analysis as long as the parameters stay the same.
+
+        """
+        self._analyzed = {
+            "key": (image_idx, self._parameter_key()),
+            "pH": pH,
+            "density": result.mass,
+            "c_aq": self._coarsen(result.concentration_aq),
+            "s_g": self._coarsen(result.saturation_g),
+        }
 
     def compute_maps(self) -> dict:
         """Analyze the current image at full resolution, coarsened for display.
 
-        The thermodynamic state is set for the date of the current image.
+        The thermodynamic state is set for the date of the current image. The analysis
+        is reused if the image was just analyzed with the same parameters, and the
+        display maps are coarsened when they are first shown.
 
         """
         analysis = self.analysis
@@ -311,38 +361,46 @@ class CalibrationState:
         analysis.update_state(
             self.images[image_idx].date, self.experiment.pressure_temperature_protocol
         )
-        pH, density, c_aq, s_g = self.detailed_mass_analysis(
-            self.color_interpretation_of(image_idx)
-        )
+        key = (image_idx, self._parameter_key())
+        if self._analyzed is None or self._analyzed["key"] != key:
+            pH = analysis.call_pH_analysis(self.color_interpretation_of(image_idx))
+            self._keep_analyzed(
+                image_idx, pH, analysis.call_flash_and_mass_analysis(pH)
+            )
+        analyzed = self._analyzed
+        assert analyzed is not None
+        pH, density = analyzed["pH"], analyzed["density"]
+        c_aq, s_g = analyzed["c_aq"], analyzed["s_g"]
 
-        def coarsen(img: darsia.Image) -> darsia.Image:
-            return darsia.resize(img, shape=self.coarse_shape)
-
-        signals = {
+        ready = {
             "color": self.coarse_color_interpretations[image_idx],
-            "pH": coarsen(pH),
-            "rho_co2": coarsen(density),
-            "c_aq": coarsen(c_aq),
+            "c_aq": c_aq,
             "labels": self.coarse_labels,
             "depth": self.coarse_depth,
             "porosity": self.coarse_porosity,
             "effective_depth": self.coarse_effective_depth,
         }
+        signals = {name: (lambda img=img: img) for name, img in ready.items()}
+        signals["pH"] = lambda: self._coarsen(pH)
+        signals["rho_co2"] = lambda: self._coarsen(density)
         if analysis.has_gas:
-            co2_g_density = darsia.full_like(pH, analysis.fluid_model.density_gas)
-            co2_aq_solubility = darsia.full_like(
-                pH, analysis.fluid_model.aqueous_capacity
+            # Properties at the state of this image (the fluid model moves on)
+            density_gas = analysis.fluid_model.density_gas
+            aqueous_capacity = analysis.fluid_model.aqueous_capacity
+            signals["s_g"] = lambda: s_g
+            signals["rho_co2(g)"] = lambda: self._coarsen(
+                darsia.full_like(pH, density_gas)
             )
-            signals["s_g"] = coarsen(s_g)
-            signals["rho_co2(g)"] = coarsen(co2_g_density)
-            signals["solubility_co2(aq)"] = coarsen(co2_aq_solubility)
+            signals["solubility_co2(aq)"] = lambda: self._coarsen(
+                darsia.full_like(pH, aqueous_capacity)
+            )
 
         self.maps = {
             "image_idx": image_idx,
             "pH": pH,
-            "c_aq": coarsen(c_aq),
-            "s_g": coarsen(s_g),
-            "signals": signals,
+            "c_aq": c_aq,
+            "s_g": s_g,
+            "signals": LazyMaps({key: signals[key] for key in self.signal_options}),
         }
         return self.maps
 
@@ -413,6 +471,14 @@ class CalibrationState:
 
     # ! ---- MASS ANALYSIS ----
 
+    def _roi_geometry(self, roi_key: str):
+        """Geometry restricted to a roi (built once)."""
+        if roi_key not in self._roi_geometries:
+            self._roi_geometries[roi_key] = self.analysis.geometry.subregion(
+                self.rois[roi_key]
+            )
+        return self._roi_geometries[roi_key]
+
     @darsia.timing_decorator
     def update_mass_analysis(self) -> None:
         """Update the series (per roi) of detected and injected mass over all images."""
@@ -421,8 +487,7 @@ class CalibrationState:
         rois = self.rois
 
         run_analysis = {
-            roi_key: SimpleRunAnalysis(analysis.geometry.subregion(roi))
-            for roi_key, roi in rois.items()
+            roi_key: SimpleRunAnalysis(self._roi_geometry(roi_key)) for roi_key in rois
         }
         # Single-phase (tracer): the reference is the injected volume, compared
         # with the integrated aqueous concentration (a volume).
@@ -440,6 +505,8 @@ class CalibrationState:
 
             # Mass computation
             mass_analysis_result = analysis.call_flash_and_mass_analysis(pH)
+            if idx == self.image_idx:
+                self._keep_analyzed(idx, pH, mass_analysis_result)
 
             for roi_key, roi in rois.items():
                 # Subregion mass
