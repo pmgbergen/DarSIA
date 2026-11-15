@@ -271,6 +271,49 @@ if NUMBA_AVAILABLE:
                     )
 
 
+if NUMBA_AVAILABLE:
+
+    @njit(cache=True, error_model="numpy", parallel=True)
+    def _evaluate_labeled_difference(
+        image,
+        base,
+        labels,
+        label_offset,
+        lookup,
+        sup,
+        dist,
+        val,
+        num_segments,
+        mask,
+        spectrum,
+        edges,
+        bins,
+        offset,
+        threshold,
+        out,
+    ):
+        """As `_evaluate_labeled_image`, for the colors `image - base`."""
+        rows, cols = labels.shape
+        for i in prange(rows):
+            for j in range(cols):
+                key = labels[i, j] - label_offset
+                path = -1
+                if key >= 0 and key < lookup.shape[0]:
+                    path = lookup[key]
+                if path < 0:
+                    out[i, j] = 0.0
+                else:
+                    c0 = image[i, j, 0] - base[i, j, 0]
+                    c1 = image[i, j, 1] - base[i, j, 1]
+                    c2 = image[i, j, 2] - base[i, j, 2]
+                    fitted = _fitted(
+                        c0, c1, c2, path, mask, threshold, spectrum, edges, bins, offset
+                    )
+                    out[i, j] = _evaluate(
+                        c0, c1, c2, sup, dist, val, num_segments[path], path, fitted
+                    )
+
+
 def evaluate_colors(
     colors: np.ndarray, path: PathData, threshold: float = NORM_THRESHOLD
 ) -> np.ndarray:
@@ -306,6 +349,7 @@ def evaluate_labeled_image(
     labels: np.ndarray,
     paths: dict[int, PathData],
     threshold: float = NORM_THRESHOLD,
+    base: np.ndarray | None = None,
 ) -> np.ndarray:
     """Values of an image of colors, with one color path per label.
 
@@ -320,6 +364,9 @@ def evaluate_labeled_image(
         of other labels get the value 0.
     threshold : float
         Threshold on the norm of the colors (for `MASK_NORM`).
+    base : np.ndarray, optional
+        Baseline of the shape of the image; if given, the colors `image - base` are
+        evaluated (without forming the difference image).
 
     Returns
     -------
@@ -333,13 +380,27 @@ def evaluate_labeled_image(
     for index, label in enumerate(path_labels):
         lookup[label - label_offset] = index
     out = np.empty(labels.shape, dtype=np.float64)
-    _evaluate_labeled_image(
-        np.ascontiguousarray(image, dtype=np.float64),
-        np.ascontiguousarray(labels),
-        label_offset,
-        lookup,
-        *_tables(list(paths.values())),
-        threshold,
-        out,
-    )
+    image = np.ascontiguousarray(image, dtype=np.float64)
+    tables = _tables(list(paths.values()))
+    if base is None:
+        _evaluate_labeled_image(
+            image,
+            np.ascontiguousarray(labels),
+            label_offset,
+            lookup,
+            *tables,
+            threshold,
+            out,
+        )
+    else:
+        _evaluate_labeled_difference(
+            image,
+            np.ascontiguousarray(base, dtype=np.float64),
+            np.ascontiguousarray(labels),
+            label_offset,
+            lookup,
+            *tables,
+            threshold,
+            out,
+        )
     return out
