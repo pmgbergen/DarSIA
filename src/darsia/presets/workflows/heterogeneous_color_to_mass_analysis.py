@@ -11,12 +11,12 @@ import numpy as np
 from matplotlib.colors import to_rgba_array
 from matplotlib.transforms import Bbox
 from matplotlib.widgets import Button, Slider
-from scipy.optimize import minimize
 
 import darsia
 from darsia.multiphase.flash import load_flash
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.basis import label_ids_from_image
+from darsia.presets.workflows.calibration.manual_calibration import CalibrationState
 from darsia.presets.workflows.calibration.metadata import (
     calibration_inputs,
     read_calibration_metadata,
@@ -25,19 +25,12 @@ from darsia.presets.workflows.calibration.metadata import (
     write_calibration_metadata,
 )
 from darsia.presets.workflows.config.physics import Interpretation
-from darsia.presets.workflows.simple_run_analysis import (
-    SimpleMassAnalysisResults,
-    SimpleRunAnalysis,
-)
+from darsia.presets.workflows.simple_run_analysis import SimpleMassAnalysisResults
 from darsia.signals.color.color_embedding import (
     ColorEmbeddingBasis,
     parse_color_embedding_basis,
 )
 from darsia.signals.models.evaluation import curve_inverse, signal_curve
-from darsia.signals.models.pwtransformation import (
-    monotonicity_message,
-    monotonicity_violation,
-)
 from darsia.utils.figure_window import maximize_figure_window
 from darsia.utils.units import (
     choose_mass_unit,
@@ -372,123 +365,21 @@ class HeterogeneousColorToMassAnalysis:
             window is closed.
         """
 
-        # Fill up rois with "entire frame"
-        rois = rois or {}
-        assert "" not in rois
-        rois.update(
-            {
-                "full": darsia.CoordinateArray(
-                    [
-                        self.color_analysis.base.origin,
-                        self.color_analysis.base.opposite_corner,
-                    ]
-                )
-            }
-        )
-
-        # ! ---- SETUP ----
-
-        # Allocate identifiers
-        image_idx = 0
-        label_idx = 0
-
-        # Allocate variables for mass analysis
-        times = {r: [] for r in rois}
-        expected_mass = {r: [] for r in rois}
-        integrated_mass = {r: [] for r in rois}
-        integrated_mass_g = {r: [] for r in rois}
-        integrated_mass_aq = {r: [] for r in rois}
-
-        # Choices for signal illustration
-        signal_options = {
-            "pH": "pH",
-            "color": "Color Interpretation",
-            "rho_co2": "CO2 Density",
-            "c_aq": "CO2(aq) concentration",
-            "s_g": "CO2(g) saturation",
-            "labels": "Labels",
-            "depth": "Depth",
-            "rho_co2(g)": "CO2(g) Density",
-            "solubility_co2(aq)": "CO2(aq) Solubility",
-            "porosity": "Porosity",
-            "effective_depth": "Effective Depth",
-        }
-        if not self.has_gas:
-            # Single-phase (tracer): no gas saturation or CO2 properties; the signal
-            # is the aqueous concentration.
-            signal_options = {
-                key: label
-                for key, label in signal_options.items()
-                if key not in ("s_g", "rho_co2(g)", "solubility_co2(aq)")
-            }
-            signal_options["rho_co2"] = "Mass Density"
-            signal_options["c_aq"] = "Concentration"
-        signal_option_idx = 0
-        signal_option_ptr = list(signal_options.keys())
-
-        # ! ---- IMAGES -----
-
-        # Set up parameters for coarse visualization
-        coarse_rows = max(200, self.labels.img.shape[0] // 4)
-        coarse_cols = int(
-            self.labels.img.shape[1] / self.labels.img.shape[0] * coarse_rows
-        )
-        coarse_shape = tuple[int]((coarse_rows, coarse_cols))
-
-        # Coarsen the image and labels for better visualization
-        coarse_labels = darsia.resize(
-            self.labels,
-            shape=coarse_shape,
-            interpolation="inter_nearest",
-        )
-        coarse_images = [darsia.resize(image, shape=coarse_shape) for image in images]
-
-        coarse_depth = darsia.resize(
-            self.geometry.depth,
-            shape=coarse_shape,
-        )
-
-        coarse_porosity = darsia.resize(
-            self.geometry.porosity,
-            shape=coarse_shape,
-        )
-
-        coarse_effective_depth = darsia.resize(
-            self.geometry.weight,
-            shape=coarse_shape,
-        )
-
-        # ! ---- COLOR INTERPRETATIONS ----
-
-        # The projection onto the color path is expensive, so the color interpretations
-        # of the images are cached. Without projection, they are merely the baseline
-        # relative colors (3 channels, i.e., larger), cheap to compute and not cached.
-        cache_color_interpretations = self.evaluation_mode.projects_onto_path
-        color_interpretations = (
-            [self.call_color_interpretation(image) for image in images]
-            if cache_color_interpretations
-            else None
-        )
-
-        def color_interpretation_of(idx: int) -> darsia.Image:
-            """Color interpretation of an image (cached if expensive)."""
-            if color_interpretations is not None:
-                return color_interpretations[idx]
-            return self.call_color_interpretation(images[idx])
-
-        def display_color_interpretation(color_interpretation: darsia.Image):
-            """Scalar color interpretation for display (colors: size of the color)."""
-            if color_interpretation.img.ndim == 3:
-                color_interpretation = darsia.ScalarImage(
-                    np.linalg.norm(color_interpretation.img, axis=-1),
-                    **color_interpretation.metadata(),
-                )
-            return darsia.resize(color_interpretation, shape=coarse_shape)
-
-        coarse_color_interpretations = [
-            display_color_interpretation(color_interpretation_of(idx))
-            for idx in range(len(images))
-        ]
+        # Data and calculations (no plotting)
+        state = CalibrationState(self, images, experiment, rois)
+        rois = state.rois
+        # Mass series per roi; updated in place by `state.update_mass_analysis`
+        times = state.times
+        expected_mass = state.expected_mass
+        integrated_mass = state.integrated_mass
+        integrated_mass_g = state.integrated_mass_g
+        integrated_mass_aq = state.integrated_mass_aq
+        # Values restored by the Reset button
+        initial_values = state.initial_values
+        initial_flash = state.initial_flash
+        default_contour_threshold = state.default_contour_threshold
+        # Current contour thresholds; kept when the figure is rebuilt
+        contour_thresholds = state.contour_thresholds
 
         # ! ----- IMAGE SELECTION -----
 
@@ -497,28 +388,23 @@ class HeterogeneousColorToMassAnalysis:
             coarse images - keep track of the idx in the list and return when finishing.
 
             """
-            nonlocal image_idx  # noqa: F824
-
             # Create a simple figure for image selection
             fig, ax = plt.subplots(figsize=(8, 6))
-            current_image = coarse_images[image_idx]
-            img_display = ax.imshow(current_image.img)
+            img_display = ax.imshow(state.coarse_image.img)
             ax.set_title(
-                f"""Image {image_idx + 1}/{len(images)} - Click to cycle through """
+                f"""Image {state.image_idx + 1}/{len(images)} - Click to cycle through """
                 f"""images, close window to finish"""
             )
             ax.axis("off")
 
             def on_click(event):
-                nonlocal image_idx
                 if event.inaxes == ax:
                     # Cycle to next image
-                    image_idx = (image_idx + 1) % len(images)
-                    current_image = coarse_images[image_idx]
-                    img_display.set_data(current_image.img)
+                    state.next_image()
+                    img_display.set_data(state.coarse_image.img)
                     ax.set_title(
-                        f"""Image {image_idx + 1}/{len(images)} - Click to cycle through """
-                        f"""images, close window to finish"""
+                        f"""Image {state.image_idx + 1}/{len(images)} - Click to cycle """
+                        f"""through images, close window to finish"""
                     )
                     fig.canvas.draw_idle()
 
@@ -526,254 +412,16 @@ class HeterogeneousColorToMassAnalysis:
             fig.canvas.mpl_connect("button_press_event", on_click)
 
             plt.show()
-            return image_idx
+            return state.image_idx
 
         # ! ---- LABEL SELECTION ----
 
         def label_idx_selector(pH: darsia.Image) -> int:
-            nonlocal label_idx
             assistant = darsia.RectangleSelectionAssistant(
                 pH, labels=self.labels, cmap=cmap
             )
             label_box: Tuple[slice, slice] = assistant()
-            label_idx = np.argmax(np.bincount(self.labels.img[label_box].ravel()))
-            return label_idx
-
-        # ! ---- MASS ANALYSIS ----
-
-        # Perform detailed mass analysis
-        def detailed_mass_analysis(
-            _color_interpretation: darsia.Image, roi: darsia.Image | None = None
-        ) -> Tuple[darsia.Image, darsia.Image, darsia.Image, darsia.Image]:
-            # TODO:color_interpretation: darsia.Image restrivuted to the separate boxes
-            pH = self.call_pH_analysis(_color_interpretation)
-            c_aq, s_g = self.flash(pH)
-            if self.expert_knowledge_adapter is not None:
-                c_aq = self.expert_knowledge_adapter.apply(c_aq, "concentration_aq")
-                s_g = self.expert_knowledge_adapter.apply(s_g, "saturation_g")
-            mass_analysis_result: SimpleMassAnalysisResults = (
-                self.fluid_model.mass_analysis(
-                    c_aq=c_aq,
-                    s_g=s_g,
-                )
-            )
-            density = mass_analysis_result.mass
-            return pH, density, c_aq, s_g
-
-        # ! ---- DISPLAY HELPERS ----
-
-        def compute_maps() -> dict:
-            """Analyze the current image at full resolution, coarsened for display.
-
-            The thermodynamic state is set for the date of the current image.
-
-            """
-            self.update_state(
-                images[image_idx].date, experiment.pressure_temperature_protocol
-            )
-            pH, density, c_aq, s_g = detailed_mass_analysis(
-                color_interpretation_of(image_idx)
-            )
-
-            def coarsen(img: darsia.Image) -> darsia.Image:
-                return darsia.resize(img, shape=coarse_shape)
-
-            signals = {
-                "color": coarse_color_interpretations[image_idx],
-                "pH": coarsen(pH),
-                "rho_co2": coarsen(density),
-                "c_aq": coarsen(c_aq),
-                "labels": coarse_labels,
-                "depth": coarse_depth,
-                "porosity": coarse_porosity,
-                "effective_depth": coarse_effective_depth,
-            }
-            if self.has_gas:
-                co2_g_density = darsia.full_like(pH, self.fluid_model.density_gas)
-                co2_aq_solubility = darsia.full_like(
-                    pH, self.fluid_model.aqueous_capacity
-                )
-                signals["s_g"] = coarsen(s_g)
-                signals["rho_co2(g)"] = coarsen(co2_g_density)
-                signals["solubility_co2(aq)"] = coarsen(co2_aq_solubility)
-
-            return {
-                "image_idx": image_idx,
-                "pH": pH,
-                "c_aq": coarsen(c_aq),
-                "s_g": coarsen(s_g),
-                "signals": signals,
-            }
-
-        def contour_overlay(
-            coarse_image: darsia.Image,
-            coarse_c_aq: darsia.Image,
-            coarse_s_g: darsia.Image,
-            thresholds: list[float],
-        ) -> darsia.Image:
-            """Contours of the phase segmentation on top of the coarse image."""
-            masks = [
-                coarse_c_aq > thresholds[0],
-                coarse_c_aq > 0.1,
-                coarse_c_aq > 0.25,
-                coarse_c_aq > 0.5,
-                coarse_c_aq > 0.9,
-            ]
-            colors = [(255, 0, 0)] * 5
-            alphas = [0.2, 0.3, 0.4, 0.5, 1.0]
-            if self.has_gas:
-                masks.append(coarse_s_g > thresholds[1])
-                colors.append((0, 255, 0))
-                alphas.append(1.0)
-            return darsia.plot_contour_on_image(
-                coarse_image,
-                mask=masks,
-                contour_smoother=self.contour_smoother,
-                color=colors,
-                alpha=alphas,
-                return_image=True,
-            )
-
-        def cached_contour_overlay(maps: dict, thresholds: list[float]) -> darsia.Image:
-            """Contour overlay of the maps; recomputed only for new thresholds."""
-            key = tuple(float(threshold) for threshold in thresholds)
-            if maps.get("contour_key") != key:
-                maps["contour"] = contour_overlay(
-                    coarse_images[maps["image_idx"]],
-                    maps["c_aq"],
-                    maps["s_g"],
-                    thresholds,
-                )
-                maps["contour_key"] = key
-            return maps["contour"]
-
-        def label_highlight(coarse_image: darsia.Image, label: int) -> np.ndarray:
-            """Coarse image with everything outside the label turned (mostly) gray."""
-            highlighted = coarse_image.img.copy()
-            outside = coarse_labels.img != label
-            highlighted[outside] = (
-                0.7 * np.mean(highlighted[outside], axis=-1, keepdims=True)
-                + 0.3 * coarse_image.img[outside]
-            )
-            return highlighted
-
-        # ! ---- MASS ANALYSIS SETUP ----
-
-        @darsia.timing_decorator
-        def update_mass_analysis() -> None:
-            """Auxiliary function to update multiphase time series analysis."""
-            nonlocal times  # noqa: F824
-            nonlocal expected_mass  # noqa: F824
-            nonlocal integrated_mass  # noqa: F824
-            nonlocal integrated_mass_g  # noqa: F824
-            nonlocal integrated_mass_aq  # noqa: F824
-
-            analysis = {
-                roi_key: SimpleRunAnalysis(self.geometry.subregion(roi))
-                for roi_key, roi in rois.items()
-            }
-            # Single-phase (tracer): the reference is the injected volume, compared
-            # with the integrated aqueous concentration (a volume).
-            volume_series = {
-                roi_key: {"time": [], "exact": [], "detected": []} for roi_key in rois
-            }
-            for idx, img in enumerate(images):
-                color_interpretation = color_interpretation_of(idx)
-
-                # Update thermodynamic state
-                self.update_state(img.date, experiment.pressure_temperature_protocol)
-
-                # Signal analysis
-                pH = self.call_pH_analysis(color_interpretation)
-
-                # Mass computation
-                mass_analysis_result = self.call_flash_and_mass_analysis(pH)
-
-                for roi_key, roi in rois.items():
-                    # Subregion mass
-                    roi_mass_analysis_result = mass_analysis_result.subregion(roi)
-
-                    assert isinstance(roi, darsia.CoordinateArray)
-                    if not self.has_gas:
-                        series = volume_series[roi_key]
-                        series["time"].append(roi_mass_analysis_result.time)
-                        series["exact"].append(
-                            experiment.injection_protocol.injected_volume(
-                                date=img.date, roi=roi
-                            )
-                        )
-                        series["detected"].append(
-                            analysis[roi_key].geometry.integrate(
-                                roi_mass_analysis_result.concentration_aq
-                            )
-                        )
-                        continue
-
-                    # Compute expected mass
-                    roi_exact_mass = experiment.injection_protocol.injected_mass(
-                        date=img.date, roi=roi
-                    )
-
-                    # Track result
-                    analysis[roi_key].track(
-                        roi_mass_analysis_result, exact_mass=roi_exact_mass
-                    )
-
-                    # # Clean data - TODO?
-                    # analysis.clean(threshold=5.0)
-
-            # Monitor mass evolution over time
-            for roi_key in rois:
-                if self.has_gas:
-                    times[roi_key] = [t / 3600 for t in analysis[roi_key].data.time]
-                    expected_mass[roi_key] = analysis[roi_key].data.exact_mass_tot
-                    integrated_mass[roi_key] = analysis[roi_key].data.mass_tot
-                    integrated_mass_g[roi_key] = analysis[roi_key].data.mass_g
-                    integrated_mass_aq[roi_key] = analysis[roi_key].data.mass_aq
-                else:
-                    # For tracer the "mass" series hold volumes (m3); there is no gas.
-                    series = volume_series[roi_key]
-                    times[roi_key] = [t / 3600 for t in series["time"]]
-                    expected_mass[roi_key] = series["exact"]
-                    integrated_mass[roi_key] = series["detected"]
-                    integrated_mass_g[roi_key] = [0.0] * len(series["time"])
-                    integrated_mass_aq[roi_key] = series["detected"]
-
-                # Errors
-                relative_error = (
-                    np.array(integrated_mass[roi_key])
-                    - np.array(expected_mass[roi_key])
-                ) / np.abs(expected_mass[roi_key]).clip(min=1e-8)
-
-                logging.info(
-                    f"""Mass analysis for roi {roi_key} updated.\nNew relative """
-                    f"""error: {relative_error}"""
-                )
-
-        # ! ---- INITIAL STATE (restored by the Reset button) ----
-
-        initial_values = {
-            label: np.array(self.signal_model.model[1][label].values, dtype=float)
-            for label in self.signal_model.model[1].keys()
-        }
-        initial_flash = (
-            (
-                self.flash.min_value_aq,
-                self.flash.max_value_aq,
-                self.flash.min_value_g,
-                self.flash.max_value_g,
-            )
-            if self.has_gas
-            else None
-        )
-        default_contour_threshold = 0.05
-        # Current contour thresholds (c_aq, and s_g if there is a gas phase); kept when
-        # the figure is rebuilt
-        contour_thresholds = (
-            [default_contour_threshold, default_contour_threshold]
-            if self.has_gas
-            else [default_contour_threshold]
-        )
+            return state.select_label_in(label_box)
 
         # ! ---- GRID FOR PLOTTING ----
 
@@ -781,12 +429,6 @@ class HeterogeneousColorToMassAnalysis:
         done_calibration = False
         need_to_pick_new_image = True
         need_to_pick_new_label = True
-        # Label-independent results are kept when the figure is rebuilt (e.g. for a
-        # new label): the maps of the current image, and the mass series. The maps
-        # are replaced whenever the image or the parameters change (refresh), and
-        # the mass series whenever the parameters change (update_analysis).
-        maps = None
-        mass_analysis_done = False
         while not done_calibration:
             # General design:
             # 1. User needs to pick a focus image (interactively)
@@ -797,27 +439,29 @@ class HeterogeneousColorToMassAnalysis:
 
             # Pick image
             if need_to_pick_new_image:
-                image_idx = image_idx_selector()
+                image_idx_selector()
                 need_to_pick_new_image = False
                 need_to_pick_new_label = True
 
             # Fetch the current image and analyze it
-            coarse_image = coarse_images[image_idx]
-            if maps is None or maps["image_idx"] != image_idx:
-                maps = compute_maps()
+            coarse_image = state.coarse_image
+            if state.maps is None or state.maps["image_idx"] != state.image_idx:
+                state.compute_maps()
 
             # Pick label interactively
             if need_to_pick_new_label:
-                label_idx = label_idx_selector(maps["pH"])
+                label_idx_selector(state.maps["pH"])
                 need_to_pick_new_label = False
 
             # Compute mass analysis
-            if not mass_analysis_done:
-                update_mass_analysis()
-                mass_analysis_done = True
+            if not state.mass_analysis_done:
+                state.update_mass_analysis()
 
-            coarse_signal = maps["signals"][signal_option_ptr[signal_option_idx]]
-            coarse_contour = cached_contour_overlay(maps, contour_thresholds)
+            # The figure is built for this image and label
+            image_idx = state.image_idx
+            label_idx = state.label_idx
+            coarse_signal = state.coarse_signal
+            coarse_contour = state.contour_overlay()
 
             # Use gridspec to create a 2x3 grid with proper ratios
             fig = plt.figure(figsize=(20, 12))
@@ -846,7 +490,7 @@ class HeterogeneousColorToMassAnalysis:
             # Top middle: Density visualization
             ax_signal = plt.subplot(gs[0, 1])
             ax_signal.axis("off")
-            ax_signal.set_title(signal_options[signal_option_ptr[signal_option_idx]])
+            ax_signal.set_title(state.signal_title)
 
             # Top right: Contour/Secondary visualization
             ax_contour = plt.subplot(gs[0, 2])
@@ -872,7 +516,7 @@ class HeterogeneousColorToMassAnalysis:
 
             # Plot the coarse image with highlighted label - turn the rest to gray
             coarse_image_img = ax_coarse_image.imshow(
-                label_highlight(coarse_image, label_idx)
+                state.label_highlight(coarse_image, label_idx)
             )
 
             # Plot the coarse signal with rois
@@ -891,12 +535,7 @@ class HeterogeneousColorToMassAnalysis:
             coarse_signal_colorbar = fig.colorbar(coarse_signal_img, cax=colorbar_ax)
 
             # Set initial color scale for the signal
-            if signal_option_ptr[signal_option_idx] == "pH":
-                initial_signal_min = 0.0
-                initial_signal_max = 1.0
-            else:
-                initial_signal_min = np.nanmin(coarse_signal.img)
-                initial_signal_max = np.nanmax(coarse_signal.img)
+            initial_signal_min, initial_signal_max = state.signal_range()
             coarse_signal_img.set_clim(vmin=initial_signal_min, vmax=initial_signal_max)
             coarse_signal_colorbar.update_normal(coarse_signal_img)  # Plot the contour
             coarse_contour_img = ax_contour.imshow(coarse_contour.img)
@@ -1090,13 +729,8 @@ class HeterogeneousColorToMassAnalysis:
             # Determine a representative mass/time magnitude up front, so the
             # unit (fixed, or auto-chosen to keep displayed numbers readable)
             # is known before any series is drawn.
-            max_expected = max(
-                (max(expected_mass[k]) for k in rois if len(expected_mass[k]) > 0),
-                default=0.0,
-            )
-            max_time = max(
-                (max(times[k]) for k in rois if len(times[k]) > 0), default=0.0
-            )
+            max_expected = state.max_expected_mass()
+            max_time = state.max_time()
             # Quantity compared with the injection protocol: the mass (CO2), or the
             # volume (tracer; the "mass" series below then hold volumes in m3).
             if self.has_gas:
@@ -1582,18 +1216,8 @@ class HeterogeneousColorToMassAnalysis:
                     def update_mass_plot():
                         """Update the mass evolution plots."""
                         # Update mass plots
-                        max_expected = max(
-                            (
-                                max(expected_mass[k])
-                                for k in rois
-                                if len(expected_mass[k]) > 0
-                            ),
-                            default=0.0,
-                        )
-                        max_time = max(
-                            (max(times[k]) for k in rois if len(times[k]) > 0),
-                            default=0.0,
-                        )
+                        max_expected = state.max_expected_mass()
+                        max_time = state.max_time()
                         if self.has_gas:
                             mass_unit = (
                                 choose_mass_unit(max_expected)
@@ -1683,38 +1307,26 @@ class HeterogeneousColorToMassAnalysis:
                             Also update the mass evolution plot.
 
                         """
-                        nonlocal maps
                         if recompute:
-                            maps = compute_maps()
-                        current_image = coarse_images[image_idx]
+                            state.compute_maps()
 
                         # Image panel and signal panel
                         ax_coarse_image.set_title(
-                            f"Current Image {image_idx} and Label {_label_idx}"
+                            f"Current Image {state.image_idx} and Label {_label_idx}"
                         )
                         coarse_image_img.set_data(
-                            label_highlight(current_image, _label_idx)
+                            state.label_highlight(state.coarse_image, _label_idx)
                         )
-                        coarse_signal = maps["signals"][
-                            signal_option_ptr[signal_option_idx]
-                        ]
-                        coarse_signal_img.set_data(coarse_signal.img)
-                        ax_signal.set_title(
-                            signal_options[signal_option_ptr[signal_option_idx]]
-                        )
-                        if signal_option_ptr[signal_option_idx] == "pH":
-                            signal_min = 0.0
-                            signal_max = 1.0
-                        else:
-                            signal_min = np.nanmin(coarse_signal.img)
-                            signal_max = np.nanmax(coarse_signal.img)
+                        coarse_signal_img.set_data(state.coarse_signal.img)
+                        ax_signal.set_title(state.signal_title)
+                        signal_min, signal_max = state.signal_range()
                         coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
                         coarse_signal_colorbar.update_normal(coarse_signal_img)
 
                         # Phase segmentation panel
                         coarse_contour_img.set_data(
-                            cached_contour_overlay(
-                                maps, [slider.val for slider in sliders_threshold]
+                            state.contour_overlay(
+                                [slider.val for slider in sliders_threshold]
                             ).img
                         )
 
@@ -1727,13 +1339,7 @@ class HeterogeneousColorToMassAnalysis:
                     def check_values() -> str | None:
                         """Message if the signal values of the label decrease, else None."""
                         values = [slider.val for slider in sliders_color_to_signal]
-                        function = self.signal_model.model[1][_label_idx]
-                        violation = monotonicity_violation(
-                            values, getattr(function, "support_indices", None)
-                        )
-                        if violation is None:
-                            return None
-                        return monotonicity_message(values, violation)
+                        return state.check_values(values, _label_idx)
 
                     def show_values_status(message: str | None) -> None:
                         """Show (or clear) the message about invalid signal values."""
@@ -1763,38 +1369,11 @@ class HeterogeneousColorToMassAnalysis:
                         show_values_status(message)
                         if message is not None:
                             return None
-                        need_update = False
-                        need_update = need_update or any(
-                            [
-                                sliders_color_to_signal[i].val
-                                != self.signal_model.model[1][_label_idx].values[i]
-                                for i in range(
-                                    len(self.signal_model.model[1][_label_idx].values)
-                                )
-                            ]
+                        return state.apply_parameters(
+                            [slider.val for slider in sliders_color_to_signal],
+                            [slider.val for slider in sliders_flash],
+                            _label_idx,
                         )
-                        if self.has_gas:
-                            need_update = need_update or any(
-                                [
-                                    sliders_flash[0].val != self.flash.min_value_aq,
-                                    sliders_flash[1].val != self.flash.max_value_aq,
-                                    sliders_flash[2].val != self.flash.min_value_g,
-                                    sliders_flash[3].val != self.flash.max_value_g,
-                                ]
-                            )
-
-                        # Update parameters
-                        self.signal_model.model[1][_label_idx].update(
-                            values=[slider.val for slider in sliders_color_to_signal]
-                        )
-                        if self.has_gas:
-                            self.flash.update(
-                                min_value_aq=sliders_flash[0].val,
-                                max_value_aq=sliders_flash[1].val,
-                                min_value_g=sliders_flash[2].val,
-                                max_value_g=sliders_flash[3].val,
-                            )
-                        return need_update
 
                     unsaved_text = "Changes not saved."
 
@@ -1815,7 +1394,7 @@ class HeterogeneousColorToMassAnalysis:
                             return
                         if changed:
                             mark_unsaved()
-                            update_mass_analysis()
+                            state.update_mass_analysis()
                         refresh(recompute=True, signal_function=True, mass_plot=True)
 
                     # Connect button callbacks
@@ -1911,29 +1490,16 @@ class HeterogeneousColorToMassAnalysis:
                     fig.canvas.mpl_connect("close_event", on_close)
 
                     def next_signal(event):
-                        nonlocal signal_option_idx
-                        signal_option_idx = (signal_option_idx + 1) % len(
-                            signal_option_ptr
-                        )
+                        state.next_signal()
                         refresh(recompute=False)
 
                     btn_next_signal.on_clicked(next_signal)
 
                     def next_label(event):
                         """Move to the next label and rebuild the figure for it."""
-                        nonlocal label_idx, done_tuning_values, need_to_pick_new_label
+                        nonlocal done_tuning_values, need_to_pick_new_label
                         nonlocal rebuilding
-                        available_labels = np.sort(
-                            list(self.signal_model.model[1].keys())
-                        )
-                        available_labels = available_labels[available_labels >= 0]
-                        position = np.where(available_labels == label_idx)[0]
-                        next_position = (
-                            (position[0] + 1) % len(available_labels)
-                            if len(position) > 0
-                            else 0
-                        )
-                        label_idx = available_labels[next_position]
+                        state.next_label()
                         need_to_pick_new_label = False
                         done_tuning_values = True
                         rebuilding = True
@@ -1942,8 +1508,7 @@ class HeterogeneousColorToMassAnalysis:
                     btn_next_label.on_clicked(next_label)
 
                     def next_image(event):
-                        nonlocal image_idx
-                        image_idx = (image_idx + 1) % len(images)
+                        state.next_image()
                         refresh(recompute=True)
 
                     btn_next_image.on_clicked(next_image)
@@ -1951,238 +1516,6 @@ class HeterogeneousColorToMassAnalysis:
                     plt.show()
 
                 show_tuner(label_idx)
-
-    def automatic_calibration(
-        self,
-        images: list[darsia.Image],
-        experiment: darsia.ProtocolledExperiment,
-        rois: dict[str, darsia.VoxelArray | darsia.CoordinateArray] | None = None,
-        cmap=None,
-    ) -> None:
-        """Define a local color path for a specific label.
-
-        Instructions:
-            - Pick a label in the image using the mouse and select a rectangle.
-            - Define a new color path just for this label.
-            - Tune the values for the color path.
-
-        Parameters
-        ----------
-        images : list[darsia.Image]
-            The images to use for calibration.
-        experiment : darsia.ProtocolledExperiment
-            The protocolled experiment.
-        rois : dict[str, darsia.VoxelArray or darsia.CoordinateArray], optional
-            Named regions of interest; defaults to the entire frame.
-        cmap : str or matplotlib.colors.Colormap, optional
-            Optional colormap for visualization.
-        """
-        # Fill up rois with "entire frame"
-        rois = rois or {}
-        assert "" not in rois
-        rois.update(
-            {
-                "full": darsia.CoordinateArray(
-                    [
-                        self.color_analysis.base.origin,
-                        self.color_analysis.base.opposite_corner,
-                    ]
-                )
-            }
-        )
-
-        # ! ---- COLOR INTERPRETATIONS ----
-        color_interpretations = [
-            self.call_color_interpretation(image) for image in images
-        ]
-
-        # ! ---- INITIAL DOFS ----
-        available_labels = np.sort(list(self.signal_model.model[1].keys()))
-        ignore_labels = [1, 3, 4]
-        initial_dofs = np.hstack(
-            [
-                np.diff(self.signal_model.model[1][label].values)
-                for label in available_labels
-                if label not in ignore_labels
-            ]
-            + [
-                self.flash.min_value_aq,
-                self.flash.max_value_aq - self.flash.min_value_aq,
-                self.flash.min_value_g,
-                self.flash.max_value_g - self.flash.min_value_g,
-            ]
-        )
-        logging.info(f"Number of DOFs for optimization: {len(initial_dofs)}")
-
-        # ! ---- OBJECTIVE FUNCTION ----
-
-        def objective_function(dofs: np.ndarray) -> float:
-            logging.info(f"DOFs {dofs}")
-            logging.info(f"DOFs hash: {hash(tuple(dofs))}")
-            # Update the signal model
-            idx = 0
-            for label in available_labels:
-                if label in ignore_labels:
-                    continue
-                num_values = len(self.signal_model.model[1][label].values)
-                new_values = np.cumsum(
-                    np.hstack(
-                        [
-                            0.0,
-                            dofs[idx : idx + num_values - 1],
-                        ]
-                    )
-                )
-                logging.info(f"Label {label}: {new_values}")
-                self.signal_model.model[1][label].update(values=new_values)
-                idx += num_values - 1
-            # Update the flash model
-            self.flash.update(
-                min_value_aq=dofs[-4],
-                max_value_aq=dofs[-4] + dofs[-3],
-                min_value_g=dofs[-2],
-                max_value_g=dofs[-1] + dofs[-2],
-            )
-            logging.info(
-                f"""Flash min: {self.flash.min_value_aq}, max: {self.flash.max_value_aq}, """
-                f"""min g: {self.flash.min_value_g}, max g: {self.flash.max_value_g}"""
-            )
-
-            # Allocate variables for mass analysis
-            times = {r: [] for r in rois}
-            expected_mass = {r: [] for r in rois}
-            integrated_mass = {r: [] for r in rois}
-            integrated_mass_g = {r: [] for r in rois}
-            integrated_mass_aq = {r: [] for r in rois}
-            error = 0.0
-
-            analysis = {
-                roi_key: SimpleRunAnalysis(self.geometry.subregion(roi))
-                for roi_key, roi in rois.items()
-            }
-            for img, color_interpretation in zip(images, color_interpretations):
-                # Update thermodynamic state
-                self.update_state(img.date, experiment.pressure_temperature_protocol)
-
-                # Signal analysis
-                pH = self.call_pH_analysis(color_interpretation)
-
-                # Mass computation
-                mass_analysis_result = self.call_flash_and_mass_analysis(pH)
-
-                for roi_key, roi in rois.items():
-                    # Subregion mass
-                    roi_mass_analysis_result = mass_analysis_result.subregion(roi)
-
-                    # Compute expected mass
-                    assert isinstance(roi, darsia.CoordinateArray)
-                    roi_exact_mass = experiment.injection_protocol.injected_mass(
-                        img.date, roi
-                    )
-
-                    # Track result
-                    analysis[roi_key].track(
-                        roi_mass_analysis_result, exact_mass=roi_exact_mass
-                    )
-
-            # Monitor mass evolution over time
-            for roi_key in rois:
-                times[roi_key] = analysis[roi_key].data.time
-                expected_mass[roi_key] = analysis[roi_key].data.exact_mass_tot
-                integrated_mass[roi_key] = analysis[roi_key].data.mass_tot
-                integrated_mass_g[roi_key] = analysis[roi_key].data.mass_g
-                integrated_mass_aq[roi_key] = analysis[roi_key].data.mass_aq
-
-                # Errors
-                _error = np.abs(
-                    np.array(integrated_mass[roi_key])
-                    - np.array(expected_mass[roi_key])
-                ) / np.abs(expected_mass[roi_key]).clip(min=1e-8)
-
-                logging.info(
-                    f"Mass analysis for roi {roi_key} updated.\nNew relative error: {_error}"
-                )
-                error += np.sum(_error)
-            logging.info(f"Current total error: {error}")
-
-            return error
-
-        # ! ---- OPTIMIZATION ----
-        # Use Nelder-Mead method for derivative-free optimization
-        # Configure comprehensive optimization options with detailed explanations
-        optimization_options = {
-            "maxiter": 10,  # Maximum number of iterations to prevent infinite loops
-            # "maxfev": 5000,  # Maximum function evaluations (safety limit)
-            "disp": True,  # Display convergence messages during optimization
-            "xtol": 1e-6,  # Absolute tolerance for parameter convergence
-            "ftol": 1e-6,  # Absolute tolerance for function value convergence
-            # "adaptive": True,  # Use adaptive algorithm parameters for better performance
-            # "return_all": False,  # Don't return all intermediate results (saves memory)
-        }
-
-        # Create initial simplex for Nelder-Mead method with custom increment sizes
-        # The simplex needs n+1 vertices where n is the number of parameters
-        n_params = len(initial_dofs)
-        initial_simplex = np.zeros((n_params + 1, n_params))
-
-        # First vertex is the initial guess
-        initial_simplex[0] = initial_dofs
-
-        # Create remaining vertices by adding increments to each parameter
-        for i in range(n_params):
-            initial_simplex[i + 1] = initial_dofs.copy()
-
-            # Use different increment sizes based on parameter type
-            if i < n_params - 2:  # Signal function parameters
-                increment = 0.2
-            else:  # Last two parameters (flash cut-off and max_value)
-                increment = 0.01
-
-            initial_simplex[i + 1, i] += increment
-
-        logging.info(f"Initial simplex shape: {initial_simplex.shape}")
-        logging.info(f"Initial simplex:\n{initial_simplex}")
-
-        # Add initial simplex to optimization options
-        optimization_options["initial_simplex"] = initial_simplex
-
-        result = minimize(
-            objective_function,
-            initial_dofs,
-            method="Nelder-Mead",
-            # method="Powell",
-            # method="L-BFGS-B",
-            bounds=[(0, 1)] * len(initial_dofs),
-            options=optimization_options,
-        )
-        logging.info(f"Optimization result: {result}")
-
-        # Final update of the signal model with optimized DOFs
-        idx = 0
-        for label in available_labels:
-            num_values = len(self.signal_model.model[1][label].values)
-            new_values = np.cumsum(
-                np.hstack(
-                    [
-                        0.0,
-                        result.x[idx : idx + num_values - 1],
-                    ]
-                )
-            )
-            logging.info(f"Label {label}: {new_values}")
-            self.signal_model.model[1][label].update(values=new_values)
-            idx += num_values - 1
-        # Update the flash model
-        self.flash.update(
-            min_value_aq=result.x[-4],
-            max_value_aq=result.x[-4] + result.x[-3],
-            min_value_g=result.x[-2],
-            max_value_g=result.x[-1] + result.x[-2],
-        )
-        logging.info(
-            f"""Flash min: {self.flash.min_value_aq}, max: {self.flash.max_value_aq}, """
-            f"""min g: {self.flash.min_value_g}, max g: {self.flash.max_value_g}"""
-        )
 
     def save(self, folder: Path, interpretation: Interpretation) -> None:
         """Save the calibration data to json file.
