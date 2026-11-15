@@ -15,6 +15,7 @@ import skimage
 from scipy.ndimage import map_coordinates
 
 import darsia
+import darsia.corrections.shape.remap_kernels as _remap
 
 
 def load_curvature_correction_config_from_toml(path: Path) -> dict:
@@ -911,6 +912,10 @@ class CurvatureCorrection(darsia.BaseCorrection):
         np.ndarray
             Transformed image.
         """
+        # Bilinear interpolation in one compiled pass, if available (same result).
+        if _remap.supports(img, grid, self.interpolation_order):
+            return np.squeeze(_remap.bilinear(img, grid, shape))
+
         # Initialize the corrected image. To unify code, transform to 3d arrays and
         # transform back in the end if needed.
         img = np.atleast_3d(img)
