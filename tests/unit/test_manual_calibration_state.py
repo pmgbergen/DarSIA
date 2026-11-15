@@ -53,13 +53,27 @@ def _make_state(has_gas=True, num_images=3):
     }
     states = []
 
+    calls = []
+    flash = FakeFlash()
+
     def call_pH_analysis(color_interpretation):
+        calls.append("signal")
         scale = np.where(
             labels_array == 1, functions[1].values[-1], functions[2].values[-1]
         )
         return _scalar(color_interpretation.img * scale)
 
+    def call_flash_and_mass_analysis(signal):
+        c_aq, s_g = flash(signal)
+        return SimpleNamespace(
+            mass=_scalar(1.5 * c_aq.img + 2.0 * s_g.img),
+            concentration_aq=c_aq,
+            saturation_g=s_g,
+        )
+
     analysis = SimpleNamespace(
+        calls=calls,
+        call_flash_and_mass_analysis=call_flash_and_mass_analysis,
         has_gas=has_gas,
         labels=labels,
         color_analysis=SimpleNamespace(base=labels),
@@ -72,14 +86,8 @@ def _make_state(has_gas=True, num_images=3):
         call_color_interpretation=lambda image: _scalar(image.img.mean(axis=-1)),
         call_pH_analysis=call_pH_analysis,
         signal_model=SimpleNamespace(model=[None, functions]),
-        flash=FakeFlash(),
-        fluid_model=SimpleNamespace(
-            mass_analysis=lambda c_aq, s_g: SimpleNamespace(
-                mass=_scalar(1.5 * c_aq.img + 2.0 * s_g.img)
-            ),
-            density_gas=2.0,
-            aqueous_capacity=1.5,
-        ),
+        flash=flash,
+        fluid_model=SimpleNamespace(density_gas=2.0, aqueous_capacity=1.5),
         expert_knowledge_adapter=None,
         contour_smoother=None,
         update_state=lambda date, protocol=None: states.append(date),
@@ -153,6 +161,23 @@ def test_compute_maps_of_current_image():
     assert state.signal_range() == (0.0, 1.0)
     state.next_signal()
     assert np.allclose(state.signal_range(), (0.5, 0.5))
+
+
+def test_maps_reuse_the_analysis_until_something_changes():
+    state, analysis, _ = _make_state()
+    state.compute_maps()
+    state.compute_maps()
+    assert len(analysis.calls) == 1  # same image, same parameters
+    state.apply_parameters([0.0, 0.2, 0.4], [0.0, 1.0, 1.0, 2.0], label=1)
+    maps = state.compute_maps()
+    assert len(analysis.calls) == 2  # new parameters
+    assert np.isclose(maps["signals"]["pH"].img[:, :100], 0.25 * 0.4).all()
+    state.next_image()
+    state.compute_maps()
+    assert len(analysis.calls) == 3  # new image
+    state.apply_parameters([0.0, 0.2, 0.4], [0.0, 1.0, 1.5, 2.0], label=1)
+    state.compute_maps()
+    assert len(analysis.calls) == 4  # new flash parameters
 
 
 def test_single_phase_maps_have_no_gas_entries():
