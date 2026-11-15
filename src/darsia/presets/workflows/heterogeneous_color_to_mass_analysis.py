@@ -14,6 +14,9 @@ from matplotlib.transforms import Bbox
 from matplotlib.widgets import Button, Slider
 
 import darsia
+import darsia.multiphase.mass_kernels as mass_kernels
+import darsia.signals.color.color_path_kernels as color_kernels
+import darsia.signals.models.signal_kernels as signal_kernels
 from darsia.multiphase.flash import load_flash
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.basis import label_ids_from_image
@@ -360,13 +363,215 @@ class HeterogeneousColorToMassAnalysis:
 
     @darsia.timed("color interpretation")
     def call_color_interpretation(self, image: darsia.Image) -> darsia.Image:
+        fast = self._fast_color_interpretation(image)
+        if fast is not None:
+            return fast
         return self.color_analysis(image)
 
     @darsia.timed("signal model")
     @darsia.timing_decorator
     def call_pH_analysis(self, color_interpretation: darsia.Image) -> darsia.Image:
         """Run the mass analysis on a single image."""
+        fast = self._fast_signal(color_interpretation)
+        if fast is not None:
+            return fast
         return self.signal_model(color_interpretation)
+
+    # ! ---- Single-pass evaluation of the stages ----
+
+    # The three stages are per-pixel arithmetic. If the analysis is set up in the
+    # standard way, each stage is evaluated by a compiled kernel in one pass over the
+    # pixels, with the same arithmetic (and results) as the generic implementation,
+    # which is used in all other cases. The kernels state which code they mirror.
+
+    @staticmethod
+    def _is_plain(analysis: darsia.ConcentrationAnalysis) -> bool:
+        """Whether a concentration analysis only subtracts the baseline, applies the
+        model and then the restoration."""
+        return (
+            type(analysis) is darsia.ConcentrationAnalysis
+            and analysis._diff_option == "plain"
+            and analysis.signal_reduction is None
+            and analysis.threshold_cleaning_filter is None
+            and analysis.balancing is None
+            and analysis.verbosity == 0
+            and not analysis.first_restoration_then_model
+        )
+
+    @staticmethod
+    def _wrap(array: np.ndarray, image: darsia.Image) -> darsia.Image:
+        """Image of a result, as returned by `ConcentrationAnalysis.__call__`."""
+        metadata = image.metadata()
+        if len(array.shape) == len(image.shape) - 1:
+            return darsia.ScalarImage(array, **metadata)
+        if array.shape[-1] == 1:
+            return darsia.ScalarImage(array[..., 0], **metadata)
+        return type(image)(array, **metadata)
+
+    def _fast_color_interpretation(self, image: darsia.Image) -> darsia.Image | None:
+        """Color interpretation in one pass (None if not applicable).
+
+        The colors relative to the baseline are projected onto the color path of the
+        label of each pixel, without forming the difference image.
+
+        """
+        analysis = self.color_analysis
+        model = analysis.model
+        if not (
+            self._is_plain(analysis)
+            and analysis.restoration is None
+            and type(model) is darsia.CombinedModel
+            and len(model.models) == 1
+            and type(model.models[0]) is darsia.HeterogeneousModel
+        ):
+            return None
+        array = image.img
+        base = None if analysis.base is None else analysis.base.img
+        if array.dtype != np.float64 or (
+            base is not None and (base.dtype != np.float64 or base.shape != array.shape)
+        ):
+            return None
+        interpretations = model.models[0]
+        active = interpretations._color_path_labels(array)
+        if active is None:
+            return None
+        values = color_kernels.evaluate_labeled_image(
+            array,
+            interpretations.masks.labels.img,
+            {label: interpretations[label].kernel_data() for label in active},
+            base=base,
+        )
+        return self._wrap(values, image)
+
+    def _fast_signal(self, color_interpretation: darsia.Image) -> darsia.Image | None:
+        """Signal in one pass (None if not applicable).
+
+        The position on the color path is clipped to the common domain of the signal
+        functions and converted by the piecewise linear function of the label of each
+        pixel (linear evaluation); a restoration is applied afterwards.
+
+        """
+        analysis = self.signal_model
+        model = analysis.model
+        if not (
+            signal_kernels.NUMBA_AVAILABLE
+            and self._is_plain(analysis)
+            and analysis.base is None
+            and type(model) is darsia.CombinedModel
+            and len(model.models) == 2
+            and type(model.models[0]) is darsia.ClipModel
+            and type(model.models[1]) is darsia.HeterogeneousModel
+        ):
+            return None
+        clip, functions = model.models
+        array = color_interpretation.img
+        labels = functions.masks.labels.img
+        low, high = clip._min_value, clip._max_value
+        if not (
+            array.dtype == np.float64
+            and array.shape == labels.shape
+            and np.issubdtype(labels.dtype, np.integer)
+            and low is not None
+            and high is not None
+            and low <= high
+        ):
+            return None
+        tables = {}
+        for label in functions.masks.unique_labels:
+            if label in functions.ignore_labels:
+                continue
+            function = functions[label]
+            if type(function) is not darsia.PWTransformation or not hasattr(
+                function, "interpolator"
+            ):
+                return None
+            supports = np.asarray(function.supports, dtype=float)
+            values = np.asarray(function.values, dtype=float)
+            # The function must be defined on the whole (clipped) domain.
+            if not (
+                supports.ndim == 1
+                and len(supports) >= 2
+                and supports.shape == values.shape
+                and np.all(np.isfinite(supports))
+                and np.all(np.isfinite(values))
+                and np.all(np.diff(supports) > 0)
+                and supports[0] <= low
+                and supports[-1] >= high
+            ):
+                return None
+            tables[label] = (supports, values)
+        if len(tables) == 0:
+            return None
+        signal = signal_kernels.evaluate_labeled_image(array, labels, tables, low, high)
+        return self._wrap(analysis._restore_signal(signal), color_interpretation)
+
+    def _fast_flash_and_mass(
+        self, pH: darsia.Image
+    ) -> SimpleMassAnalysisResults | None:
+        """Flash and mass in one pass (None if not applicable).
+
+        Concentration and saturation are linear ramps of the signal; density and
+        aqueous capacity only depend on the pixel row (pressure and temperature vary
+        with height).
+
+        """
+        flash, fluid_model = self.flash, self.fluid_model
+        signal = pH.img
+        if not (
+            mass_kernels.NUMBA_AVAILABLE
+            and type(flash) is darsia.SimpleFlash
+            and flash.restoration is None
+            and getattr(fluid_model, "has_gas", False)
+            and getattr(type(fluid_model), "mass_analysis", None)
+            is darsia.FluidMassAnalysis.mass_analysis
+            and signal.dtype == np.float64
+            and signal.ndim == 2
+        ):
+            return None
+        density_gas = mass_kernels.row_values(fluid_model.density_gas, signal.shape)
+        aqueous_capacity = mass_kernels.row_values(
+            fluid_model.aqueous_capacity, signal.shape
+        )
+        if density_gas is None or aqueous_capacity is None:
+            return None
+        keep_aq = keep_g = None
+        if self.expert_knowledge_adapter is not None:
+            keep_aq = self.expert_knowledge_adapter.mask_for(pH, "concentration_aq")
+            keep_g = self.expert_knowledge_adapter.mask_for(pH, "saturation_g")
+            if any(
+                keep is not None and keep.shape != signal.shape
+                for keep in (keep_aq, keep_g)
+            ):
+                return None
+        c_aq, s_g, mass, mass_g, mass_aq = mass_kernels.flash_and_mass(
+            signal,
+            (
+                flash.min_value_aq,
+                flash.max_value_aq,
+                flash.min_value_g,
+                flash.max_value_g,
+            ),
+            density_gas,
+            aqueous_capacity,
+            keep_aq,
+            keep_g,
+        )
+        metadata = pH.metadata()
+
+        def image(array: np.ndarray) -> darsia.Image:
+            return type(pH)(array, **metadata)
+
+        return SimpleMassAnalysisResults(
+            name=pH.name,
+            date=pH.date,
+            time=pH.time,
+            mass=image(mass),
+            mass_g=image(mass_g),
+            mass_aq=image(mass_aq),
+            saturation_g=image(s_g),
+            concentration_aq=image(c_aq),
+            color_signal=None,
+        )
 
     @darsia.timed("flash and mass")
     @darsia.timing_decorator
@@ -374,6 +579,9 @@ class HeterogeneousColorToMassAnalysis:
         self, pH: darsia.Image
     ) -> SimpleMassAnalysisResults:
         """Run the mass analysis on a single image."""
+        fast = self._fast_flash_and_mass(pH)
+        if fast is not None:
+            return fast
         c_aq, s_g = self.flash(pH)
         if self.expert_knowledge_adapter is not None:
             c_aq = self.expert_knowledge_adapter.apply(c_aq, "concentration_aq")
