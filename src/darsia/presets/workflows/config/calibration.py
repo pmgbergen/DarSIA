@@ -446,6 +446,22 @@ class CalibrationMassConfig:
         },
     )
     """Evaluation mode of the color to signal conversion."""
+    ignore_mask: str = field(
+        default="norm",
+        metadata={
+            "name": "Ignore mask",
+            "help": "Which pixels are treated as showing no signal (they get the "
+            "value of the clean state and are not projected onto the color path): "
+            "'norm' ignores pixels whose color change against the baseline is small "
+            "(norm below 0.1, the same for all labels); 'spectrum' ignores pixels "
+            "whose color change lies in the measured color spectrum of the baseline "
+            "of their label. The choice is stored with the calibration and used by "
+            "the analysis. Changing it changes the detected mass slightly, so check "
+            "the calibration afterwards. Only for linear and spline evaluation.",
+            "options": ["norm", "spectrum"],
+        },
+    )
+    """Which pixels are ignored as showing no signal."""
     resolution_level: int = field(
         default=4,
         metadata={
@@ -577,6 +593,15 @@ class CalibrationMassConfig:
             raise ValueError(
                 "calibration.mass.evaluation_mode must be 'linear', 'spline' or "
                 "'kernel'."
+            )
+        self.ignore_mask = (
+            _get_key(sec, "ignore_mask", required=False, default="norm", type_=str)
+            .lower()
+            .strip()
+        )
+        if self.ignore_mask not in {"norm", "spectrum"}:
+            raise ValueError(
+                "calibration.mass.ignore_mask must be 'norm' or 'spectrum'."
             )
         self.resolution_level = _get_key(
             sec, "resolution_level", required=False, default=4, type_=int

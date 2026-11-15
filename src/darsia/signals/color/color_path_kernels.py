@@ -7,10 +7,16 @@ per segment as in :meth:`darsia.ColorPath.fit`. The arithmetic follows that meth
 results agree up to rounding in the last digit (the order of summation in the scalar
 products differs).
 
+Colors without a signal are not fitted and keep the position 0 on the path. They are
+identified either by the norm of the color (`MASK_NORM`) or by the membership in a
+discrete color spectrum, e.g. the colors of the baseline (`MASK_SPECTRUM`).
+
 The kernels require numba; without it `NUMBA_AVAILABLE` is False and callers use the
 array-based implementation.
 
 """
+
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -24,7 +30,10 @@ except ImportError:  # pragma: no cover
 __all__ = [
     "NUMBA_AVAILABLE",
     "NORM_THRESHOLD",
-    "path_tables",
+    "MASK_NONE",
+    "MASK_NORM",
+    "MASK_SPECTRUM",
+    "PathData",
     "evaluate_colors",
     "evaluate_labeled_image",
 ]
@@ -32,51 +41,114 @@ __all__ = [
 NORM_THRESHOLD = 1e-1
 """Colors with a smaller norm are not fitted (no color change against the baseline)."""
 
+MASK_NONE = 0
+"""All colors are fitted."""
+MASK_NORM = 1
+"""Colors with a norm up to `NORM_THRESHOLD` are not fitted."""
+MASK_SPECTRUM = 2
+"""Colors in the bins of a discrete color spectrum are not fitted."""
 
-def path_tables(
-    supports: list, distances: list, values: list
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Collect color paths of different lengths in arrays of a common shape.
 
-    Parameters
-    ----------
-    supports : list
-        Key colors of each path, arrays of shape (segments + 1, 3).
-    distances : list
-        Positions of the key colors along each path, increasing.
-    values : list
-        Values at the key colors of each path.
+@dataclass
+class PathData:
+    """Data of one color path and its values for the kernels."""
 
-    Returns
-    -------
-    tuple
-        Key colors (paths, max. keys, 3), positions and values (paths, max. keys), and
-        the number of segments of each path.
+    supports: np.ndarray
+    """Key colors of the path, shape (segments + 1, 3)."""
+    distances: np.ndarray
+    """Positions of the key colors along the path, increasing."""
+    values: np.ndarray
+    """Values at the key colors."""
+    mask: int = MASK_NONE
+    """Which colors are not fitted: `MASK_NONE`, `MASK_NORM` or `MASK_SPECTRUM`."""
+    spectrum: np.ndarray | None = None
+    """Boolean bins of the spectrum (for `MASK_SPECTRUM`)."""
+    edges: list | None = None
+    """Bin edges of the spectrum for each color channel."""
+    offset: np.ndarray | None = None
+    """Shift from the colors to the frame of the spectrum."""
 
-    """
-    num_keys = max(len(d) for d in distances)
-    num_paths = len(distances)
-    support_table = np.zeros((num_paths, num_keys, 3), dtype=np.float64)
-    distance_table = np.zeros((num_paths, num_keys), dtype=np.float64)
-    value_table = np.zeros((num_paths, num_keys), dtype=np.float64)
+
+def _tables(paths: list[PathData]) -> tuple:
+    """Collect paths of different lengths (and spectra) in arrays of a common shape."""
+    num_paths = len(paths)
+    num_keys = max(len(path.distances) for path in paths)
+    sup = np.zeros((num_paths, num_keys, 3), dtype=np.float64)
+    dist = np.zeros((num_paths, num_keys), dtype=np.float64)
+    val = np.zeros((num_paths, num_keys), dtype=np.float64)
     num_segments = np.zeros(num_paths, dtype=np.int64)
-    for i in range(num_paths):
-        n = len(distances[i])
-        support_table[i, :n] = np.asarray(supports[i], dtype=np.float64)
-        distance_table[i, :n] = np.asarray(distances[i], dtype=np.float64)
-        value_table[i, :n] = np.asarray(values[i], dtype=np.float64)
+    mask = np.zeros(num_paths, dtype=np.int64)
+
+    shapes = [
+        path.spectrum.shape if path.mask == MASK_SPECTRUM else (1, 1, 1)
+        for path in paths
+    ]
+    max_shape = tuple(max(shape[i] for shape in shapes) for i in range(3))
+    spectrum = np.zeros((num_paths, *max_shape), dtype=np.bool_)
+    edges = np.zeros((num_paths, 3, max(max_shape) + 1), dtype=np.float64)
+    bins = np.ones((num_paths, 3), dtype=np.int64)
+    offset = np.zeros((num_paths, 3), dtype=np.float64)
+
+    for i, path in enumerate(paths):
+        n = len(path.distances)
+        sup[i, :n] = np.asarray(path.supports, dtype=np.float64)
+        dist[i, :n] = np.asarray(path.distances, dtype=np.float64)
+        val[i, :n] = np.asarray(path.values, dtype=np.float64)
         num_segments[i] = n - 1
-    return support_table, distance_table, value_table, num_segments
+        mask[i] = path.mask
+        if path.mask == MASK_SPECTRUM:
+            shape = path.spectrum.shape
+            spectrum[i, : shape[0], : shape[1], : shape[2]] = path.spectrum
+            bins[i] = shape
+            for axis in range(3):
+                edges[i, axis, : shape[axis] + 1] = path.edges[axis]
+            offset[i] = path.offset
+    return sup, dist, val, num_segments, mask, spectrum, edges, bins, offset
 
 
 if NUMBA_AVAILABLE:
 
     @njit(cache=True, error_model="numpy", inline="always")
-    def _evaluate(c0, c1, c2, sup, dist, val, n, path, use_mask, threshold):
+    def _bin(x, edges, path, axis, n):
+        """Bin of x as in np.histogramdd (-1 outside of the range)."""
+        low = edges[path, axis, 0]
+        high = edges[path, axis, n]
+        if not (x >= low and x <= high and high > low):
+            return -1
+        k = int((x - low) / (high - low) * n)
+        if k > n - 1:
+            k = n - 1
+        while k > 0 and x < edges[path, axis, k]:
+            k -= 1
+        while k < n - 1 and x >= edges[path, axis, k + 1]:
+            k += 1
+        return k
+
+    @njit(cache=True, error_model="numpy", inline="always")
+    def _fitted(c0, c1, c2, path, mask, threshold, spectrum, edges, bins, offset):
+        """Whether a color carries a signal and is fitted to the path."""
+        kind = mask[path]
+        if kind == 0:
+            return True
+        if kind == 1:
+            return np.sqrt(c0 * c0 + c1 * c1 + c2 * c2) > threshold
+        k0 = _bin(c0 + offset[path, 0], edges, path, 0, bins[path, 0])
+        if k0 < 0:
+            return True
+        k1 = _bin(c1 + offset[path, 1], edges, path, 1, bins[path, 1])
+        if k1 < 0:
+            return True
+        k2 = _bin(c2 + offset[path, 2], edges, path, 2, bins[path, 2])
+        if k2 < 0:
+            return True
+        return not spectrum[path, k0, k1, k2]
+
+    @njit(cache=True, error_model="numpy", inline="always")
+    def _evaluate(c0, c1, c2, sup, dist, val, n, path, fitted):
         """Value of one color for the path with index `path`."""
-        # Position on the path; colors without a color change stay at 0.
+        # Position on the path; colors which are not fitted stay at 0.
         p = 0.0
-        if (not use_mask) or np.sqrt(c0 * c0 + c1 * c1 + c2 * c2) > threshold:
+        if fitted:
             best = np.inf
             for s in range(n):
                 a0 = sup[path, s, 0]
@@ -137,83 +209,81 @@ if NUMBA_AVAILABLE:
         return result
 
     @njit(cache=True, error_model="numpy", parallel=True)
-    def _evaluate_colors(colors, sup, dist, val, n, use_mask, threshold, out):
+    def _evaluate_colors(
+        colors,
+        sup,
+        dist,
+        val,
+        num_segments,
+        mask,
+        spectrum,
+        edges,
+        bins,
+        offset,
+        threshold,
+        out,
+    ):
         for i in prange(colors.shape[0]):
-            out[i] = _evaluate(
-                colors[i, 0],
-                colors[i, 1],
-                colors[i, 2],
-                sup,
-                dist,
-                val,
-                n,
-                0,
-                use_mask,
-                threshold,
+            c0 = colors[i, 0]
+            c1 = colors[i, 1]
+            c2 = colors[i, 2]
+            fitted = _fitted(
+                c0, c1, c2, 0, mask, threshold, spectrum, edges, bins, offset
             )
+            out[i] = _evaluate(c0, c1, c2, sup, dist, val, num_segments[0], 0, fitted)
 
     @njit(cache=True, error_model="numpy", parallel=True)
     def _evaluate_labeled_image(
         image,
         labels,
-        offset,
+        label_offset,
         lookup,
         sup,
         dist,
         val,
         num_segments,
-        use_mask,
+        mask,
+        spectrum,
+        edges,
+        bins,
+        offset,
         threshold,
         out,
     ):
         rows, cols = labels.shape
         for i in prange(rows):
             for j in range(cols):
-                key = labels[i, j] - offset
+                key = labels[i, j] - label_offset
                 path = -1
                 if key >= 0 and key < lookup.shape[0]:
                     path = lookup[key]
                 if path < 0:
                     out[i, j] = 0.0
                 else:
+                    c0 = image[i, j, 0]
+                    c1 = image[i, j, 1]
+                    c2 = image[i, j, 2]
+                    fitted = _fitted(
+                        c0, c1, c2, path, mask, threshold, spectrum, edges, bins, offset
+                    )
                     out[i, j] = _evaluate(
-                        image[i, j, 0],
-                        image[i, j, 1],
-                        image[i, j, 2],
-                        sup,
-                        dist,
-                        val,
-                        num_segments[path],
-                        path,
-                        use_mask[path],
-                        threshold,
+                        c0, c1, c2, sup, dist, val, num_segments[path], path, fitted
                     )
 
 
 def evaluate_colors(
-    colors: np.ndarray,
-    supports: np.ndarray,
-    distances: np.ndarray,
-    values: np.ndarray,
-    use_mask: bool,
-    threshold: float = NORM_THRESHOLD,
+    colors: np.ndarray, path: PathData, threshold: float = NORM_THRESHOLD
 ) -> np.ndarray:
     """Values of colors along one color path.
 
     Parameters
     ----------
     colors : np.ndarray
-        Colors, shape (N, 3), in the color mode of the supports.
-    supports : np.ndarray
-        Key colors of the path, shape (segments + 1, 3).
-    distances : np.ndarray
-        Positions of the key colors along the path.
-    values : np.ndarray
-        Values at the key colors.
-    use_mask : bool
-        Whether colors with a norm below `threshold` are not fitted (position 0).
+        Colors, shape (N, 3), in the color mode of the key colors of the path.
+    path : PathData
+        Color path, values and the colors which are not fitted.
     threshold : float
-        Threshold on the norm of the colors.
+        Threshold on the norm of the colors (for `MASK_NORM`).
 
     Returns
     -------
@@ -221,15 +291,10 @@ def evaluate_colors(
         Values, shape (N,).
 
     """
-    sup, dist, val, num_segments = path_tables([supports], [distances], [values])
     out = np.empty(colors.shape[0], dtype=np.float64)
     _evaluate_colors(
         np.ascontiguousarray(colors, dtype=np.float64),
-        sup,
-        dist,
-        val,
-        num_segments[0],
-        use_mask,
+        *_tables([path]),
         threshold,
         out,
     )
@@ -239,11 +304,7 @@ def evaluate_colors(
 def evaluate_labeled_image(
     image: np.ndarray,
     labels: np.ndarray,
-    path_labels: list[int],
-    supports: list,
-    distances: list,
-    values: list,
-    use_mask: list[bool],
+    paths: dict[int, PathData],
     threshold: float = NORM_THRESHOLD,
 ) -> np.ndarray:
     """Values of an image of colors, with one color path per label.
@@ -254,14 +315,11 @@ def evaluate_labeled_image(
         Colors, shape (rows, cols, 3).
     labels : np.ndarray
         Integer labels, shape (rows, cols).
-    path_labels : list[int]
-        Labels with a color path; pixels of other labels get the value 0.
-    supports, distances, values : list
-        Key colors, their positions and values for each label in `path_labels`.
-    use_mask : list[bool]
-        For each label, whether colors with a norm below `threshold` are not fitted.
+    paths : dict[int, PathData]
+        Color path, values and the colors which are not fitted, for each label. Pixels
+        of other labels get the value 0.
     threshold : float
-        Threshold on the norm of the colors.
+        Threshold on the norm of the colors (for `MASK_NORM`).
 
     Returns
     -------
@@ -269,22 +327,18 @@ def evaluate_labeled_image(
         Values, shape (rows, cols).
 
     """
-    sup, dist, val, num_segments = path_tables(supports, distances, values)
-    offset = int(min(path_labels))
-    lookup = np.full(int(max(path_labels)) - offset + 1, -1, dtype=np.int64)
+    path_labels = [int(label) for label in paths]
+    label_offset = min(path_labels)
+    lookup = np.full(max(path_labels) - label_offset + 1, -1, dtype=np.int64)
     for index, label in enumerate(path_labels):
-        lookup[int(label) - offset] = index
+        lookup[label - label_offset] = index
     out = np.empty(labels.shape, dtype=np.float64)
     _evaluate_labeled_image(
         np.ascontiguousarray(image, dtype=np.float64),
         np.ascontiguousarray(labels),
-        offset,
+        label_offset,
         lookup,
-        sup,
-        dist,
-        val,
-        num_segments,
-        np.asarray(use_mask, dtype=np.bool_),
+        *_tables(list(paths.values())),
         threshold,
         out,
     )

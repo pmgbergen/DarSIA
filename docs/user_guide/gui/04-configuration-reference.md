@@ -266,6 +266,18 @@ level, then switch to level 1 with the **Resolution** slider of the tool (applie
 **Update**) to check the curves before saving. The stored calibration and the analysis do
 not depend on the level. With a restoration, only level 1 is available.
 
+**Ignore mask.** `ignore_mask` (`"norm"` or `"spectrum"`; default `"norm"`) decides which
+pixels count as showing no signal; they get the value of the clean state instead of being
+projected onto the colour path. `"norm"` ignores pixels whose colour change against the
+baseline has a norm below 0.1, the same limit for all labels. `"spectrum"` ignores pixels
+whose colour change lies in the colour spectrum of the baseline of their label, which is
+measured in the colour path calibration: the limit then follows the actual noise of each
+label. The calibration tool uses the choice of the config and stores it with the
+calibration; the analysis uses the stored one. The two masks differ in about 1 % of the
+pixels, and the detected mass changed by about 1 % in our test, so check (and if needed
+tune) a calibration after changing the mask. It applies to linear and spline evaluation
+with a baseline spectrum.
+
 ## `[roi]`
 
 ```toml

@@ -192,21 +192,73 @@ class ColorSpectrum:
         np.ndarray
             Boolean array indicating if each color is in the spectrum.
         """
-        if color_mode == darsia.ColorMode.RELATIVE:
-            check_colors = colors
-        elif color_mode == darsia.ColorMode.ABSOLUTE:
-            check_colors = colors - self.base_color
-        else:
-            raise ValueError(f"Unsupported color mode: {color_mode}")
+        return self.contains(colors, color_mode)
 
-        # Check if each color is in the spectrum
-        in_spectrum = np.array(
-            [
-                any(
-                    np.allclose(check_color, spec_color)
-                    for spec_color in self.relative_colors
-                )
-                for check_color in check_colors
-            ]
-        )
-        return in_spectrum
+    def bin_edges(self) -> list[np.ndarray]:
+        """Edges of the bins of the spectrum for each color channel.
+
+        These are the edges used by `np.histogramdd` when the spectrum is built from
+        colors (`bins=shape`, `range=color_range.range`).
+
+        Returns
+        -------
+        list[np.ndarray]
+            Edges for each channel, of length `shape[i] + 1`.
+        """
+        return [
+            np.linspace(low, high, num + 1)
+            for (low, high), num in zip(self.color_range.range, self.spectrum.shape)
+        ]
+
+    def frame_offset(self, color_mode: darsia.ColorMode) -> np.ndarray:
+        """Shift from colors in the given color mode to the frame of the bins.
+
+        Parameters
+        ----------
+        color_mode : darsia.ColorMode
+            Color mode of the colors to be compared with the spectrum.
+
+        Returns
+        -------
+        np.ndarray
+            Color to add: zero if the modes agree, otherwise plus or minus the base
+            color.
+        """
+        if color_mode not in (darsia.ColorMode.RELATIVE, darsia.ColorMode.ABSOLUTE):
+            raise ValueError(f"Unsupported color mode: {color_mode}")
+        if color_mode == self.color_mode:
+            return np.zeros(3)
+        sign = 1.0 if self.color_mode == darsia.ColorMode.ABSOLUTE else -1.0
+        return sign * np.asarray(self.base_color, dtype=float).ravel()
+
+    def contains(self, colors: np.ndarray, color_mode: darsia.ColorMode) -> np.ndarray:
+        """Check which colors fall into an active bin of the spectrum.
+
+        The colors are assigned to the bins of the spectrum like in `np.histogramdd`,
+        with which the spectrum is built; colors outside of the color range are not
+        contained.
+
+        Parameters
+        ----------
+        colors : np.ndarray
+            Colors, shape (..., 3).
+        color_mode : darsia.ColorMode
+            Color mode of the colors.
+
+        Returns
+        -------
+        np.ndarray
+            Boolean array of shape (...).
+        """
+        colors = np.asarray(colors, dtype=float) + self.frame_offset(color_mode)
+        inside = np.ones(colors.shape[:-1], dtype=bool)
+        indices = []
+        for axis, edges in enumerate(self.bin_edges()):
+            channel = colors[..., axis]
+            num = len(edges) - 1
+            index = np.searchsorted(edges, channel, side="right") - 1
+            # The last bin includes its upper edge
+            index = np.where(channel == edges[-1], num - 1, index)
+            inside = inside & (index >= 0) & (index < num) & (edges[-1] > edges[0])
+            indices.append(np.clip(index, 0, num - 1))
+        return inside & self.spectrum[tuple(indices)]

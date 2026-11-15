@@ -11,7 +11,7 @@ from typing import Literal, Optional, Union, overload
 import numpy as np
 
 import darsia
-import darsia.signals.color.color_path_kernels as kernels
+import darsia.signals.color.color_path_kernels as _kernels
 
 
 class Model:
@@ -92,7 +92,7 @@ class HeterogeneousModel(Model):
         """
         labels = self.masks.labels.img
         if not (
-            kernels.NUMBA_AVAILABLE
+            _kernels.NUMBA_AVAILABLE
             and signal.ndim == 3
             and signal.shape[2] == 3
             and signal.dtype == np.float64
@@ -116,12 +116,10 @@ class HeterogeneousModel(Model):
         # extracting and fitting the pixels of each label separately.
         active = self._color_path_labels(signal)
         if active is not None:
-            tables = [self[label].kernel_tables() for label in active]
-            return kernels.evaluate_labeled_image(
+            return _kernels.evaluate_labeled_image(
                 signal,
                 self.masks.labels.img,
-                active,
-                *[list(table) for table in zip(*tables)],
+                {label: self[label].kernel_data() for label in active},
             )
 
         output = np.zeros(signal.shape[:2])  # TODO shape?
