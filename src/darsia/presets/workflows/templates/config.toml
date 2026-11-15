@@ -122,6 +122,7 @@ mode = "manual" # manual | auto
 threshold = 0.2
 data = "calibration_imgs"
 contour_smoother = "savitzky_golay" # If chosen (default), contours are smoothed.
+resolution_level = 4 # 1, 2, 4, 8 or 16: image reduction per axis in the calibration tool.
 
 [analysis]
 data = "analysis_imgs"

@@ -14,6 +14,10 @@ from .contour_smoother import ContourSmootherSelection
 from .roi_registry import _load_roi_key_list
 from .utils import _get_key, _get_section, _get_section_from_toml
 
+RESOLUTION_LEVELS = (1, 2, 4, 8, 16)
+"""Resolution levels of the interactive mass calibration: factor by which the images
+are reduced per axis (1: full resolution)."""
+
 if TYPE_CHECKING:
     from darsia.signals.color import ColorEmbedding
 
@@ -442,6 +446,22 @@ class CalibrationMassConfig:
         },
     )
     """Evaluation mode of the color to signal conversion."""
+    resolution_level: int = field(
+        default=4,
+        metadata={
+            "name": "Resolution level",
+            "help": "Reduction of the images per axis in the interactive calibration "
+            "tool: 1 is the full resolution, 4 uses every 4th pixel per axis (colors "
+            "are averaged), which makes each update about 16 times faster. The mass "
+            "curves of a reduced level deviate slightly from the full resolution "
+            "(about 1 % at level 4), so check at level 1 before saving; the level can "
+            "be changed in the tool. The stored calibration and the analysis do not "
+            "depend on it. Not available with a restoration (level 1 is used).",
+            "widget": "discrete_slider",
+            "options": list(RESOLUTION_LEVELS),
+        },
+    )
+    """Resolution level of the interactive calibration at its start."""
     kernel_options: KernelEvaluationConfig | None = field(
         default=None,
         metadata={
@@ -557,6 +577,14 @@ class CalibrationMassConfig:
             raise ValueError(
                 "calibration.mass.evaluation_mode must be 'linear', 'spline' or "
                 "'kernel'."
+            )
+        self.resolution_level = _get_key(
+            sec, "resolution_level", required=False, default=4, type_=int
+        )
+        if self.resolution_level not in RESOLUTION_LEVELS:
+            raise ValueError(
+                "calibration.mass.resolution_level must be one of "
+                f"{list(RESOLUTION_LEVELS)}."
             )
         if self.evaluation_mode == "kernel":
             self.kernel_options = KernelEvaluationConfig().load(

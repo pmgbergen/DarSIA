@@ -256,6 +256,16 @@ forms (applied when a config is loaded or saved): for a tracer, the gas-only
 `[expert_knowledge]` fields `saturation_g` / `no_saturation_g` are hidden (shown only if
 they are set, so that they can be removed).
 
+**Resolution level.** `resolution_level` (1, 2, 4, 8 or 16; default 4) reduces the images
+per axis for the calculations of the interactive calibration tool: colours are averaged
+over the reduced pixels before they are interpreted. Every Update analyses all calibration
+images, so level 4 is about 16 times faster than full resolution (level 1). The mass
+curves of a reduced level deviate slightly from full resolution (about 1 % at level 4 in
+our test), because the signal is a nonlinear function of the colour. Tune at a reduced
+level, then switch to level 1 with the **Resolution** slider of the tool (applied by
+**Update**) to check the curves before saving. The stored calibration and the analysis do
+not depend on the level. With a restoration, only level 1 is available.
+
 ## `[roi]`
 
 ```toml

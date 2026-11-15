@@ -1,9 +1,9 @@
 """Small reusable custom Qt widgets shared across the GUI."""
 
 import numpy as np
-from PySide6.QtCore import QSize
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QIcon, QImage, QPixmap
-from PySide6.QtWidgets import QComboBox
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QSlider, QWidget
 
 
 class NoScrollComboBox(QComboBox):
@@ -16,6 +16,66 @@ class NoScrollComboBox(QComboBox):
 
     def wheelEvent(self, event):
         event.ignore()
+
+
+class _NoScrollSlider(QSlider):
+    """QSlider that ignores mouse-wheel events (see :class:`NoScrollComboBox`)."""
+
+    def wheelEvent(self, event):
+        event.ignore()
+
+
+class DiscreteSlider(QWidget):
+    """Slider over a few fixed values (e.g. 1, 2, 4, 8, 16), with the value shown.
+
+    The slider positions are equally spaced, independent of the values.
+
+    Parameters
+    ----------
+    options : list
+        The selectable values, in the order of the slider positions.
+
+    """
+
+    valueChanged = Signal(object)
+
+    def __init__(self, options, parent=None):
+        super().__init__(parent)
+        self._options = list(options)
+        self._slider = _NoScrollSlider(Qt.Orientation.Horizontal)
+        self._slider.setRange(0, len(self._options) - 1)
+        self._slider.setSingleStep(1)
+        self._slider.setPageStep(1)
+        self._slider.setTickInterval(1)
+        self._slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self._label = QLabel()
+        self._label.setMinimumWidth(32)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        layout.addWidget(self._slider, stretch=1)
+        layout.addWidget(self._label)
+        self._slider.valueChanged.connect(self._on_position_changed)
+        self._on_position_changed(self._slider.value())
+
+    def _on_position_changed(self, position: int) -> None:
+        self._label.setText(str(self._options[position]))
+        self.valueChanged.emit(self._options[position])
+
+    def options(self) -> list:
+        """The selectable values."""
+        return list(self._options)
+
+    def value(self):
+        """The selected value."""
+        return self._options[self._slider.value()]
+
+    def setValue(self, value) -> bool:
+        """Select a value; return False (and keep the selection) if it is no option."""
+        if value not in self._options:
+            return False
+        self._slider.setValue(self._options.index(value))
+        return True
 
 
 CMAP_ICON_SIZE = QSize(64, 12)

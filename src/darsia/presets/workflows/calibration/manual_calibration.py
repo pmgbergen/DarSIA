@@ -10,11 +10,13 @@ window itself lives in `HeterogeneousColorToMassAnalysis.manual_calibration`.
 
 import logging
 from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Tuple
 
 import numpy as np
 
 import darsia
+from darsia.presets.workflows.config.calibration import RESOLUTION_LEVELS
 from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
@@ -29,8 +31,28 @@ if TYPE_CHECKING:
         HeterogeneousColorToMassAnalysis,
     )
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_CONTOUR_THRESHOLD = 0.05
 """Start value (and reset value) of the contour thresholds."""
+
+
+@dataclass
+class ResolutionLevel:
+    """Data of the calibration at one resolution level."""
+
+    factor: int
+    """Reduction per axis."""
+    analysis: "HeterogeneousColorToMassAnalysis"
+    """Analysis at this resolution (the calibrated analysis itself for factor 1)."""
+    images: list
+    """Calibration images at this resolution."""
+    color_interpretations: list | None
+    """Color interpretations of the images, if cached (expensive projection)."""
+    coarse_color_interpretations: list
+    """Scalar color interpretations of the images for display."""
+    roi_geometries: dict = field(default_factory=dict)
+    """Geometry of each roi (for the integration), built when first needed."""
 
 
 class LazyMaps(Mapping):
@@ -73,6 +95,9 @@ class CalibrationState:
         Provides the injection protocol and the pressure-temperature protocol.
     rois : dict, optional
         Named regions of interest; the entire frame is added as "full".
+    resolution_level : int
+        Reduction of the images per axis for the calculations, one of
+        `RESOLUTION_LEVELS`; see :meth:`set_resolution`.
 
     """
 
@@ -82,6 +107,7 @@ class CalibrationState:
         images: list[darsia.Image],
         experiment: darsia.ProtocolledExperiment,
         rois: dict[str, darsia.VoxelArray | darsia.CoordinateArray] | None = None,
+        resolution_level: int = 1,
     ) -> None:
         self.analysis = analysis
         self.images = images
@@ -177,21 +203,6 @@ class CalibrationState:
             analysis.geometry.weight, shape=self.coarse_shape
         )
 
-        # ! ---- COLOR INTERPRETATIONS ----
-
-        # The projection onto the color path is expensive, so the color interpretations
-        # of the images are cached. Without projection, they are merely the baseline
-        # relative colors (3 channels, i.e., larger), cheap to compute and not cached.
-        self._color_interpretations = (
-            [analysis.call_color_interpretation(image) for image in images]
-            if analysis.evaluation_mode.projects_onto_path
-            else None
-        )
-        self.coarse_color_interpretations = [
-            self._display_color_interpretation(self.color_interpretation_of(idx))
-            for idx in range(len(images))
-        ]
-
         # ! ---- INITIAL STATE (restored by the Reset button) ----
 
         functions = analysis.signal_model.model[1]
@@ -230,16 +241,125 @@ class CalibrationState:
         """Whether the mass series have been computed at least once."""
         self._analyzed: dict | None = None
         """Last analysis of the current image, see :meth:`_keep_analyzed`."""
-        self._roi_geometries: dict = {}
-        """Geometry of each roi (for the integration), see :meth:`_roi_geometry`."""
+
+        # ! ---- RESOLUTION ----
+
+        # Reduced levels need a reduced copy of the analysis
+        self.available_levels: tuple[int, ...] = (
+            RESOLUTION_LEVELS
+            if getattr(analysis, "supports_reduction", False)
+            else (1,)
+        )
+        """Resolution levels which can be selected."""
+        self._levels: dict[int, ResolutionLevel] = {}
+        self.level: ResolutionLevel = self._build_level(
+            self._closest_level(resolution_level)
+        )
+        """Current resolution level."""
+
+    # ! ---- RESOLUTION ----
+
+    @property
+    def resolution_level(self) -> int:
+        """Current reduction of the images per axis (1: full resolution)."""
+        return self.level.factor
+
+    @property
+    def labels(self) -> darsia.Image:
+        """Labels at the current resolution."""
+        return self.level.analysis.labels
+
+    @property
+    def coarse_color_interpretations(self) -> list:
+        """Scalar color interpretations of the images for display."""
+        return self.level.coarse_color_interpretations
+
+    def _closest_level(self, factor: int) -> int:
+        """Largest available level not exceeding the requested one."""
+        candidates = [level for level in self.available_levels if level <= factor]
+        level = max(candidates) if candidates else self.available_levels[0]
+        if level != factor:
+            logger.warning(
+                f"Resolution level {factor} is not available (choices: "
+                f"{self.available_levels}); using {level}."
+            )
+        return level
+
+    def _build_level(self, factor: int) -> ResolutionLevel:
+        """Set up (once) the analysis, images and color interpretations of a level.
+
+        Colors are averaged over the reduced pixels before they are interpreted, and
+        the label of a reduced pixel is that of its center. The signal is a nonlinear
+        function of the color, so the mass of a reduced level deviates slightly from
+        the full resolution.
+
+        """
+        if factor in self._levels:
+            return self._levels[factor]
+        if factor == 1:
+            analysis, images = self.analysis, self.images
+        else:
+            analysis = self.analysis.reduced(factor)
+            shape = analysis.labels.img.shape[:2]
+            images = [
+                darsia.resize(image, shape=shape, interpolation="inter_area")
+                for image in self.images
+            ]
+        # The projection onto the color path is expensive, so the color interpretations
+        # of the images are cached. Without projection, they are merely the baseline
+        # relative colors (3 channels, i.e., larger), cheap to compute and not cached.
+        color_interpretations = (
+            [analysis.call_color_interpretation(image) for image in images]
+            if analysis.evaluation_mode.projects_onto_path
+            else None
+        )
+        level = ResolutionLevel(factor, analysis, images, color_interpretations, [])
+        self._levels[factor] = level
+        level.coarse_color_interpretations = [
+            self._display_color_interpretation(
+                color_interpretations[idx]
+                if color_interpretations is not None
+                else analysis.call_color_interpretation(images[idx])
+            )
+            for idx in range(len(images))
+        ]
+        return level
+
+    def set_resolution(self, factor: int) -> bool:
+        """Switch the resolution level of the calculations.
+
+        The maps and the mass series of the previous level are outdated afterwards;
+        call :meth:`update_mass_analysis` and :meth:`compute_maps`. Levels are kept,
+        so switching back is fast.
+
+        Parameters
+        ----------
+        factor : int
+            Reduction of the images per axis, one of `available_levels`.
+
+        Returns
+        -------
+        bool
+            Whether the level changed.
+
+        """
+        factor = self._closest_level(int(factor))
+        if factor == self.level.factor:
+            return False
+        self.level = self._build_level(factor)
+        self._analyzed = None
+        self.maps = None
+        self.mass_analysis_done = False
+        return True
 
     # ! ---- COLOR INTERPRETATIONS ----
 
     def color_interpretation_of(self, idx: int) -> darsia.Image:
         """Color interpretation of an image (cached if expensive)."""
-        if self._color_interpretations is not None:
-            return self._color_interpretations[idx]
-        return self.analysis.call_color_interpretation(self.images[idx])
+        level = self.level
+        if level.color_interpretations is not None:
+            return level.color_interpretations[idx]
+        return level.analysis.call_color_interpretation(level.images[idx])
 
     def _display_color_interpretation(self, color_interpretation: darsia.Image):
         """Scalar color interpretation for display (colors: size of the color)."""
@@ -304,8 +424,8 @@ class CalibrationState:
         return self.label_idx
 
     def select_label_in(self, box: Tuple[slice, slice] | np.ndarray) -> int:
-        """Select the most frequent label within a region of the labels image."""
-        self.label_idx = np.argmax(np.bincount(self.analysis.labels.img[box].ravel()))
+        """Select the most frequent label within a region of `labels`."""
+        self.label_idx = np.argmax(np.bincount(self.labels.img[box].ravel()))
         return self.label_idx
 
     # ! ---- MAPS OF THE CURRENT IMAGE ----
@@ -341,7 +461,7 @@ class CalibrationState:
 
         """
         self._analyzed = {
-            "key": (image_idx, self._parameter_key()),
+            "key": (self.level.factor, image_idx, self._parameter_key()),
             "pH": pH,
             "density": result.mass,
             "c_aq": self._coarsen(result.concentration_aq),
@@ -349,19 +469,19 @@ class CalibrationState:
         }
 
     def compute_maps(self) -> dict:
-        """Analyze the current image at full resolution, coarsened for display.
+        """Analyze the current image at the current resolution, resized for display.
 
         The thermodynamic state is set for the date of the current image. The analysis
         is reused if the image was just analyzed with the same parameters, and the
         display maps are coarsened when they are first shown.
 
         """
-        analysis = self.analysis
+        analysis = self.level.analysis
         image_idx = self.image_idx
         analysis.update_state(
             self.images[image_idx].date, self.experiment.pressure_temperature_protocol
         )
-        key = (image_idx, self._parameter_key())
+        key = (self.level.factor, image_idx, self._parameter_key())
         if self._analyzed is None or self._analyzed["key"] != key:
             pH = analysis.call_pH_analysis(self.color_interpretation_of(image_idx))
             self._keep_analyzed(
@@ -473,16 +593,17 @@ class CalibrationState:
 
     def _roi_geometry(self, roi_key: str):
         """Geometry restricted to a roi (built once)."""
-        if roi_key not in self._roi_geometries:
-            self._roi_geometries[roi_key] = self.analysis.geometry.subregion(
+        geometries = self.level.roi_geometries
+        if roi_key not in geometries:
+            geometries[roi_key] = self.level.analysis.geometry.subregion(
                 self.rois[roi_key]
             )
-        return self._roi_geometries[roi_key]
+        return geometries[roi_key]
 
     @darsia.timing_decorator
     def update_mass_analysis(self) -> None:
         """Update the series (per roi) of detected and injected mass over all images."""
-        analysis = self.analysis
+        analysis = self.level.analysis
         experiment = self.experiment
         rois = self.rois
 
@@ -494,7 +615,7 @@ class CalibrationState:
         volume_series = {
             roi_key: {"time": [], "exact": [], "detected": []} for roi_key in rois
         }
-        for idx, img in enumerate(self.images):
+        for idx, img in enumerate(self.level.images):
             color_interpretation = self.color_interpretation_of(idx)
 
             # Update thermodynamic state
@@ -645,8 +766,13 @@ class CalibrationState:
                 ]
             )
 
-        # Update parameters
+        # Update parameters, also of the reduced copies of the analysis
         function.update(values=list(values))
+        key = self.label_idx if label is None else label
+        for level in self._levels.values():
+            functions = level.analysis.signal_model.model[1]
+            if level.factor != 1 and key in functions.keys():
+                functions[key].update(values=list(values))
         if analysis.has_gas:
             analysis.flash.update(
                 min_value_aq=flash_values[0],

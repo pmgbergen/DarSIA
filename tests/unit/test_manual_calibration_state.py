@@ -1,5 +1,6 @@
 """Unit tests for the state of the manual calibration (no figure involved)."""
 
+import copy
 from types import SimpleNamespace
 
 import numpy as np
@@ -42,22 +43,14 @@ class FakeFlash:
         return c_aq, s_g
 
 
-def _make_state(has_gas=True, num_images=3):
-    """State for two labels (left: 1, right: 2) and images of uniform brightness."""
-    labels_array = np.ones(SHAPE, dtype=int)
-    labels_array[:, SHAPE[1] // 2 :] = 2
+def _fake_analysis(shape, functions, flash, has_gas, calls, states, reducible):
+    """Analysis for two labels (left: 1, right: 2); signal = brightness * last value."""
+    labels_array = np.ones(shape, dtype=int)
+    labels_array[:, shape[1] // 2 :] = 2
     labels = darsia.ScalarImage(labels_array, **META)
-    functions = {
-        1: FakeSignalFunction([0.0, 0.5, 1.0]),
-        2: FakeSignalFunction([0.0, 1.0, 2.0]),
-    }
-    states = []
-
-    calls = []
-    flash = FakeFlash()
 
     def call_pH_analysis(color_interpretation):
-        calls.append("signal")
+        calls.append(shape)
         scale = np.where(
             labels_array == 1, functions[1].values[-1], functions[2].values[-1]
         )
@@ -71,16 +64,24 @@ def _make_state(has_gas=True, num_images=3):
             saturation_g=s_g,
         )
 
-    analysis = SimpleNamespace(
+    def reduced(factor):
+        # Like the real analysis: own copies of the signal functions, same flash
+        copies = {label: copy.copy(function) for label, function in functions.items()}
+        reduced_shape = (shape[0] // factor, shape[1] // factor)
+        return _fake_analysis(
+            reduced_shape, copies, flash, has_gas, calls, states, reducible
+        )
+
+    return SimpleNamespace(
         calls=calls,
         call_flash_and_mass_analysis=call_flash_and_mass_analysis,
         has_gas=has_gas,
         labels=labels,
         color_analysis=SimpleNamespace(base=labels),
         geometry=SimpleNamespace(
-            depth=_scalar(np.full(SHAPE, 0.02)),
-            porosity=_scalar(np.full(SHAPE, 0.4)),
-            weight=_scalar(np.full(SHAPE, 0.008)),
+            depth=_scalar(np.full(shape, 0.02)),
+            porosity=_scalar(np.full(shape, 0.4)),
+            weight=_scalar(np.full(shape, 0.008)),
         ),
         evaluation_mode=SimpleNamespace(projects_onto_path=True),
         call_color_interpretation=lambda image: _scalar(image.img.mean(axis=-1)),
@@ -91,13 +92,29 @@ def _make_state(has_gas=True, num_images=3):
         expert_knowledge_adapter=None,
         contour_smoother=None,
         update_state=lambda date, protocol=None: states.append(date),
+        supports_reduction=reducible,
+        reduced=reduced,
+    )
+
+
+def _make_state(has_gas=True, num_images=3, resolution_level=1, reducible=True):
+    """State for two labels (left: 1, right: 2) and images of uniform brightness."""
+    functions = {
+        1: FakeSignalFunction([0.0, 0.5, 1.0]),
+        2: FakeSignalFunction([0.0, 1.0, 2.0]),
+    }
+    states = []
+    analysis = _fake_analysis(
+        SHAPE, functions, FakeFlash(), has_gas, [], states, reducible
     )
     images = [
         darsia.Image(np.full((*SHAPE, 3), 0.25 * (i + 1)), **META)
         for i in range(num_images)
     ]
     experiment = SimpleNamespace(pressure_temperature_protocol=None)
-    state = CalibrationState(analysis, images, experiment)
+    state = CalibrationState(
+        analysis, images, experiment, resolution_level=resolution_level
+    )
     return state, analysis, states
 
 
@@ -248,3 +265,49 @@ def test_apply_parameters(has_gas):
     assert analysis.flash.min_value_aq == (0.1 if has_gas else 0.0)
     # The start values for Reset are untouched
     np.testing.assert_array_equal(state.initial_values[2], [0.0, 1.0, 2.0])
+
+
+def test_starts_at_the_requested_resolution_level():
+    state, analysis, _ = _make_state(resolution_level=2)
+    assert state.available_levels == (1, 2, 4, 8, 16)
+    assert state.resolution_level == 2
+    assert state.labels.img.shape == (4, 6)
+    assert list(state._levels) == [2]  # full resolution is not prepared
+    maps = state.compute_maps()
+    assert analysis.calls == [(4, 6)]
+    # The display keeps its size and the values are those of full resolution
+    signal = maps["signals"]["pH"].img
+    assert signal.shape == state.coarse_shape
+    assert np.isclose(signal[:, :100], 0.25).all()
+    assert np.isclose(signal[:, -100:], 0.5).all()
+    assert state.select_label_in((slice(0, 4), slice(4, 6))) == 2
+
+
+def test_switching_the_resolution_level():
+    state, analysis, _ = _make_state()
+    state.compute_maps()
+    state.mass_analysis_done = True
+    assert state.set_resolution(1) is False
+    assert state.set_resolution(4) is True
+    assert state.resolution_level == 4 and state.labels.img.shape == (2, 3)
+    assert state.maps is None and state.mass_analysis_done is False
+    state.compute_maps()
+    assert analysis.calls == [SHAPE, (2, 3)]
+    # Parameters reach all levels, also when set at a reduced level
+    state.apply_parameters([0.0, 0.2, 0.4], [0.0, 1.0, 1.0, 2.0], label=1)
+    reduced_maps = state.compute_maps()
+    assert np.isclose(reduced_maps["signals"]["pH"].img[:, :50], 0.1).all()
+    assert analysis.signal_model.model[1][1].values == [0.0, 0.2, 0.4]
+    assert state.set_resolution(1) is True
+    full_maps = state.compute_maps()
+    assert np.isclose(full_maps["signals"]["pH"].img[:, :100], 0.1).all()
+    # A level built later starts from the current values
+    state.set_resolution(2)
+    assert np.isclose(state.compute_maps()["signals"]["pH"].img[:, :100], 0.1).all()
+
+
+def test_only_full_resolution_without_reduction():
+    state, _, _ = _make_state(resolution_level=4, reducible=False)
+    assert state.available_levels == (1,)
+    assert state.resolution_level == 1
+    assert state.set_resolution(8) is False
