@@ -1,5 +1,6 @@
 # TODO review noqa F824 usage
 
+import dataclasses
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -269,6 +270,94 @@ class HeterogeneousColorToMassAnalysis:
         assert self.color_analysis.labels is not None
         return self.color_analysis.labels
 
+    @property
+    def supports_reduction(self) -> bool:
+        """Whether :meth:`reduced` is available (not with a restoration)."""
+        return self._restoration is None
+
+    def reduced(self, factor: int) -> "HeterogeneousColorToMassAnalysis":
+        """Copy of the analysis for images reduced by a factor per axis.
+
+        Baseline, depth and porosity are averaged over the reduced pixels, a reduced
+        pixel gets the label at its center, and the fluid properties are evaluated on
+        the reduced grid. The copy shares the color paths and the flash with this
+        analysis, and starts from its signal values (the signal functions are
+        copies). Used for a faster, approximate calibration.
+
+        Parameters
+        ----------
+        factor : int
+            Reduction per axis.
+
+        Raises
+        ------
+        NotImplementedError
+            With a restoration, which is set up for the full resolution.
+
+        """
+        if not self.supports_reduction:
+            raise NotImplementedError(
+                "A reduced analysis is not available with a restoration."
+            )
+        shape = tuple(max(1, int(n) // int(factor)) for n in self.labels.img.shape[:2])
+
+        def average(quantity):
+            if isinstance(quantity, darsia.Image):
+                return darsia.resize(quantity, shape=shape, interpolation="inter_area")
+            return quantity
+
+        def nearest(image):
+            if image is None:
+                return None
+            return darsia.resize(image, shape=shape, interpolation="inter_nearest")
+
+        baseline = average(self._baseline)
+        geometry = darsia.ExtrudedPorousGeometry(
+            depth=average(self.geometry.depth),
+            porosity=average(self.geometry.porosity),
+            **baseline.shape_metadata(),
+        )
+        fluid_model = darsia.FluidMassAnalysis(
+            baseline=None if self.fluid_model.baseline is None else baseline,
+            atmospheric_pressure=self.fluid_model.atmospheric_pressure,
+            atmospheric_temperature=self.fluid_model.atmospheric_temperature,
+            atmospheric_pressure_gradient=self.fluid_model.atmospheric_pressure_gradient,
+            atmospheric_temperature_gradient=(
+                self.fluid_model.atmospheric_temperature_gradient
+            ),
+            system=self.fluid_model.system,
+        )
+        expert_knowledge_adapter = self.expert_knowledge_adapter
+        if expert_knowledge_adapter is not None:
+            # Label and facies based regions are masks at the image resolution
+            expert_knowledge_adapter = dataclasses.replace(
+                expert_knowledge_adapter,
+                labels_image=nearest(expert_knowledge_adapter.labels_image),
+                facies_image=nearest(expert_knowledge_adapter.facies_image),
+            )
+        functions = self.signal_model.model[1]
+        reduced = HeterogeneousColorToMassAnalysis(
+            baseline=baseline,
+            labels=nearest(self.labels),
+            color_mode=self._color_mode,
+            color_path_interpretation=self.color_path_interpretation,
+            signal_functions={label: functions[label] for label in functions.keys()},
+            flash=self.flash,
+            fluid_model=fluid_model,
+            geometry=geometry,
+            restoration=None,
+            ignore_labels=self._ignore_labels,
+            basis=self.basis,
+            expert_knowledge_adapter=expert_knowledge_adapter,
+            contour_smoother=self.contour_smoother,
+            mass_unit=self.mass_unit,
+            time_unit=self.time_unit,
+            evaluation_mode=self.evaluation_mode,
+            volume_unit=self.volume_unit,
+        )
+        reduced.pressure_temperature_protocol = self.pressure_temperature_protocol
+        return reduced
+
     def call_color_interpretation(self, image: darsia.Image) -> darsia.Image:
         return self.color_analysis(image)
 
@@ -340,6 +429,7 @@ class HeterogeneousColorToMassAnalysis:
         rois: dict[str, darsia.VoxelArray | darsia.CoordinateArray] | None = None,
         cmap=None,
         save: Callable[[], None] | None = None,
+        resolution_level: int = 1,
     ) -> None:
         """Define a local color path for a specific label.
 
@@ -349,6 +439,8 @@ class HeterogeneousColorToMassAnalysis:
             - Tune the values for the color path.
             - Save with the Save button (the window stays open). Closing the window
               saves as well and ends the calibration.
+            - The resolution slider reduces the images per axis for the calculations
+              (applied by Update): fast tuning at a reduced level, check at level 1.
 
         Parameters
         ----------
@@ -363,10 +455,14 @@ class HeterogeneousColorToMassAnalysis:
         save : Callable, optional
             Stores the current calibration; called by the Save button and when the
             window is closed.
+        resolution_level : int
+            Reduction of the images per axis for the calculations at the start (1, 2,
+            4, 8 or 16; 1 is the full resolution). The stored calibration does not
+            depend on it.
         """
 
         # Data and calculations (no plotting)
-        state = CalibrationState(self, images, experiment, rois)
+        state = CalibrationState(self, images, experiment, rois, resolution_level)
         rois = state.rois
         # Mass series per roi; updated in place by `state.update_mass_analysis`
         times = state.times
@@ -418,7 +514,7 @@ class HeterogeneousColorToMassAnalysis:
 
         def label_idx_selector(pH: darsia.Image) -> int:
             assistant = darsia.RectangleSelectionAssistant(
-                pH, labels=self.labels, cmap=cmap
+                pH, labels=state.labels, cmap=cmap
             )
             label_box: Tuple[slice, slice] = assistant()
             return state.select_label_in(label_box)
@@ -862,10 +958,16 @@ class HeterogeneousColorToMassAnalysis:
             path_colors = self.color_path_interpretation[label_idx].color_path.colors
             num_values = len(signal_values)
             # Rows: signal values (title, values), flash (title, 4 sliders; CO2 only),
-            # contours (title, one threshold per phase)
-            row_height = controls_box.height / (num_values + (9 if self.has_gas else 3))
+            # contours (title, one threshold per phase), resolution (title, level)
+            levels = state.available_levels
+            num_rows = num_values + (9 if self.has_gas else 3)
+            if len(levels) > 1:
+                num_rows += 2
+            row_height = controls_box.height / num_rows
 
-            def make_row(row, name, valinit, vmin, vmax, color, active=True):
+            def make_row(
+                row, name, valinit, vmin, vmax, color, active=True, valstep=0.01
+            ):
                 """Create a labeled slider (with value text) in a row."""
                 x0, width = controls_box.x0, controls_box.width
                 y0 = controls_box.y1 - (row + 1) * row_height
@@ -886,7 +988,7 @@ class HeterogeneousColorToMassAnalysis:
                     vmin,
                     vmax,
                     valinit=valinit,
-                    valstep=0.01,
+                    valstep=valstep,
                     color=color,
                 )
                 slider.valtext.set_fontsize(8)
@@ -903,7 +1005,7 @@ class HeterogeneousColorToMassAnalysis:
                 return slider
 
             def section_title(row, title):
-                fig.text(
+                return fig.text(
                     controls_box.x0,
                     controls_box.y1 - (row + 0.5) * row_height,
                     title,
@@ -979,9 +1081,44 @@ class HeterogeneousColorToMassAnalysis:
             # moving parts of the sliders are animated artists, which are excluded
             # from the stored background and drawn on top of it.
             all_sliders = sliders_color_to_signal + sliders_flash + sliders_threshold
+
+            # Resolution of the calculations: a discrete slider over the levels. Like
+            # the parameters, the selected level is applied by the Update button.
+            slider_resolution = None
+            if len(levels) > 1:
+                resolution_row = contour_row + 1 + len(sliders_threshold)
+
+                def resolution_title() -> str:
+                    return f"Resolution (in use: 1/{state.resolution_level})"
+
+                resolution_status = section_title(resolution_row, resolution_title())
+                slider_resolution = make_row(
+                    resolution_row + 1,
+                    "Level",
+                    levels.index(state.resolution_level),
+                    0,
+                    len(levels) - 1,
+                    "steelblue",
+                    valstep=1,
+                )
+                # Show the level instead of its position
+                slider_resolution._format = lambda val: f"1/{levels[int(round(val))]}"
+                slider_resolution.valtext.set_text(
+                    slider_resolution._format(slider_resolution.val)
+                )
+
+            def selected_level() -> int:
+                """Resolution level chosen with the slider."""
+                if slider_resolution is None:
+                    return state.resolution_level
+                return levels[int(round(slider_resolution.val))]
+
+            blit_sliders = all_sliders + (
+                [] if slider_resolution is None else [slider_resolution]
+            )
             animated_artists = [
                 artist
-                for slider in all_sliders
+                for slider in blit_sliders
                 for artist in (slider.poly, slider._handle, slider.valtext)
             ]
             for artist in animated_artists:
@@ -1009,7 +1146,7 @@ class HeterogeneousColorToMassAnalysis:
                     fig.draw_artist(artist)
                 fig.canvas.blit(region)
 
-            for slider in all_sliders:
+            for slider in blit_sliders:
                 slider.drawon = False
                 slider.on_changed(lambda val, slider=slider: blit_slider(slider))
 
@@ -1055,6 +1192,16 @@ class HeterogeneousColorToMassAnalysis:
                 ]
             )
             btn_update = Button(ax_update, "Update")
+            busy_status = fig.text(
+                update_button_x + button_width,
+                update_button_y + button_height + 0.004,
+                "",
+                fontsize=8,
+                color="darkorange",
+                ha="right",
+                va="bottom",
+            )
+            """Message shown while a calculation blocks the window."""
             values_status = fig.text(
                 controls_box.x0,
                 update_button_y + 0.5 * button_height,
@@ -1387,15 +1534,41 @@ class HeterogeneousColorToMassAnalysis:
                     for slider in all_sliders:
                         slider.on_changed(mark_unsaved)
 
+                    def show_busy(message: str) -> None:
+                        """Show (or clear) a message and draw it right away.
+
+                        The calculations run in the window's event loop, so the
+                        window does not react until they are done.
+
+                        """
+                        if busy_status.get_text() == message:
+                            return
+                        busy_status.set_text(message)
+                        fig.canvas.draw()
+                        fig.canvas.flush_events()
+
                     def update_analysis(event=None):
                         """Apply the slider values and update everything."""
                         changed = apply_parameters()
                         if changed is None:
                             return
+                        level = selected_level()
+                        new_level = level != state.resolution_level
                         if changed:
                             mark_unsaved()
+                        if changed or new_level:
+                            show_busy(
+                                f"Computing at resolution 1/{level} ..."
+                                if new_level
+                                else "Computing ..."
+                            )
+                        if new_level:
+                            state.set_resolution(level)
+                            resolution_status.set_text(resolution_title())
+                        if changed or new_level:
                             state.update_mass_analysis()
                         refresh(recompute=True, signal_function=True, mass_plot=True)
+                        show_busy("")
 
                     # Connect button callbacks
                     btn_update.on_clicked(update_analysis)
@@ -1508,8 +1681,10 @@ class HeterogeneousColorToMassAnalysis:
                     btn_next_label.on_clicked(next_label)
 
                     def next_image(event):
+                        show_busy("Computing ...")
                         state.next_image()
                         refresh(recompute=True)
+                        show_busy("")
 
                     btn_next_image.on_clicked(next_image)
 

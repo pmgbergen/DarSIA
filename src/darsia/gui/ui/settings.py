@@ -29,7 +29,7 @@ from .schema.dataclass_introspection import (
     get_section_fields,
 )
 from .schema.section_registry import filter_visible_sections, get_required_sections
-from .widgets import CmapComboBox, NoScrollComboBox
+from .widgets import CmapComboBox, DiscreteSlider, NoScrollComboBox
 
 
 def unwrap_composite_widget(value):
@@ -769,6 +769,8 @@ class SettingsFactory:
         if has_options and setting_type in free_value_types:
             return self.create_dropdown_input(setting_dict)
         # Otherwise, dispatch based on type
+        elif setting_type == "discrete_slider":
+            return self.create_discrete_slider_input(setting_dict)
         elif setting_type == "time":
             return self.create_time_input(setting_dict)
         elif setting_type in free_value_types:
@@ -1869,6 +1871,30 @@ class SettingsFactory:
 
         return display_name, field_widget
 
+    def create_discrete_slider_input(self, setting_dict):
+        """Create a slider over the few fixed values in `options` (e.g. levels).
+
+        Returns (label_text, field_widget) where field_widget is a composite HBox:
+        [slider with value (stretch=1), help_button_or_spacer (fixed 40px)]
+        """
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+        value = self.get_value(self.main_window.config_dict, key)
+        slider = DiscreteSlider(setting_dict["options"])
+        if value is None or not slider.setValue(value):
+            # Unset, or a stored value which is no option: show the default
+            slider.setValue(setting_dict.get("default"))
+
+        field_widget = QWidget()
+        field_layout = QHBoxLayout(field_widget)
+        field_layout.setContentsMargins(0, 0, 0, 0)
+        field_layout.setSpacing(4)
+        field_layout.addWidget(slider, stretch=1)
+        field_layout.addWidget(build_help_column(setting_dict))
+        field_widget.setProperty("value_widget", slider)
+
+        return display_name, field_widget
+
     def create_fixed_list_string_input(self, setting_dict):
         """Create a checkbox list for selecting from predefined options.
 
@@ -2680,6 +2706,8 @@ class SettingsFactory:
                     )
                 elif isinstance(value, QCheckBox):
                     self.set_value(self.main_window.config_dict, key, value.isChecked())
+                elif isinstance(value, DiscreteSlider):
+                    self.set_value(self.main_window.config_dict, key, value.value())
                 elif isinstance(value, list):
                     if len(value) > 0:
                         if isinstance(value[0], QCheckBox):

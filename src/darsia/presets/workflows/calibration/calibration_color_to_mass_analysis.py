@@ -466,6 +466,7 @@ def calibration_color_to_mass_analysis_from_context(
             rois=rois,
             cmap=custom_cmap,
             save=lambda: color_analysis.save(mass_folder, interpretation),
+            resolution_level=mass_cfg.resolution_level,
         )
 
     # Store calibration
