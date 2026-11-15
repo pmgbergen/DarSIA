@@ -62,17 +62,40 @@ class HydrostaticState:
             :, None
         ] * np.ones(self.baseline.num_voxels)
 
-    def temperature_map(self) -> np.ndarray:
-        """Temperature in Celsius in each voxel, due to the gradient."""
-        return np.ones_like(self.height_map) * self.temperature + (
-            self.temperature_gradient * self.height_map
+    @property
+    def height_column(self) -> np.ndarray:
+        """Height of each voxel row, of shape (rows, 1).
+
+        Height, temperature and pressure only vary along the first axis, so one
+        column holds all values of the maps.
+        """
+        return np.linspace(0, self.baseline.dimensions[0], self.baseline.num_voxels[0])[
+            :, None
+        ]
+
+    def _height(self, column: bool) -> np.ndarray:
+        return self.height_column if column else self.height_map
+
+    def temperature_map(self, column: bool = False) -> np.ndarray:
+        """Temperature in Celsius in each voxel, due to the gradient.
+
+        Parameters
+        ----------
+        column : bool
+            Return one column of shape (rows, 1) instead of the full map.
+        """
+        height = self._height(column)
+        return np.ones_like(height) * self.temperature + (
+            self.temperature_gradient * height
         )
 
     def top_pressure(self) -> float:
         """Atmospheric pressure in bar at the top of the rig."""
         return self.pressure + (self.pressure_gradient * self.baseline.dimensions[0])
 
-    def pressure_map(self, system: darsia.FluidSystem) -> np.ndarray:
+    def pressure_map(
+        self, system: darsia.FluidSystem, column: bool = False
+    ) -> np.ndarray:
         """Hydrostatic pressure in bar in each voxel.
 
         The aqueous density is taken at the top pressure and the local temperature.
@@ -81,11 +104,16 @@ class HydrostaticState:
         ----------
         system : darsia.FluidSystem
             Fluid system providing the density of the aqueous phase.
+        column : bool
+            Return one column of shape (rows, 1) instead of the full map.
         """
         water_density = system.density_aqueous(
-            self.top_pressure(), self.temperature_map()
+            self.top_pressure(), self.temperature_map(column)
         )
-        return self.top_pressure() + water_density * GRAVITY * self.height_map * PA2BAR
+        return (
+            self.top_pressure()
+            + water_density * GRAVITY * self._height(column) * PA2BAR
+        )
 
 
 class FluidMassAnalysis:
@@ -177,6 +205,10 @@ class FluidMassAnalysis:
         The temperature varies with height due to its gradient; the pressure is the
         atmospheric pressure at the top plus the hydrostatic pressure of the aqueous
         phase. The properties are looked up in the fluid system.
+
+        Pressure and temperature only vary with the height, so the properties are
+        evaluated for one column of voxels. The fields are read-only views of that
+        column in the shape of the baseline (the same values as a full evaluation).
         """
         self.scale = float(
             self.system.density_aqueous(
@@ -191,15 +223,19 @@ class FluidMassAnalysis:
             pressure = self.atmospheric_pressure
             temperature = self.atmospheric_temperature
         else:
-            pressure = state.pressure_map(self.system)
-            temperature = state.temperature_map()
+            pressure = state.pressure_map(self.system, column=True)
+            temperature = state.temperature_map(column=True)
 
-        self.density_gas = np.asarray(
-            self.system.density_gas(pressure, temperature), dtype=float
-        )
+        def field(values) -> np.ndarray:
+            values = np.asarray(values, dtype=float)
+            if state is None:
+                return values
+            return np.broadcast_to(values, tuple(self.baseline.num_voxels))
+
+        self.density_gas = field(self.system.density_gas(pressure, temperature))
         """Gas density (kg/m3) in each voxel; zero without a gas phase."""
-        self.aqueous_capacity = np.asarray(
-            self.system.aqueous_capacity(pressure, temperature), dtype=float
+        self.aqueous_capacity = field(
+            self.system.aqueous_capacity(pressure, temperature)
         )
         """Mass per aqueous volume (kg/m3) at c_aq = 1 in each voxel."""
         self._state_key = self._state()
