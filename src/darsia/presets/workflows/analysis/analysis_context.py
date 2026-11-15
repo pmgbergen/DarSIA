@@ -244,6 +244,7 @@ def select_image_paths(
     return image_paths
 
 
+@darsia.timed("fluid model")
 def build_fluid_model(
     config: FluidFlowerConfig,
     experiment: darsia.ProtocolledExperiment,
@@ -390,6 +391,7 @@ def _build_color_to_mass_analysis(
         }
     },
 )
+@darsia.timed("context")
 def prepare_analysis_context(
     cls: type[Rig],
     path: Path | list[Path],
@@ -437,9 +439,10 @@ def prepare_analysis_context(
         Context with all common objects initialised.
     """
     # ! ---- LOAD CONFIG ----
-    config = FluidFlowerConfig(
-        path, require_results=require_results, require_data=require_data
-    )
+    with darsia.timed("config"):
+        config = FluidFlowerConfig(
+            path, require_results=require_results, require_data=require_data
+        )
     config.check(*list_required_sections(prepare_analysis_context, section=section))
     config.physics.check_expert_knowledge(config.expert_knowledge)
 
@@ -456,14 +459,17 @@ def prepare_analysis_context(
         raise ValueError("Color-to-mass initialization requires [analysis].")
 
     # ! ---- LOAD EXPERIMENT ----
-    experiment = darsia.ProtocolledExperiment.init_from_config(config)
+    with darsia.timed("experiment"):
+        experiment = darsia.ProtocolledExperiment.init_from_config(config)
 
     # ! ---- LOAD RIG ----
-    fluidflower = cls.load(config.rig.path, config.corrections)
-    fluidflower.load_experiment(experiment)
+    with darsia.timed("rig"):
+        fluidflower = cls.load(config.rig.path, config.corrections)
+        fluidflower.load_experiment(experiment)
 
     # ! ---- RESTORATION ----
-    restoration = build_restoration(config.restoration, fluidflower)
+    with darsia.timed("restoration"):
+        restoration = build_restoration(config.restoration, fluidflower)
 
     # ! ---- EXPERT KNOWLEDGE ADAPTER (for all analyses and calibration) ----
     # Built once, globally, regardless of any single consumer's own
@@ -487,13 +493,14 @@ def prepare_analysis_context(
 
     # ! ---- COLOR-TO-MASS ANALYSIS (only if required) ----
     if require_color_to_mass:
-        color_to_mass_analysis = _build_color_to_mass_analysis(
-            config=config,
-            experiment=experiment,
-            rig=fluidflower,
-            restoration=restoration,
-            expert_knowledge_adapter=expert_knowledge_adapter,
-        )
+        with darsia.timed("color to mass analysis"):
+            color_to_mass_analysis = _build_color_to_mass_analysis(
+                config=config,
+                experiment=experiment,
+                rig=fluidflower,
+                restoration=restoration,
+                expert_knowledge_adapter=expert_knowledge_adapter,
+            )
 
         # TODO: refactor and remove analysis_labels.
         embedding = config.color.resolve(config.analysis.mass.color)

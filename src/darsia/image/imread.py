@@ -223,7 +223,8 @@ def imread_from_optical(
 
     if isinstance(path, Path):
         # Read single image incl. date from metadata of the image
-        array, date = _read_single_optical_image(path)
+        with darsia.timed("decode file"):
+            array, date = _read_single_optical_image(path)
 
         # Use the date only if not provided separately
         if "date" not in kwargs:
@@ -235,12 +236,15 @@ def imread_from_optical(
             kwargs["color_space"] = "RGB"
 
         # Define image
-        image = darsia.OpticalImage(
-            img=array,
-            time=time,
-            transformations=transformations,
-            **kwargs,
-        ).img_as(float)
+        with darsia.timed("corrections"):
+            image = darsia.OpticalImage(
+                img=array,
+                time=time,
+                transformations=transformations,
+                **kwargs,
+            )
+        with darsia.timed("convert to float"):
+            image = image.img_as(float)
 
         return image
 

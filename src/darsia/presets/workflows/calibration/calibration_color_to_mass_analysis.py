@@ -97,6 +97,7 @@ def _resolve_evaluation_mode(
 
 
 @required_sections("calibration.mass")
+@darsia.timed("mass calibration")
 def calibration_color_to_mass_analysis_from_context(
     ctx: AnalysisContext,
     ref_path: Path | None = None,
@@ -209,12 +210,13 @@ def calibration_color_to_mass_analysis_from_context(
     )
 
     # Cache calibration images for performance
-    calibration_images: list[darsia.Image] = load_images_with_cache(
-        rig=fluidflower,
-        paths=calibration_image_paths,
-        use_cache=config.data.use_cache,
-        cache_dir=config.data.cache,
-    )
+    with darsia.timed("read images"):
+        calibration_images: list[darsia.Image] = load_images_with_cache(
+            rig=fluidflower,
+            paths=calibration_image_paths,
+            use_cache=config.data.use_cache,
+            cache_dir=config.data.cache,
+        )
 
     # ! ---- ALLOCATE EMPTY INTERPOLATIONS ----
 
@@ -460,14 +462,16 @@ def calibration_color_to_mass_analysis_from_context(
             "Using default signal functions.\033[0m"
         )
     else:
-        color_analysis.manual_calibration(
-            images=calibration_images,
-            experiment=experiment,
-            rois=rois,
-            cmap=custom_cmap,
-            save=lambda: color_analysis.save(mass_folder, interpretation),
-            resolution_level=mass_cfg.resolution_level,
-        )
+        # The time of this stage includes the time the user works in the window
+        with darsia.timed("calibration window (with interaction)"):
+            color_analysis.manual_calibration(
+                images=calibration_images,
+                experiment=experiment,
+                rois=rois,
+                cmap=custom_cmap,
+                save=lambda: color_analysis.save(mass_folder, interpretation),
+                resolution_level=mass_cfg.resolution_level,
+            )
 
     # Store calibration
     color_analysis.save(mass_folder, interpretation)
