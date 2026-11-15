@@ -11,6 +11,7 @@ from typing import Literal, Optional, Union, overload
 import numpy as np
 
 import darsia
+import darsia.signals.color.color_path_kernels as kernels
 
 
 class Model:
@@ -82,7 +83,47 @@ class HeterogeneousModel(Model):
             else:
                 self.obj[label] = copy.copy(obj)
 
+    def _color_path_labels(self, signal: np.ndarray) -> list | None:
+        """Labels to evaluate in one compiled pass, if the model allows it.
+
+        This requires an image of colors, integer labels and a color path
+        interpolation for each label which is not ignored.
+
+        """
+        labels = self.masks.labels.img
+        if not (
+            kernels.NUMBA_AVAILABLE
+            and signal.ndim == 3
+            and signal.shape[2] == 3
+            and signal.dtype == np.float64
+            and signal.shape[:2] == labels.shape
+            and np.issubdtype(labels.dtype, np.integer)
+        ):
+            return None
+        active = [
+            label
+            for label in self.masks.unique_labels
+            if label not in self.ignore_labels
+        ]
+        if len(active) == 0 or not all(
+            type(self[label]) is darsia.ColorPathInterpolation for label in active
+        ):
+            return None
+        return active
+
     def __call__(self, signal: np.ndarray) -> np.ndarray:
+        # Color paths of all labels in a single pass over the pixels, instead of
+        # extracting and fitting the pixels of each label separately.
+        active = self._color_path_labels(signal)
+        if active is not None:
+            tables = [self[label].kernel_tables() for label in active]
+            return kernels.evaluate_labeled_image(
+                signal,
+                self.masks.labels.img,
+                active,
+                *[list(table) for table in zip(*tables)],
+            )
+
         output = np.zeros(signal.shape[:2])  # TODO shape?
         for label in self.masks.unique_labels:
             if label in self.ignore_labels:

@@ -9,6 +9,7 @@ from typing import Literal, overload
 import numpy as np
 
 import darsia
+import darsia.signals.color.color_path_kernels as kernels
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +202,29 @@ class ColorPathInterpolation(ColorPathFunction):
                 f"""got {type(image)}."""
             )
 
+    def kernel_tables(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, bool]:
+        """Data of the model for the compiled evaluation (`color_path_kernels`).
+
+        Returns
+        -------
+        tuple
+            Key colors in the color mode of the model, their (equidistant) positions
+            on the path, the values at the key colors, and whether colors without a
+            color change are not fitted.
+
+        """
+        supports = (
+            self.color_path.colors
+            if self.color_mode == darsia.ColorMode.ABSOLUTE
+            else self.color_path.relative_colors
+        )
+        return (
+            np.asarray(supports, dtype=float),
+            np.asarray(self.color_path.equidistant_distances, dtype=float),
+            np.asarray(self.values, dtype=float),
+            self.ignore_spectrum is not None,
+        )
+
     @darsia.timing_decorator
     def _parametrize_colors(self, colors: np.ndarray) -> np.ndarray:
         """Parametrize the image in terms of the color path.
@@ -218,6 +242,15 @@ class ColorPathInterpolation(ColorPathFunction):
         np.ndarray
             Parametrization of the input image in terms of the color path.
         """
+        # One compiled pass over the colors, if available (same result up to rounding)
+        if (
+            kernels.NUMBA_AVAILABLE
+            and colors.ndim == 2
+            and colors.shape[1] == 3
+            and colors.dtype == np.float64
+        ):
+            return kernels.evaluate_colors(colors, *self.kernel_tables())
+
         # Fit in terms of the color path
         if self.ignore_spectrum is None or colors.ndim == 1:
             parametrization = self.color_path.fit(
@@ -228,7 +261,7 @@ class ColorPathInterpolation(ColorPathFunction):
             # not fitted and keep the parametrization 0.
             # TODO: Use the membership in the ignore spectrum instead of the norm,
             # see the backlog (changes which pixels are ignored).
-            color_mask = np.linalg.norm(colors, axis=1) > 1e-1
+            color_mask = np.linalg.norm(colors, axis=1) > kernels.NORM_THRESHOLD
             parametrization = np.zeros(colors.shape[0])
             parametrization[color_mask] = self.color_path.fit(
                 colors=colors[color_mask],

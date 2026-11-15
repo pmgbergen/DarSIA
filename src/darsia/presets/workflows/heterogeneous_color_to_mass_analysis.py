@@ -358,14 +358,17 @@ class HeterogeneousColorToMassAnalysis:
         reduced.pressure_temperature_protocol = self.pressure_temperature_protocol
         return reduced
 
+    @darsia.timed("color interpretation")
     def call_color_interpretation(self, image: darsia.Image) -> darsia.Image:
         return self.color_analysis(image)
 
+    @darsia.timed("signal model")
     @darsia.timing_decorator
     def call_pH_analysis(self, color_interpretation: darsia.Image) -> darsia.Image:
         """Run the mass analysis on a single image."""
         return self.signal_model(color_interpretation)
 
+    @darsia.timed("flash and mass")
     @darsia.timing_decorator
     def call_flash_and_mass_analysis(
         self, pH: darsia.Image
