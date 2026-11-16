@@ -10,6 +10,7 @@ from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.ndimage
 import skimage
 
 import darsia
@@ -634,8 +635,8 @@ class Rig:
         # Extend the boundary pixels by a certain number of pixels (e.g., 2)
         # to create a buffer zone.
         # TODO: Allow for configuration of the buffer size and structuring element.
-        buffer_zone = skimage.morphology.binary_dilation(
-            boundary_mask, footprint=skimage.morphology.disk(2)
+        buffer_zone = scipy.ndimage.binary_dilation(
+            boundary_mask, structure=skimage.morphology.disk(2)
         )
 
         # Create a boolean mask where the inner labels (excluding the boundary)

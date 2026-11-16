@@ -512,8 +512,8 @@ def _dilate_by_size(
         # Erode for each label if still existent
         for label in labels_sorted_sizes:
             mask = labels == label
-            mask = skimage.morphology.binary_dilation(
-                mask, skimage.morphology.disk(footprint)
+            mask = ndi.binary_dilation(
+                mask, structure=skimage.morphology.disk(footprint)
             )
             labels[mask] = label
     return labels

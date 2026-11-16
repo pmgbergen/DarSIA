@@ -14,6 +14,7 @@ from pathlib import Path
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.ndimage
 import skimage
 
 import darsia
@@ -334,8 +335,8 @@ class ContinuityBasedBalancingCalibrationMixin(AbstractBalancingCalibration):
             contour_mask[c] = True
 
         # Dilate to generate a thick contour
-        contour_mask = skimage.morphology.binary_dilation(
-            contour_mask, np.ones((thickness, thickness), np.uint8)
+        contour_mask = scipy.ndimage.binary_dilation(
+            contour_mask, structure=np.ones((thickness, thickness), np.uint8)
         )
 
         # Convert to boolean mask
