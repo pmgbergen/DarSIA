@@ -10,6 +10,7 @@ from darsia.presets.workflows.config.multi_fluidflower_config import (
     MultiFluidFlowerConfig,
 )
 from darsia.presets.workflows.config.sections import required_sections
+from darsia.presets.workflows.results_folder import INTEGRATED_MASS, sparse_data_csv
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +40,7 @@ def comparison_events(
         for event in config.events.events.values():
             if event.mode in ["mass", "mass_g", "mass_aq", "volume"]:
                 # Fetch mass analysis results
-                mass_path = (
-                    run_config.data.results / "sparse_data" / "integrated_mass.csv"
-                )
+                mass_path = sparse_data_csv(run_config.data.results, INTEGRATED_MASS)
                 mass_df = pd.read_csv(mass_path)
                 times = mass_df["time"]
                 if event.mode == "volume":

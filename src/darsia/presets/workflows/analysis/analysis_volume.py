@@ -22,6 +22,11 @@ from darsia.presets.workflows.analysis.progress import (
 )
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.config.analysis import AnalysisVolumeConfig
+from darsia.presets.workflows.results_folder import (
+    INTEGRATED_VOLUME,
+    field_map_folder,
+    sparse_data_csv,
+)
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -129,12 +134,12 @@ def analysis_volume_from_context(
         + detected_cols_aq
     )
     volume_df = pd.DataFrame(columns=columns)
-    csv_path = config.data.results / "sparse_data" / "integrated_volume.csv"
+    csv_path = sparse_data_csv(config.data.results, INTEGRATED_VOLUME)
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Storing and plotting
-    folder_saturation_g = config.data.results / "saturation_g"
-    folder_concentration_aq = config.data.results / "concentration_aq"
+    folder_saturation_g = field_map_folder(config.data.results, "saturation_g")
+    folder_concentration_aq = field_map_folder(config.data.results, "concentration_aq")
     if has_gas:
         folder_saturation_g.mkdir(parents=True, exist_ok=True)
     folder_concentration_aq.mkdir(parents=True, exist_ok=True)

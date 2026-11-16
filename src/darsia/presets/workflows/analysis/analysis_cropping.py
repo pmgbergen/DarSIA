@@ -23,6 +23,7 @@ from darsia.presets.workflows.analysis.progress import (
     publish_image_progress,
 )
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
+from darsia.presets.workflows.results_folder import analysis_folder
 from darsia.presets.workflows.rig import Rig
 
 if TYPE_CHECKING:
@@ -71,7 +72,7 @@ def analysis_cropping_from_context(
         )
 
     # ! ---- CROPPING ----
-    plot_folder = ctx.config.data.results / "cropping"
+    plot_folder = analysis_folder(ctx.config.data.results, "cropping")
     plot_folder.mkdir(parents=True, exist_ok=True)
 
     # Loop over images
