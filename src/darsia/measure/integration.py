@@ -325,8 +325,10 @@ class WeightedGeometry(Geometry):
         """Weight of the geometry, can be a scalar or an array."""
         self.voxel_volume = np.multiply(self.voxel_volume, weight)
         """Effective voxel volume in 3d."""
-        self.cached_voxel_volume = self.voxel_volume.copy()
-        """Internal copy of the voxel volume for efficient integration."""
+        self.cached_voxel_volume = self.voxel_volume
+        """Voxel volume for data of the current shape (the voxel volume itself, or a
+        resized one, see `_prepare_cached_voxel_volume`). It may be the same array as
+        `voxel_volume`: neither of them may be modified in place."""
 
     def subregion(self, roi: darsia.CoordinateArray) -> "WeightedGeometry":
         """Extract subregion of the geometry.
@@ -498,5 +500,5 @@ class ExtrudedPorousGeometry(WeightedGeometry):
         self.voxel_volume = np.multiply(
             self.voxel_volume / self.weight, integrated_porosity
         )
-        self.cached_voxel_volume = self.voxel_volume.copy()
+        self.cached_voxel_volume = self.voxel_volume
         self.weight = integrated_porosity

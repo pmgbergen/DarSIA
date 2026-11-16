@@ -5,7 +5,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -93,6 +93,51 @@ def _resolve_named_roi_voxels(
 
 class Rig:
     """Rig object for CO2 analysis."""
+
+    # ! ---- MEMBERS LOADED ON FIRST USE ----
+
+    def _defer(self, names: tuple[str, ...], loader: Callable[[], None]) -> None:
+        """Register a loader which sets the members `names` on their first access.
+
+        Large members which only some workflows need (e.g. the permeability for
+        Wasserstein distances) are then read when a workflow uses them, and not by
+        every workflow loading the rig. Afterwards they are ordinary attributes.
+
+        Parameters
+        ----------
+        names : tuple of str
+            Members set by the loader.
+        loader : callable
+            Function without arguments setting all members `names`.
+
+        """
+        deferred = self.__dict__.setdefault("_deferred", {})
+        for name in names:
+            deferred[name] = (names, loader)
+
+    def _defer_file(self, name: str, path: Path) -> None:
+        """Register the image file `path` as member `name`, read on first access.
+
+        A missing file raises here, as reading it right away would.
+
+        """
+        if not Path(path).exists():
+            raise FileNotFoundError(f"File {path} does not exist.")
+        self._defer((name,), lambda: setattr(self, name, darsia.imread(path)))
+
+    def __getattr__(self, name: str):
+        # Called only for attributes which are not set: load deferred members.
+        deferred = self.__dict__.get("_deferred")
+        if deferred is None or name not in deferred:
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'"
+            )
+        names, loader = deferred[name]
+        with darsia.timed(f"load {name}"):
+            loader()
+        for loaded in names:
+            deferred.pop(loaded, None)
+        return self.__dict__[name]
 
     @property
     def corrections(self) -> list[darsia.BaseCorrection]:
@@ -1185,12 +1230,16 @@ class Rig:
         # Load data for reading images
         with darsia.timed("baseline"):
             rig.baseline = darsia.imread(folder / "baseline.npz")
-            if (folder / "shape_corrected_baseline.npz").exists():
-                rig.shape_corrected_baseline = darsia.imread(
-                    folder / "shape_corrected_baseline.npz"
-                )
-            else:
-                rig.shape_corrected_baseline = rig.baseline.copy()
+
+        # Only needed to set up color corrections or to save the rig: read on first use
+        shape_corrected_path = folder / "shape_corrected_baseline.npz"
+        if shape_corrected_path.exists():
+            rig._defer_file("shape_corrected_baseline", shape_corrected_path)
+        else:
+            rig._defer(
+                ("shape_corrected_baseline",),
+                lambda: setattr(rig, "shape_corrected_baseline", rig.baseline.copy()),
+            )
         logger.info("Baseline setup complete.")
 
         # Load corrections
@@ -1214,21 +1263,27 @@ class Rig:
         with darsia.timed("facies"):
             rig.setup_facies(path=folder / "facies.npz", apply_corrections=False)
 
-        # Load facies properties
+        # Load facies properties; the permeability (e.g. for Wasserstein distances) is
+        # read on first use.
         with darsia.timed("facies properties"):
-            rig.setup_facies_props(
-                porosity=folder / "porosity.npz",
-                permeability=folder / "permeability.npz",
-            )
+            rig.porosity = darsia.imread(folder / "porosity.npz")
+            rig._defer_file("permeability", folder / "permeability.npz")
 
         # Setup geometry information
         with darsia.timed("geometry"):
             rig.setup_geometry()
 
-        # Load image porosity information
-        with darsia.timed("image porosity"):
-            rig.setup_image_porosity(path=folder / "image_porosity.npz")
+        # Image porosity (e.g. for restorations and color path calibration masks): read
+        # on first use.
+        image_porosity_path = folder / "image_porosity.npz"
+        if not image_porosity_path.exists():
+            raise FileNotFoundError(f"File {image_porosity_path} does not exist.")
+
+        def load_image_porosity() -> None:
+            rig.setup_image_porosity(path=image_porosity_path)
             rig.setup_boolean_image_porosity()
+
+        rig._defer(("image_porosity", "boolean_porosity"), load_image_porosity)
 
         # TODO setup color_analysis, and pw_transformation.
 
