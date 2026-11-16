@@ -83,7 +83,7 @@ class HeterogeneousModel(Model):
             else:
                 self.obj[label] = copy.copy(obj)
 
-    def _color_path_labels(self, signal: np.ndarray) -> list | None:
+    def color_path_labels(self, signal: np.ndarray) -> list | None:
         """Labels to evaluate in one compiled pass, if the model allows it.
 
         This requires an image of colors, integer labels and a color path
@@ -114,7 +114,7 @@ class HeterogeneousModel(Model):
     def __call__(self, signal: np.ndarray) -> np.ndarray:
         # Color paths of all labels in a single pass over the pixels, instead of
         # extracting and fitting the pixels of each label separately.
-        active = self._color_path_labels(signal)
+        active = self.color_path_labels(signal)
         if active is not None:
             return _kernels.evaluate_labeled_image(
                 signal,

@@ -209,6 +209,28 @@ class SimpleFlash:
         if max_value_g is not None:
             self.max_value_g = max_value_g
 
+    def ramp_bounds(self) -> tuple[float, float, float, float] | None:
+        """Bounds of the two linear ramps, if the flash consists of them only.
+
+        Compiled single-pass evaluations (`multiphase/mass_kernels.py`) rely on this and
+        replace `__call__`. NOTE: Any new option which changes the result of `__call__`
+        must return None here, and a change of the ramps must be mirrored in the kernel.
+
+        Returns
+        -------
+        tuple or None
+            Minimal and maximal signal of the aqueous ramp, minimal and maximal signal
+            of the gas ramp; None with a restoration or for a subclass.
+        """
+        if type(self) is not SimpleFlash or self.restoration is not None:
+            return None
+        return (
+            self.min_value_aq,
+            self.max_value_aq,
+            self.min_value_g,
+            self.max_value_g,
+        )
+
     @darsia.timing_decorator
     def __call__(self, signal: darsia.Image) -> tuple[darsia.Image, darsia.Image]:
         """Simple flash calculation.

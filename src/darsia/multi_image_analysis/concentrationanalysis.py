@@ -124,6 +124,32 @@ class ConcentrationAnalysis:
         """Fetch verbosity. With increasing number, more intermediate results
         are displayed. Useful for parameter tuning."""
 
+    def is_plain(self) -> bool:
+        """Whether the analysis only subtracts the baseline, applies the model and then
+        the restoration.
+
+        Compiled single-pass evaluations of an analysis (e.g. in
+        `HeterogeneousColorToMassAnalysis`) rely on this and replace `__call__` for a
+        plain analysis. NOTE: Any new option which changes the result of `__call__`
+        must be excluded here.
+
+        Returns
+        -------
+        bool
+            True if no other step of `__call__` is active (difference option "plain",
+            no signal reduction, cleaning filter, balancing or inspection, and the
+            restoration after the model), for this class itself (not a subclass).
+        """
+        return (
+            type(self) is ConcentrationAnalysis
+            and self._diff_option == "plain"
+            and self.signal_reduction is None
+            and self.threshold_cleaning_filter is None
+            and self.balancing is None
+            and self.verbosity == 0
+            and not self.first_restoration_then_model
+        )
+
     def update(
         self,
         base: Optional[darsia.Image] = None,

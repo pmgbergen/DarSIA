@@ -101,6 +101,35 @@ class PWTransformation:
             self.supports, self.values = new_supports, new_values
             self.interpolator = self._build_interpolator()
 
+    def linear_table(self) -> tuple[np.ndarray, np.ndarray] | None:
+        """Supports and values, if the transformation is their linear interpolation.
+
+        Compiled single-pass evaluations (`signals/models/signal_kernels.py`) rely on
+        this and replace `__call__`. NOTE: A subclass with another interpolator gets
+        None by the type check; a change of the interpolation of this class must be
+        mirrored in the kernel.
+
+        Returns
+        -------
+        tuple or None
+            Strictly increasing supports and the values; None for a subclass, without
+            interpolator, or for supports and values which are not finite.
+        """
+        if type(self) is not PWTransformation or not hasattr(self, "interpolator"):
+            return None
+        supports = np.asarray(self.supports, dtype=float)
+        values = np.asarray(self.values, dtype=float)
+        if not (
+            supports.ndim == 1
+            and len(supports) >= 2
+            and supports.shape == values.shape
+            and np.all(np.isfinite(supports))
+            and np.all(np.isfinite(values))
+            and np.all(np.diff(supports) > 0)
+        ):
+            return None
+        return supports, values
+
     def _build_interpolator(self):
         """Interpolator through the values at the supports (piecewise linear)."""
         return interpolate.interp1d(self.supports, self.values, kind="linear")

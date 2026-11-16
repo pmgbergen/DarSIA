@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import darsia
+import darsia.multiphase.mass_kernels as _mass_kernels
 
 EPSILON = 1e-12
 
@@ -312,6 +313,38 @@ class FluidMassAnalysis:
             plt.title(name.replace("_", " ") + state)
             plt.savefig(path / f"{name}.png")
             plt.close()
+
+    def row_properties(
+        self, shape: tuple[int, ...]
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        """Gas density and aqueous capacity per pixel row, if they define the mass.
+
+        Compiled single-pass evaluations (`multiphase/mass_kernels.py`) rely on this and
+        replace `mass_analysis`. NOTE: Any new term in `mass_analysis` must return None
+        here, and a change of the formula must be mirrored in the kernel.
+
+        Parameters
+        ----------
+        shape : tuple
+            Shape (rows, cols) of the images to be analyzed.
+
+        Returns
+        -------
+        tuple or None
+            Gas density and aqueous capacity of each row; None without a gas phase, if
+            a property varies along rows (e.g. after assigning a full array), or if a
+            subclass defines its own `mass_analysis`.
+        """
+        if (
+            not self.has_gas
+            or type(self).mass_analysis is not FluidMassAnalysis.mass_analysis
+        ):
+            return None
+        density_gas = _mass_kernels.row_values(self.density_gas, shape)
+        aqueous_capacity = _mass_kernels.row_values(self.aqueous_capacity, shape)
+        if density_gas is None or aqueous_capacity is None:
+            return None
+        return density_gas, aqueous_capacity
 
     def mass_analysis(
         self, c_aq: darsia.Image, s_g: darsia.Image | None = None
