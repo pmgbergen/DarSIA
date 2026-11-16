@@ -195,10 +195,8 @@ class CalibrationState:
                 shape=self.coarse_shape,
                 interpolation="inter_nearest",
             )
-            self.coarse_images = [
-                darsia.resize(self.float_image(idx), shape=self.coarse_shape)
-                for idx in range(len(images))
-            ]
+        self.coarse_images: list[darsia.Image] = []
+        """Display copies of the images, made together with the start level."""
         with darsia.timed("display geometry"):
             self.coarse_depth = darsia.resize(
                 analysis.geometry.depth, shape=self.coarse_shape
@@ -260,7 +258,7 @@ class CalibrationState:
         """Resolution levels which can be selected."""
         self._levels: dict[int, ResolutionLevel] = {}
         self.level: ResolutionLevel = self._build_level(
-            self._closest_level(resolution_level)
+            self._closest_level(resolution_level), display=self.coarse_images
         )
         """Current resolution level."""
 
@@ -292,7 +290,7 @@ class CalibrationState:
             )
         return level
 
-    def _build_level(self, factor: int) -> ResolutionLevel:
+    def _build_level(self, factor: int, display: list | None = None) -> ResolutionLevel:
         """Set up (once) the analysis, images and color interpretations of a level.
 
         Colors are averaged over the reduced pixels before they are interpreted, and
@@ -300,25 +298,42 @@ class CalibrationState:
         function of the color, so the mass of a reduced level deviates slightly from
         the full resolution.
 
+        Parameters
+        ----------
+        factor : int
+            Reduction of the images per axis.
+        display : list, optional
+            List to which the display copies of the images are appended. They are
+            made from the same float image as the reduced image, so that each image
+            is converted only once (one at a time, to keep the memory low).
+
         """
         if factor in self._levels:
             return self._levels[factor]
         with darsia.timed(f"resolution level {factor}"):
             if factor == 1:
                 analysis, images = self.analysis, self.images
+                if display is not None:
+                    with darsia.timed("display images"):
+                        display.extend(
+                            self._display_image(self.float_image(idx))
+                            for idx in range(len(self.images))
+                        )
             else:
                 with darsia.timed("reduce analysis"):
                     analysis = self.analysis.reduced(factor)
                 shape = analysis.labels.img.shape[:2]
                 with darsia.timed("reduce images"):
-                    images = [
-                        darsia.resize(
-                            self.float_image(idx),
-                            shape=shape,
-                            interpolation="inter_area",
+                    images = []
+                    for idx in range(len(self.images)):
+                        image = self.float_image(idx)
+                        images.append(
+                            darsia.resize(
+                                image, shape=shape, interpolation="inter_area"
+                            )
                         )
-                        for idx in range(len(self.images))
-                    ]
+                        if display is not None:
+                            display.append(self._display_image(image))
             # The projection onto the color path is expensive, so the color
             # interpretations of the images are cached. Without projection, they are
             # merely the baseline relative colors (3 channels, i.e., larger), cheap to
@@ -389,6 +404,10 @@ class CalibrationState:
         if level.color_interpretations is not None:
             return level.color_interpretations[idx]
         return level.analysis.call_color_interpretation(level.images[idx])
+
+    def _display_image(self, image: darsia.Image) -> darsia.Image:
+        """Display copy of a (float) calibration image."""
+        return darsia.resize(image, shape=self.coarse_shape)
 
     def _display_color_interpretation(self, color_interpretation: darsia.Image):
         """Scalar color interpretation for display (colors: size of the color)."""
