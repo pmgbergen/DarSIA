@@ -1330,10 +1330,10 @@ class Rig:
         path : Path
             Path to the image file.
         native : bool
-            Keep the data type resulting from the corrections (8-bit integers without
-            a type correction) instead of converting to float in the end, see
-            `darsia.imread_from_optical`. Saves memory when many images are held;
-            the user of the image has to support the type.
+            Keep the data type resulting from the corrections (the integers of the
+            file without a type correction) instead of converting to float in the
+            end, see `darsia.imread_from_optical`. Saves memory when many images are
+            held; the user of the image has to support the type (`Image.as_float`).
 
         Returns
         -------

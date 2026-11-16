@@ -230,7 +230,7 @@ def calibration_color_to_mass_analysis_from_context(
             use_cache=config.data.use_cache,
             cache_dir=config.data.cache,
             # All calibration images are held at full resolution: keep them in the
-            # type of the corrections (8-bit without type correction).
+            # type of the corrections (integers of the files without type correction).
             native=True,
         )
 
@@ -285,7 +285,7 @@ def calibration_color_to_mass_analysis_from_context(
     # Illustrate the ignored labels for the calibration images through grayscaling
     if show and len(ignore_labels) > 0:
         for img in calibration_images[-1:]:
-            _img = img.img_as(float)  # a float copy (images may be 8-bit)
+            _img = img.as_float().copy()  # images may hold integers (native type)
             for mask, label in darsia.Masks(selected_labels, return_label=True):
                 if label not in ignore_labels:
                     continue

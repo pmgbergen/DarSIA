@@ -21,7 +21,10 @@ except ImportError:  # pragma: no cover
 
 __all__ = ["NUMBA_AVAILABLE", "supports", "bilinear"]
 
-SUPPORTED_DTYPES = (np.uint8, np.float32, np.float64)
+UNSIGNED_DTYPES = (np.uint8, np.uint16)
+"""Integer image types of the kernels (results are rounded as scipy does)."""
+
+SUPPORTED_DTYPES = UNSIGNED_DTYPES + (np.float32, np.float64)
 """Image types for which the kernels reproduce scipy."""
 
 
@@ -53,15 +56,15 @@ if NUMBA_AVAILABLE:
         return value
 
     @njit(cache=True, error_model="numpy", parallel=True)
-    def _bilinear_uint8(img, rows, cols, out):
+    def _bilinear_unsigned(img, rows, cols, out):
+        """For unsigned integer images of any width (compiled per type)."""
         for i in prange(out.shape[0]):
             y = np.float64(rows[i])
             x = np.float64(cols[i])
             for channel in range(img.shape[2]):
-                # Rounding to the nearest integer, as scipy does for integer images
-                out[i, channel] = np.uint8(
-                    np.floor(_interpolate(img, y, x, channel) + 0.5)
-                )
+                # Rounding to the nearest integer, as scipy does for integer images.
+                # The value lies within the range of the image (it is an average).
+                out[i, channel] = int(np.floor(_interpolate(img, y, x, channel) + 0.5))
 
     @njit(cache=True, error_model="numpy", parallel=True)
     def _bilinear_float(img, rows, cols, out):
@@ -126,8 +129,8 @@ def bilinear(img: np.ndarray, grid: np.ndarray, shape: tuple[int, ...]) -> np.nd
     rows = np.ascontiguousarray(grid[0])
     cols = np.ascontiguousarray(grid[1])
     out = np.empty((rows.shape[0], img.shape[2]), dtype=img.dtype)
-    if img.dtype == np.uint8:
-        _bilinear_uint8(img, rows, cols, out)
+    if img.dtype.type in UNSIGNED_DTYPES:
+        _bilinear_unsigned(img, rows, cols, out)
     else:
         _bilinear_float(img, rows, cols, out)
     return out.reshape((*shape, img.shape[2]))

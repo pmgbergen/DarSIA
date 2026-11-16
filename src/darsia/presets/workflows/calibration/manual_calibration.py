@@ -37,16 +37,6 @@ DEFAULT_CONTOUR_THRESHOLD = 0.05
 """Start value (and reset value) of the contour thresholds."""
 
 
-def as_float_image(image: darsia.Image) -> darsia.Image:
-    """Float version of an image held in its native type (see `Rig.read_image`).
-
-    8-bit images are converted as at the end of reading; float images are returned as
-    they are. Use it for one image at a time: the float image takes 8 times the memory.
-
-    """
-    return image.img_as(float) if image.img.dtype == np.uint8 else image
-
-
 @dataclass
 class ResolutionLevel:
     """Data of the calibration at one resolution level."""
@@ -100,9 +90,11 @@ class CalibrationState:
     analysis : HeterogeneousColorToMassAnalysis
         The analysis to calibrate.
     images : list[darsia.Image]
-        The calibration images, as floats or in their native type (8-bit, see
-        `Rig.read_image`); they are held at full resolution, so the native type saves
-        most of their memory.
+        The calibration images, as floats or in their native type (e.g. integers of
+        the image files, see `Rig.read_image`). They are held at full resolution, so
+        the native type saves most of their memory. `images` is their storage only:
+        use :meth:`float_image` for calculations with an image; the analysis
+        (`call_color_interpretation`) accepts the stored images.
     experiment : darsia.ProtocolledExperiment
         Provides the injection protocol and the pressure-temperature protocol.
     rois : dict, optional
@@ -204,8 +196,8 @@ class CalibrationState:
                 interpolation="inter_nearest",
             )
             self.coarse_images = [
-                darsia.resize(as_float_image(image), shape=self.coarse_shape)
-                for image in images
+                darsia.resize(self.float_image(idx), shape=self.coarse_shape)
+                for idx in range(len(images))
             ]
         with darsia.timed("display geometry"):
             self.coarse_depth = darsia.resize(
@@ -321,11 +313,11 @@ class CalibrationState:
                 with darsia.timed("reduce images"):
                     images = [
                         darsia.resize(
-                            as_float_image(image),
+                            self.float_image(idx),
                             shape=shape,
                             interpolation="inter_area",
                         )
-                        for image in self.images
+                        for idx in range(len(self.images))
                     ]
             # The projection onto the color path is expensive, so the color
             # interpretations of the images are cached. Without projection, they are
@@ -376,6 +368,18 @@ class CalibrationState:
         self.maps = None
         self.mass_analysis_done = False
         return True
+
+    # ! ---- IMAGES ----
+
+    def float_image(self, idx: int) -> darsia.Image:
+        """Calibration image (full resolution) with floats as data.
+
+        The stored images may hold integers (native type), on which arithmetic would
+        silently wrap around. The float version of a native image is a new array of
+        several times its size: use it for one image at a time and do not keep it.
+
+        """
+        return self.images[idx].as_float()
 
     # ! ---- COLOR INTERPRETATIONS ----
 

@@ -83,31 +83,31 @@ class HeterogeneousModel(Model):
             else:
                 self.obj[label] = copy.copy(obj)
 
-    def color_path_labels(
-        self, signal: np.ndarray, dtypes: tuple = (np.float64,)
-    ) -> list | None:
+    def color_path_labels(self, shape: tuple) -> list | None:
         """Labels to evaluate in one compiled pass, if the model allows it.
 
-        This requires an image of colors, integer labels and a color path
-        interpolation for each label which is not ignored.
+        This requires an image of colors of the shape of the labels, integer labels
+        and a color path interpolation for each label which is not ignored. The type
+        of the image is the business of the caller (see
+        `color_path_kernels.image_scale`).
 
         Parameters
         ----------
-        signal : np.ndarray
-            Image of colors.
-        dtypes : tuple
-            Accepted types of the image. `__call__` evaluates float64 only; a caller
-            which converts other types exactly (see
-            `color_path_kernels.evaluate_labeled_image`) may accept those.
+        shape : tuple
+            Shape of the image of colors.
+
+        Returns
+        -------
+        list or None
+            The labels which are not ignored; None if the model does not allow it.
 
         """
         labels = self.masks.labels.img
         if not (
             _kernels.NUMBA_AVAILABLE
-            and signal.ndim == 3
-            and signal.shape[2] == 3
-            and signal.dtype.type in dtypes
-            and signal.shape[:2] == labels.shape
+            and len(shape) == 3
+            and shape[2] == 3
+            and tuple(shape[:2]) == labels.shape
             and np.issubdtype(labels.dtype, np.integer)
         ):
             return None
@@ -125,7 +125,10 @@ class HeterogeneousModel(Model):
     def __call__(self, signal: np.ndarray) -> np.ndarray:
         # Color paths of all labels in a single pass over the pixels, instead of
         # extracting and fitting the pixels of each label separately.
-        active = self.color_path_labels(signal)
+        # (Only float64: values of other types are evaluated as they are, below.)
+        active = (
+            self.color_path_labels(signal.shape) if signal.dtype == np.float64 else None
+        )
         if active is not None:
             return _kernels.evaluate_labeled_image(
                 signal,
