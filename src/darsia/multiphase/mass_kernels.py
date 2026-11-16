@@ -248,10 +248,21 @@ def flash_and_mass_integrals(
 
     Parameters
     ----------
-    signal, bounds, density_gas, aqueous_capacity, keep_aq, keep_g
-        See `flash_and_mass`.
+    signal : np.ndarray
+        Signal, shape (rows, cols).
+    bounds : tuple
+        Bounds of the flash: minimal and maximal signal of the aqueous ramp, minimal and
+        maximal signal of the gas ramp.
+    density_gas : np.ndarray
+        Gas density of each row.
+    aqueous_capacity : np.ndarray
+        Mass per aqueous volume at concentration 1 of each row.
     voxel_volume : np.ndarray
         Volume of each voxel, shape (rows, cols) (`Geometry.voxel_volumes`).
+    keep_aq : np.ndarray, optional
+        Boolean mask; the concentration is set to zero where False.
+    keep_g : np.ndarray, optional
+        Boolean mask; the saturation is set to zero where False.
 
     Returns
     -------
