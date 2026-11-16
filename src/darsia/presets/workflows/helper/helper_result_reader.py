@@ -17,6 +17,7 @@ from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.format_registry import ImageExportFormat
 from darsia.presets.workflows.config.physics import check_fluid_modes
 from darsia.presets.workflows.config.sections import required_sections
+from darsia.presets.workflows.results_folder import field_map_folder
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -204,7 +205,10 @@ def helper_result_reader(
         sub_config=helper_config,
     )
     format_spec = _resolve_result_format(config, helper_config.format)
-    result_folder = config.data.results / helper_config.mode / format_spec.folder_name
+    result_folder = (
+        field_map_folder(config.data.results, helper_config.mode)
+        / format_spec.folder_name
+    )
     result_paths = _collect_result_files(image_paths, result_folder, format_spec.type)
 
     roi = None

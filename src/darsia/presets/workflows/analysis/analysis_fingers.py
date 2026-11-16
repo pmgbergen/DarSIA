@@ -28,6 +28,7 @@ from darsia.presets.workflows.analysis.progress import (
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.config.physics import check_fluid_modes
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
+from darsia.presets.workflows.results_folder import analysis_folder
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import (  # GradientBasedSegmentation,
     SimpleSegmentation,
@@ -248,7 +249,7 @@ def analysis_fingers_from_context(
         evolution_analysis[key] = {key: PathEvolutionAnalysis() for key in roi_keys}
 
     # Data management.
-    results_folder = ctx.config.analysis.fingers.folder
+    results_folder = analysis_folder(ctx.config.data.results, "fingers")
     results_folder.mkdir(parents=True, exist_ok=True)
     for key in roi_keys:
         (results_folder / "tips" / key).mkdir(parents=True, exist_ok=True)

@@ -337,15 +337,6 @@ class AnalysisThresholdingConfig:
     legend: AnalysisThresholdingLegendConfig = field(
         default_factory=AnalysisThresholdingLegendConfig, metadata={"name": "Legend"}
     )
-    folder: Path | None = field(
-        default=None,
-        metadata={
-            "name": "Output folder",
-            "help": "Directory for thresholded results.",
-            "hidden": True,
-        },
-    )
-    """Path to the results folder for thresholding analysis."""
 
     def load(
         self,
@@ -404,13 +395,6 @@ class AnalysisThresholdingConfig:
             raise ValueError("analysis.thresholding.legend must be a table/dict.")
         self.legend.load(legend)
 
-        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
-        if not folder:
-            assert results is not None
-            self.folder = results / "thresholding"
-        else:
-            self.folder = folder
-
         return self
 
     def error(self):
@@ -452,15 +436,6 @@ class AnalysisSegmentationConfig:
             "widget": "dataclass_group_map",
         },
     )
-    folder: Path | None = field(
-        default=None,
-        metadata={
-            "name": "Output folder",
-            "help": "Directory for segmentation results.",
-            "hidden": True,
-        },
-    )
-    """Path to the results folder for segmentation."""
     expert_knowledge: bool = field(
         default=True,
         metadata={
@@ -524,10 +499,6 @@ class AnalysisSegmentationConfig:
             if entry.get("name")
         }
 
-        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
-        if not folder:
-            assert results is not None
-            self.folder = results / "segmentation"
         self.expert_knowledge = _get_key(
             sub_sec, "expert_knowledge", required=False, default=True, type_=bool
         )
@@ -599,15 +570,6 @@ class AnalysisMassConfig:
         },
     )
     """ROI names for mass analysis."""
-    folder: Path | None = field(
-        default=None,
-        metadata={
-            "name": "Output folder",
-            "help": "Directory for mass analysis results.",
-            "hidden": True,
-        },
-    )
-    """Path to the results folder for mass analysis."""
     expert_knowledge: bool = field(
         default=True,
         metadata={
@@ -698,12 +660,6 @@ class AnalysisMassConfig:
             # Deduplicate while preserving first-seen order.
             self.export = list(dict.fromkeys(export_modes))
 
-        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
-        if not folder:
-            assert results is not None
-            folder = results / "mass"
-        self.folder = folder
-
         self.expert_knowledge = _get_key(
             sub_sec, "expert_knowledge", required=False, default=True, type_=bool
         )
@@ -746,15 +702,6 @@ class AnalysisVolumeConfig:
         },
     )
     """ROI names for volume analysis."""
-    folder: Path | None = field(
-        default=None,
-        metadata={
-            "name": "Output folder",
-            "help": "Directory for volume analysis results.",
-            "hidden": True,
-        },
-    )
-    """Path to the results folder for volume analysis."""
     expert_knowledge: bool = field(
         default=True,
         metadata={
@@ -804,10 +751,6 @@ class AnalysisVolumeConfig:
             roi_registry=roi_registry,
         )
 
-        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
-        if not folder:
-            assert results is not None
-            self.folder = results / "volume"
         self.expert_knowledge = _get_key(
             sub_sec, "expert_knowledge", required=False, default=True, type_=bool
         )
@@ -847,15 +790,6 @@ class AnalysisFingersConfig:
             "widget": "dataclass_group_map",
         },
     )
-    folder: Path | None = field(
-        default=None,
-        metadata={
-            "name": "Output folder",
-            "help": "Directory for fingers analysis results.",
-            "hidden": True,
-        },
-    )
-    """Path to the results folder for fingers analysis."""
     expert_knowledge: bool = field(
         default=True,
         metadata={
@@ -919,10 +853,6 @@ class AnalysisFingersConfig:
             if entry.get("name")
         }
 
-        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
-        if not folder:
-            assert results is not None
-            self.folder = results / "fingers"
         self.expert_knowledge = _get_key(
             sub_sec, "expert_knowledge", required=False, default=True, type_=bool
         )

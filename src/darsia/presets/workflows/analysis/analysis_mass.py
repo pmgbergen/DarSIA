@@ -32,6 +32,12 @@ from darsia.presets.workflows.config.analysis import (
     SUPPORTED_ANALYSIS_MASS_EXPORT_MODES,
 )
 from darsia.presets.workflows.config.physics import check_fluid_modes
+from darsia.presets.workflows.results_folder import (
+    DEFAULT_MASS_FORMATS,
+    INTEGRATED_MASS,
+    field_map_folder,
+    sparse_data_csv,
+)
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -157,20 +163,14 @@ def analysis_mass_from_context(
         ]
     )
     output_folders = {
-        "mass": config.data.results / "mass",
-        "rescaled_mass": config.data.results / "rescaled_mass",
-        "extensive_mass": config.data.results / "extensive_mass",
-        "extensive_rescaled_mass": config.data.results / "extensive_rescaled_mass",
-        "saturation_g": config.data.results / "saturation_g",
-        "rescaled_saturation_g": config.data.results / "rescaled_saturation_g",
-        "concentration_aq": config.data.results / "concentration_aq",
-        "rescaled_concentration_aq": config.data.results / "rescaled_concentration_aq",
+        mode: field_map_folder(config.data.results, mode)
+        for mode in SUPPORTED_ANALYSIS_MASS_EXPORT_MODES
     }
     for mode in export_modes:
         output_folders[mode].mkdir(parents=True, exist_ok=True)
 
     exporter = ImageExportFormats(
-        config, config.analysis.mass.formats or ["npz", "jpg"]
+        config, config.analysis.mass.formats or DEFAULT_MASS_FORMATS
     )
 
     vmax_mass = fluid_model.max_density
@@ -258,7 +258,7 @@ def analysis_mass_from_context(
     )
     mass_df = pd.DataFrame(columns=columns)
     # TODO control this path through toml/config.
-    csv_path = config.data.results / "sparse_data" / "integrated_mass.csv"
+    csv_path = sparse_data_csv(config.data.results, INTEGRATED_MASS)
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Loop over images and analyze

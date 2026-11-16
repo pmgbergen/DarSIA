@@ -1,9 +1,39 @@
 from pathlib import Path
 
+import pytest
+
 from darsia.presets.workflows.results_folder import (
+    FIELD_MAPS_CSV,
+    INTEGRATED_MASS,
+    INTEGRATED_VOLUME,
+    THRESHOLDING_EXTENT,
+    analysis_folder,
+    field_map_folder,
+    sparse_data_csv,
     suggested_analysis_results_folder,
     suggested_workflow_results_folder,
 )
+
+
+def test_standard_layout_of_the_analysis_results(tmp_path: Path) -> None:
+    """The layout functions give the folders the analyses have always written to."""
+    results = tmp_path / "results"
+    for name in ("cropping", "segmentation", "thresholding", "fingers"):
+        assert analysis_folder(results, name) == results / name
+    with pytest.raises(ValueError):
+        analysis_folder(results, "mass")
+    for mode in ("mass", "rescaled_saturation_g", "concentration_aq"):
+        assert field_map_folder(results, mode) == results / mode
+    assert sparse_data_csv(results, INTEGRATED_MASS) == (
+        results / "sparse_data" / "integrated_mass.csv"
+    )
+    assert sparse_data_csv(results, INTEGRATED_VOLUME) == (
+        results / "sparse_data" / "integrated_volume.csv"
+    )
+    assert sparse_data_csv(results, THRESHOLDING_EXTENT) == (
+        results / "sparse_data" / "thresholding_extent.csv"
+    )
+    assert FIELD_MAPS_CSV == Path("sparse_data") / "integrated_mass.csv"
 
 
 def test_suggested_analysis_results_folder_for_cropping(tmp_path: Path) -> None:
@@ -15,9 +45,10 @@ def test_suggested_analysis_results_folder_for_cropping(tmp_path: Path) -> None:
     assert folder == results / "cropping"
 
 
-def test_suggested_analysis_results_folder_from_analysis_section(
+def test_suggested_analysis_results_folder_ignores_old_folder_entries(
     tmp_path: Path,
 ) -> None:
+    """The analyses write to standard folders; an old `folder` entry has no effect."""
     config = tmp_path / "config.toml"
     results = tmp_path / "results"
     seg_folder = tmp_path / "seg"
@@ -27,7 +58,22 @@ def test_suggested_analysis_results_folder_from_analysis_section(
     )
 
     folder = suggested_analysis_results_folder(config, ["segmentation"])
-    assert folder == seg_folder
+    assert folder == results / "segmentation"
+
+
+def test_suggested_analysis_results_folder_for_volume(tmp_path: Path) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    assert suggested_analysis_results_folder(config, ["volume"]) == (
+        results / "sparse_data"
+    )
+    (results / "concentration_aq").mkdir(parents=True)
+    (results / "concentration_aq" / "image.npz").write_bytes(b"")
+    assert suggested_analysis_results_folder(config, ["volume"]) == (
+        results / "concentration_aq"
+    )
 
 
 def test_suggested_analysis_results_folder_defaults_to_results_on_multiple_modes(

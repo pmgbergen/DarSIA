@@ -39,6 +39,11 @@ from darsia.presets.workflows.mode_resolution import (
     mode_requires_color_to_mass,
     resolve_mode_image,
 )
+from darsia.presets.workflows.results_folder import (
+    THRESHOLDING_EXTENT,
+    analysis_folder,
+    sparse_data_csv,
+)
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -185,7 +190,8 @@ def analysis_thresholding_from_context(
         all=False,
         sub_config=thresholding_config,
     )
-    thresholding_config.folder.mkdir(parents=True, exist_ok=True)
+    output_folder = analysis_folder(config.data.results, "thresholding")
+    output_folder.mkdir(parents=True, exist_ok=True)
     requires_color_to_mass = any(
         mode_requires_color_to_mass(layer.mode)
         for layer in thresholding_config.layers.values()
@@ -219,9 +225,7 @@ def analysis_thresholding_from_context(
         for layer_name in layer_names:
             extent_columns += [f"{layer_name}_extent_x", f"{layer_name}_extent_y"]
         extent_df = pd.DataFrame(columns=extent_columns)
-        extent_csv_path = (
-            config.data.results / "sparse_data" / "thresholding_extent.csv"
-        )
+        extent_csv_path = sparse_data_csv(config.data.results, THRESHOLDING_EXTENT)
         extent_csv_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Loop over images and apply thresholding for each layer.
@@ -336,7 +340,7 @@ def analysis_thresholding_from_context(
             mask_image = darsia.ScalarImage(img=mask)
             exporter.export_image(
                 mask_image,
-                thresholding_config.folder,
+                output_folder,
                 path.stem,
                 supported_types={"jpg", "png", "npz", "npy", "csv"},
                 subfolder=layer_name,
@@ -369,7 +373,7 @@ def analysis_thresholding_from_context(
             )
             exporter.export_image(
                 preview_image,
-                thresholding_config.folder,
+                output_folder,
                 path.stem,
                 supported_types={"jpg", "png"},
                 subfolder=layer_name,
@@ -403,7 +407,7 @@ def analysis_thresholding_from_context(
         )
         exporter.export_image(
             master_preview_image,
-            thresholding_config.folder,
+            output_folder,
             path.stem,
             supported_types={"jpg", "png"},
             subfolder="all",

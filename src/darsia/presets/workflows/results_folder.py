@@ -1,6 +1,10 @@
-"""Results-folder inference and OS file-explorer helpers for workflow GUIs.
+"""Layout of the analysis results, and results-folder helpers for workflow GUIs.
 
-Pure, framework-independent logic shared by GUI frontends (e.g. the Qt GUI
+The analyses write to standard folders below `[data].results`; they are defined here
+only (see "Standard layout"), and writers, readers and GUI suggestions use these
+functions instead of building the paths themselves.
+
+Also pure, framework-independent logic shared by GUI frontends (e.g. the Qt GUI
 under ``darsia.gui``) for inferring a workflow run's results folder and
 opening it in the OS file explorer.
 """
@@ -14,6 +18,89 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
+# ! ---- STANDARD LAYOUT OF THE ANALYSIS RESULTS ----
+
+ANALYSIS_FOLDERS = ("cropping", "segmentation", "thresholding", "fingers")
+"""Analyses with one output folder of their name."""
+
+INTEGRATED_MASS = "integrated_mass"
+"""Integrated values of the field maps (mass) analysis."""
+INTEGRATED_VOLUME = "integrated_volume"
+"""Integrated volumes of the volume analysis."""
+THRESHOLDING_EXTENT = "thresholding_extent"
+"""Extents of the thresholding analysis."""
+
+DEFAULT_MASS_FORMATS = ["npz", "jpg"]
+"""Export formats of the mass analysis if `[analysis.mass] formats` is not set."""
+
+VOLUME_FIELDS = ("saturation_g", "concentration_aq")
+"""Fields written by the volume analysis (as field map folders)."""
+
+
+def analysis_folder(results: Path, name: str) -> Path:
+    """Output folder of an analysis with a folder of its own.
+
+    Parameters
+    ----------
+    results : Path
+        The results folder (`[data].results`).
+    name : str
+        One of `ANALYSIS_FOLDERS`.
+
+    Returns
+    -------
+    Path
+        `<results>/<name>`.
+
+    """
+    if name not in ANALYSIS_FOLDERS:
+        raise ValueError(f"No standard folder for analysis '{name}'.")
+    return Path(results) / name
+
+
+def field_map_folder(results: Path, mode: str) -> Path:
+    """Folder of a field map: an export mode of the mass analysis (e.g. `mass`,
+    `rescaled_saturation_g`) or a field of the volume analysis.
+
+    Images are written to `<field map folder>/<format name>/`.
+
+    Parameters
+    ----------
+    results : Path
+        The results folder (`[data].results`).
+    mode : str
+        Export mode or field.
+
+    Returns
+    -------
+    Path
+        `<results>/<mode>`.
+
+    """
+    return Path(results) / mode
+
+
+def sparse_data_csv(results: Path, name: str) -> Path:
+    """Table of integrated values, e.g. `INTEGRATED_MASS`.
+
+    Parameters
+    ----------
+    results : Path
+        The results folder (`[data].results`).
+    name : str
+        Name of the table without suffix.
+
+    Returns
+    -------
+    Path
+        `<results>/sparse_data/<name>.csv`.
+
+    """
+    return Path(results) / "sparse_data" / f"{name}.csv"
+
+
+# ! ---- GUI HELPERS ----
+
 _ANALYSIS_MODE_ACTIONS = {
     "cropping",
     "segmentation",
@@ -21,13 +108,6 @@ _ANALYSIS_MODE_ACTIONS = {
     "volume",
     "fingers",
     "thresholding",
-}
-_ANALYSIS_MODE_DEFAULT_SUBFOLDER = {
-    "segmentation": "segmentation",
-    "mass": "mass",
-    "volume": "volume",
-    "fingers": "fingers",
-    "thresholding": "thresholding",
 }
 
 
@@ -50,7 +130,7 @@ def _results_folder_from_merged_config(merged: dict[str, Any]) -> Path | None:
 _FIELD_MAPS_DEFAULT_EXPORT = ["mass"]
 """Default export modes of the field maps (mass) analysis (see analysis_mass.py)."""
 
-FIELD_MAPS_CSV = Path("sparse_data") / "integrated_mass.csv"
+FIELD_MAPS_CSV = sparse_data_csv(Path(), INTEGRATED_MASS)
 """Integrated values of the field maps analysis, relative to [data].results."""
 
 
@@ -75,13 +155,27 @@ def _field_maps_results_folder(analysis: Any, results: Path) -> Path:
         export = [export]
     if not isinstance(export, list) or not export:
         export = _FIELD_MAPS_DEFAULT_EXPORT
-    folders = [results / str(mode) for mode in export]
+    folders = [field_map_folder(results, str(mode)) for mode in export]
     for folder in folders:
         if _is_non_empty_dir(folder):
             return folder
-    if (results / FIELD_MAPS_CSV).exists():
-        return (results / FIELD_MAPS_CSV).parent
+    csv = sparse_data_csv(results, INTEGRATED_MASS)
+    if csv.exists():
+        return csv.parent
     return folders[0]
+
+
+def _volume_results_folder(results: Path) -> Path:
+    """Output folder of the volume analysis.
+
+    The analysis writes its fields (`VOLUME_FIELDS`) as field maps and the integrated
+    volumes to the table `INTEGRATED_VOLUME`. Returns the first non-empty field folder,
+    else the sparse data folder.
+    """
+    for name in VOLUME_FIELDS:
+        if _is_non_empty_dir(field_map_folder(results, name)):
+            return field_map_folder(results, name)
+    return sparse_data_csv(results, INTEGRATED_VOLUME).parent
 
 
 def suggested_analysis_results_folder(
@@ -98,20 +192,11 @@ def suggested_analysis_results_folder(
         return results
 
     mode = mode_actions[0]
-    if mode == "cropping":
-        return results / "cropping"
-
-    analysis = merged.get("analysis")
     if mode == "mass":
-        return _field_maps_results_folder(analysis, results)
-    if isinstance(analysis, dict):
-        mode_section = analysis.get(mode)
-        if isinstance(mode_section, dict):
-            folder = mode_section.get("folder")
-            if isinstance(folder, str) and folder.strip():
-                return Path(folder).expanduser()
-
-    return results / _ANALYSIS_MODE_DEFAULT_SUBFOLDER[mode]
+        return _field_maps_results_folder(merged.get("analysis"), results)
+    if mode == "volume":
+        return _volume_results_folder(results)
+    return analysis_folder(results, mode)
 
 
 def _color_path_embedding_root(

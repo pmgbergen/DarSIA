@@ -1,10 +1,58 @@
 """Load data from FluidFlowerConfig experiments."""
 
-import os
+from pathlib import Path
 from typing import Literal
 
 import darsia
+from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.results_folder import (
+    DEFAULT_MASS_FORMATS,
+    field_map_folder,
+)
+
+
+def mass_files(config: FluidFlowerConfig) -> list[Path]:
+    """Mass maps written by the mass analysis, as `.npz` files.
+
+    The mass analysis writes the export mode "mass" to `<results>/mass/<format>`, one
+    folder per export format of `[analysis.mass] formats`; the files of the npz formats
+    are returned.
+
+    Parameters
+    ----------
+    config : FluidFlowerConfig
+        Configuration of the experiment.
+
+    Returns
+    -------
+    list[Path]
+        Sorted paths of the `.npz` files.
+
+    Raises
+    ------
+    FileNotFoundError
+        If no mass maps in npz format are found.
+
+    """
+    formats = config.analysis.mass.formats or DEFAULT_MASS_FORMATS
+    specs = ImageExportFormats(config, formats).formats
+    folders = [
+        field_map_folder(config.data.results, "mass") / spec.folder_name
+        for spec in specs
+        if spec.type == "npz"
+    ]
+    files = sorted(
+        path for folder in folders if folder.is_dir() for path in folder.glob("*.npz")
+    )
+    if len(files) == 0:
+        searched = ", ".join(str(folder) for folder in folders) or "none"
+        raise FileNotFoundError(
+            "No mass maps found. Run the mass analysis with 'mass' in "
+            "[analysis.mass] export and an npz format in [analysis.mass] formats "
+            f"(searched: {searched})."
+        )
+    return files
 
 
 def load_data(
@@ -35,12 +83,9 @@ def load_data(
 
     # Fetch available analyzed mass files
     if data == "mass":
-        folder = config.analysis.mass.folder
+        available_files = mass_files(config)
     else:
         raise ValueError(f"Data type {data} not recognized.")
-    available_files = sorted(
-        folder / name for name in os.listdir(folder) if name.endswith(".npz")
-    )
 
     # Fetch experiment protocol
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
@@ -49,7 +94,6 @@ def load_data(
     path = experiment.find_images_for_times(
         times=time,
         tol=tol * 3600 if tol is not None else None,
-        # tol=None,
         data=available_files,
     )
 

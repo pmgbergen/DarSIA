@@ -26,6 +26,7 @@ from darsia.presets.workflows.analysis.scalar_products import (
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.config.physics import check_fluid_modes
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
+from darsia.presets.workflows.results_folder import analysis_folder
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SegmentationContours
 
@@ -154,7 +155,7 @@ def analysis_segmentation_from_context(
 
         exporter.export_image(
             contour_image,
-            segmentation_config.folder,
+            analysis_folder(ctx.config.data.results, "segmentation"),
             path.stem,
             supported_types={"jpg", "png"},
         )
