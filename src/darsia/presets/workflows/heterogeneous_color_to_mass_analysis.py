@@ -484,17 +484,13 @@ class HeterogeneousColorToMassAnalysis:
         signal = signal_kernels.evaluate_labeled_image(array, labels, tables, low, high)
         return self._wrap(analysis._restore_signal(signal), color_interpretation)
 
-    def _fast_flash_and_mass(
-        self, pH: darsia.Image
-    ) -> SimpleMassAnalysisResults | None:
-        """Flash and mass in one pass (None if not applicable).
+    def _flash_and_mass_arguments(self, pH: darsia.Image) -> tuple | None:
+        """Inputs of the flash and mass kernels (None if they do not apply).
 
-        Concentration and saturation are linear ramps of the signal; density and
-        aqueous capacity only depend on the pixel row (pressure and temperature vary
-        with height).
+        Signal, flash bounds, gas density and aqueous capacity per row, and the
+        expert-knowledge masks (or None).
 
         """
-        flash, fluid_model = self.flash, self.fluid_model
         signal = pH.img
         if not (
             mass_kernels.NUMBA_AVAILABLE
@@ -502,8 +498,8 @@ class HeterogeneousColorToMassAnalysis:
             and signal.ndim == 2
         ):
             return None
-        ramp_bounds = getattr(flash, "ramp_bounds", None)
-        row_properties = getattr(fluid_model, "row_properties", None)
+        ramp_bounds = getattr(self.flash, "ramp_bounds", None)
+        row_properties = getattr(self.fluid_model, "row_properties", None)
         if ramp_bounds is None or row_properties is None:
             return None
         bounds = ramp_bounds()
@@ -520,14 +516,60 @@ class HeterogeneousColorToMassAnalysis:
                 for keep in (keep_aq, keep_g)
             ):
                 return None
-        c_aq, s_g, mass, mass_g, mass_aq = mass_kernels.flash_and_mass(
-            signal,
-            bounds,
-            density_gas,
-            aqueous_capacity,
-            keep_aq,
-            keep_g,
+        return signal, bounds, density_gas, aqueous_capacity, keep_aq, keep_g
+
+    def integrated_flash_and_mass(
+        self, pH: darsia.Image, geometry: darsia.Geometry
+    ) -> tuple[float, float] | None:
+        """Integrated gas mass and dissolved mass of a signal, without the fields.
+
+        Gives `geometry.integrate` of the gas and dissolved mass of
+        `call_flash_and_mass_analysis(pH)` to the last digit, in a fraction of the
+        time (e.g. for a series over many images, where only integrals are needed).
+
+        Parameters
+        ----------
+        pH : darsia.Image
+            Signal.
+        geometry : darsia.Geometry
+            Geometry of the signal's shape to integrate over.
+
+        Returns
+        -------
+        tuple or None
+            Integrated mass in the gas and in the aqueous phase; None if the setup is
+            not the standard one (then use `call_flash_and_mass_analysis`).
+
+        """
+        arguments = self._flash_and_mass_arguments(pH)
+        if arguments is None or not hasattr(geometry, "voxel_volumes"):
+            return None
+        voxel_volume = geometry.voxel_volumes(pH.img.shape)
+        if not (
+            isinstance(voxel_volume, np.ndarray)
+            and voxel_volume.shape == pH.img.shape
+            and voxel_volume.dtype == np.float64
+        ):
+            return None
+        signal, bounds, density_gas, aqueous_capacity, keep_aq, keep_g = arguments
+        return mass_kernels.flash_and_mass_integrals(
+            signal, bounds, density_gas, aqueous_capacity, voxel_volume, keep_aq, keep_g
         )
+
+    def _fast_flash_and_mass(
+        self, pH: darsia.Image
+    ) -> SimpleMassAnalysisResults | None:
+        """Flash and mass in one pass (None if not applicable).
+
+        Concentration and saturation are linear ramps of the signal; density and
+        aqueous capacity only depend on the pixel row (pressure and temperature vary
+        with height).
+
+        """
+        arguments = self._flash_and_mass_arguments(pH)
+        if arguments is None:
+            return None
+        c_aq, s_g, mass, mass_g, mass_aq = mass_kernels.flash_and_mass(*arguments)
         metadata = pH.metadata()
 
         def image(array: np.ndarray) -> darsia.Image:

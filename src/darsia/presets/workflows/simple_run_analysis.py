@@ -221,11 +221,40 @@ class SimpleRunAnalysis(darsia.MultiphaseTimeSeriesAnalysis):
         exact_mass : float
             The exact injected mass at the time of the analysis result.
         """
-        self.data.append(
+        self.track_integrals(
             time=mass_analysis_result.time,
             name=mass_analysis_result.name,
             mass_g=self.geometry.integrate(mass_analysis_result.mass_g),
             mass_aq=self.geometry.integrate(mass_analysis_result.mass_aq),
+            exact_mass=exact_mass,
+        )
+
+    def track_integrals(
+        self,
+        time: float,
+        name: str,
+        mass_g: float,
+        mass_aq: float,
+        exact_mass: float | None = None,
+    ) -> None:
+        """Add masses which are already integrated over the geometry to the series.
+
+        Parameters
+        ----------
+        time : float
+            Time of the analysis result.
+        name : str
+            Name of the analysis result, e.g. of the image.
+        mass_g, mass_aq : float
+            Integrated mass in the gas and in the aqueous phase.
+        exact_mass : float
+            The exact injected mass at that time.
+        """
+        self.data.append(
+            time=time,
+            name=name,
+            mass_g=mass_g,
+            mass_aq=mass_aq,
             exact_mass_tot=exact_mass,
         )
 

@@ -260,6 +260,49 @@ def test_single_pass_stages_after_changing_parameters_and_state(monkeypatch):
     _assert_identical(analysis, _image(baseline), monkeypatch)
 
 
+def _geometry() -> darsia.ExtrudedPorousGeometry:
+    """Geometry with a porosity and a depth varying over the image."""
+    rng = np.random.default_rng(3)
+    return darsia.ExtrudedPorousGeometry(
+        porosity=0.2 + 0.2 * rng.random(SHAPE),
+        depth=0.01 + 0.01 * rng.random(SHAPE),
+        space_dim=2,
+        num_voxels=SHAPE,
+        dimensions=META["dimensions"],
+    )
+
+
+@pytest.mark.parametrize("with_expert_knowledge", [False, True])
+def test_integrated_flash_and_mass_equals_integrated_fields(with_expert_knowledge):
+    """The integrals of the mass series, computed without the fields, equal the
+    integrals of the fields to the last digit (mirrors `Geometry.integrate`)."""
+    expert = None
+    if with_expert_knowledge:
+        keep_aq = np.zeros(SHAPE, dtype=bool)
+        keep_aq[: SHAPE[0] // 2] = True
+        keep_g = np.ones(SHAPE, dtype=bool)
+        keep_g[:, : SHAPE[1] // 2] = False
+        expert = Regions(keep_aq, keep_g)
+    analysis, baseline = _analysis(expert=expert)
+    geometry = _geometry()
+    signal = analysis.call_pH_analysis(
+        analysis.call_color_interpretation(_image(baseline))
+    )
+    result = analysis.call_flash_and_mass_analysis(signal)
+    expected = (geometry.integrate(result.mass_g), geometry.integrate(result.mass_aq))
+    assert expected[0] > 0 and expected[1] > 0
+
+    integrals = analysis.integrated_flash_and_mass(signal, geometry)
+
+    assert integrals is not None
+    assert integrals[0] == expected[0]
+    assert integrals[1] == expected[1]
+
+    # Setups beyond the standard form are left to the generic path
+    analysis.flash.restoration = lambda field: field
+    assert analysis.integrated_flash_and_mass(signal, geometry) is None
+
+
 def test_generic_stages_are_used_for_other_setups(monkeypatch):
     """Setups beyond the standard form must not be evaluated by the kernels."""
     # Signal functions which are not piecewise linear

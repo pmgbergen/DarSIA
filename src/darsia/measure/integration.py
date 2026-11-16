@@ -77,6 +77,23 @@ class Geometry:
         self.cached_voxel_volume = self.voxel_volume.copy()
         """Internal copy of the voxel volume for efficient integration."""
 
+    def voxel_volumes(self, shape: tuple[int, ...]) -> np.ndarray | float:
+        """Voxel volumes with which `integrate` weights data of the given shape.
+
+        Parameters
+        ----------
+        shape : tuple
+            Spatial shape of the data.
+
+        Returns
+        -------
+        np.ndarray or float
+            Array of that shape (resized if the geometry has another resolution), or a
+            scalar for a uniform geometry. Not to be modified.
+        """
+        self._prepare_cached_voxel_volume(list(shape[: self.space_dim]))
+        return self.cached_voxel_volume
+
     def _prepare_cached_voxel_volume(self, fetched_shape: list[int]) -> None:
         """Prepare cached voxel volume for data with a specific spatial shape."""
         scaling = np.prod(np.divide(self.num_voxels, fetched_shape))

@@ -658,6 +658,44 @@ class CalibrationState:
                 geometries[roi_key] = analysis.geometry.subregion(roi)
         return geometries[roi_key]
 
+    def _integrate_without_fields(
+        self, pH: darsia.Image, img: darsia.Image, run_analysis: dict
+    ) -> bool:
+        """Track the masses of an image in all regions without computing its fields.
+
+        Possible if every region is the full frame (its geometry is the analysis
+        geometry) and the analysis supports `integrated_flash_and_mass`; the result is
+        the same as with the fields, to the last digit.
+
+        Returns
+        -------
+        bool
+            Whether the masses were tracked; otherwise nothing was tracked.
+
+        """
+        analysis = self.level.analysis
+        integrate = getattr(analysis, "integrated_flash_and_mass", None)
+        if integrate is None or any(
+            self._roi_geometry(roi_key) is not analysis.geometry
+            for roi_key in self.rois
+        ):
+            return False
+        integrals = integrate(pH, analysis.geometry)
+        if integrals is None:
+            return False
+        mass_g, mass_aq = integrals
+        for roi_key, roi in self.rois.items():
+            run_analysis[roi_key].track_integrals(
+                time=pH.time,
+                name=pH.name,
+                mass_g=mass_g,
+                mass_aq=mass_aq,
+                exact_mass=self.experiment.injection_protocol.injected_mass(
+                    date=img.date, roi=roi
+                ),
+            )
+        return True
+
     @darsia.timing_decorator
     @darsia.timed("mass series (all images)")
     def update_mass_analysis(self) -> None:
@@ -682,6 +720,13 @@ class CalibrationState:
 
             # Signal analysis
             pH = analysis.call_pH_analysis(color_interpretation)
+
+            # Only the masses of the regions are needed (except for the shown image,
+            # whose maps are kept): integrate them without the fields, if possible.
+            if idx != self.image_idx and analysis.has_gas:
+                integrated = self._integrate_without_fields(pH, img, run_analysis)
+                if integrated:
+                    continue
 
             # Mass computation
             mass_analysis_result = analysis.call_flash_and_mass_analysis(pH)
