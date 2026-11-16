@@ -194,14 +194,15 @@ def test_single_pass_stages_reproduce_generic_stages(ignore_mode, monkeypatch):
     _assert_identical(analysis, _image(baseline), monkeypatch)
 
 
-@pytest.mark.parametrize("dtype", [np.uint8, np.float32])
+@pytest.mark.parametrize("dtype", [np.uint8, np.uint16, np.float32])
 def test_single_pass_stages_with_images_in_native_type(dtype, monkeypatch):
-    """Images in the type of the corrections (8-bit, or float32 after a type
-    correction) give the results of the image converted beforehand."""
+    """Images in the type of the corrections (8-bit or 16-bit integers of the files, or
+    float32 after a type correction) give the results of the image converted
+    beforehand."""
     analysis, baseline = _analysis()
     array = _image(baseline).img
-    if dtype is np.uint8:
-        array = np.round(255 * np.clip(array, 0, 1)).astype(np.uint8)
+    if np.issubdtype(dtype, np.integer):
+        array = np.round(np.iinfo(dtype).max * np.clip(array, 0, 1)).astype(dtype)
     else:
         array = array.astype(np.float32)
     native = darsia.OpticalImage(array, color_space="RGB", **META)
@@ -215,6 +216,15 @@ def test_single_pass_stages_with_images_in_native_type(dtype, monkeypatch):
     assert used == [True, True, True]
     for name, field in reference.items():
         assert result[name].img.tobytes() == field.img.tobytes(), name
+
+
+def test_images_of_other_types_are_converted_beforehand(monkeypatch):
+    """Types the kernel cannot read exactly (e.g. signed integers, which map to
+    [-1, 1]) take the generic conversion and still give its results."""
+    analysis, baseline = _analysis()
+    array = np.round(32767 * np.clip(_image(baseline).img, 0, 1)).astype(np.int16)
+    native = darsia.OpticalImage(array, color_space="RGB", **META)
+    _assert_identical(analysis, native, monkeypatch, (False, True, True))
 
 
 def test_single_pass_stages_with_expert_knowledge(monkeypatch):

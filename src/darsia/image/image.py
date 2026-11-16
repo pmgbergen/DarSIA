@@ -551,6 +551,25 @@ class Image:
 
         return copy_image
 
+    def as_float(self) -> "Image":
+        """This image with floats as data.
+
+        Images may be held in the data type of the file or of the corrections (e.g.
+        8-bit or 16-bit integers, see `native` in `darsia.imread_from_optical`), which
+        takes a fraction of the memory. Use this wherever floats are needed, instead of
+        testing for single types.
+
+        Returns
+        -------
+        Image
+            The image itself if its data are floats (of any precision); otherwise a
+            copy converted like at the end of reading (`img_as(float)`: integer ranges
+            are mapped to [0, 1], signed ones to [-1, 1]).
+        """
+        if np.issubdtype(self.img.dtype, np.floating):
+            return self
+        return self.img_as(float)
+
     # ! ---- Extraction routines
 
     def metadata(self) -> dict:

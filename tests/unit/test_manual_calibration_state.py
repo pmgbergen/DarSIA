@@ -97,7 +97,9 @@ def _fake_analysis(shape, functions, flash, has_gas, calls, states, reducible):
     )
 
 
-def _make_state(has_gas=True, num_images=3, resolution_level=1, reducible=True):
+def _make_state(
+    has_gas=True, num_images=3, resolution_level=1, reducible=True, images=None
+):
     """State for two labels (left: 1, right: 2) and images of uniform brightness."""
     functions = {
         1: FakeSignalFunction([0.0, 0.5, 1.0]),
@@ -107,10 +109,11 @@ def _make_state(has_gas=True, num_images=3, resolution_level=1, reducible=True):
     analysis = _fake_analysis(
         SHAPE, functions, FakeFlash(), has_gas, [], states, reducible
     )
-    images = [
-        darsia.Image(np.full((*SHAPE, 3), 0.25 * (i + 1)), **META)
-        for i in range(num_images)
-    ]
+    if images is None:
+        images = [
+            darsia.Image(np.full((*SHAPE, 3), 0.25 * (i + 1)), **META)
+            for i in range(num_images)
+        ]
     experiment = SimpleNamespace(pressure_temperature_protocol=None)
     state = CalibrationState(
         analysis, images, experiment, resolution_level=resolution_level
@@ -128,6 +131,33 @@ def test_setup_adds_full_roi_and_coarse_data():
     assert state.contour_thresholds == [0.05, 0.05]
     assert state.initial_flash == (0.0, 1.0, 1.0, 2.0)
     np.testing.assert_array_equal(state.initial_values[2], [0.0, 1.0, 2.0])
+
+
+@pytest.mark.parametrize("dtype", [np.uint8, np.uint16])
+def test_images_in_native_type_give_the_images_of_float_images(dtype):
+    """Images may be stored as the integers of the files; what the state derives from
+    them (display copies, reduced images) must be as for the float images."""
+    rng = np.random.default_rng(0)
+    native = [
+        darsia.Image(
+            rng.integers(0, np.iinfo(dtype).max, (*SHAPE, 3), dtype=dtype), **META
+        )
+        for _ in range(2)
+    ]
+    floats = [image.img_as(float) for image in native]
+    state, _, _ = _make_state(resolution_level=2, images=native)
+    reference, _, _ = _make_state(resolution_level=2, images=floats)
+    assert state.resolution_level == reference.resolution_level == 2
+    derived = state.coarse_images + state.level.images
+    expected = reference.coarse_images + reference.level.images
+    assert len(derived) == len(expected) == 4
+    for image, expected_image in zip(derived, expected):
+        assert image.img.dtype == expected_image.img.dtype == np.float64
+        np.testing.assert_array_equal(image.img, expected_image.img)
+    # The storage stays native; floats on request
+    assert state.images[0].img.dtype == dtype
+    assert state.float_image(0).img.dtype == np.float64
+    np.testing.assert_array_equal(state.float_image(0).img, floats[0].img)
 
 
 def test_single_phase_has_no_gas_options():

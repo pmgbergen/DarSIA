@@ -211,10 +211,11 @@ def imread_from_optical(
     transformations : list of callables
         Transformations for 2d images.
     native : bool
-        Keep the data type resulting from the transformations (8-bit integers without
-        a type conversion) instead of converting to float in the end. The conversion
-        carries no further information; it takes 8 times the memory for 8-bit images.
-        Only for single paths.
+        Keep the data type resulting from the transformations (the integers of the
+        file, e.g. 8-bit or 16-bit, unless a transformation converts the type) instead
+        of converting to float in the end. The conversion carries no further
+        information, but takes 8 (8-bit) or 4 (16-bit) times the memory. Use
+        `Image.as_float` where floats are needed. Only for single paths.
         keyword arguments:
         date (datetime): custom datetime; otherwise read from metadata
         color_space (str): custom color space; RGB is assumed otherwise

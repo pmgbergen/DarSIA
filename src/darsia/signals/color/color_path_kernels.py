@@ -34,6 +34,7 @@ __all__ = [
     "MASK_NORM",
     "MASK_SPECTRUM",
     "PathData",
+    "image_scale",
     "evaluate_colors",
     "evaluate_labeled_image",
 ]
@@ -41,8 +42,48 @@ __all__ = [
 NORM_THRESHOLD = 1e-1
 """Colors with a smaller norm are not fitted (no color change against the baseline)."""
 
-IMAGE_DTYPES = (np.uint8, np.float32, np.float64)
-"""Types of images which `evaluate_labeled_image` reads without converting the image."""
+INTEGER_SCALES = {np.uint8: 1.0 / 255.0, np.uint16: 1.0 / 65535.0}
+"""Factors converting integer images to floats in [0, 1], as `skimage.img_as_float`
+(used when images are read). Only unsigned types convert by a factor alone."""
+
+
+def image_scale(dtype: np.dtype, with_base: bool) -> float | None:
+    """Factor with which `evaluate_labeled_image` reads an image of a type exactly.
+
+    Images may be held in the type of the corrections (see `Rig.read_image`, native)
+    instead of float64. The kernels then convert pixel by pixel, which must give the
+    result of converting the image beforehand:
+
+    - float64 images are read as they are;
+    - 8-bit and 16-bit unsigned images are multiplied by the factor of the conversion
+      to float (any analysis converts them to float64 first);
+    - float32 images are widened to float64, which is exact only if they enter a
+      difference with a float64 baseline; on their own, they would be evaluated in
+      float32 arithmetic;
+    - all other types (e.g. signed integers) have to be converted beforehand.
+
+    Parameters
+    ----------
+    dtype : np.dtype
+        Type of the image.
+    with_base : bool
+        Whether a (float64) baseline is subtracted from the image.
+
+    Returns
+    -------
+    float or None
+        The factor; None if the type has to be converted beforehand.
+
+    """
+    kind = np.dtype(dtype).type
+    if kind is np.float64:
+        return 1.0
+    if kind in INTEGER_SCALES:
+        return INTEGER_SCALES[kind]
+    if kind is np.float32 and with_base:
+        return 1.0
+    return None
+
 
 MASK_NONE = 0
 """All colors are fitted."""
@@ -361,10 +402,10 @@ def evaluate_labeled_image(
     Parameters
     ----------
     image : np.ndarray
-        Colors, shape (rows, cols, 3). Images of the types in `IMAGE_DTYPES` are
+        Colors, shape (rows, cols, 3). Images of a type with an `image_scale` are
         converted to float64 pixel by pixel, exactly like a conversion of the image
-        beforehand (8-bit values are multiplied by 1/255, as `skimage.img_as_float`);
-        other types are converted as a whole.
+        beforehand; other types are converted to float64 as a whole (their values
+        are taken as they are).
     labels : np.ndarray
         Integer labels, shape (rows, cols).
     paths : dict[int, PathData]
@@ -388,12 +429,12 @@ def evaluate_labeled_image(
     for index, label in enumerate(path_labels):
         lookup[label - label_offset] = index
     out = np.empty(labels.shape, dtype=np.float64)
-    if image.dtype.type in IMAGE_DTYPES:
-        image = np.ascontiguousarray(image)
-    else:
-        image = np.ascontiguousarray(image, dtype=np.float64)
     # Multiplying a float by 1 is exact, so one kernel serves all types.
-    scale = 1.0 / 255.0 if image.dtype == np.uint8 else 1.0
+    scale = image_scale(image.dtype, with_base=base is not None)
+    if scale is None:
+        image, scale = np.ascontiguousarray(image, dtype=np.float64), 1.0
+    else:
+        image = np.ascontiguousarray(image)
     tables = _tables(list(paths.values()))
     if base is None:
         _evaluate_labeled_image(
