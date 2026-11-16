@@ -213,8 +213,8 @@ def porosity_based_averaging(
     for mask_img in darsia.Masks(labels):
         mask = mask_img.img
         negative_mask = ~mask
-        negative_dilated_mask = skimage.morphology.binary_dilation(
-            negative_mask, footprint=skimage.morphology.disk(disk_size)
+        negative_dilated_mask = scipy.ndimage.binary_dilation(
+            negative_mask, structure=skimage.morphology.disk(disk_size)
         )
         dilated_mask = ~negative_dilated_mask
         residual_mask = np.logical_and(mask, ~dilated_mask)

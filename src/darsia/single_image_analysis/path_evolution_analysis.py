@@ -8,7 +8,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.spatial import distance_matrix
+from scipy.spatial.distance import cdist
 
 import darsia
 
@@ -213,7 +213,7 @@ class PathEvolutionAnalysis:
                 continue
 
             paired_slices = [(slice(0, len(pts_prev)), slice(0, len(pts_next)))]
-            dist = distance_matrix(pts_prev, pts_next)
+            dist = cdist(pts_prev, pts_next)
 
             for _ in range(max(len(pts_prev), len(pts_next))):
                 if len(paired_slices) == 0:
