@@ -14,6 +14,26 @@ import numpy as np
 
 import darsia
 
+SINGLE_CALL_CHANNELS = (1, 3, 4)
+"""Numbers of channels which may be resized in a single `cv2.resize` call."""
+
+
+def _single_call(array: np.ndarray, interpolation: int | None) -> bool:
+    """Whether one `cv2.resize` call gives the result of resizing each channel.
+
+    One call takes a fraction of the time. OpenCV gives the same result for 1, 3 and 4
+    channels, except for float32 images with 3 or 4 channels and linear interpolation
+    (also the default). In other cases (e.g. 2 channels, or more than 4 with linear
+    interpolation) the results differ in the last digits, so the channels are resized
+    one by one. Checked empirically, see `tests/unit/test_resize.py`.
+
+    """
+    channels = array.shape[2]
+    if channels not in SINGLE_CALL_CHANNELS:
+        return False
+    linear = interpolation in (None, cv2.INTER_LINEAR)
+    return channels == 1 or not (array.dtype == np.float32 and linear)
+
 
 class Resize:
     """Object for resizing 2d arrays.
@@ -148,8 +168,8 @@ class Resize:
             img, darsia.ExtensiveImage
         )
 
-        # Extract original image
-        img_array = img.img.copy() if input_is_image else img.copy()
+        # Extract original image (not copied: resizing creates a new array)
+        img_array = img.img if input_is_image else img
         if self.dtype is not None:
             img_array = img_array.astype(self.dtype)
 
@@ -157,6 +177,10 @@ class Resize:
         resized_img_array = self.resize_array(
             img_array, is_extensive=input_is_extensive_image
         )
+
+        # Without resizing (same shape), the result must not share the input's data
+        if np.shares_memory(resized_img_array, img_array):
+            resized_img_array = resized_img_array.copy()
 
         # Return resized image
         if input_is_image:
@@ -201,40 +225,32 @@ class Resize:
         original_shape = img_array.shape
         multi_channel_img_array = np.reshape(img_array, (*original_shape[:2], -1))
 
-        # Split possibly multi-channel image in single channels
-        img_channels: tuple[np.ndarray] = cv2.split(multi_channel_img_array)
-
-        # Apply resizing to each channel separately
         interpolation = (
             cv2.INTER_AREA
             if is_extensive and self.interpolation is None
             else self.interpolation
         )
-        resized_channels = []
-        for channel in img_channels:
-            if interpolation is None:
-                resized_channels.append(
-                    cv2.resize(
-                        channel,
-                        dsize=self.dsize,
-                        fx=self.fx,
-                        fy=self.fy,
-                    )
-                )
-            else:
-                resized_channels.append(
-                    cv2.resize(
-                        channel,
-                        dsize=self.dsize,
-                        fx=self.fx,
-                        fy=self.fy,
-                        interpolation=interpolation,
-                    )
-                )
 
-        # Merge channels again and create resized image array of original shape
-        # (data-wise)
-        resized_multi_channel_img_array = cv2.merge(resized_channels)
+        def resize(array: np.ndarray) -> np.ndarray:
+            if interpolation is None:
+                return cv2.resize(array, dsize=self.dsize, fx=self.fx, fy=self.fy)
+            return cv2.resize(
+                array,
+                dsize=self.dsize,
+                fx=self.fx,
+                fy=self.fy,
+                interpolation=interpolation,
+            )
+
+        if _single_call(multi_channel_img_array, interpolation):
+            resized_multi_channel_img_array = resize(multi_channel_img_array)
+        else:
+            # Resize each channel separately and merge them again
+            resized_multi_channel_img_array = cv2.merge(
+                [resize(channel) for channel in cv2.split(multi_channel_img_array)]
+            )
+
+        # Create resized image array of original shape (data-wise)
         resized_shape = *resized_multi_channel_img_array.shape[:2], *original_shape[2:]
         resized_img_array = np.reshape(resized_multi_channel_img_array, resized_shape)
 
