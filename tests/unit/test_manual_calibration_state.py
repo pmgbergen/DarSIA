@@ -98,7 +98,12 @@ def _fake_analysis(shape, functions, flash, has_gas, calls, states, reducible):
 
 
 def _make_state(
-    has_gas=True, num_images=3, resolution_level=1, reducible=True, images=None
+    has_gas=True,
+    num_images=3,
+    resolution_level=1,
+    reducible=True,
+    images=None,
+    stored=False,
 ):
     """State for two labels (left: 1, right: 2) and images of uniform brightness."""
     functions = {
@@ -116,7 +121,7 @@ def _make_state(
         ]
     experiment = SimpleNamespace(pressure_temperature_protocol=None)
     state = CalibrationState(
-        analysis, images, experiment, resolution_level=resolution_level
+        analysis, images, experiment, resolution_level=resolution_level, stored=stored
     )
     return state, analysis, states
 
@@ -295,6 +300,34 @@ def test_apply_parameters(has_gas):
     assert analysis.flash.min_value_aq == (0.1 if has_gas else 0.0)
     # The start values for Reset are untouched
     np.testing.assert_array_equal(state.initial_values[2], [0.0, 1.0, 2.0])
+
+
+@pytest.mark.parametrize("has_gas", [True, False])
+def test_unsaved_changes(has_gas):
+    """Closing the window asks to save only if the parameters differ from the stored
+    calibration."""
+    state, _, _ = _make_state(has_gas=has_gas, stored=True)
+    flash = [0.0, 1.0, 1.0, 2.0]
+    assert not state.has_unsaved_changes()
+
+    # A changed signal value, or flash bound, is unsaved
+    assert state.apply_parameters([0.0, 1.5, 2.0], flash, label=2)
+    assert state.has_unsaved_changes()
+    state.mark_saved()
+    assert not state.has_unsaved_changes()
+    if has_gas:
+        assert state.apply_parameters([0.0, 1.5, 2.0], [0.0, 0.8, 1.0, 2.0], label=2)
+        assert state.has_unsaved_changes()
+        state.apply_parameters([0.0, 1.5, 2.0], flash, label=2)
+
+    # Back to the saved values: nothing to save
+    assert not state.has_unsaved_changes()
+
+    # A calibration which is not stored (e.g. new) is unsaved from the start
+    new_state, _, _ = _make_state(has_gas=has_gas, stored=False)
+    assert new_state.has_unsaved_changes()
+    new_state.mark_saved()
+    assert not new_state.has_unsaved_changes()
 
 
 def test_starts_at_the_requested_resolution_level():

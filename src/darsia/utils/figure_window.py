@@ -2,6 +2,7 @@
 
 import logging
 
+import matplotlib
 import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,13 @@ def maximize_figure_window(fig: plt.Figure) -> None:
             logger.debug("Could not maximize the figure window.")
 
 
-def ask_yes_no(title: str, question: str, default: bool = True) -> bool | None:
+def ask_yes_no(
+    title: str,
+    question: str,
+    default: bool = True,
+    yes: str | None = None,
+    no: str | None = None,
+) -> bool | None:
     """Ask a yes/no question in a dialog (Qt backends only).
 
     Parameters
@@ -50,6 +57,8 @@ def ask_yes_no(title: str, question: str, default: bool = True) -> bool | None:
         Text of the question.
     default : bool
         Preselected answer.
+    yes, no : str, optional
+        Texts of the two buttons instead of "Yes" and "No", e.g. "Save" and "Discard".
 
     Returns
     -------
@@ -57,6 +66,9 @@ def ask_yes_no(title: str, question: str, default: bool = True) -> bool | None:
         The answer, or None if no dialog could be shown (e.g. non-interactive backend).
 
     """
+    if "qt" not in str(matplotlib.get_backend()).lower():
+        # No dialog without a Qt window (e.g. Agg in scripts): it would block or fail.
+        return None
     try:
         from matplotlib.backends.qt_compat import QtWidgets
 
@@ -73,6 +85,10 @@ def ask_yes_no(title: str, question: str, default: bool = True) -> bool | None:
         box.setText(question)
         box.setStandardButtons(buttons.Yes | buttons.No)
         box.setDefaultButton(buttons.Yes if default else buttons.No)
+        if yes is not None:
+            box.button(buttons.Yes).setText(yes)
+        if no is not None:
+            box.button(buttons.No).setText(no)
         return box.exec() == buttons.Yes
     except Exception:
         logger.debug("Could not show the dialog.")
