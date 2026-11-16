@@ -15,6 +15,7 @@ def load_images_with_cache(
     paths: list[Path],
     use_cache: bool,
     cache_dir: Path | None,
+    native: bool = False,
 ) -> list[darsia.Image]:
     """Load a list of images, using an `.npz` disk cache when requested.
 
@@ -43,6 +44,10 @@ def load_images_with_cache(
     cache_dir : Path | None
         Directory that holds (or will hold) the cached ``.npz`` files.
         Ignored when *use_cache* is ``False``.
+    native : bool
+        Keep the data type resulting from the corrections instead of converting to
+        float (see ``Rig.read_image``), to hold many images with less memory. Only
+        without caching: cached images are float, as other workflows expect them.
 
     Returns
     -------
@@ -74,6 +79,8 @@ def load_images_with_cache(
             else:
                 image = rig.read_image(p)
                 image.save(cache_path)
+        elif native:
+            image = rig.read_image(p, native=True)
         else:
             image = rig.read_image(p)
         images.append(image)

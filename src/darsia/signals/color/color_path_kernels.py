@@ -41,6 +41,9 @@ __all__ = [
 NORM_THRESHOLD = 1e-1
 """Colors with a smaller norm are not fitted (no color change against the baseline)."""
 
+IMAGE_DTYPES = (np.uint8, np.float32, np.float64)
+"""Types of images which `evaluate_labeled_image` reads without converting the image."""
+
 MASK_NONE = 0
 """All colors are fitted."""
 MASK_NORM = 1
@@ -248,6 +251,7 @@ if NUMBA_AVAILABLE:
         bins,
         offset,
         threshold,
+        scale,
         out,
     ):
         rows, cols = labels.shape
@@ -260,9 +264,9 @@ if NUMBA_AVAILABLE:
                 if path < 0:
                     out[i, j] = 0.0
                 else:
-                    c0 = image[i, j, 0]
-                    c1 = image[i, j, 1]
-                    c2 = image[i, j, 2]
+                    c0 = image[i, j, 0] * scale
+                    c1 = image[i, j, 1] * scale
+                    c2 = image[i, j, 2] * scale
                     fitted = _fitted(
                         c0, c1, c2, path, mask, threshold, spectrum, edges, bins, offset
                     )
@@ -290,9 +294,10 @@ if NUMBA_AVAILABLE:
         bins,
         offset,
         threshold,
+        scale,
         out,
     ):
-        """As `_evaluate_labeled_image`, for the colors `image - base`."""
+        """As `_evaluate_labeled_image`, for the colors `image * scale - base`."""
         rows, cols = labels.shape
         for i in prange(rows):
             for j in range(cols):
@@ -303,9 +308,9 @@ if NUMBA_AVAILABLE:
                 if path < 0:
                     out[i, j] = 0.0
                 else:
-                    c0 = image[i, j, 0] - base[i, j, 0]
-                    c1 = image[i, j, 1] - base[i, j, 1]
-                    c2 = image[i, j, 2] - base[i, j, 2]
+                    c0 = image[i, j, 0] * scale - base[i, j, 0]
+                    c1 = image[i, j, 1] * scale - base[i, j, 1]
+                    c2 = image[i, j, 2] * scale - base[i, j, 2]
                     fitted = _fitted(
                         c0, c1, c2, path, mask, threshold, spectrum, edges, bins, offset
                     )
@@ -356,7 +361,10 @@ def evaluate_labeled_image(
     Parameters
     ----------
     image : np.ndarray
-        Colors, shape (rows, cols, 3).
+        Colors, shape (rows, cols, 3). Images of the types in `IMAGE_DTYPES` are
+        converted to float64 pixel by pixel, exactly like a conversion of the image
+        beforehand (8-bit values are multiplied by 1/255, as `skimage.img_as_float`);
+        other types are converted as a whole.
     labels : np.ndarray
         Integer labels, shape (rows, cols).
     paths : dict[int, PathData]
@@ -380,7 +388,12 @@ def evaluate_labeled_image(
     for index, label in enumerate(path_labels):
         lookup[label - label_offset] = index
     out = np.empty(labels.shape, dtype=np.float64)
-    image = np.ascontiguousarray(image, dtype=np.float64)
+    if image.dtype.type in IMAGE_DTYPES:
+        image = np.ascontiguousarray(image)
+    else:
+        image = np.ascontiguousarray(image, dtype=np.float64)
+    # Multiplying a float by 1 is exact, so one kernel serves all types.
+    scale = 1.0 / 255.0 if image.dtype == np.uint8 else 1.0
     tables = _tables(list(paths.values()))
     if base is None:
         _evaluate_labeled_image(
@@ -390,6 +403,7 @@ def evaluate_labeled_image(
             lookup,
             *tables,
             threshold,
+            scale,
             out,
         )
     else:
@@ -401,6 +415,7 @@ def evaluate_labeled_image(
             lookup,
             *tables,
             threshold,
+            scale,
             out,
         )
     return out

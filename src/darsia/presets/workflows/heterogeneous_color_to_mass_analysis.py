@@ -366,6 +366,9 @@ class HeterogeneousColorToMassAnalysis:
         fast = self._fast_color_interpretation(image)
         if fast is not None:
             return fast
+        if image.img.dtype == np.uint8:
+            # Image in its native type: the generic analysis works on floats.
+            image = image.img_as(float)
         return self.color_analysis(image)
 
     @darsia.timed("signal model")
@@ -417,12 +420,15 @@ class HeterogeneousColorToMassAnalysis:
             return None
         array = image.img
         base = None if analysis.base is None else analysis.base.img
-        if array.dtype != np.float64 or (
-            base is not None and (base.dtype != np.float64 or base.shape != array.shape)
-        ):
+        if base is not None and (base.dtype != np.float64 or base.shape != array.shape):
             return None
+        # Images in the type of the corrections (see `Rig.read_image`, native) are
+        # widened pixel by pixel, exactly as a conversion of the image would do:
+        # 8-bit images always; float32 images only in a difference with the float64
+        # baseline (alone they would be evaluated in float32).
+        dtypes = (np.float64, np.uint8) + (() if base is None else (np.float32,))
         interpretations = model.models[0]
-        active = interpretations.color_path_labels(array)
+        active = interpretations.color_path_labels(array, dtypes=dtypes)
         if active is None:
             return None
         values = color_kernels.evaluate_labeled_image(
