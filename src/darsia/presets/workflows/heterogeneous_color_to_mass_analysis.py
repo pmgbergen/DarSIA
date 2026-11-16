@@ -383,20 +383,10 @@ class HeterogeneousColorToMassAnalysis:
     # standard way, each stage is evaluated by a compiled kernel in one pass over the
     # pixels, with the same arithmetic (and results) as the generic implementation,
     # which is used in all other cases. The kernels state which code they mirror.
-
-    @staticmethod
-    def _is_plain(analysis: darsia.ConcentrationAnalysis) -> bool:
-        """Whether a concentration analysis only subtracts the baseline, applies the
-        model and then the restoration."""
-        return (
-            type(analysis) is darsia.ConcentrationAnalysis
-            and analysis._diff_option == "plain"
-            and analysis.signal_reduction is None
-            and analysis.threshold_cleaning_filter is None
-            and analysis.balancing is None
-            and analysis.verbosity == 0
-            and not analysis.first_restoration_then_model
-        )
+    # Whether a component is in its standard form is decided by the component itself
+    # (`ConcentrationAnalysis.is_plain`, `HeterogeneousModel.color_path_labels`,
+    # `PWTransformation.linear_table`, `SimpleFlash.ramp_bounds`,
+    # `FluidMassAnalysis.row_properties`), next to its options.
 
     @staticmethod
     def _wrap(array: np.ndarray, image: darsia.Image) -> darsia.Image:
@@ -418,7 +408,7 @@ class HeterogeneousColorToMassAnalysis:
         analysis = self.color_analysis
         model = analysis.model
         if not (
-            self._is_plain(analysis)
+            analysis.is_plain()
             and analysis.restoration is None
             and type(model) is darsia.CombinedModel
             and len(model.models) == 1
@@ -432,7 +422,7 @@ class HeterogeneousColorToMassAnalysis:
         ):
             return None
         interpretations = model.models[0]
-        active = interpretations._color_path_labels(array)
+        active = interpretations.color_path_labels(array)
         if active is None:
             return None
         values = color_kernels.evaluate_labeled_image(
@@ -455,7 +445,7 @@ class HeterogeneousColorToMassAnalysis:
         model = analysis.model
         if not (
             signal_kernels.NUMBA_AVAILABLE
-            and self._is_plain(analysis)
+            and analysis.is_plain()
             and analysis.base is None
             and type(model) is darsia.CombinedModel
             and len(model.models) == 2
@@ -466,7 +456,7 @@ class HeterogeneousColorToMassAnalysis:
         clip, functions = model.models
         array = color_interpretation.img
         labels = functions.masks.labels.img
-        low, high = clip._min_value, clip._max_value
+        low, high = clip.bounds()
         if not (
             array.dtype == np.float64
             and array.shape == labels.shape
@@ -480,26 +470,12 @@ class HeterogeneousColorToMassAnalysis:
         for label in functions.masks.unique_labels:
             if label in functions.ignore_labels:
                 continue
-            function = functions[label]
-            if type(function) is not darsia.PWTransformation or not hasattr(
-                function, "interpolator"
-            ):
-                return None
-            supports = np.asarray(function.supports, dtype=float)
-            values = np.asarray(function.values, dtype=float)
+            linear_table = getattr(functions[label], "linear_table", None)
+            table = None if linear_table is None else linear_table()
             # The function must be defined on the whole (clipped) domain.
-            if not (
-                supports.ndim == 1
-                and len(supports) >= 2
-                and supports.shape == values.shape
-                and np.all(np.isfinite(supports))
-                and np.all(np.isfinite(values))
-                and np.all(np.diff(supports) > 0)
-                and supports[0] <= low
-                and supports[-1] >= high
-            ):
+            if table is None or table[0][0] > low or table[0][-1] < high:
                 return None
-            tables[label] = (supports, values)
+            tables[label] = table
         if len(tables) == 0:
             return None
         signal = signal_kernels.evaluate_labeled_image(array, labels, tables, low, high)
@@ -519,21 +495,19 @@ class HeterogeneousColorToMassAnalysis:
         signal = pH.img
         if not (
             mass_kernels.NUMBA_AVAILABLE
-            and type(flash) is darsia.SimpleFlash
-            and flash.restoration is None
-            and getattr(fluid_model, "has_gas", False)
-            and getattr(type(fluid_model), "mass_analysis", None)
-            is darsia.FluidMassAnalysis.mass_analysis
             and signal.dtype == np.float64
             and signal.ndim == 2
         ):
             return None
-        density_gas = mass_kernels.row_values(fluid_model.density_gas, signal.shape)
-        aqueous_capacity = mass_kernels.row_values(
-            fluid_model.aqueous_capacity, signal.shape
-        )
-        if density_gas is None or aqueous_capacity is None:
+        ramp_bounds = getattr(flash, "ramp_bounds", None)
+        row_properties = getattr(fluid_model, "row_properties", None)
+        if ramp_bounds is None or row_properties is None:
             return None
+        bounds = ramp_bounds()
+        properties = row_properties(signal.shape)
+        if bounds is None or properties is None:
+            return None
+        density_gas, aqueous_capacity = properties
         keep_aq = keep_g = None
         if self.expert_knowledge_adapter is not None:
             keep_aq = self.expert_knowledge_adapter.mask_for(pH, "concentration_aq")
@@ -545,12 +519,7 @@ class HeterogeneousColorToMassAnalysis:
                 return None
         c_aq, s_g, mass, mass_g, mass_aq = mass_kernels.flash_and_mass(
             signal,
-            (
-                flash.min_value_aq,
-                flash.max_value_aq,
-                flash.min_value_g,
-                flash.max_value_g,
-            ),
+            bounds,
             density_gas,
             aqueous_capacity,
             keep_aq,

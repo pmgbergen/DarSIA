@@ -90,6 +90,10 @@ class ClipModel(darsia.Model):
         else:
             raise ValueError("invalid list of degrees of freedom")
 
+    def bounds(self) -> tuple[float | None, float | None]:
+        """Lower and upper clip value (None: not clipped on that side)."""
+        return self._min_value, self._max_value
+
     def __call__(self, img: np.ndarray | darsia.Image) -> np.ndarray | darsia.Image:
         """
         Application of clipping.
