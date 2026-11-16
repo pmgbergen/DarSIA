@@ -194,6 +194,29 @@ def test_single_pass_stages_reproduce_generic_stages(ignore_mode, monkeypatch):
     _assert_identical(analysis, _image(baseline), monkeypatch)
 
 
+@pytest.mark.parametrize("dtype", [np.uint8, np.float32])
+def test_single_pass_stages_with_images_in_native_type(dtype, monkeypatch):
+    """Images in the type of the corrections (8-bit, or float32 after a type
+    correction) give the results of the image converted beforehand."""
+    analysis, baseline = _analysis()
+    array = _image(baseline).img
+    if dtype is np.uint8:
+        array = np.round(255 * np.clip(array, 0, 1)).astype(np.uint8)
+    else:
+        array = array.astype(np.float32)
+    native = darsia.OpticalImage(array, color_space="RGB", **META)
+    assert native.img.dtype == dtype
+    _assert_identical(analysis, native, monkeypatch)
+
+    # The same as for the image converted as at the end of reading
+    converted = native.img_as(float)
+    reference, _ = _stages(analysis, converted, False, monkeypatch)
+    result, used = _stages(analysis, native, True, monkeypatch)
+    assert used == [True, True, True]
+    for name, field in reference.items():
+        assert result[name].img.tobytes() == field.img.tobytes(), name
+
+
 def test_single_pass_stages_with_expert_knowledge(monkeypatch):
     keep_aq = np.zeros(SHAPE, dtype=bool)
     keep_aq[: SHAPE[0] // 2] = True

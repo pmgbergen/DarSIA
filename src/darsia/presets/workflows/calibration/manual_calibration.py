@@ -37,6 +37,16 @@ DEFAULT_CONTOUR_THRESHOLD = 0.05
 """Start value (and reset value) of the contour thresholds."""
 
 
+def as_float_image(image: darsia.Image) -> darsia.Image:
+    """Float version of an image held in its native type (see `Rig.read_image`).
+
+    8-bit images are converted as at the end of reading; float images are returned as
+    they are. Use it for one image at a time: the float image takes 8 times the memory.
+
+    """
+    return image.img_as(float) if image.img.dtype == np.uint8 else image
+
+
 @dataclass
 class ResolutionLevel:
     """Data of the calibration at one resolution level."""
@@ -90,7 +100,9 @@ class CalibrationState:
     analysis : HeterogeneousColorToMassAnalysis
         The analysis to calibrate.
     images : list[darsia.Image]
-        The calibration images.
+        The calibration images, as floats or in their native type (8-bit, see
+        `Rig.read_image`); they are held at full resolution, so the native type saves
+        most of their memory.
     experiment : darsia.ProtocolledExperiment
         Provides the injection protocol and the pressure-temperature protocol.
     rois : dict, optional
@@ -192,7 +204,8 @@ class CalibrationState:
                 interpolation="inter_nearest",
             )
             self.coarse_images = [
-                darsia.resize(image, shape=self.coarse_shape) for image in images
+                darsia.resize(as_float_image(image), shape=self.coarse_shape)
+                for image in images
             ]
         with darsia.timed("display geometry"):
             self.coarse_depth = darsia.resize(
@@ -307,7 +320,11 @@ class CalibrationState:
                 shape = analysis.labels.img.shape[:2]
                 with darsia.timed("reduce images"):
                     images = [
-                        darsia.resize(image, shape=shape, interpolation="inter_area")
+                        darsia.resize(
+                            as_float_image(image),
+                            shape=shape,
+                            interpolation="inter_area",
+                        )
                         for image in self.images
                     ]
             # The projection onto the color path is expensive, so the color

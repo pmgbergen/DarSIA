@@ -196,6 +196,7 @@ def imread_from_optical(
     path: Union[Path, list[Path]],
     time: Optional[Union[int, float, list]] = None,
     transformations: Optional[list] = None,
+    native: bool = False,
     **kwargs,
 ) -> Union[darsia.OpticalImage, list[darsia.OpticalImage]]:
     """Reading functionality from jpg, png, tif format to optical images.
@@ -209,6 +210,11 @@ def imread_from_optical(
         automatically detected from metadata if 'None'.
     transformations : list of callables
         Transformations for 2d images.
+    native : bool
+        Keep the data type resulting from the transformations (8-bit integers without
+        a type conversion) instead of converting to float in the end. The conversion
+        carries no further information; it takes 8 times the memory for 8-bit images.
+        Only for single paths.
         keyword arguments:
         date (datetime): custom datetime; otherwise read from metadata
         color_space (str): custom color space; RGB is assumed otherwise
@@ -243,8 +249,9 @@ def imread_from_optical(
                 transformations=transformations,
                 **kwargs,
             )
-        with darsia.timed("convert to float"):
-            image = image.img_as(float)
+        if not native:
+            with darsia.timed("convert to float"):
+                image = image.img_as(float)
 
         return image
 

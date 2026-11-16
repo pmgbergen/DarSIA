@@ -1320,7 +1320,7 @@ class Rig:
             return darsia.ScalarImage(values_reshaped, **metadata)
 
     @darsia.timed("read image")
-    def read_image(self, path: Path) -> darsia.Image:
+    def read_image(self, path: Path, native: bool = False) -> darsia.Image:
         """Read image from file and apply corrections.
 
         The respective date is extracted from the path using the imaging protocol.
@@ -1329,6 +1329,11 @@ class Rig:
         ----------
         path : Path
             Path to the image file.
+        native : bool
+            Keep the data type resulting from the corrections (8-bit integers without
+            a type correction) instead of converting to float in the end, see
+            `darsia.imread_from_optical`. Saves memory when many images are held;
+            the user of the image has to support the type.
 
         Returns
         -------
@@ -1348,6 +1353,7 @@ class Rig:
             date=date,
             reference_date=self.reference_date,
             name=path.name,
+            **({"native": True} if native else {}),
         )
 
         return img

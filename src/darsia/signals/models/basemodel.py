@@ -83,11 +83,22 @@ class HeterogeneousModel(Model):
             else:
                 self.obj[label] = copy.copy(obj)
 
-    def color_path_labels(self, signal: np.ndarray) -> list | None:
+    def color_path_labels(
+        self, signal: np.ndarray, dtypes: tuple = (np.float64,)
+    ) -> list | None:
         """Labels to evaluate in one compiled pass, if the model allows it.
 
         This requires an image of colors, integer labels and a color path
         interpolation for each label which is not ignored.
+
+        Parameters
+        ----------
+        signal : np.ndarray
+            Image of colors.
+        dtypes : tuple
+            Accepted types of the image. `__call__` evaluates float64 only; a caller
+            which converts other types exactly (see
+            `color_path_kernels.evaluate_labeled_image`) may accept those.
 
         """
         labels = self.masks.labels.img
@@ -95,7 +106,7 @@ class HeterogeneousModel(Model):
             _kernels.NUMBA_AVAILABLE
             and signal.ndim == 3
             and signal.shape[2] == 3
-            and signal.dtype == np.float64
+            and signal.dtype.type in dtypes
             and signal.shape[:2] == labels.shape
             and np.issubdtype(labels.dtype, np.integer)
         ):
