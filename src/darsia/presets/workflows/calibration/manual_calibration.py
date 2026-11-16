@@ -625,9 +625,12 @@ class CalibrationState:
         """Geometry restricted to a roi (built once)."""
         geometries = self.level.roi_geometries
         if roi_key not in geometries:
-            geometries[roi_key] = self.level.analysis.geometry.subregion(
-                self.rois[roi_key]
-            )
+            analysis = self.level.analysis
+            roi = self.rois[roi_key]
+            if analysis.labels.subregion(roi).img.shape == analysis.labels.img.shape:
+                geometries[roi_key] = analysis.geometry
+            else:
+                geometries[roi_key] = analysis.geometry.subregion(roi)
         return geometries[roi_key]
 
     @darsia.timing_decorator

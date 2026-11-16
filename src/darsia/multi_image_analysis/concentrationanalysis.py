@@ -49,7 +49,11 @@ class ConcentrationAnalysis:
         Parameters
         ----------
         base : darsia.Image or list of darsia.Image, optional
-            Baseline image(s); several images define a cleaning filter.
+            Baseline image(s); several images define a cleaning filter. The analysis
+            refers to the data of the (first) baseline instead of copying them, and
+            never modifies them; they must not be modified in place while the analysis
+            is in use. Replacing the data of the given image (`base.img = ...`) does not
+            affect the analysis.
         signal_reduction : darsia.SignalReduction, optional
             Reduction from multi-channel to scalar data.
         balancing : darsia.Model, optional
@@ -86,7 +90,7 @@ class ConcentrationAnalysis:
                 warn(
                     "The baseline image needed to be converted to float for substraction."
                 )
-            self.base = base[0].copy()
+            self.base = copy.copy(base[0])
             self._base_collection = base
             if self.base.space_dim != 2:
                 raise NotImplementedError
