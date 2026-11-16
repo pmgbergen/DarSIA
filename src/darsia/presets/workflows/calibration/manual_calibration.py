@@ -102,6 +102,9 @@ class CalibrationState:
     resolution_level : int
         Reduction of the images per axis for the calculations, one of
         `RESOLUTION_LEVELS`; see :meth:`set_resolution`.
+    stored : bool
+        Whether the parameters at the start are those of the stored calibration (see
+        :meth:`has_unsaved_changes`).
 
     """
 
@@ -112,6 +115,7 @@ class CalibrationState:
         experiment: darsia.ProtocolledExperiment,
         rois: dict[str, darsia.VoxelArray | darsia.CoordinateArray] | None = None,
         resolution_level: int = 1,
+        stored: bool = False,
     ) -> None:
         self.analysis = analysis
         self.images = images
@@ -227,6 +231,8 @@ class CalibrationState:
             else None
         )
         """Flash parameters at the start (None without a gas phase)."""
+        self._saved_parameters: tuple | None = self.parameters() if stored else None
+        """Parameters of the stored calibration (None: none stored for this state)."""
         self.default_contour_threshold = DEFAULT_CONTOUR_THRESHOLD
         self.contour_thresholds = (
             [DEFAULT_CONTOUR_THRESHOLD, DEFAULT_CONTOUR_THRESHOLD]
@@ -775,6 +781,40 @@ class CalibrationState:
         if violation is None:
             return None
         return monotonicity_message(values, violation)
+
+    # ! ---- SAVED STATE ----
+
+    def parameters(self) -> tuple:
+        """The calibrated parameters: signal values of all labels and flash bounds."""
+        functions = self.analysis.signal_model.model[1]
+        values = tuple(
+            (label, tuple(float(v) for v in functions[label].values))
+            for label in sorted(functions.keys())
+        )
+        flash = self.analysis.flash
+        bounds = (
+            (
+                float(flash.min_value_aq),
+                float(flash.max_value_aq),
+                float(flash.min_value_g),
+                float(flash.max_value_g),
+            )
+            if self.analysis.has_gas
+            else None
+        )
+        return values, bounds
+
+    def mark_saved(self) -> None:
+        """Remember the current parameters as the stored calibration."""
+        self._saved_parameters = self.parameters()
+
+    def has_unsaved_changes(self) -> bool:
+        """Whether the parameters differ from the stored calibration.
+
+        Also True if no calibration matching this state is stored, e.g. a new one.
+
+        """
+        return self._saved_parameters != self.parameters()
 
     def apply_parameters(
         self,

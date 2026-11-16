@@ -35,7 +35,7 @@ from darsia.signals.color.color_embedding import (
     parse_color_embedding_basis,
 )
 from darsia.signals.models.evaluation import curve_inverse, signal_curve
-from darsia.utils.figure_window import maximize_figure_window
+from darsia.utils.figure_window import ask_yes_no, maximize_figure_window
 from darsia.utils.units import (
     choose_mass_unit,
     choose_time_unit,
@@ -613,7 +613,8 @@ class HeterogeneousColorToMassAnalysis:
         cmap=None,
         save: Callable[[], None] | None = None,
         resolution_level: int = 1,
-    ) -> None:
+        stored: bool = False,
+    ) -> bool:
         """Define a local color path for a specific label.
 
         Instructions:
@@ -621,7 +622,8 @@ class HeterogeneousColorToMassAnalysis:
             - Define a new color path just for this label.
             - Tune the values for the color path.
             - Save with the Save button (the window stays open). Closing the window
-              saves as well and ends the calibration.
+              ends the calibration; with unsaved changes, it asks whether to save
+              them (without a dialog, e.g. in a script, they are saved).
             - The resolution slider reduces the images per axis for the calculations
               (applied by Update): fast tuning at a reduced level, check at level 1.
 
@@ -636,16 +638,27 @@ class HeterogeneousColorToMassAnalysis:
         cmap : str or matplotlib.colors.Colormap, optional
             Optional colormap for visualization.
         save : Callable, optional
-            Stores the current calibration; called by the Save button and when the
-            window is closed.
+            Stores the current calibration; called by the Save button, and when the
+            window is closed with unsaved changes which the user wants to keep.
         resolution_level : int
             Reduction of the images per axis for the calculations at the start (1, 2,
             4, 8 or 16; 1 is the full resolution). The stored calibration does not
             depend on it.
+        stored : bool
+            Whether the calibration at the start is the stored one; otherwise (e.g. a
+            new calibration) it counts as unsaved.
+
+        Returns
+        -------
+        bool
+            Whether the stored calibration equals the calibration at the end (False
+            if changes were discarded or saving failed).
         """
 
         # Data and calculations (no plotting)
-        state = CalibrationState(self, images, experiment, rois, resolution_level)
+        state = CalibrationState(
+            self, images, experiment, rois, resolution_level, stored=stored
+        )
         rois = state.rois
         # Mass series per roi; updated in place by `state.update_mass_analysis`
         times = state.times
@@ -1695,15 +1708,31 @@ class HeterogeneousColorToMassAnalysis:
                             invalid, in which case nothing is applied.
 
                         """
+                        nonlocal pending
                         message = check_values()
                         show_values_status(message)
                         if message is not None:
                             return None
-                        return state.apply_parameters(
+                        changed = state.apply_parameters(
                             [slider.val for slider in sliders_color_to_signal],
                             [slider.val for slider in sliders_flash],
                             _label_idx,
                         )
+                        pending = False
+                        return changed
+
+                    # Whether a value or flash slider was moved since the last
+                    # applied values. The sliders round to their step, so their
+                    # untouched values are not applied (they would change the
+                    # stored calibration).
+                    pending = False
+
+                    def on_value_slider(*args):
+                        nonlocal pending
+                        pending = True
+
+                    for slider in sliders_color_to_signal + sliders_flash:
+                        slider.on_changed(on_value_slider)
 
                     unsaved_text = "Changes not saved."
 
@@ -1801,6 +1830,7 @@ class HeterogeneousColorToMassAnalysis:
                         except Exception:
                             logger.exception("Saving the calibration failed.")
                             return False
+                        state.mark_saved()
                         logger.info("Saved the calibration.")
                         return True
 
@@ -1824,19 +1854,35 @@ class HeterogeneousColorToMassAnalysis:
                     btn_save.on_clicked(on_save)
 
                     def on_close(event):
-                        """Closing the window saves and ends the calibration."""
+                        """Closing the window ends the calibration; unsaved changes
+                        are saved or discarded, as the user decides."""
                         nonlocal done_tuning_values, done_calibration
                         if rebuilding:
                             return
                         try:
-                            message = check_values()
-                            if message is None:
+                            message = check_values() if pending else None
+                            if pending and message is None:
                                 apply_parameters()
-                            else:
+                            elif pending:
                                 logger.warning(
-                                    f"{message}. Saving the last applied state."
+                                    f"{message}. The values of the sliders are not "
+                                    "applied."
                                 )
-                            save_calibration()
+                            if state.has_unsaved_changes():
+                                keep = ask_yes_no(
+                                    "Unsaved calibration",
+                                    "The calibration has unsaved changes.",
+                                    yes="Save",
+                                    no="Discard",
+                                )
+                                # Without a dialog (e.g. a script), keep the changes
+                                if keep is None or keep:
+                                    save_calibration()
+                                else:
+                                    logger.info(
+                                        "Discarded the unsaved changes of the "
+                                        "calibration."
+                                    )
                         except Exception:
                             logger.exception("Closing the calibration window failed.")
                         finally:
@@ -1874,6 +1920,8 @@ class HeterogeneousColorToMassAnalysis:
                     plt.show()
 
                 show_tuner(label_idx)
+
+        return not state.has_unsaved_changes()
 
     def save(self, folder: Path, interpretation: Interpretation) -> None:
         """Save the calibration data to json file.

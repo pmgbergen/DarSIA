@@ -360,6 +360,10 @@ def calibration_color_to_mass_analysis_from_context(
         mass_cfg.evaluation_mode, mass_cfg.evaluation_parameters()
     )
 
+    # Whether the calibration at the start of the window is the stored one (otherwise,
+    # closing the window asks whether to save it)
+    stored = False
+
     # Fetch signal functions from reference calibration.
     if not reset and ref_path is not None:
         # Start from reference calibration if available
@@ -393,6 +397,7 @@ def calibration_color_to_mass_analysis_from_context(
 
     elif not reset and mass_folder.exists():
         # Start from existing calibration if available
+        stored = True
         color_analysis = HeterogeneousColorToMassAnalysis.load(
             folder=mass_folder,
             baseline=fluidflower.baseline,
@@ -462,9 +467,17 @@ def calibration_color_to_mass_analysis_from_context(
         )
 
     # A stored evaluation mode is kept unless the user confirms the configured one
+    mode_before = color_analysis.evaluation_mode
     _resolve_evaluation_mode(
         color_analysis, evaluation_mode, interactive=show and not default
     )
+    # A switched evaluation mode or another ignore mask differ from what is stored
+    if not color_analysis.evaluation_mode.same_as(mode_before) or (
+        stored_ignore_mask is not None
+        and baseline_color_spectrum is not None
+        and stored_ignore_mask != mass_cfg.ignore_mask
+    ):
+        stored = False
 
     # ! ---- INTERACTIVE CALIBRATION ---- ! #
 
@@ -495,20 +508,26 @@ def calibration_color_to_mass_analysis_from_context(
             "\033[93mSkipping interactive calibration. "
             "Using default signal functions.\033[0m"
         )
+        color_analysis.save(mass_folder, interpretation)
     else:
-        # The time of this stage includes the time the user works in the window
+        # The window saves (Save button, or on closing if the user wants to keep
+        # unsaved changes). The time of this stage includes the user's work.
         with darsia.timed("calibration window (with interaction)"):
-            color_analysis.manual_calibration(
+            saved = color_analysis.manual_calibration(
                 images=calibration_images,
                 experiment=experiment,
                 rois=rois,
                 cmap=custom_cmap,
                 save=lambda: color_analysis.save(mass_folder, interpretation),
                 resolution_level=mass_cfg.resolution_level,
+                stored=stored,
             )
-
-    # Store calibration
-    color_analysis.save(mass_folder, interpretation)
+        if not saved:
+            logger.info(
+                "The calibration in the window was not saved; the stored calibration "
+                "is unchanged."
+            )
+            return
 
     # Test run on the calibration images; after the interactive calibration, ask
     run_test = show
