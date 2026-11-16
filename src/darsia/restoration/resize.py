@@ -18,21 +18,18 @@ SINGLE_CALL_CHANNELS = (1, 3, 4)
 """Numbers of channels which may be resized in a single `cv2.resize` call."""
 
 
-def _single_call(array: np.ndarray, interpolation: int | None) -> bool:
-    """Whether one `cv2.resize` call gives the result of resizing each channel.
+def _single_call(array: np.ndarray) -> bool:
+    """Whether all channels are resized in one `cv2.resize` call.
 
-    One call takes a fraction of the time. OpenCV gives the same result for 1, 3 and 4
-    channels, except for float32 images with 3 or 4 channels and linear interpolation
-    (also the default). In other cases (e.g. 2 channels, or more than 4 with linear
-    interpolation) the results differ in the last digits, so the channels are resized
-    one by one. Checked empirically, see `tests/unit/test_resize.py`.
+    One call takes a fraction of the time of resizing each channel. For 1, 3 and 4
+    channels, OpenCV gives the same result, except for float32 images with 3 or 4
+    channels and linear interpolation (also the default), which differ by at most one
+    step in the last digit (about 6e-8 for values in [0, 1]); this is accepted. For other
+    numbers of channels (e.g. 2, or more than 4) the channels are resized one by one.
+    Checked empirically, see `tests/unit/test_resize.py`.
 
     """
-    channels = array.shape[2]
-    if channels not in SINGLE_CALL_CHANNELS:
-        return False
-    linear = interpolation in (None, cv2.INTER_LINEAR)
-    return channels == 1 or not (array.dtype == np.float32 and linear)
+    return array.shape[2] in SINGLE_CALL_CHANNELS
 
 
 class Resize:
@@ -242,7 +239,7 @@ class Resize:
                 interpolation=interpolation,
             )
 
-        if _single_call(multi_channel_img_array, interpolation):
+        if _single_call(multi_channel_img_array):
             resized_multi_channel_img_array = resize(multi_channel_img_array)
         else:
             # Resize each channel separately and merge them again

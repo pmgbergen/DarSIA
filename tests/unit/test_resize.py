@@ -88,14 +88,35 @@ FLAGS = {
 # Image sizes and targets: the result of OpenCV can depend on the size (vector widths)
 SIZES = [(h, w) for h in range(5, 40, 7) for w in range(5, 60, 9)]
 
+LAST_DIGIT = 1e-7
+"""Accepted difference for float32 images with 3 or 4 channels and linear interpolation
+(one step in the last digit of float32 for values in [0, 1] is 6e-8)."""
+
+
+def _assert_resized_as_expected(resized, expected, interpolation, context=None):
+    """Byte-identical, except for the accepted float32 case (see `_single_call`)."""
+    assert resized.dtype == expected.dtype
+    assert resized.shape == expected.shape
+    accepted = (
+        resized.dtype == np.float32
+        and resized.ndim == 3
+        and resized.shape[2] in (3, 4)
+        and interpolation in (None, "inter_linear")
+    )
+    if accepted:
+        difference = np.abs(resized.astype(float) - expected.astype(float))
+        assert difference.max() <= LAST_DIGIT, context
+    else:
+        assert resized.tobytes() == expected.tobytes(), context
+
 
 @pytest.mark.parametrize("channels", [None, 1, 2, 3, 4, 5])
 @pytest.mark.parametrize("dtype", [np.float64, np.float32, np.uint8, np.uint16])
 @pytest.mark.parametrize("interpolation", list(FLAGS))
 def test_resize_equals_resizing_each_channel(channels, dtype, interpolation):
     """Some images are resized in one OpenCV call (see `_single_call` in
-    `restoration/resize.py`). This must give the result of resizing each channel; the
-    test fails on an OpenCV build where it does not."""
+    `restoration/resize.py`). This must give the result of resizing each channel (up to
+    the accepted float32 case); the test fails on an OpenCV build where it does not."""
     rng = np.random.default_rng(0)
     for rows, cols in SIZES:
         full_shape = (rows, cols) if channels is None else (rows, cols, channels)
@@ -111,9 +132,9 @@ def test_resize_equals_resizing_each_channel(channels, dtype, interpolation):
                 array, tuple(reversed(shape)), FLAGS[interpolation]
             )
             resized = darsia.Resize(shape=shape, interpolation=interpolation)(array)
-            assert resized.dtype == expected.dtype
-            assert resized.shape == expected.shape
-            assert resized.tobytes() == expected.tobytes(), (rows, cols, shape)
+            _assert_resized_as_expected(
+                resized, expected, interpolation, (rows, cols, shape)
+            )
 
 
 @pytest.mark.parametrize("dtype", [np.float64, np.float32, np.uint8])
@@ -131,12 +152,12 @@ def test_resize_of_images_and_views(dtype):
             resize = darsia.Resize(shape=shape, interpolation=interpolation)
             image = darsia.Image(array, dimensions=[1, 1])
             expected = _per_channel_resize(array, dsize, FLAGS[interpolation])
-            assert resize(image).img.tobytes() == expected.tobytes()
+            _assert_resized_as_expected(resize(image).img, expected, interpolation)
             view = array[::2, ::2]
             expected_view = _per_channel_resize(
                 np.ascontiguousarray(view), dsize, FLAGS[interpolation]
             )
-            assert resize(view).tobytes() == expected_view.tobytes()
+            _assert_resized_as_expected(resize(view), expected_view, interpolation)
 
 
 def test_resize_to_same_shape_returns_a_copy():
