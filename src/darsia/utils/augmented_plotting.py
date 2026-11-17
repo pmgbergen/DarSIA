@@ -207,3 +207,33 @@ def plot_image_statistics(
 
     if return_image:
         return darsia.full_like(img, original_img)
+
+
+def stretch_channels(img: darsia.Image) -> darsia.Image:
+    """Stretch each color channel to the full range [0, 1] (display only).
+
+    Each channel is mapped affinely from its minimum and maximum over the whole image to
+    [0, 1]; a flat channel stays unchanged. This raises the contrast of a background for
+    contour plots and evens out color casts; it is not meant for quantitative analysis.
+
+    Parameters
+    ----------
+    img : darsia.Image
+        Image with channels in the last axis, or a scalar image (one channel).
+
+    Returns
+    -------
+    darsia.Image
+        Float image with the same metadata.
+
+    """
+    stretched = np.asarray(img.img, dtype=float).copy()
+    channels = stretched[..., np.newaxis] if stretched.ndim == 2 else stretched
+    for c in range(channels.shape[-1]):
+        channel = channels[..., c]
+        low, high = np.nanmin(channel), np.nanmax(channel)
+        if high > low:
+            channels[..., c] = (channel - low) / (high - low)
+    result = img.copy()
+    result.img = stretched
+    return result

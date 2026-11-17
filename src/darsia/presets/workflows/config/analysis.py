@@ -81,6 +81,12 @@ def _validate_format_keys(
         )
 
 
+FILTER_BACKGROUND_HELP = (
+    "Stretch each color channel of the image to its full range before drawing the "
+    "contours (display only; thresholds and results use the original image)."
+)
+
+
 @dataclass
 class AnalysisThresholdingLegendConfig:
     """Configuration for thresholding legend overlay."""
@@ -334,6 +340,14 @@ class AnalysisThresholdingConfig:
         },
     )
     """Whether to apply expert-knowledge ROI masking for this analysis."""
+    filter_background: bool = field(
+        default=False,
+        metadata={
+            "name": "Filter background",
+            "help": FILTER_BACKGROUND_HELP,
+        },
+    )
+    """Whether to stretch the color channels of the image under the contours."""
     legend: AnalysisThresholdingLegendConfig = field(
         default_factory=AnalysisThresholdingLegendConfig, metadata={"name": "Legend"}
     )
@@ -388,6 +402,9 @@ class AnalysisThresholdingConfig:
         )
         self.expert_knowledge = _get_key(
             sub_sec, "expert_knowledge", required=False, default=True, type_=bool
+        )
+        self.filter_background = _get_key(
+            sub_sec, "filter_background", required=False, default=False, type_=bool
         )
 
         legend = _get_key(sub_sec, "legend", required=False, default={})
@@ -447,6 +464,14 @@ class AnalysisSegmentationConfig:
         },
     )
     """Whether to apply expert-knowledge ROI masking for this analysis."""
+    filter_background: bool = field(
+        default=False,
+        metadata={
+            "name": "Filter background",
+            "help": FILTER_BACKGROUND_HELP,
+        },
+    )
+    """Whether to stretch the color channels of the image under the contours."""
 
     def load(
         self,
@@ -501,6 +526,9 @@ class AnalysisSegmentationConfig:
 
         self.expert_knowledge = _get_key(
             sub_sec, "expert_knowledge", required=False, default=True, type_=bool
+        )
+        self.filter_background = _get_key(
+            sub_sec, "filter_background", required=False, default=False, type_=bool
         )
         return self
 
