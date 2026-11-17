@@ -1,12 +1,8 @@
-"""Controller of the interactive mass calibration: selection, callbacks and loops.
+"""Controller of the interactive mass calibration: callbacks of the window.
 
 The controller connects the window (`CalibrationView`) with the calculations
-(`CalibrationState`): it lets the user pick an image and a label, builds the window for
-them, applies the slider values, saves, and decides what happens when the window is
-closed.
-
-NOTE: The order in which the callbacks are connected is checked by
-`scripts/calib_reference.py` in ff_bilbo; keep it when changing the window.
+(`CalibrationState`): it switches labels and images, applies the slider values, saves,
+and decides what happens when the window is closed.
 
 """
 
@@ -17,11 +13,7 @@ from typing import TYPE_CHECKING, Callable
 
 import matplotlib.pyplot as plt
 
-from darsia.presets.workflows.calibration.calibration_view import (
-    CalibrationView,
-    select_image,
-    select_label,
-)
+from darsia.presets.workflows.calibration.calibration_view import CalibrationView
 from darsia.utils.figure_window import ask_yes_no
 
 if TYPE_CHECKING:
@@ -45,7 +37,7 @@ class CalibrationController:
     analysis : HeterogeneousColorToMassAnalysis
         The calibrated analysis.
     cmap : optional
-        Colormap of the signal panel and the label selection.
+        Colormap of the signal panel.
     save : Callable, optional
         Stores the current calibration; called by the Save button, and when the window
         is closed with unsaved changes which the user wants to keep.
@@ -61,20 +53,9 @@ class CalibrationController:
     ) -> None:
         self.state = state
         self.analysis = analysis
-        self.cmap = cmap
         self.save = save
-        self.view: CalibrationView | None = None
-        """Window of the current image and label."""
-        self.done = False
-        """Whether the calibration is finished (window closed)."""
-        self.pick_image = True
-        """Whether the user picks a new image before the next window."""
-        self.pick_label = True
-        """Whether the user picks a new label before the next window."""
-        self.rebuilding = False
-        """Whether the window is closed to be rebuilt, not to leave."""
-        self.done_tuning = False
-        """Whether the current window is finished."""
+        self.view = CalibrationView(state, analysis, cmap)
+        """The window."""
         self.pending = False
         """Whether a value or flash slider was moved since the last applied values.
 
@@ -84,7 +65,7 @@ class CalibrationController:
         """
 
     def run(self) -> bool:
-        """Run the calibration until the window is closed.
+        """Show the window until it is closed.
 
         Returns
         -------
@@ -92,45 +73,17 @@ class CalibrationController:
             Whether the stored calibration equals the calibration at the end.
 
         """
-        state = self.state
-        while not self.done:
-            # General design:
-            # 1. User needs to pick a focus image (interactively)
-            # 2. User picks a label in the image (interactively)
-            # 3. Mass analysis is computed for current settings
-            # 4. User tunes values for the color path for this label (interactively)
-            # 5. User can control to rerun any of the above steps through buttons.
-
-            # Pick image
-            if self.pick_image:
-                select_image(state)
-                self.pick_image = False
-                self.pick_label = True
-
-            # Fetch the current image and analyze it
-            if state.maps is None or state.maps["image_idx"] != state.image_idx:
-                state.compute_maps()
-
-            # Pick label interactively
-            if self.pick_label:
-                select_label(state, self.cmap)
-                self.pick_label = False
-
-            # Compute mass analysis
-            if not state.mass_analysis_done:
-                state.update_mass_analysis()
-
-            # Figure for this image and label
-            self.view = CalibrationView(state, self.analysis, self.cmap)
-            self.view.build()
-            self.rebuilding = False
-
-            # Tune values for this label
-            self.done_tuning = False
-            while not self.done_tuning:
-                self._connect()
-                plt.show()
-
+        state, view = self.state, self.view
+        if state.label_idx not in view.labels:
+            state.next_label()
+        if state.maps is None or state.maps["image_idx"] != state.image_idx:
+            state.compute_maps()
+        if not state.mass_analysis_done:
+            state.update_mass_analysis()
+        view.build()
+        view.show_label(state.label_idx)
+        self._connect()
+        plt.show()
         return not state.has_unsaved_changes()
 
     def _connect(self) -> None:
@@ -138,24 +91,19 @@ class CalibrationController:
         view = self.view
         for slider in view.value_sliders:
             slider.on_changed(lambda val: view.show_values_status(self.check_values()))
-
-        self.pending = False
         for slider in view.value_sliders + view.flash_sliders:
             slider.on_changed(self.on_value_slider)
-
         for slider in view.all_sliders:
             slider.on_changed(view.mark_unsaved)
 
-        # Connect button callbacks
         view.buttons["Update"].on_clicked(self.update_analysis)
         view.buttons["Reset"].on_clicked(self.reset)
-        view.buttons["New Label"].on_clicked(self.new_label)
-        view.buttons["New Image"].on_clicked(self.new_image)
         view.buttons["Save"].on_clicked(self.on_save)
-        view.fig.canvas.mpl_connect("close_event", self.on_close)
         view.buttons["Next Signal"].on_clicked(self.next_signal)
         view.buttons["Next Label"].on_clicked(self.next_label)
         view.buttons["Next Image"].on_clicked(self.next_image)
+        view.fig.canvas.mpl_connect("button_press_event", self.on_click)
+        view.fig.canvas.mpl_connect("close_event", self.on_close)
 
     # ! ---- PARAMETERS ----
 
@@ -188,7 +136,46 @@ class CalibrationController:
         """Remember that a value or flash slider was moved."""
         self.pending = True
 
-    # ! ---- BUTTONS ----
+    # ! ---- LABEL AND IMAGE ----
+
+    def switch_label(self) -> None:
+        """Show the label selected in the state; moves not applied are dropped."""
+        self.pending = False
+        self.view.show_values_status(None)
+        self.view.show_label(self.state.label_idx)
+
+    def on_click(self, event) -> None:
+        """A click in the image panel selects the label at that pixel."""
+        view = self.view
+        if event.inaxes is not view.ax_coarse_image or event.button != 1:
+            return
+        toolbar = view.fig.canvas.toolbar
+        if toolbar is not None and toolbar.mode:
+            return  # zooming or panning
+        row, col = int(round(event.ydata)), int(round(event.xdata))
+        if self.state.select_label_at(row, col) is None:
+            view.show_values_status("This label has no signal function.")
+            return
+        self.switch_label()
+
+    def next_label(self, event) -> None:
+        """Move to the next label."""
+        self.state.next_label()
+        self.switch_label()
+
+    def next_signal(self, event) -> None:
+        """Show the next signal of the current image."""
+        self.state.next_signal()
+        self.view.refresh(recompute=False)
+
+    def next_image(self, event) -> None:
+        """Analyze and show the next image."""
+        self.view.show_busy("Computing ...")
+        self.state.next_image()
+        self.view.refresh(recompute=True)
+        self.view.show_busy("")
+
+    # ! ---- UPDATE, RESET, SAVE, CLOSE ----
 
     def update_analysis(self, event=None) -> None:
         """Apply the slider values and update everything."""
@@ -228,20 +215,6 @@ class CalibrationController:
             slider.set_val(state.default_contour_threshold)
         self.update_analysis()
 
-    def new_label(self, event) -> None:
-        """Let the user pick a new label and rebuild the figure for it."""
-        self.done_tuning = True
-        self.pick_label = True
-        self.rebuilding = True
-        plt.close("all")
-
-    def new_image(self, event) -> None:
-        """Let the user pick a new image and label and rebuild the figure."""
-        self.done_tuning = True
-        self.pick_image = True
-        self.rebuilding = True
-        plt.close("all")
-
     def save_calibration(self) -> bool:
         """Store the calibration; return if it was successful."""
         if self.save is None:
@@ -274,8 +247,6 @@ class CalibrationController:
     def on_close(self, event) -> None:
         """Closing the window ends the calibration; unsaved changes are saved or
         discarded, as the user decides."""
-        if self.rebuilding:
-            return
         try:
             message = self.check_values() if self.pending else None
             if self.pending and message is None:
@@ -296,26 +267,3 @@ class CalibrationController:
                     logger.info("Discarded the unsaved changes of the calibration.")
         except Exception:
             logger.exception("Closing the calibration window failed.")
-        finally:
-            self.done_tuning = True
-            self.done = True
-
-    def next_signal(self, event) -> None:
-        """Show the next signal of the current image."""
-        self.state.next_signal()
-        self.view.refresh(recompute=False)
-
-    def next_label(self, event) -> None:
-        """Move to the next label and rebuild the figure for it."""
-        self.state.next_label()
-        self.pick_label = False
-        self.done_tuning = True
-        self.rebuilding = True
-        plt.close("all")
-
-    def next_image(self, event) -> None:
-        """Analyze and show the next image."""
-        self.view.show_busy("Computing ...")
-        self.state.next_image()
-        self.view.refresh(recompute=True)
-        self.view.show_busy("")
