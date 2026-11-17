@@ -221,6 +221,7 @@ class VideoOverlayConfig:
         metadata={
             "name": "Text color [R, G, B]",
             "help": "RGB color for overlay text (values 0-255).",
+            "color_picker": True,
         },
     )
     thickness: int = field(
@@ -256,6 +257,7 @@ class VideoOverlayConfig:
         metadata={
             "name": "Box color [R, G, B]",
             "help": "RGB color for background box (values 0-255).",
+            "color_picker": True,
         },
     )
     box_alpha: float = field(
