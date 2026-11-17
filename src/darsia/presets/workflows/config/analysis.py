@@ -918,6 +918,18 @@ class AnalysisCroppingConfig:
         },
     )
     """Output formats for cropping images."""
+    filter_background: bool = field(
+        default=False,
+        metadata={
+            "name": "Filter background",
+            "help": (
+                "Stretch each color channel of the cropped image to its full range in "
+                "the pictures (JPG/PNG, preview); NPZ/NPY exports keep the original "
+                "values."
+            ),
+        },
+    )
+    """Whether to stretch the color channels of the exported pictures."""
 
     def load(
         self,
@@ -941,6 +953,9 @@ class AnalysisCroppingConfig:
             format_registry,
             {"jpg", "npz", "png", "npy"},
             "[analysis.cropping].formats",
+        )
+        self.filter_background = _get_key(
+            sub_sec, "filter_background", required=False, default=False, type_=bool
         )
         return self
 

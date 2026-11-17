@@ -25,6 +25,7 @@ from darsia.presets.workflows.analysis.progress import (
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.results_folder import analysis_folder
 from darsia.presets.workflows.rig import Rig
+from darsia.utils.augmented_plotting import stretch_channels
 
 if TYPE_CHECKING:
     pass
@@ -63,6 +64,7 @@ def analysis_cropping_from_context(
         sub_config=cropping_config,
     )
     legacy_formats = cropping_config.formats if cropping_config is not None else ["jpg"]
+    filter_background = getattr(cropping_config, "filter_background", False)
     exporter = ImageExportFormats(ctx.config, legacy_formats)
 
     if not (show or len(exporter.formats) > 0):
@@ -95,16 +97,29 @@ def analysis_cropping_from_context(
         # Convert image to darsia.OpticalImage
         img = darsia.OpticalImage(img.img, **img.metadata())
 
-        if show:
-            img.show()
+        # Pictures may be contrast-stretched; data exports keep the original values
+        picture = stretch_channels(img) if filter_background else img
 
-        export_image = img.img_as(np.uint8)
-        export_image.original_dtype = np.uint8  # Hack to allow plotting
-        exporter.export_image(export_image, plot_folder, path.stem)
+        if show:
+            picture.show()
+
+        if filter_background:
+            exports = [
+                (picture, {"jpg", "png"}),
+                (img, {"npz", "npy"}),
+            ]
+        else:
+            exports = [(img, None)]
+        for source, supported_types in exports:
+            export_image = source.img_as(np.uint8)
+            export_image.original_dtype = np.uint8  # Hack to allow plotting
+            exporter.export_image(
+                export_image, plot_folder, path.stem, supported_types=supported_types
+            )
 
         publish_stream_images(
             stream_callback=stream_callback,
-            image_payload={"cropping": img},
+            image_payload={"cropping": picture},
             logger=logger,
             error_message=f"Failed to stream cropped preview for image '{path}'.",
         )
