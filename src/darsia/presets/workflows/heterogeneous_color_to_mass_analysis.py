@@ -631,9 +631,10 @@ class HeterogeneousColorToMassAnalysis:
         """Define a local color path for a specific label.
 
         Instructions:
-            - Pick a label in the image using the mouse and select a rectangle.
-            - Define a new color path just for this label.
-            - Tune the values for the color path.
+            - The window opens on the first image; Next Image cycles the images.
+            - Click in the image to select a label (Next Label cycles the labels).
+            - Tune the values for the color path of the label and apply them with
+              Update; values not applied are dropped when the label changes.
             - Save with the Save button (the window stays open). Closing the window
               ends the calibration; with unsaved changes, it asks whether to save
               them (without a dialog, e.g. in a script, they are saved).

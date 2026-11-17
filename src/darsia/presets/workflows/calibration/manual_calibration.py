@@ -482,6 +482,32 @@ class CalibrationState:
         self.label_idx = np.argmax(np.bincount(self.labels.img[box].ravel()))
         return self.label_idx
 
+    def select_label_at(self, row: int, col: int) -> int | None:
+        """Select the label at a pixel of the coarse images, if it has a signal function.
+
+        Parameters
+        ----------
+        row, col : int
+            Pixel of the coarse images (as shown in the window).
+
+        Returns
+        -------
+        int or None
+            The selected label; None (and no change) if the label has no signal
+            function.
+
+        """
+        rows, cols = self.coarse_labels.img.shape[:2]
+        label = int(
+            self.coarse_labels.img[
+                min(max(row, 0), rows - 1), min(max(col, 0), cols - 1)
+            ]
+        )
+        if label < 0 or label not in self.analysis.signal_model.model[1].keys():
+            return None
+        self.label_idx = label
+        return label
+
     # ! ---- MAPS OF THE CURRENT IMAGE ----
 
     def _coarsen(self, img: darsia.Image) -> darsia.Image:
