@@ -177,6 +177,8 @@ Each analysis mode owns its own `data_selection` and `formats`:
 - `[analysis.fingers]`: finger detection mode/threshold and optional ROIs
   - `data_selection`: image set to analyze
   - `formats`: output format identifiers
+  - `filter_background`: as for segmentation, for the result plots (tips, fjords,
+    skeleton, paths); detected fingers and statistics are unchanged
 
 ## Helper subsections
 - `[helper.roi]`: interactive ROI assistant on selected data.
