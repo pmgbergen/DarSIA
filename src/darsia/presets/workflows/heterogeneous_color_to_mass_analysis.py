@@ -6,12 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Tuple
 
-import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.colors import to_rgba_array
-from matplotlib.transforms import Bbox
-from matplotlib.widgets import Button, Slider
 
 import darsia
 import darsia.multiphase.mass_kernels as mass_kernels
@@ -20,6 +16,10 @@ import darsia.signals.models.signal_kernels as signal_kernels
 from darsia.multiphase.flash import load_flash
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.basis import label_ids_from_image
+from darsia.presets.workflows.calibration.calibration_view import (
+    CalibrationView,
+    select_image,
+)
 from darsia.presets.workflows.calibration.manual_calibration import CalibrationState
 from darsia.presets.workflows.calibration.metadata import (
     calibration_inputs,
@@ -34,35 +34,9 @@ from darsia.signals.color.color_embedding import (
     ColorEmbeddingBasis,
     parse_color_embedding_basis,
 )
-from darsia.signals.models.evaluation import curve_inverse, signal_curve
-from darsia.utils.figure_window import ask_yes_no, maximize_figure_window
-from darsia.utils.units import (
-    choose_mass_unit,
-    choose_time_unit,
-    choose_volume_unit,
-    convert_mass,
-    convert_time,
-    convert_volume,
-    mass_label,
-    time_label,
-    volume_label,
-)
+from darsia.utils.figure_window import ask_yes_no
 
 logger = logging.getLogger(__name__)
-
-
-def _dot_values(signal_func) -> np.ndarray:
-    """Values shown as dots in the signal function plot.
-
-    Key colors which do not influence the signal (unused supports of a kernel) are not
-    shown (NaN).
-
-    """
-    values = np.asarray(signal_func.values, dtype=float).copy()
-    used = getattr(signal_func, "support_indices", None)
-    if used is not None:
-        values[[i for i in range(len(values)) if i not in used]] = np.nan
-    return values
 
 
 class HeterogeneousColorToMassAnalysis:
@@ -701,52 +675,10 @@ class HeterogeneousColorToMassAnalysis:
         state = CalibrationState(
             self, images, experiment, rois, resolution_level, stored=stored
         )
-        rois = state.rois
-        # Mass series per roi; updated in place by `state.update_mass_analysis`
-        times = state.times
-        expected_mass = state.expected_mass
-        integrated_mass = state.integrated_mass
-        integrated_mass_g = state.integrated_mass_g
-        integrated_mass_aq = state.integrated_mass_aq
         # Values restored by the Reset button
         initial_values = state.initial_values
         initial_flash = state.initial_flash
         default_contour_threshold = state.default_contour_threshold
-        # Current contour thresholds; kept when the figure is rebuilt
-        contour_thresholds = state.contour_thresholds
-
-        # ! ----- IMAGE SELECTION -----
-
-        def image_idx_selector() -> int:
-            """Interactive selection of plotted images - allow to click for showing the next
-            coarse images - keep track of the idx in the list and return when finishing.
-
-            """
-            # Create a simple figure for image selection
-            fig, ax = plt.subplots(figsize=(8, 6))
-            img_display = ax.imshow(state.coarse_image.img)
-            ax.set_title(
-                f"""Image {state.image_idx + 1}/{len(images)} - Click to cycle through """
-                f"""images, close window to finish"""
-            )
-            ax.axis("off")
-
-            def on_click(event):
-                if event.inaxes == ax:
-                    # Cycle to next image
-                    state.next_image()
-                    img_display.set_data(state.coarse_image.img)
-                    ax.set_title(
-                        f"""Image {state.image_idx + 1}/{len(images)} - Click to cycle """
-                        f"""through images, close window to finish"""
-                    )
-                    fig.canvas.draw_idle()
-
-            # Connect click event
-            fig.canvas.mpl_connect("button_press_event", on_click)
-
-            plt.show()
-            return state.image_idx
 
         # ! ---- LABEL SELECTION ----
 
@@ -756,8 +688,6 @@ class HeterogeneousColorToMassAnalysis:
             )
             label_box: Tuple[slice, slice] = assistant()
             return state.select_label_in(label_box)
-
-        # ! ---- GRID FOR PLOTTING ----
 
         # Interactive tuning of values for each color path (chosen by user)
         done_calibration = False
@@ -773,12 +703,11 @@ class HeterogeneousColorToMassAnalysis:
 
             # Pick image
             if need_to_pick_new_image:
-                image_idx_selector()
+                select_image(state)
                 need_to_pick_new_image = False
                 need_to_pick_new_label = True
 
             # Fetch the current image and analyze it
-            coarse_image = state.coarse_image
             if state.maps is None or state.maps["image_idx"] != state.image_idx:
                 state.compute_maps()
 
@@ -791,734 +720,15 @@ class HeterogeneousColorToMassAnalysis:
             if not state.mass_analysis_done:
                 state.update_mass_analysis()
 
-            # The figure is built for this image and label
-            image_idx = state.image_idx
-            label_idx = state.label_idx
-            coarse_signal = state.coarse_signal
-            coarse_contour = state.contour_overlay()
-
-            # Use gridspec to create a 2x3 grid with proper ratios
-            fig = plt.figure(figsize=(20, 12))
-            maximize_figure_window(fig)
-            gs = gridspec.GridSpec(
-                nrows=2,
-                ncols=3,
-                width_ratios=[1, 1, 1],  # Three equal columns
-                height_ratios=[1, 1],  # Two equal rows
-                left=0.05,
-                right=0.95,
-                bottom=0.08,
-                top=0.92,
-                wspace=0.2,
-                hspace=0.25,
-            )
-
-            # Create the 2x3 grid of subplots
-            # Top left: Coarse image
-            ax_coarse_image = plt.subplot(gs[0, 0])
-            ax_coarse_image.axis("off")
-            ax_coarse_image.set_title(
-                f"Current Image {image_idx} and Label {label_idx}"
-            )
-
-            # Top middle: Density visualization
-            ax_signal = plt.subplot(gs[0, 1])
-            ax_signal.axis("off")
-            ax_signal.set_title(state.signal_title)
-
-            # Top right: Contour/Secondary visualization
-            ax_contour = plt.subplot(gs[0, 2])
-            ax_contour.axis("off")
-            ax_contour.set_title(
-                "Phase Segmentation" if self.has_gas else "Concentration Contours"
-            )
-
-            # Bottom left: Signal function plot
-            ax_signal_function = plt.subplot(gs[1, 0])
-            ax_signal_function.set_title(f"Signal Function - Label {label_idx}")
-
-            # Bottom middle: Mass evolution plots
-            ax_mass = plt.subplot(gs[1, 1])
-            ax_mass.set_title("Mass Evolution" if self.has_gas else "Volume Evolution")
-
-            # Bottom right: Parameter sliders (will be subdivided)
-            ax_sliders = plt.subplot(gs[1, 2])
-            ax_sliders.axis("off")  # Turn off axis for slider area
-            ax_sliders.set_title("Parameter Controls")
-
-            # ! ---- PLOTTING ----
-
-            # Plot the coarse image with highlighted label - turn the rest to gray
-            coarse_image_img = ax_coarse_image.imshow(
-                state.label_highlight(coarse_image, label_idx)
-            )
-
-            # Plot the coarse signal with rois
-            # TODO
-            coarse_signal_img = ax_signal.imshow(coarse_signal.img, cmap=cmap)
-
-            # Add colorbar
-            signal_pos = ax_signal.get_position()
-            colorbar_width = 0.01
-            colorbar_height = signal_pos.height
-            colorbar_x = signal_pos.x1 + 0.01
-            colorbar_y = signal_pos.y0
-            colorbar_ax = fig.add_axes(
-                [colorbar_x, colorbar_y, colorbar_width, colorbar_height]
-            )
-            coarse_signal_colorbar = fig.colorbar(coarse_signal_img, cax=colorbar_ax)
-
-            # Set initial color scale for the signal
-            initial_signal_min, initial_signal_max = state.signal_range()
-            coarse_signal_img.set_clim(vmin=initial_signal_min, vmax=initial_signal_max)
-            coarse_signal_colorbar.update_normal(coarse_signal_img)  # Plot the contour
-            coarse_contour_img = ax_contour.imshow(coarse_contour.img)
-
-            # Plot the signal function for the selected label
-            signal_func: darsia.PWTransformation = self.signal_model.model[1][label_idx]
-            signal_function_line = None
-            if hasattr(signal_func, "values") and len(signal_func.values) > 0:
-                # Get the color path interpretation for gradient background
-                _color_path_interpretation: darsia.ColorPathInterpolation = (
-                    self.color_path_interpretation[label_idx]
-                )
-
-                # Create background gradient using the color path colormap
-                x_gradient = np.linspace(
-                    self.signal_model_extents[0][0],
-                    self.signal_model_extents[0][1],
-                    256,
-                ).reshape(1, -1)
-                y_gradient = np.ones((10, 1))  # Height for visualization
-                gradient_data = x_gradient * y_gradient
-
-                # Get the colormap from the color path
-                color_path_cmap = _color_path_interpretation.color_path.get_color_map()
-
-                # Display the gradient as background
-                ax_signal_function.imshow(
-                    gradient_data,
-                    extent=[
-                        self.signal_model_extents[0][0],
-                        self.signal_model_extents[0][1],
-                        self.signal_model_extents[1][0],
-                        self.signal_model_extents[1][1],
-                    ],
-                    aspect="auto",
-                    cmap=color_path_cmap,
-                    alpha=0.3,  # Semi-transparent
-                    zorder=0,  # Behind everything else
-                )
-
-                # Plot the signal function evaluated on a fine grid along the color
-                # path, with the values at the key colors as dots
-                x_vals = signal_func.supports
-                t_fine, y_fine = signal_curve(signal_func)
-                [signal_function_line] = ax_signal_function.plot(
-                    t_fine, y_fine, "gray", linewidth=2, zorder=2
-                )
-
-                colors = _color_path_interpretation.color_path.colors
-                facecolors = to_rgba_array(np.clip(colors, 0, 1))
-                signal_function_scatter = ax_signal_function.scatter(
-                    x_vals,
-                    _dot_values(signal_func),
-                    c=facecolors,
-                    zorder=3,
-                    s=50,
-                    edgecolors="black",
-                    linewidth=1,
-                )
-
-                if self.has_gas:
-                    # Indicate cut-off and max value from flash model
-                    signal_function_aq_min_y = ax_signal_function.axhline(
-                        y=self.flash.min_value_aq,
-                        color="k",
-                        linestyle="--",
-                        label="aq_min",
-                        zorder=1,
-                    )
-                    signal_function_aq_max_y = ax_signal_function.axhline(
-                        y=self.flash.max_value_aq,
-                        color="k",
-                        linestyle="--",
-                        label="aq_max",
-                        zorder=1,
-                    )
-                    signal_function_g_max_y = ax_signal_function.axhline(
-                        y=self.flash.max_value_g,
-                        color="k",
-                        linestyle="--",
-                        label="g_max",
-                        zorder=1,
-                    )
-
-                    signal_function_g_min_y = ax_signal_function.axhline(
-                        y=self.flash.min_value_g,
-                        color="k",
-                        linestyle="--",
-                        label="g_min",
-                        zorder=1,
-                    )
-
-                    # Find the corresponding x-values for the cut-off and max value lines as
-                    # solution to the signal_function(x) = cut_off and
-                    # signal_function(x) = max_value
-                    aq_min_x = curve_inverse(t_fine, y_fine, self.flash.min_value_aq)
-                    aq_max_x = curve_inverse(t_fine, y_fine, self.flash.max_value_aq)
-                    g_max_x = curve_inverse(t_fine, y_fine, self.flash.max_value_g)
-                    g_min_x = curve_inverse(t_fine, y_fine, self.flash.min_value_g)
-
-                    # Add vertical lines for cut-off and max value
-                    signal_function_aq_min_x = ax_signal_function.axvline(
-                        x=aq_min_x,
-                        color="k",
-                        linestyle="--",
-                        label="min value aq",
-                        zorder=1,
-                    )
-                    signal_function_aq_max_x = ax_signal_function.axvline(
-                        x=aq_max_x,
-                        color="k",
-                        linestyle="--",
-                        label="max value aq",
-                        zorder=1,
-                    )
-                    signal_function_g_max_x = ax_signal_function.axvline(
-                        x=g_max_x,
-                        color="k",
-                        linestyle="--",
-                        label="max value g",
-                        zorder=1,
-                    )
-                    signal_function_g_min_x = ax_signal_function.axvline(
-                        x=g_min_x,
-                        color="k",
-                        linestyle="--",
-                        label="min value g",
-                        zorder=1,
-                    )
-
-                    # Annotate "CO2(aq)" and "CO2(g)" below and above the cut-off
-                    ax_signal_function.text(
-                        x=aq_max_x - 0.05,
-                        y=0.04,
-                        s="CO2(aq)",
-                        ha="center",
-                        va="center",
-                        fontsize=8,
-                        color="k",
-                    )
-                    ax_signal_function.text(
-                        x=aq_max_x + 0.05,
-                        y=0.04,
-                        s="CO2(g)",
-                        ha="center",
-                        va="center",
-                        fontsize=8,
-                        color="k",
-                    )
-                    ax_signal_function.text(
-                        x=g_max_x + 0.1,
-                        y=0.04,
-                        s="CO2(g) - 100%",
-                        ha="center",
-                        va="center",
-                        fontsize=8,
-                        color="k",
-                    )
-                # Single-phase (tracer): no phase transition, hence no flash lines;
-                # the signal is the concentration itself.
-                # NOTE: Keep after the annotations above, which are accessed by index
-                used_indices = getattr(signal_func, "support_indices", None)
-                if used_indices is not None and len(used_indices) < len(
-                    signal_func.values
-                ):
-                    ax_signal_function.text(
-                        x=0.01,
-                        y=0.99,
-                        s="Unused key colors (no dot): the signal is affine in the "
-                        "color and bends at every key color.",
-                        transform=ax_signal_function.transAxes,
-                        ha="left",
-                        va="top",
-                        fontsize=7,
-                        color="k",
-                        zorder=4,
-                    )
-
-                ax_signal_function.set_xlabel("Color Interpretation")
-                ax_signal_function.set_ylabel("Signal Value")
-                ax_signal_function.grid(True, alpha=0.3, zorder=1)
-                ax_signal_function.set_xlim(
-                    self.signal_model_extents[0][0], self.signal_model_extents[0][1]
-                )
-                ax_signal_function.set_ylim(
-                    self.signal_model_extents[1][0], self.signal_model_extents[1][1]
-                )  # Combine plot and scatter for integrated mass over time.
-            # Decompose into total, gas, and aqueous mass, and add
-            # expected mass using a dashed line.
-
-            # Determine a representative mass/time magnitude up front, so the
-            # unit (fixed, or auto-chosen to keep displayed numbers readable)
-            # is known before any series is drawn.
-            max_expected = state.max_expected_mass()
-            max_time = state.max_time()
-            # Quantity compared with the injection protocol: the mass (CO2), or the
-            # volume (tracer; the "mass" series below then hold volumes in m3).
-            if self.has_gas:
-                mass_unit = (
-                    choose_mass_unit(max_expected)
-                    if self.mass_unit == "auto"
-                    else self.mass_unit
-                )
-                convert_quantity, quantity_label = convert_mass, mass_label
-                total_name = "total"
-            else:
-                mass_unit = (
-                    choose_volume_unit(max_expected)
-                    if self.volume_unit == "auto"
-                    else self.volume_unit
-                )
-                convert_quantity, quantity_label = convert_volume, volume_label
-                total_name = "detected"
-            time_unit = (
-                choose_time_unit(max_time)
-                if self.time_unit == "auto"
-                else self.time_unit
-            )
-            ax_mass.set_xlabel(time_label(time_unit))
-            ax_mass.set_ylabel(quantity_label(mass_unit))
-
-            # Store plot objects for updates
-            integrated_mass_plots = {}
-            integrated_mass_plots_g = {}
-            integrated_mass_plots_aq = {}
-            expected_mass_plots = {}
-            integrated_mass_scatters = {}
-            integrated_mass_scatters_g = {}
-            integrated_mass_scatters_aq = {}
-
-            # Generate distinct colors for each ROI
-            num_rois = len(rois)
-            import matplotlib
-
-            _cmap = matplotlib.colormaps["tab10" if num_rois <= 10 else "tab20"]
-            roi_colors = [_cmap(i / max(1, num_rois - 1)) for i in range(num_rois)]
-
-            # Plot each ROI as separate series
-            for i, (roi_key, roi_times) in enumerate(times.items()):
-                if len(roi_times) > 0:
-                    color = roi_colors[i % len(roi_colors)]
-                    roi_label = roi_key if roi_key else "entire_frame"
-                    plot_times = convert_time(roi_times, time_unit)
-
-                    # Plot lines
-                    [integrated_mass_plots[roi_key]] = ax_mass.plot(
-                        plot_times,
-                        convert_quantity(integrated_mass[roi_key], mass_unit),
-                        color=color,
-                        label=f"{total_name} ({roi_label})",
-                        linewidth=2,
-                    )
-                    if self.has_gas:
-                        [integrated_mass_plots_g[roi_key]] = ax_mass.plot(
-                            plot_times,
-                            convert_quantity(integrated_mass_g[roi_key], mass_unit),
-                            color=color,
-                            label=f"gas ({roi_label})",
-                            linestyle=":",
-                            linewidth=2,
-                        )
-                        [integrated_mass_plots_aq[roi_key]] = ax_mass.plot(
-                            plot_times,
-                            convert_quantity(integrated_mass_aq[roi_key], mass_unit),
-                            color=color,
-                            label=f"aqueous ({roi_label})",
-                            linestyle="-.",
-                            linewidth=2,
-                        )
-                    [expected_mass_plots[roi_key]] = ax_mass.plot(
-                        plot_times,
-                        convert_quantity(expected_mass[roi_key], mass_unit),
-                        linestyle="--",
-                        color=color,
-                        label=f"injected ({roi_label})",
-                        alpha=0.7,
-                    )
-
-                    # Plot scatter points
-                    integrated_mass_scatters[roi_key] = ax_mass.scatter(
-                        plot_times,
-                        convert_quantity(integrated_mass[roi_key], mass_unit),
-                        color=color,
-                        s=20,
-                        alpha=0.8,
-                    )
-                    if self.has_gas:
-                        integrated_mass_scatters_g[roi_key] = ax_mass.scatter(
-                            plot_times,
-                            convert_quantity(integrated_mass_g[roi_key], mass_unit),
-                            color=color,
-                            s=15,
-                            alpha=0.6,
-                            marker="^",
-                        )
-                        integrated_mass_scatters_aq[roi_key] = ax_mass.scatter(
-                            plot_times,
-                            convert_quantity(integrated_mass_aq[roi_key], mass_unit),
-                            color=color,
-                            s=15,
-                            alpha=0.6,
-                            marker="s",
-                        )
-
-            # Set y-axis limits based on maximum expected mass across all ROIs
-            if max_expected > 0:
-                ax_mass.set_ylim(0.0, convert_quantity(2.0 * max_expected, mass_unit))
-            else:
-                ax_mass.autoscale()
-            ax_mass.legend()
-            ax_mass.grid(True, alpha=0.3)
-
-            # ! ---- PARAMETER CONTROLS ----
-
-            # Grouped rows (label | slider | value box). The number of signal value
-            # rows follows the number of key colors of the selected label.
-            controls_box = ax_sliders.get_position()
-            signal_values = self.signal_model.model[1][label_idx].values
-            used_values = getattr(
-                self.signal_model.model[1][label_idx],
-                "support_indices",
-                range(len(signal_values)),
-            )
-            path_colors = self.color_path_interpretation[label_idx].color_path.colors
-            num_values = len(signal_values)
-            # Rows: signal values (title, values), flash (title, 4 sliders; CO2 only),
-            # contours (title, one threshold per phase), resolution (title, level)
-            levels = state.available_levels
-            num_rows = num_values + (9 if self.has_gas else 3)
-            if len(levels) > 1:
-                num_rows += 2
-            row_height = controls_box.height / num_rows
-
-            def make_row(
-                row, name, valinit, vmin, vmax, color, active=True, valstep=0.01
-            ):
-                """Create a labeled slider (with value text) in a row."""
-                x0, width = controls_box.x0, controls_box.width
-                y0 = controls_box.y1 - (row + 1) * row_height
-                label_text = fig.text(
-                    x0, y0 + 0.5 * row_height, name, fontsize=8, ha="left", va="center"
-                )
-                ax_row_slider = fig.add_axes(
-                    [
-                        x0 + 0.30 * width,
-                        y0 + 0.2 * row_height,
-                        0.55 * width,
-                        0.6 * row_height,
-                    ]
-                )
-                slider = Slider(
-                    ax_row_slider,
-                    "",
-                    vmin,
-                    vmax,
-                    valinit=valinit,
-                    valstep=valstep,
-                    color=color,
-                )
-                slider.valtext.set_fontsize(8)
-                if not active:
-                    # Values without influence cannot be changed and appear faded
-                    slider.set_active(False)
-                    for artist in (
-                        label_text,
-                        slider.poly,
-                        slider._handle,
-                        slider.valtext,
-                    ):
-                        artist.set_alpha(0.35)
-                return slider
-
-            def section_title(row, title):
-                return fig.text(
-                    controls_box.x0,
-                    controls_box.y1 - (row + 0.5) * row_height,
-                    title,
-                    fontsize=9,
-                    fontweight="bold",
-                    ha="left",
-                    va="center",
-                )
-
-            section_title(0, f"Signal values (label {label_idx})")
-            sliders_color_to_signal = [
-                make_row(
-                    1 + i,
-                    f"Value {i}" + ("" if i in used_values else " (unused)"),
-                    val,
-                    0.0,
-                    2.0 if self.has_gas else 1.0,
-                    np.clip(path_colors[i], 0, 1) if i < len(path_colors) else "gray",
-                    active=i in used_values,
-                )
-                for i, val in enumerate(signal_values)
-            ]
-
-            flash_row = num_values + 1
-            if self.has_gas:
-                section_title(flash_row, "Flash")
-                sliders_flash = [
-                    make_row(flash_row + 1 + i, name, value, 0.0, 2.0, "darkgray")
-                    for i, (name, value) in enumerate(
-                        [
-                            ("Min aq", self.flash.min_value_aq),
-                            ("Max aq", self.flash.max_value_aq),
-                            ("Min g", self.flash.min_value_g),
-                            ("Max g", self.flash.max_value_g),
-                        ]
-                    )
-                ]
-                contour_row = flash_row + 5
-            else:
-                # Single-phase: no flash parameters, the signal is the concentration
-                sliders_flash = []
-                contour_row = flash_row
-            section_title(contour_row, "Contours")
-            sliders_threshold = [
-                make_row(
-                    contour_row + 1,
-                    "Threshold c_aq",
-                    contour_thresholds[0],
-                    0.0,
-                    1.0,
-                    (1, 0, 0),
-                )
-            ]
-            if self.has_gas:
-                sliders_threshold.append(
-                    make_row(
-                        contour_row + 2,
-                        "Threshold s_g",
-                        contour_thresholds[1],
-                        0.0,
-                        1.0,
-                        (0, 1, 0),
-                    )
-                )
-
-            for i, slider in enumerate(sliders_threshold):
-                slider.on_changed(
-                    lambda val, i=i: contour_thresholds.__setitem__(i, val)
-                )
-
-            # Slider updates only repaint the sliders (blitting). Otherwise, every
-            # slider step re-renders the entire figure, including all images. The
-            # moving parts of the sliders are animated artists, which are excluded
-            # from the stored background and drawn on top of it.
-            all_sliders = sliders_color_to_signal + sliders_flash + sliders_threshold
-
-            # Resolution of the calculations: a discrete slider over the levels. Like
-            # the parameters, the selected level is applied by the Update button.
-            slider_resolution = None
-            if len(levels) > 1:
-                resolution_row = contour_row + 1 + len(sliders_threshold)
-
-                def resolution_title() -> str:
-                    return f"Resolution (in use: 1/{state.resolution_level})"
-
-                resolution_status = section_title(resolution_row, resolution_title())
-                slider_resolution = make_row(
-                    resolution_row + 1,
-                    "Level",
-                    levels.index(state.resolution_level),
-                    0,
-                    len(levels) - 1,
-                    "steelblue",
-                    valstep=1,
-                )
-                # Show the level instead of its position
-                slider_resolution._format = lambda val: f"1/{levels[int(round(val))]}"
-                slider_resolution.valtext.set_text(
-                    slider_resolution._format(slider_resolution.val)
-                )
-
-            def selected_level() -> int:
-                """Resolution level chosen with the slider."""
-                if slider_resolution is None:
-                    return state.resolution_level
-                return levels[int(round(slider_resolution.val))]
-
-            blit_sliders = all_sliders + (
-                [] if slider_resolution is None else [slider_resolution]
-            )
-            animated_artists = [
-                artist
-                for slider in blit_sliders
-                for artist in (slider.poly, slider._handle, slider.valtext)
-            ]
-            for artist in animated_artists:
-                artist.set_animated(True)
-            background = None
-
-            def store_background(event):
-                nonlocal background
-                background = fig.canvas.copy_from_bbox(fig.bbox)
-                for artist in animated_artists:
-                    fig.draw_artist(artist)
-
-            fig.canvas.mpl_connect("draw_event", store_background)
-
-            def blit_slider(slider):
-                if background is None or not fig.canvas.supports_blit:
-                    fig.canvas.draw_idle()
-                    return
-                handle_radius = 0.5 * slider._handle.get_markersize() * fig.dpi / 72
-                region = Bbox.union(
-                    [slider.ax.bbox, slider.valtext.get_window_extent()]
-                ).padded(handle_radius + 1)
-                fig.canvas.restore_region(background)
-                for artist in animated_artists:
-                    fig.draw_artist(artist)
-                fig.canvas.blit(region)
-
-            for slider in blit_sliders:
-                slider.drawon = False
-                slider.on_changed(lambda val, slider=slider: blit_slider(slider))
-
-            # Position buttons at the top of the figure
-            button_width = 0.08
-            button_height = 0.04
-            button_y = 0.95
-            button_spacing = 0.01
-
-            # Button order from left to right (Reset, Update at bottom right):
-            # - Next Signal
-            # - Next Label
-            # - New Label
-            # - Next Image
-            # - New Image
-            # - Save
-            # Calculate positions for 6 buttons with proper spacing
-            total_buttons = 5
-            button_start_x = (
-                0.98
-                - total_buttons * button_width
-                - (total_buttons - 1) * button_spacing
-            )
-
-            # Position Update button at bottom right corner
-            update_button_x = 0.98 - button_width  # Right side with small margin
-            update_button_y = 0.02  # Bottom with small margin
-
-            # Add "Reset" button to the left of "Update"
-            reset_button_x = update_button_x - button_width - button_spacing
-            ax_reset = plt.axes(
-                [reset_button_x, update_button_y, button_width, button_height]
-            )
-            btn_reset = Button(ax_reset, "Reset")
-
-            # Add "Update" button
-            ax_update = plt.axes(
-                [
-                    update_button_x,
-                    update_button_y,
-                    button_width,
-                    button_height,
-                ]
-            )
-            btn_update = Button(ax_update, "Update")
-            busy_status = fig.text(
-                update_button_x + button_width,
-                update_button_y + button_height + 0.004,
-                "",
-                fontsize=8,
-                color="darkorange",
-                ha="right",
-                va="bottom",
-            )
-            """Message shown while a calculation blocks the window."""
-            values_status = fig.text(
-                controls_box.x0,
-                update_button_y + 0.5 * button_height,
-                "",
-                fontsize=8,
-                color="red",
-                ha="left",
-                va="center",
-            )
-            """Message about invalid (decreasing) signal values."""
-
-            ax_next_signal = plt.axes(
-                [
-                    button_start_x + 0 * (button_width + button_spacing),
-                    button_y,
-                    button_width,
-                    button_height,
-                ]
-            )
-            btn_next_signal = Button(ax_next_signal, "Next Signal")
-
-            ax_next_label = plt.axes(
-                [
-                    button_start_x + 1 * (button_width + button_spacing),
-                    button_y,
-                    button_width,
-                    button_height,
-                ]
-            )
-            btn_next_label = Button(ax_next_label, "Next Label")
-
-            ax_new_label = plt.axes(
-                [
-                    button_start_x + 2 * (button_width + button_spacing),
-                    button_y,
-                    button_width,
-                    button_height,
-                ]
-            )
-            btn_new_label = Button(ax_new_label, "New Label")
-
-            ax_next_image = plt.axes(
-                [
-                    button_start_x + 3 * (button_width + button_spacing),
-                    button_y,
-                    button_width,
-                    button_height,
-                ]
-            )
-            btn_next_image = Button(ax_next_image, "Next Image")
-
-            ax_new_image = plt.axes(
-                [
-                    button_start_x + 4 * (button_width + button_spacing),
-                    button_y,
-                    button_width,
-                    button_height,
-                ]
-            )
-            btn_new_image = Button(ax_new_image, "New Image")
-
-            save_button_x = 0.02  # Left side with small margin
-            ax_save = plt.axes(
-                [
-                    save_button_x,
-                    button_y,
-                    button_width,
-                    button_height,
-                ]
-            )
-            btn_save = Button(ax_save, "Save")
-            save_status = fig.text(
-                save_button_x + button_width + button_spacing,
-                button_y + 0.5 * button_height,
-                "",
-                fontsize=9,
-                color="green",
-                va="center",
-            )
+            # Figure for this image and label
+            view = CalibrationView(state, self, cmap)
+            view.build()
+            label_idx = view.label_idx
+            fig = view.fig
+            buttons = view.buttons
+            sliders_color_to_signal = view.value_sliders
+            sliders_flash = view.flash_sliders
+            sliders_threshold = view.threshold_sliders
             rebuilding = False  # figure is closed to be rebuilt, not to leave
 
             # Tune values for this label
@@ -1529,215 +739,13 @@ class HeterogeneousColorToMassAnalysis:
                     nonlocal done_tuning_values  # noqa: F824
                     nonlocal done_calibration  # noqa: F824
 
-                    def update_signal_function_plot():
-                        """Update the signal function plot (curve, flash lines)."""
-                        signal_func = self.signal_model.model[1][_label_idx]
-                        t_fine, y_fine = signal_curve(signal_func)
-                        # Update signal function plot
-                        if signal_function_line is not None:
-                            x_vals = signal_func.supports
-                            y_vals = signal_func.values.copy()
-                            signal_function_line.set_data(t_fine, y_fine)
-                            signal_function_scatter.set_offsets(
-                                np.c_[x_vals, _dot_values(signal_func)]
-                            )
-
-                            # Rescale y-axis to fit the curve, floored at the
-                            # current flash max (never zoom in tighter than the
-                            # flash thresholds, but grow if the curve exceeds
-                            # them)
-                            flash_max = (
-                                max(self.flash.max_value_aq, self.flash.max_value_g)
-                                if self.has_gas
-                                else 1.0
-                            )
-                            ax_signal_function.set_ylim(
-                                self.signal_model_extents[1][0],
-                                max(
-                                    flash_max,
-                                    float(np.max(y_fine)),
-                                    float(np.max(y_vals)),
-                                ),
-                            )
-
-                        if self.has_gas:
-                            # Update flash cut-off and max value lines
-                            signal_function_aq_min_y.set_ydata(
-                                [self.flash.min_value_aq]
-                            )
-                            signal_function_aq_max_y.set_ydata(
-                                [self.flash.max_value_aq]
-                            )
-                            signal_function_g_max_y.set_ydata([self.flash.max_value_g])
-                            signal_function_g_min_y.set_ydata([self.flash.min_value_g])
-                            aq_max_x = curve_inverse(
-                                t_fine, y_fine, self.flash.max_value_aq
-                            )
-                            aq_min_x = curve_inverse(
-                                t_fine, y_fine, self.flash.min_value_aq
-                            )
-                            g_max_x = curve_inverse(
-                                t_fine, y_fine, self.flash.max_value_g
-                            )
-                            g_min_x = curve_inverse(
-                                t_fine, y_fine, self.flash.min_value_g
-                            )
-                            signal_function_aq_max_x.set_xdata([aq_max_x])
-                            signal_function_aq_min_x.set_xdata([aq_min_x])
-                            signal_function_g_max_x.set_xdata([g_max_x])
-                            signal_function_g_min_x.set_xdata([g_min_x])
-
-                            # Update the position of the annotaion
-                            ax_signal_function.texts[0].set_position(
-                                (aq_max_x - 0.05, 0.04)
-                            )
-                            ax_signal_function.texts[1].set_position(
-                                (aq_max_x + 0.05, 0.04)
-                            )
-                            ax_signal_function.texts[2].set_position(
-                                (g_max_x + 0.1, 0.04)
-                            )
-
-                    def update_mass_plot():
-                        """Update the mass evolution plots."""
-                        # Update mass plots
-                        max_expected = state.max_expected_mass()
-                        max_time = state.max_time()
-                        if self.has_gas:
-                            mass_unit = (
-                                choose_mass_unit(max_expected)
-                                if self.mass_unit == "auto"
-                                else self.mass_unit
-                            )
-                            convert_quantity, quantity_label = convert_mass, mass_label
-                        else:
-                            mass_unit = (
-                                choose_volume_unit(max_expected)
-                                if self.volume_unit == "auto"
-                                else self.volume_unit
-                            )
-                            convert_quantity, quantity_label = (
-                                convert_volume,
-                                volume_label,
-                            )
-                        time_unit = (
-                            choose_time_unit(max_time)
-                            if self.time_unit == "auto"
-                            else self.time_unit
-                        )
-                        for roi_key in rois:
-                            plot_times = convert_time(times[roi_key], time_unit)
-                            integrated_mass_plots[roi_key].set_data(
-                                plot_times,
-                                convert_quantity(integrated_mass[roi_key], mass_unit),
-                            )
-                            if self.has_gas:
-                                integrated_mass_plots_g[roi_key].set_data(
-                                    plot_times,
-                                    convert_quantity(
-                                        integrated_mass_g[roi_key], mass_unit
-                                    ),
-                                )
-                                integrated_mass_plots_aq[roi_key].set_data(
-                                    plot_times,
-                                    convert_quantity(
-                                        integrated_mass_aq[roi_key], mass_unit
-                                    ),
-                                )
-                            integrated_mass_scatters[roi_key].set_offsets(
-                                np.c_[
-                                    plot_times,
-                                    convert_quantity(
-                                        integrated_mass[roi_key], mass_unit
-                                    ),
-                                ]
-                            )
-                            if self.has_gas:
-                                integrated_mass_scatters_g[roi_key].set_offsets(
-                                    np.c_[
-                                        plot_times,
-                                        convert_quantity(
-                                            integrated_mass_g[roi_key], mass_unit
-                                        ),
-                                    ]
-                                )
-                                integrated_mass_scatters_aq[roi_key].set_offsets(
-                                    np.c_[
-                                        plot_times,
-                                        convert_quantity(
-                                            integrated_mass_aq[roi_key], mass_unit
-                                        ),
-                                    ]
-                                )
-                        if max_expected > 0:
-                            ax_mass.set_ylim(
-                                0.0, convert_quantity(2.0 * max_expected, mass_unit)
-                            )
-                        else:
-                            ax_mass.autoscale()
-                        ax_mass.set_xlabel(time_label(time_unit))
-                        ax_mass.set_ylabel(quantity_label(mass_unit))
-
-                    def refresh(recompute=True, signal_function=False, mass_plot=False):
-                        """Update the displayed panels.
-
-                        Parameters
-                        ----------
-                        recompute : bool
-                            Analyze the current image anew (after changes of the
-                            parameters or the image); otherwise reuse the last maps.
-                        signal_function : bool
-                            Also update the signal function plot.
-                        mass_plot : bool
-                            Also update the mass evolution plot.
-
-                        """
-                        if recompute:
-                            state.compute_maps()
-
-                        # Image panel and signal panel
-                        ax_coarse_image.set_title(
-                            f"Current Image {state.image_idx} and Label {_label_idx}"
-                        )
-                        coarse_image_img.set_data(
-                            state.label_highlight(state.coarse_image, _label_idx)
-                        )
-                        coarse_signal_img.set_data(state.coarse_signal.img)
-                        ax_signal.set_title(state.signal_title)
-                        signal_min, signal_max = state.signal_range()
-                        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
-                        coarse_signal_colorbar.update_normal(coarse_signal_img)
-
-                        # Phase segmentation panel
-                        coarse_contour_img.set_data(
-                            state.contour_overlay(
-                                [slider.val for slider in sliders_threshold]
-                            ).img
-                        )
-
-                        if signal_function and signal_function_line is not None:
-                            update_signal_function_plot()
-                        if mass_plot:
-                            update_mass_plot()
-                        fig.canvas.draw_idle()
-
                     def check_values() -> str | None:
                         """Message if the signal values of the label decrease, else None."""
-                        values = [slider.val for slider in sliders_color_to_signal]
-                        return state.check_values(values, _label_idx)
-
-                    def show_values_status(message: str | None) -> None:
-                        """Show (or clear) the message about invalid signal values."""
-                        text = (
-                            "" if message is None else message.replace(": ", ":\n", 1)
-                        )
-                        if values_status.get_text() != text:
-                            values_status.set_text(text)
-                            fig.canvas.draw_idle()
+                        return state.check_values(view.values(), _label_idx)
 
                     for slider in sliders_color_to_signal:
                         slider.on_changed(
-                            lambda val: show_values_status(check_values())
+                            lambda val: view.show_values_status(check_values())
                         )
 
                     def apply_parameters() -> bool | None:
@@ -1752,13 +760,11 @@ class HeterogeneousColorToMassAnalysis:
                         """
                         nonlocal pending
                         message = check_values()
-                        show_values_status(message)
+                        view.show_values_status(message)
                         if message is not None:
                             return None
                         changed = state.apply_parameters(
-                            [slider.val for slider in sliders_color_to_signal],
-                            [slider.val for slider in sliders_flash],
-                            _label_idx,
+                            view.values(), view.flash_values(), _label_idx
                         )
                         pending = False
                         return changed
@@ -1776,56 +782,36 @@ class HeterogeneousColorToMassAnalysis:
                     for slider in sliders_color_to_signal + sliders_flash:
                         slider.on_changed(on_value_slider)
 
-                    unsaved_text = "Changes not saved."
-
-                    def mark_unsaved(*args):
-                        """Show that the displayed values differ from the saved ones."""
-                        if save_status.get_text() != unsaved_text:
-                            save_status.set_text(unsaved_text)
-                            save_status.set_color("darkorange")
-                            fig.canvas.draw_idle()
-
-                    for slider in all_sliders:
-                        slider.on_changed(mark_unsaved)
-
-                    def show_busy(message: str) -> None:
-                        """Show (or clear) a message and draw it right away.
-
-                        The calculations run in the window's event loop, so the
-                        window does not react until they are done.
-
-                        """
-                        if busy_status.get_text() == message:
-                            return
-                        busy_status.set_text(message)
-                        fig.canvas.draw()
-                        fig.canvas.flush_events()
+                    for slider in view.all_sliders:
+                        slider.on_changed(view.mark_unsaved)
 
                     def update_analysis(event=None):
                         """Apply the slider values and update everything."""
                         changed = apply_parameters()
                         if changed is None:
                             return
-                        level = selected_level()
+                        level = view.selected_level()
                         new_level = level != state.resolution_level
                         if changed:
-                            mark_unsaved()
+                            view.mark_unsaved()
                         if changed or new_level:
-                            show_busy(
+                            view.show_busy(
                                 f"Computing at resolution 1/{level} ..."
                                 if new_level
                                 else "Computing ..."
                             )
                         if new_level:
                             state.set_resolution(level)
-                            resolution_status.set_text(resolution_title())
+                            view.set_resolution_title()
                         if changed or new_level:
                             state.update_mass_analysis()
-                        refresh(recompute=True, signal_function=True, mass_plot=True)
-                        show_busy("")
+                        view.refresh(
+                            recompute=True, signal_function=True, mass_plot=True
+                        )
+                        view.show_busy("")
 
                     # Connect button callbacks
-                    btn_update.on_clicked(update_analysis)
+                    buttons["Update"].on_clicked(update_analysis)
 
                     def reset(event):
                         """Restore the initial values of this label, flash, contours."""
@@ -1840,7 +826,7 @@ class HeterogeneousColorToMassAnalysis:
                             slider.set_val(default_contour_threshold)
                         update_analysis()
 
-                    btn_reset.on_clicked(reset)
+                    buttons["Reset"].on_clicked(reset)
 
                     def new_label(event):
                         nonlocal done_tuning_values, need_to_pick_new_label
@@ -1850,7 +836,7 @@ class HeterogeneousColorToMassAnalysis:
                         rebuilding = True
                         plt.close("all")
 
-                    btn_new_label.on_clicked(new_label)
+                    buttons["New Label"].on_clicked(new_label)
 
                     def new_image(event):
                         nonlocal done_tuning_values, need_to_pick_new_image
@@ -1860,7 +846,7 @@ class HeterogeneousColorToMassAnalysis:
                         rebuilding = True
                         plt.close("all")
 
-                    btn_new_image.on_clicked(new_image)
+                    buttons["New Image"].on_clicked(new_image)
 
                     def save_calibration() -> bool:
                         """Store the calibration; return if it was successful."""
@@ -1880,20 +866,19 @@ class HeterogeneousColorToMassAnalysis:
                         """Apply the current values and save; the window stays open."""
                         message = check_values()
                         if message is not None:
-                            show_values_status(message)
-                            save_status.set_text("Not saved: fix the values first.")
-                            save_status.set_color("red")
-                            fig.canvas.draw_idle()
+                            view.show_values_status(message)
+                            view.show_save_status(
+                                "Not saved: fix the values first.", "red"
+                            )
                             return
                         update_analysis()
                         saved = save_calibration()
-                        save_status.set_text(
-                            "Saved." if saved else "Saving failed, see log."
+                        view.show_save_status(
+                            "Saved." if saved else "Saving failed, see log.",
+                            "green" if saved else "red",
                         )
-                        save_status.set_color("green" if saved else "red")
-                        fig.canvas.draw_idle()
 
-                    btn_save.on_clicked(on_save)
+                    buttons["Save"].on_clicked(on_save)
 
                     def on_close(event):
                         """Closing the window ends the calibration; unsaved changes
@@ -1935,9 +920,9 @@ class HeterogeneousColorToMassAnalysis:
 
                     def next_signal(event):
                         state.next_signal()
-                        refresh(recompute=False)
+                        view.refresh(recompute=False)
 
-                    btn_next_signal.on_clicked(next_signal)
+                    buttons["Next Signal"].on_clicked(next_signal)
 
                     def next_label(event):
                         """Move to the next label and rebuild the figure for it."""
@@ -1949,15 +934,15 @@ class HeterogeneousColorToMassAnalysis:
                         rebuilding = True
                         plt.close("all")
 
-                    btn_next_label.on_clicked(next_label)
+                    buttons["Next Label"].on_clicked(next_label)
 
                     def next_image(event):
-                        show_busy("Computing ...")
+                        view.show_busy("Computing ...")
                         state.next_image()
-                        refresh(recompute=True)
-                        show_busy("")
+                        view.refresh(recompute=True)
+                        view.show_busy("")
 
-                    btn_next_image.on_clicked(next_image)
+                    buttons["Next Image"].on_clicked(next_image)
 
                     plt.show()
 
