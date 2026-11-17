@@ -107,6 +107,30 @@ def select_image(state: "CalibrationState") -> int:
     return state.image_idx
 
 
+def select_label(state: "CalibrationState", cmap=None) -> int:
+    """Interactive selection of the label: the user selects a rectangle in the image.
+
+    Parameters
+    ----------
+    state : CalibrationState
+        State of the calibration; its current label is changed. The maps of the current
+        image must be computed.
+    cmap : optional
+        Colormap of the shown image.
+
+    Returns
+    -------
+    int
+        Index of the selected label.
+
+    """
+    assistant = darsia.RectangleSelectionAssistant(
+        state.maps["pH"], labels=state.labels, cmap=cmap
+    )
+    label_box: tuple[slice, slice] = assistant()
+    return state.select_label_in(label_box)
+
+
 class CalibrationView:
     """Figure of the calibration window for the current image and label.
 
