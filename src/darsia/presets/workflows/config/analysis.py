@@ -121,14 +121,14 @@ class AnalysisThresholdingLegendConfig:
         },
     )
     text_color: tuple[int, int, int] = field(
-        default=(255, 255, 255), metadata={"name": "Text color"}
+        default=(255, 255, 255), metadata={"name": "Text color", "color_picker": True}
     )
     box_enabled: bool = field(
         default=True,
         metadata={"name": "Box", "help": "Draw a background box behind legend text."},
     )
     box_color: tuple[int, int, int] = field(
-        default=(0, 0, 0), metadata={"name": "Box color"}
+        default=(0, 0, 0), metadata={"name": "Box color", "color_picker": True}
     )
     box_alpha: float = field(
         default=0.4,
@@ -212,10 +212,10 @@ class ThresholdingLayerConfig:
         metadata={"name": "Label", "help": "Display name for this layer."},
     )
     fill: tuple[int, int, int] = field(
-        default=(255, 255, 255), metadata={"name": "Fill color"}
+        default=(255, 255, 255), metadata={"name": "Fill color", "color_picker": True}
     )
     stroke: tuple[int, int, int] = field(
-        default=(0, 0, 0), metadata={"name": "Stroke color"}
+        default=(0, 0, 0), metadata={"name": "Stroke color", "color_picker": True}
     )
     fill_alpha: float = field(
         default=0.35,

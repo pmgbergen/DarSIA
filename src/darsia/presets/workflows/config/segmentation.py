@@ -45,6 +45,7 @@ class SegmentationValueLabelsConfig:
             "name": "Color",
             "help": "RGB color for value labels.",
             "placeholder": "255, 255, 255",
+            "color_picker": True,
         },
     )
     """RGB color for contour value labels."""
@@ -191,6 +192,7 @@ class SegmentationConfig:
             "name": "Color",
             "help": "RGB color for contours [0-255, 0-255, 0-255].",
             "placeholder": "RGB color, e.g., 255, 113, 107",
+            "color_picker": True,
         },
     )
     """RGB color for contours."""

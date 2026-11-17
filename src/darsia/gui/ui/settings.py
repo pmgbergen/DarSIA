@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 from darsia.gui.ui.schema.dataclass_introspection import _build_fields
 from darsia.presets.workflows.config.format_registry import _format_entry_to_dict
 
+from .color_picker import ColorSwatchButton
 from .file_dialog import NO_FILE_CHOSEN, FileDialogHelper, make_remove_button
 from .help import build_help_column
 from .schema.dataclass_introspection import (
@@ -1562,7 +1563,9 @@ class SettingsFactory:
         field_layout.setSpacing(4)
 
         # Type annotation label
-        if setting_dict["type"] == "list":
+        if setting_dict.get("color_picker"):
+            type_label = QLabel("(RGB)")
+        elif setting_dict["type"] == "list":
             if setting_dict.get("fixed_length") is not None:
                 # Fixed-size tuple: show the arity (e.g., "2 x float" for tuple[float, float])
                 arity = setting_dict["fixed_length"]
@@ -1577,6 +1580,9 @@ class SettingsFactory:
             type_label = QLabel(f"({setting_dict['type']})")
 
         field_layout.addWidget(setting_edit, stretch=1)
+        if setting_dict.get("color_picker"):
+            # Colored box of the current color; a click opens a color dialog
+            field_layout.addWidget(ColorSwatchButton(setting_edit, field_widget))
         field_layout.addWidget(type_label)
 
         # Right column: help button or spacer (fixed 40px)

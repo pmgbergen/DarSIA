@@ -5,6 +5,11 @@ Field-by-field reference for the TOML sections the GUI edits, grounded in
 concepts (why sections reference each other by key), read
 [Core concepts](03-core-concepts.md) first.
 
+Color fields (contour, label, fill, stroke, text and box colors) take `r, g, b` with
+values 0-255. Next to the text field, a colored box shows the color; click it to
+choose a color in a dialog (color field, RGB and HSV spin boxes, hex code, screen
+picker). Typing `r, g, b` works as before.
+
 ## `[data]`
 
 Where images live and where results are written.
