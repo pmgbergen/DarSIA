@@ -382,7 +382,14 @@ class SegmentationContours:
         mass_analysis_result=None,
         color_embedding_registry: ColorEmbeddingRegistry | None = None,
         color_embedding_runtime: ColorEmbeddingRuntime | None = None,
+        background: darsia.Image | None = None,
     ) -> darsia.Image:
+        """Contours of all segmentations, drawn on the image or on a background.
+
+        The segmented values are computed from `img`; `background` (e.g. a filtered
+        copy of `img`) only replaces the picture under the contours.
+
+        """
         products = scalar_products or {
             "saturation_g": saturation_g,
             "concentration_aq": concentration_aq,
@@ -391,7 +398,7 @@ class SegmentationContours:
             "rescaled_concentration_aq": rescaled_concentration_aq,
             "rescaled_mass": rescaled_mass,
         }
-        contour_img = img.copy()
+        contour_img = (img if background is None else background).copy()
         if mass_analysis_result is None:
             mass_analysis_result = _compose_mass_analysis_result(
                 saturation_g, concentration_aq, mass

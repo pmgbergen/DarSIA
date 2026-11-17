@@ -165,9 +165,12 @@ Each analysis mode owns its own `data_selection` and `formats`:
   - `data_selection`: image set to analyze
   - `formats`: output format identifiers
   - `[analysis.segmentation.aqueous]` and `[analysis.segmentation.gas]` define layer thresholds
+  - `filter_background`: draw the contours on a copy of the image with each color channel
+    stretched to its full range (display only; default `false`)
 - `[analysis.thresholding]`: threshold selected analysis modes and export mask previews
   - `data_selection`: image set to analyze
   - `formats`: output format identifiers
+  - `filter_background`: as for segmentation, for the overlays and the live preview
   - `[analysis.thresholding.layers.<name>]` defines each threshold layer
 - `[analysis.fingers]`: finger detection mode/threshold and optional ROIs
   - `data_selection`: image set to analyze
@@ -254,6 +257,9 @@ analysis outputs. Supported `modes`:
 Supported keys:
 - `formats` (list of output formats: `["jpg", "npz"]`)
 - `folder` (output folder, defaults to `<results>/thresholding`)
+- `filter_background` (bool, default `false`): overlays on a copy of the image with each
+  color channel stretched from its minimum and maximum to the full range (display only;
+  masks and extents use the original image)
 - `[analysis.thresholding.layers.<name>]` (one mask layer per entry):
   - `mode` (legacy mass modes, rescaled modes, `color.<id>`)
   - `threshold_min` (float)

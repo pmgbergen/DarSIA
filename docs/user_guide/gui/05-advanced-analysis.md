@@ -62,6 +62,11 @@ Optional smoothing of the drawn contour, shared with `analysis.mass` and
 "contour_smoother_selection.contour_smoother_options.polyorder" = "3"
 ```
 
+`filter_background = true` (tick box **Filter background**; default off) draws the
+contours on a contrast-stretched copy of the image: each color channel is mapped from
+its minimum and maximum over the whole image to the full range. Display only: the
+contours themselves are computed from the original image.
+
 ## Thresholding
 
 `[analysis.thresholding]` produces binary/multi-band mask overlays from a
@@ -89,6 +94,10 @@ JPG and NPZ outputs land in separate subfolders (`<folder>/jpg/`,
 `<folder>/npz/`); JPG output overlays the layer's `fill`/`stroke` styling on
 the source image. A `[analysis.thresholding.legend]` table (same shape as
 `[video.overlay]`) can draw a text-box legend on the JPG output.
+
+`filter_background = true` (tick box **Filter background**; default off) uses the
+same contrast-stretched copy of the image under the masks, in the JPG output and the
+live preview; masks, NPZ output and the extent CSV are unchanged.
 
 ## Finger detection
 

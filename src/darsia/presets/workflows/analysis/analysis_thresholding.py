@@ -45,6 +45,7 @@ from darsia.presets.workflows.results_folder import (
     sparse_data_csv,
 )
 from darsia.presets.workflows.rig import Rig
+from darsia.utils.augmented_plotting import stretch_channels
 
 logger = logging.getLogger(__name__)
 
@@ -269,8 +270,12 @@ def analysis_thresholding_from_context(
                 expert_knowledge_adapter=ctx.expert_knowledge_adapter,
                 **scalar_kwargs,
             )
-        stream_payload: dict[str, Any] = {"thresholding_source_image": img}
-        img_bgr = _to_bgr_array(img)
+        # Picture under the contours; the thresholds use the fields of `img`
+        background = (
+            stretch_channels(img) if thresholding_config.filter_background else img
+        )
+        stream_payload: dict[str, Any] = {"thresholding_source_image": background}
+        img_bgr = _to_bgr_array(background)
         master_preview = img_bgr.copy()
 
         if extent_enabled:
