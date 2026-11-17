@@ -134,6 +134,8 @@ Each analysis mode owns its own `data_selection` and `formats`:
 - `[analysis.cropping]`: cropping image selection and output formats
   - `data_selection`: image set to analyze
   - `formats`: output format identifiers
+  - `filter_background`: stretch each color channel to its full range in the pictures
+    (JPG/PNG, preview); NPZ/NPY exports keep the original values (default `false`)
 - `[analysis.mass]`: mass analysis and optional ROIs
   - `data_selection`: image set to analyze
   - `formats`: output format identifiers
