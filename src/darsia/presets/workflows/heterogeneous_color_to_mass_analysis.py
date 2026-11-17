@@ -4,9 +4,8 @@ import dataclasses
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Tuple
+from typing import Callable
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 import darsia
@@ -16,9 +15,8 @@ import darsia.signals.models.signal_kernels as signal_kernels
 from darsia.multiphase.flash import load_flash
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.basis import label_ids_from_image
-from darsia.presets.workflows.calibration.calibration_view import (
-    CalibrationView,
-    select_image,
+from darsia.presets.workflows.calibration.calibration_controller import (
+    CalibrationController,
 )
 from darsia.presets.workflows.calibration.manual_calibration import CalibrationState
 from darsia.presets.workflows.calibration.metadata import (
@@ -34,7 +32,6 @@ from darsia.signals.color.color_embedding import (
     ColorEmbeddingBasis,
     parse_color_embedding_basis,
 )
-from darsia.utils.figure_window import ask_yes_no
 
 logger = logging.getLogger(__name__)
 
@@ -671,284 +668,10 @@ class HeterogeneousColorToMassAnalysis:
             if changes were discarded or saving failed).
         """
 
-        # Data and calculations (no plotting)
         state = CalibrationState(
             self, images, experiment, rois, resolution_level, stored=stored
         )
-        # Values restored by the Reset button
-        initial_values = state.initial_values
-        initial_flash = state.initial_flash
-        default_contour_threshold = state.default_contour_threshold
-
-        # ! ---- LABEL SELECTION ----
-
-        def label_idx_selector(pH: darsia.Image) -> int:
-            assistant = darsia.RectangleSelectionAssistant(
-                pH, labels=state.labels, cmap=cmap
-            )
-            label_box: Tuple[slice, slice] = assistant()
-            return state.select_label_in(label_box)
-
-        # Interactive tuning of values for each color path (chosen by user)
-        done_calibration = False
-        need_to_pick_new_image = True
-        need_to_pick_new_label = True
-        while not done_calibration:
-            # General design:
-            # 1. User needs to pick a focus image (interactively)
-            # 2. User picks a label in the image (interactively)
-            # 3. Mass analysis is computed for current settings
-            # 4. User tunes values for the color path for this label (interactively)
-            # 5. User can control to rerun any of the above steps through buttons.
-
-            # Pick image
-            if need_to_pick_new_image:
-                select_image(state)
-                need_to_pick_new_image = False
-                need_to_pick_new_label = True
-
-            # Fetch the current image and analyze it
-            if state.maps is None or state.maps["image_idx"] != state.image_idx:
-                state.compute_maps()
-
-            # Pick label interactively
-            if need_to_pick_new_label:
-                label_idx_selector(state.maps["pH"])
-                need_to_pick_new_label = False
-
-            # Compute mass analysis
-            if not state.mass_analysis_done:
-                state.update_mass_analysis()
-
-            # Figure for this image and label
-            view = CalibrationView(state, self, cmap)
-            view.build()
-            label_idx = view.label_idx
-            fig = view.fig
-            buttons = view.buttons
-            sliders_color_to_signal = view.value_sliders
-            sliders_flash = view.flash_sliders
-            sliders_threshold = view.threshold_sliders
-            rebuilding = False  # figure is closed to be rebuilt, not to leave
-
-            # Tune values for this label
-            done_tuning_values = False
-            while not done_tuning_values:
-
-                def show_tuner(_label_idx):
-                    nonlocal done_tuning_values  # noqa: F824
-                    nonlocal done_calibration  # noqa: F824
-
-                    def check_values() -> str | None:
-                        """Message if the signal values of the label decrease, else None."""
-                        return state.check_values(view.values(), _label_idx)
-
-                    for slider in sliders_color_to_signal:
-                        slider.on_changed(
-                            lambda val: view.show_values_status(check_values())
-                        )
-
-                    def apply_parameters() -> bool | None:
-                        """Apply the slider values.
-
-                        Returns
-                        -------
-                        bool or None
-                            Whether any value changed, or None if the values are
-                            invalid, in which case nothing is applied.
-
-                        """
-                        nonlocal pending
-                        message = check_values()
-                        view.show_values_status(message)
-                        if message is not None:
-                            return None
-                        changed = state.apply_parameters(
-                            view.values(), view.flash_values(), _label_idx
-                        )
-                        pending = False
-                        return changed
-
-                    # Whether a value or flash slider was moved since the last
-                    # applied values. The sliders round to their step, so their
-                    # untouched values are not applied (they would change the
-                    # stored calibration).
-                    pending = False
-
-                    def on_value_slider(*args):
-                        nonlocal pending
-                        pending = True
-
-                    for slider in sliders_color_to_signal + sliders_flash:
-                        slider.on_changed(on_value_slider)
-
-                    for slider in view.all_sliders:
-                        slider.on_changed(view.mark_unsaved)
-
-                    def update_analysis(event=None):
-                        """Apply the slider values and update everything."""
-                        changed = apply_parameters()
-                        if changed is None:
-                            return
-                        level = view.selected_level()
-                        new_level = level != state.resolution_level
-                        if changed:
-                            view.mark_unsaved()
-                        if changed or new_level:
-                            view.show_busy(
-                                f"Computing at resolution 1/{level} ..."
-                                if new_level
-                                else "Computing ..."
-                            )
-                        if new_level:
-                            state.set_resolution(level)
-                            view.set_resolution_title()
-                        if changed or new_level:
-                            state.update_mass_analysis()
-                        view.refresh(
-                            recompute=True, signal_function=True, mass_plot=True
-                        )
-                        view.show_busy("")
-
-                    # Connect button callbacks
-                    buttons["Update"].on_clicked(update_analysis)
-
-                    def reset(event):
-                        """Restore the initial values of this label, flash, contours."""
-                        for slider, value in zip(
-                            sliders_color_to_signal, initial_values[_label_idx]
-                        ):
-                            slider.set_val(value)
-                        if self.has_gas:
-                            for slider, value in zip(sliders_flash, initial_flash):
-                                slider.set_val(value)
-                        for slider in sliders_threshold:
-                            slider.set_val(default_contour_threshold)
-                        update_analysis()
-
-                    buttons["Reset"].on_clicked(reset)
-
-                    def new_label(event):
-                        nonlocal done_tuning_values, need_to_pick_new_label
-                        nonlocal rebuilding
-                        done_tuning_values = True
-                        need_to_pick_new_label = True
-                        rebuilding = True
-                        plt.close("all")
-
-                    buttons["New Label"].on_clicked(new_label)
-
-                    def new_image(event):
-                        nonlocal done_tuning_values, need_to_pick_new_image
-                        nonlocal rebuilding
-                        done_tuning_values = True
-                        need_to_pick_new_image = True
-                        rebuilding = True
-                        plt.close("all")
-
-                    buttons["New Image"].on_clicked(new_image)
-
-                    def save_calibration() -> bool:
-                        """Store the calibration; return if it was successful."""
-                        if save is None:
-                            logger.warning("No way to save the calibration provided.")
-                            return False
-                        try:
-                            save()
-                        except Exception:
-                            logger.exception("Saving the calibration failed.")
-                            return False
-                        state.mark_saved()
-                        logger.info("Saved the calibration.")
-                        return True
-
-                    def on_save(event):
-                        """Apply the current values and save; the window stays open."""
-                        message = check_values()
-                        if message is not None:
-                            view.show_values_status(message)
-                            view.show_save_status(
-                                "Not saved: fix the values first.", "red"
-                            )
-                            return
-                        update_analysis()
-                        saved = save_calibration()
-                        view.show_save_status(
-                            "Saved." if saved else "Saving failed, see log.",
-                            "green" if saved else "red",
-                        )
-
-                    buttons["Save"].on_clicked(on_save)
-
-                    def on_close(event):
-                        """Closing the window ends the calibration; unsaved changes
-                        are saved or discarded, as the user decides."""
-                        nonlocal done_tuning_values, done_calibration
-                        if rebuilding:
-                            return
-                        try:
-                            message = check_values() if pending else None
-                            if pending and message is None:
-                                apply_parameters()
-                            elif pending:
-                                logger.warning(
-                                    f"{message}. The values of the sliders are not "
-                                    "applied."
-                                )
-                            if state.has_unsaved_changes():
-                                keep = ask_yes_no(
-                                    "Unsaved calibration",
-                                    "The calibration has unsaved changes.",
-                                    yes="Save",
-                                    no="Discard",
-                                )
-                                # Without a dialog (e.g. a script), keep the changes
-                                if keep is None or keep:
-                                    save_calibration()
-                                else:
-                                    logger.info(
-                                        "Discarded the unsaved changes of the "
-                                        "calibration."
-                                    )
-                        except Exception:
-                            logger.exception("Closing the calibration window failed.")
-                        finally:
-                            done_tuning_values = True
-                            done_calibration = True
-
-                    fig.canvas.mpl_connect("close_event", on_close)
-
-                    def next_signal(event):
-                        state.next_signal()
-                        view.refresh(recompute=False)
-
-                    buttons["Next Signal"].on_clicked(next_signal)
-
-                    def next_label(event):
-                        """Move to the next label and rebuild the figure for it."""
-                        nonlocal done_tuning_values, need_to_pick_new_label
-                        nonlocal rebuilding
-                        state.next_label()
-                        need_to_pick_new_label = False
-                        done_tuning_values = True
-                        rebuilding = True
-                        plt.close("all")
-
-                    buttons["Next Label"].on_clicked(next_label)
-
-                    def next_image(event):
-                        view.show_busy("Computing ...")
-                        state.next_image()
-                        view.refresh(recompute=True)
-                        view.show_busy("")
-
-                    buttons["Next Image"].on_clicked(next_image)
-
-                    plt.show()
-
-                show_tuner(label_idx)
-
-        return not state.has_unsaved_changes()
+        return CalibrationController(state, self, cmap, save).run()
 
     def save(self, folder: Path, interpretation: Interpretation) -> None:
         """Save the calibration data to json file.
