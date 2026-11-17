@@ -829,6 +829,14 @@ class AnalysisFingersConfig:
         },
     )
     """Whether to apply expert-knowledge ROI masking for this analysis."""
+    filter_background: bool = field(
+        default=False,
+        metadata={
+            "name": "Filter background",
+            "help": FILTER_BACKGROUND_HELP,
+        },
+    )
+    """Whether to stretch the color channels of the image under the result plots."""
 
     def load(
         self,
@@ -883,6 +891,9 @@ class AnalysisFingersConfig:
 
         self.expert_knowledge = _get_key(
             sub_sec, "expert_knowledge", required=False, default=True, type_=bool
+        )
+        self.filter_background = _get_key(
+            sub_sec, "filter_background", required=False, default=False, type_=bool
         )
         return self
 

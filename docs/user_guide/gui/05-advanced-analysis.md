@@ -121,6 +121,10 @@ guidance: start with a broad ROI, narrow it once you've visually confirmed
 where fingers actually occur, and tune `threshold` against a handful of known
 snapshots before running the full batch.
 
+`filter_background = true` (tick box **Filter background**; default off) draws the
+result plots (tips, fjords, skeleton, paths) on the contrast-stretched copy of the
+image described under segmentation; detected fingers and statistics are unchanged.
+
 ## Expert-knowledge ROI constraints
 
 `[analysis.expert_knowledge]` forces selected scalar fields to zero outside a

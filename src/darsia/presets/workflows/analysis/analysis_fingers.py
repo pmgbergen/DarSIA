@@ -39,6 +39,7 @@ from darsia.single_image_analysis.contouranalysis import (
 )
 from darsia.single_image_analysis.path_evolution_analysis import PathEvolutionAnalysis
 from darsia.single_image_analysis.skeleton_analysis import SkeletonAnalysis
+from darsia.utils.augmented_plotting import stretch_channels
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +170,7 @@ def analysis_fingers_from_context(
     if not fingers_configs:
         raise ValueError("At least one fingers configuration is required.")
     fingers_config = next(iter(fingers_configs.values()))
+    filter_background = ctx.config.analysis.fingers.filter_background
 
     assert fingers_config.roi is not None
 
@@ -335,6 +337,13 @@ def analysis_fingers_from_context(
             color_to_mass_analysis(img) if requires_color_to_mass else None
         )
 
+        # Photo under the result plots; the analysis uses `img`
+        picture = (
+            stretch_channels(img)
+            if filter_background and (save_result_plots or show)
+            else img
+        )
+
         # Produce contour images.
         segmentation = segmentation_analysis(
             img,
@@ -478,7 +487,7 @@ def analysis_fingers_from_context(
             )
             if save_result_plots:
                 contour_analysis.plot_peaks(
-                    img,
+                    picture,
                     peaks,
                     roi_config.roi,
                     contours=contours,
@@ -496,7 +505,7 @@ def analysis_fingers_from_context(
                     },
                 )
                 contour_analysis.plot_valleys(
-                    img,
+                    picture,
                     valleys,
                     roi_config.roi,
                     contours=contours,
@@ -522,7 +531,7 @@ def analysis_fingers_from_context(
                 ).with_suffix(".png")
                 if save_result_plots:
                     gradient_based_contour_analysis.plot_peaks(
-                        img,
+                        picture,
                         gradient_based_peaks,
                         roi_config.roi,
                         contours=lower_gradient_based_contours,
@@ -541,7 +550,7 @@ def analysis_fingers_from_context(
                         },
                     )
                     gradient_based_contour_analysis.plot_peaks(
-                        img,
+                        picture,
                         gradient_based_peaks,
                         roi_config.roi,
                         contours=lower_gradient_based_contours,
@@ -598,7 +607,7 @@ def analysis_fingers_from_context(
 
             if fingers_config.include_skeleton_analysis and save_result_plots:
                 skeleton_analysis.plot_skeleton(
-                    img=img,
+                    img=picture,
                     skeleton=skeleton,
                     leaves=leaves,
                     junctions=junctions,
@@ -658,7 +667,7 @@ def analysis_fingers_from_context(
             ).with_suffix(".png")
             if save_result_plots:
                 evolution_analysis["peak"][key].plot_paths(
-                    img,
+                    picture,
                     roi=roi_config.roi,
                     path=peak_paths_path,
                     show=show,
@@ -670,7 +679,7 @@ def analysis_fingers_from_context(
                 ).with_suffix(".png")
             if fingers_config.include_gradient_based_analysis and save_result_plots:
                 evolution_analysis["interface"][key].plot_paths(
-                    img,
+                    picture,
                     roi=roi_config.roi,
                     path=gradient_paths_path,
                     show=show,
@@ -687,19 +696,19 @@ def analysis_fingers_from_context(
             ).with_suffix(".png")
             if fingers_config.include_skeleton_analysis and save_result_plots:
                 evolution_analysis["leaf"][key].plot_paths(
-                    img,
+                    picture,
                     roi=roi_config.roi,
                     path=leaf_paths_path,
                     show=show,
                 )
                 evolution_analysis["junction"][key].plot_paths(
-                    img,
+                    picture,
                     roi=roi_config.roi,
                     path=junction_paths_path,
                     show=show,
                 )
                 evolution_analysis["base_junction"][key].plot_paths(
-                    img,
+                    picture,
                     roi=roi_config.roi,
                     path=base_junction_paths_path,
                     show=show,
