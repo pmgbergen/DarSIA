@@ -11,6 +11,9 @@ each label; the kernels go once over the pixels instead. They give the same numb
   ``side="right"`` on the same edges, the right edge counted in the last bin, colors
   outside the edges dropped); pixels outside the mask count as color 0.
 
+`label_mean_colors` (base colors of the labels) agrees with `np.mean` only up to
+rounding in the last digits, since it sums in another order.
+
 The difference is taken in the type of the images, so both must have the same float
 type (checked by `exact_for`). The kernels require numba; without it
 `NUMBA_AVAILABLE` is False and callers use the array-based implementation.
@@ -33,8 +36,10 @@ __all__ = [
     "exact_for",
     "histogram_edges",
     "relative_color_range",
+    "label_values_and_indices",
     "label_indices",
     "label_color_histograms",
+    "label_mean_colors",
 ]
 
 FLOAT_TYPES = (np.float32, np.float64)
@@ -164,6 +169,18 @@ if NUMBA_AVAILABLE:
                         continue
                     counts[chunk, label_idx[i, j], br, bg, bb] += 1
 
+    @njit(cache=True, parallel=True, nogil=True)
+    def _mean_kernel(image, mask, label_idx, sums, counts):  # pragma: no cover
+        rows, cols = mask.shape
+        for i in prange(rows):
+            for j in range(cols):
+                if not mask[i, j]:
+                    continue
+                index = label_idx[i, j]
+                counts[i, index] += 1
+                for c in range(3):
+                    sums[i, index, c] += image[i, j, c]
+
 
 def relative_color_range(
     image: np.ndarray, baseline: np.ndarray, mask: np.ndarray
@@ -194,6 +211,38 @@ def relative_color_range(
     smallest[has_nan] = np.nan
     largest[has_nan] = np.nan
     return smallest, largest
+
+
+MAX_LABEL_SPAN = 1 << 20
+"""Largest span of integer labels counted directly (else `np.unique`)."""
+
+
+def label_values_and_indices(labels: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Sorted labels (as `np.unique`) and the index of each pixel's label.
+
+    Integer labels of a moderate span are counted directly (one pass, no sorting).
+
+    Parameters
+    ----------
+    labels : np.ndarray
+        Label of each pixel (rows, cols).
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Labels (type of `labels`) and indices (rows, cols).
+
+    """
+    if labels.dtype.kind in "iu" and labels.size > 0:
+        low, high = int(labels.min()), int(labels.max())
+        if high - low < MAX_LABEL_SPAN:
+            offsets = labels.astype(np.intp) - low
+            present = np.bincount(offsets.ravel(), minlength=high - low + 1) > 0
+            values = (np.flatnonzero(present) + low).astype(labels.dtype)
+            table = np.cumsum(present) - 1
+            return values, table[offsets]
+    values = np.unique(labels)
+    return values, label_indices(labels, values)
 
 
 def label_indices(labels: np.ndarray, label_values: np.ndarray) -> np.ndarray:
@@ -252,3 +301,38 @@ def label_color_histograms(
         image, baseline, mask, label_idx, edges[0], edges[1], edges[2], counts
     )
     return counts.sum(axis=0)
+
+
+def label_mean_colors(
+    image: np.ndarray, mask: np.ndarray, label_idx: np.ndarray, num_labels: int
+) -> np.ndarray:
+    """Mean color of each label's pixels in a mask.
+
+    Sums per image row (float64), then over the rows; the result does not depend on
+    the number of threads. It agrees with `np.mean` of the pixels up to rounding in
+    the last digits (the order of summation differs).
+
+    Parameters
+    ----------
+    image : np.ndarray
+        Color image (rows, cols, 3), float64.
+    mask : np.ndarray
+        Boolean mask (rows, cols).
+    label_idx : np.ndarray
+        Index of each pixel's label (`label_indices`).
+    num_labels : int
+        Number of labels.
+
+    Returns
+    -------
+    np.ndarray
+        Mean colors (labels, 3); NaN for a label without pixels in the mask.
+
+    """
+    rows = mask.shape[0]
+    sums = np.zeros((rows, num_labels, 3), dtype=np.float64)
+    counts = np.zeros((rows, num_labels), dtype=np.int64)
+    _mean_kernel(image, mask, label_idx, sums, counts)
+    total = counts.sum(axis=0)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return sums.sum(axis=0) / total[:, None]

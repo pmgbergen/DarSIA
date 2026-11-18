@@ -131,6 +131,18 @@ class LabelColorPathMapRegression:
         """Get the shape of the discrete color range."""
         return 3 * (self.discrete_color_range.resolution,)
 
+    def _label_values_and_indices(self) -> tuple[np.ndarray, np.ndarray]:
+        """Sorted labels (as `np.unique`) and each pixel's label index, computed once
+        for the labels."""
+        cached = getattr(self, "_label_index", None)
+        if cached is None or cached[0] is not self.labels.img:
+            values, indices = color_spectrum_kernels.label_values_and_indices(
+                self.labels.img
+            )
+            cached = (self.labels.img, values, indices)
+            self._label_index = cached
+        return cached[1], cached[2]
+
     @darsia.timing_decorator
     def get_base_colors(
         self, image: darsia.Image, verbose: bool = False
@@ -157,11 +169,32 @@ class LabelColorPathMapRegression:
                 {label: color.copy() for label, color in cached[1].items()}
             )
         base_colors = {}
-        for mask, label in darsia.Masks(self.labels, return_label=True):
-            if label in self.ignore_labels:
-                base_colors[label] = np.zeros(3)
-                continue
-            base_colors[label] = get_mean_color(image, mask=(self.mask.img & mask.img))
+        if (
+            color_spectrum_kernels.NUMBA_AVAILABLE
+            and image.img.dtype == np.float64
+            and image.img.ndim == 3
+            and image.img.shape[2] == 3
+            and self.mask.img.dtype == np.bool_
+            and self.mask.img.shape == image.img.shape[:2]
+            and self.labels.img.shape == image.img.shape[:2]
+        ):
+            # One pass over the pixels for all labels
+            label_values, label_idx = self._label_values_and_indices()
+            means = color_spectrum_kernels.label_mean_colors(
+                image.img, self.mask.img, label_idx, len(label_values)
+            )
+            for label, mean in zip(label_values, means):
+                base_colors[label] = (
+                    np.zeros(3) if label in self.ignore_labels else mean.copy()
+                )
+        else:
+            for mask, label in darsia.Masks(self.labels, return_label=True):
+                if label in self.ignore_labels:
+                    base_colors[label] = np.zeros(3)
+                    continue
+                base_colors[label] = get_mean_color(
+                    image, mask=(self.mask.img & mask.img)
+                )
         self._base_colors = (image, {k: v.copy() for k, v in base_colors.items()})
 
         if verbose:
@@ -288,7 +321,6 @@ class LabelColorPathMapRegression:
         )
 
         # Single pass over the pixels of each image (same counts as below), where exact
-        label_values = np.unique(self.labels.img)
         single_pass = (
             len(images) > 0
             and baseline is not None
@@ -302,9 +334,9 @@ class LabelColorPathMapRegression:
             edges = color_spectrum_kernels.histogram_edges(
                 self._shape, self.color_range.range
             )
-            label_idx = color_spectrum_kernels.label_indices(
-                self.labels.img, label_values
-            )
+            label_values, label_idx = self._label_values_and_indices()
+        else:
+            label_values = np.unique(self.labels.img)
 
         # Loop over all images; without images (None), each label has the zero relative
         # color only, which gives the same normalized histogram as images=[baseline].
