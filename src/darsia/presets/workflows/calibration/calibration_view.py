@@ -71,11 +71,16 @@ class StatusText:
     ----------
     text : matplotlib.text.Text
         The text artist.
+    blitter : SliderBlitter, optional
+        Repaints only the region of the text (otherwise the whole figure is redrawn).
 
     """
 
-    def __init__(self, text) -> None:
+    def __init__(self, text, blitter: SliderBlitter | None = None) -> None:
         self.text = text
+        self.blitter = blitter
+        if blitter is not None:
+            blitter.add_texts([text])
 
     def get_text(self) -> str:
         """Shown message."""
@@ -91,8 +96,9 @@ class StatusText:
         color : str, optional
             Color of the message; unchanged if None.
         now : bool
-            Draw right away (while a calculation blocks the event loop); otherwise
-            when the window is idle.
+            Draw the figure right away (while a calculation blocks the event loop);
+            otherwise repaint only the text (with a blitter), or the figure when the
+            window is idle.
 
         """
         if message == self.text.get_text() and color in (None, self.text.get_color()):
@@ -104,6 +110,8 @@ class StatusText:
         if now:
             canvas.draw()
             canvas.flush_events()
+        elif self.blitter is not None:
+            self.blitter.blit_text(self.text)
         else:
             canvas.draw_idle()
 
@@ -629,7 +637,8 @@ class CalibrationView:
                 color="darkorange",
                 ha="right",
                 va="bottom",
-            )
+            ),
+            self.blitter,
         )
         """Message shown while a calculation blocks the window."""
         self.values_status = StatusText(
@@ -641,7 +650,8 @@ class CalibrationView:
                 color="red",
                 ha="left",
                 va="center",
-            )
+            ),
+            self.blitter,
         )
         """Message about invalid (decreasing) signal values."""
 
@@ -664,7 +674,8 @@ class CalibrationView:
                 fontsize=9,
                 color="green",
                 va="center",
-            )
+            ),
+            self.blitter,
         )
 
     # ! ---- LABEL ----
@@ -929,11 +940,16 @@ class CalibrationView:
         """Show the result of saving."""
         self.save_status.set(text, color)
 
-    def show_busy(self, message: str) -> None:
-        """Show (or clear) a message and draw it right away.
+    def show_busy(self, message: str, now: bool = True) -> None:
+        """Show (or clear) the message about a running calculation.
 
-        The calculations run in the window's event loop, so the
-        window does not react until they are done.
+        Parameters
+        ----------
+        message : str
+            Message; empty to clear.
+        now : bool
+            Draw right away, for a calculation that blocks the window's event loop;
+            otherwise (calculation in the background) when the window is idle.
 
         """
-        self.busy_status.set(message, now=True)
+        self.busy_status.set(message, now=now)

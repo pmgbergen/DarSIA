@@ -25,7 +25,7 @@ __all__ = ["NUMBA_AVAILABLE", "evaluate_labeled_image"]
 
 if NUMBA_AVAILABLE:
 
-    @njit(cache=True, error_model="numpy", parallel=True)
+    @njit(cache=True, error_model="numpy", parallel=True, nogil=True)
     def _evaluate_labeled_image(
         signal, labels, label_offset, lookup, xp, fp, num, low, high, out
     ):

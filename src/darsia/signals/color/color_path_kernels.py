@@ -252,7 +252,7 @@ if NUMBA_AVAILABLE:
                 )
         return result
 
-    @njit(cache=True, error_model="numpy", parallel=True)
+    @njit(cache=True, error_model="numpy", parallel=True, nogil=True)
     def _evaluate_colors(
         colors,
         sup,
@@ -276,7 +276,7 @@ if NUMBA_AVAILABLE:
             )
             out[i] = _evaluate(c0, c1, c2, sup, dist, val, num_segments[0], 0, fitted)
 
-    @njit(cache=True, error_model="numpy", parallel=True)
+    @njit(cache=True, error_model="numpy", parallel=True, nogil=True)
     def _evaluate_labeled_image(
         image,
         labels,
@@ -318,7 +318,7 @@ if NUMBA_AVAILABLE:
 
 if NUMBA_AVAILABLE:
 
-    @njit(cache=True, error_model="numpy", parallel=True)
+    @njit(cache=True, error_model="numpy", parallel=True, nogil=True)
     def _evaluate_labeled_difference(
         image,
         base,
