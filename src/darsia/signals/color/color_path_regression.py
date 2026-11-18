@@ -15,6 +15,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.manifold import LocallyLinearEmbedding
 
 import darsia
+import darsia.signals.color.color_spectrum_kernels as color_spectrum_kernels
 
 from .utils import get_mean_color
 
@@ -148,12 +149,20 @@ class LabelColorPathMapRegression:
         LabelColorMap
             An object containing the base colors for each label.
         """
+        # The same image again (e.g. the baseline for the baseline and the tracer
+        # spectrum): the colors computed before
+        cached = getattr(self, "_base_colors", None)
+        if cached is not None and cached[0] is image and not verbose:
+            return darsia.LabelColorMap(
+                {label: color.copy() for label, color in cached[1].items()}
+            )
         base_colors = {}
         for mask, label in darsia.Masks(self.labels, return_label=True):
             if label in self.ignore_labels:
                 base_colors[label] = np.zeros(3)
                 continue
             base_colors[label] = get_mean_color(image, mask=(self.mask.img & mask.img))
+        self._base_colors = (image, {k: v.copy() for k, v in base_colors.items()})
 
         if verbose:
             fig = plt.figure(figsize=(8, 4))
@@ -278,37 +287,68 @@ class LabelColorPathMapRegression:
             )
         )
 
+        # Single pass over the pixels of each image (same counts as below), where exact
+        label_values = np.unique(self.labels.img)
+        single_pass = (
+            len(images) > 0
+            and baseline is not None
+            and np.isclose(threshold_zero, 0.0)
+            and all(
+                color_spectrum_kernels.exact_for(image.img, baseline.img, self.mask.img)
+                for image in images
+            )
+        )
+        if single_pass:
+            edges = color_spectrum_kernels.histogram_edges(
+                self._shape, self.color_range.range
+            )
+            label_idx = color_spectrum_kernels.label_indices(
+                self.labels.img, label_values
+            )
+
         # Loop over all images; without images (None), each label has the zero relative
         # color only, which gives the same normalized histogram as images=[baseline].
         for image in images if len(images) > 0 else [None]:
             # Get relative image
-            if image is not None:
+            if single_pass:
+                counts = color_spectrum_kernels.label_color_histograms(
+                    image.img,
+                    baseline.img,
+                    self.mask.img,
+                    label_idx,
+                    len(label_values),
+                    edges,
+                )
+            elif image is not None:
                 relative_image = image.copy()
                 if baseline is not None:
                     relative_image.img -= baseline.img
                 relative_image.img[~self.mask.img] = 0.0
 
-            for label in np.unique(self.labels.img):
-                # Fetch relative colors in the label
-                if image is None:
-                    relative_colors = np.zeros((1, 3))
+            for index, label in enumerate(label_values):
+                if single_pass:
+                    single_hist = counts[index].astype(float)
                 else:
-                    relative_colors = relative_image.img[
-                        self.labels.img == label
-                    ].reshape((-1, 3))
+                    # Fetch relative colors in the label
+                    if image is None:
+                        relative_colors = np.zeros((1, 3))
+                    else:
+                        relative_colors = relative_image.img[
+                            self.labels.img == label
+                        ].reshape((-1, 3))
 
-                # Remove zero data
-                if not np.isclose(threshold_zero, 0.0):
-                    relative_colors = relative_colors[
-                        np.linalg.norm(relative_colors, axis=1) > threshold_zero
-                    ]
+                    # Remove zero data
+                    if not np.isclose(threshold_zero, 0.0):
+                        relative_colors = relative_colors[
+                            np.linalg.norm(relative_colors, axis=1) > threshold_zero
+                        ]
 
-                # Put the data into a 3D histogram
-                single_hist, _ = np.histogramdd(
-                    relative_colors,
-                    bins=self._shape,
-                    range=self.color_range.range,
-                )
+                    # Put the data into a 3D histogram
+                    single_hist, _ = np.histogramdd(
+                        relative_colors,
+                        bins=self._shape,
+                        range=self.color_range.range,
+                    )
 
                 # Ignore colors
                 if ignore is not None:

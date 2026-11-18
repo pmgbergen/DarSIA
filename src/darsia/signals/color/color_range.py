@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 
 import darsia
+import darsia.signals.color.color_spectrum_kernels as color_spectrum_kernels
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +73,22 @@ class ColorRange:
         # Initialize min and max color arrays
         min_color = np.array([[np.inf, np.inf, np.inf]])
         max_color = np.array([[-np.inf, -np.inf, -np.inf]])
+        mask_used = mask is not None and bool(np.any(mask.img))
 
         for image in images:
+            if (
+                baseline is not None
+                and mask_used
+                and color_spectrum_kernels.exact_for(image.img, baseline.img, mask.img)
+            ):
+                # Single pass over the pixels, same values
+                _min_color, _max_color = color_spectrum_kernels.relative_color_range(
+                    image.img, baseline.img, mask.img
+                )
+                color_mode = darsia.ColorMode.RELATIVE
+                min_color = np.min(np.vstack((min_color, _min_color)), axis=0)
+                max_color = np.max(np.vstack((max_color, _max_color)), axis=0)
+                continue
             if baseline is None:
                 array = image.img
                 color_mode = darsia.ColorMode.ABSOLUTE
