@@ -403,6 +403,11 @@ class CalibrationView:
         """Contour overlay shown in the contour panel."""
         self.coarse_contour_img = ScreenImage(ax_contour, self._shown_contour.img)
 
+        # The top row shows the same coarse grid: zoom and pan apply to all three
+        for ax in (self.ax_signal, ax_contour):
+            ax.sharex(self.ax_coarse_image)
+            ax.sharey(self.ax_coarse_image)
+
         # Bottom left: signal function of the label
         self.ax_signal_function = plt.subplot(gs[1, 0])
         self._build_signal_function()
