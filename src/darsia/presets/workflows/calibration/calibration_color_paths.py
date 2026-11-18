@@ -183,12 +183,13 @@ def calibration_color_paths_from_context(
             all=False,
             sub_config=baseline_sub_config,
         )
-        baseline_images = load_images_with_cache(
-            rig=fluidflower,
-            paths=baseline_image_paths,
-            use_cache=config.data.use_cache,
-            cache_dir=config.data.cache,
-        )
+        with darsia.timed("baseline images"):
+            baseline_images = load_images_with_cache(
+                rig=fluidflower,
+                paths=baseline_image_paths,
+                use_cache=config.data.use_cache,
+                cache_dir=config.data.cache,
+            )
     elif uses_baseline_spectrum:
         logger.info(
             "No baseline images configured (calibration.color.baseline): the rig "
@@ -197,12 +198,13 @@ def calibration_color_paths_from_context(
         )
 
     # Cache calibration images for performance
-    calibration_images: list[darsia.Image] = load_images_with_cache(
-        rig=fluidflower,
-        paths=calibration_image_paths,
-        use_cache=config.data.use_cache,
-        cache_dir=config.data.cache,
-    )
+    with darsia.timed("calibration images"):
+        calibration_images: list[darsia.Image] = load_images_with_cache(
+            rig=fluidflower,
+            paths=calibration_image_paths,
+            use_cache=config.data.use_cache,
+            cache_dir=config.data.cache,
+        )
 
     # ! ---- BUILD CALIBRATION MASK ----
 
@@ -251,11 +253,12 @@ def calibration_color_paths_from_context(
 
     # ! ---- IDENTIFY AND STORE (RELATIVE) COLOR RANGE ----
 
-    tracer_color_range = darsia.ColorRange.from_images(
-        images=calibration_images,
-        baseline=fluidflower.baseline,
-        mask=calibration_mask,
-    )
+    with darsia.timed("colour range"):
+        tracer_color_range = darsia.ColorRange.from_images(
+            images=calibration_images,
+            baseline=fluidflower.baseline,
+            mask=calibration_mask,
+        )
 
     # ! ---- COLOR PATH TOOL ----
 
@@ -276,24 +279,26 @@ def calibration_color_paths_from_context(
     ignore_spectrum: darsia.LabelColorSpectrumMap | None = None
 
     if ignore_mode in ("baseline", "expanded"):
-        baseline_color_spectrum: darsia.LabelColorSpectrumMap = (
-            color_path_regression.get_color_spectrum(
-                images=baseline_images,
-                baseline=fluidflower.baseline,
-                threshold_significant=calibration_cfg.threshold_baseline,
-                verbose=show,
+        with darsia.timed("baseline spectrum"):
+            baseline_color_spectrum: darsia.LabelColorSpectrumMap = (
+                color_path_regression.get_color_spectrum(
+                    images=baseline_images,
+                    baseline=fluidflower.baseline,
+                    threshold_significant=calibration_cfg.threshold_baseline,
+                    verbose=show,
+                )
             )
-        )
         baseline_color_spectrum.save(embedding.baseline_color_spectrum_folder)
 
         if ignore_mode == "expanded":
             # Expand the baseline color spectrum through linear regression
-            expanded_baseline_color_spectrum: darsia.LabelColorSpectrumMap = (
-                color_path_regression.expand_color_spectrum(
-                    color_spectrum=baseline_color_spectrum,
-                    verbose=False,
+            with darsia.timed("expanded spectrum"):
+                expanded_baseline_color_spectrum: darsia.LabelColorSpectrumMap = (
+                    color_path_regression.expand_color_spectrum(
+                        color_spectrum=baseline_color_spectrum,
+                        verbose=False,
+                    )
                 )
-            )
             expanded_baseline_color_spectrum.save(
                 embedding.baseline_color_spectrum_folder
             )
@@ -306,14 +311,15 @@ def calibration_color_paths_from_context(
 
     # ! ---- EXTRACT COLOR SPECTRUM OF TRACERS ---- ! #
 
-    tracer_color_spectrum = color_path_regression.get_color_spectrum(
-        images=calibration_images,
-        baseline=fluidflower.baseline,
-        ignore=ignore_spectrum,
-        threshold_significant=calibration_cfg.threshold_calibration,
-        path=embedding.figures_folder,
-        verbose=show,
-    )
+    with darsia.timed("tracer spectrum"):
+        tracer_color_spectrum = color_path_regression.get_color_spectrum(
+            images=calibration_images,
+            baseline=fluidflower.baseline,
+            ignore=ignore_spectrum,
+            threshold_significant=calibration_cfg.threshold_calibration,
+            path=embedding.figures_folder,
+            verbose=show,
+        )
 
     # Initialize manual calibration from a previous calibration, if available
     initial_paths = (
@@ -336,15 +342,16 @@ def calibration_color_paths_from_context(
     if calibration_cfg.calibration_mode == "manual":
         # One window for all labels; it saves (Save button, or on closing if the
         # user wants to keep unsaved changes)
-        prepared = color_path_regression.prepare_color_path_editing(
-            color_spectrum=tracer_color_spectrum,
-            ignore=ignore_spectrum,
-            num_segments=calibration_cfg.num_segments,
-            weighting=calibration_cfg.histogram_weighting,
-            ignore_labels=calibration_cfg.ignore_labels,
-            initial_paths=initial_paths,
-            verbose=show,
-        )
+        with darsia.timed("path preparation"):
+            prepared = color_path_regression.prepare_color_path_editing(
+                color_spectrum=tracer_color_spectrum,
+                ignore=ignore_spectrum,
+                num_segments=calibration_cfg.num_segments,
+                weighting=calibration_cfg.histogram_weighting,
+                ignore_labels=calibration_cfg.ignore_labels,
+                initial_paths=initial_paths,
+                verbose=show,
+            )
         editable = [
             label
             for label, item in prepared.items()

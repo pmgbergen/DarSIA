@@ -118,10 +118,15 @@ def preset_calibration(rig=Rig, **kwargs):
 
     if args.color_embedding:
         print("Running color embedding calibration...", flush=True)
-        calibration_color_paths_from_context(
-            ctx,
-            args.show,
-        )
+        try:
+            calibration_color_paths_from_context(
+                ctx,
+                args.show,
+            )
+        finally:
+            report_timings(
+                ctx.config, workflow="calibration colour paths", config=args.config
+            )
 
     if args.mass or args.default_mass:
         print("Running mass calibration...", flush=True)
