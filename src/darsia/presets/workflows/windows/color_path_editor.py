@@ -771,13 +771,24 @@ class ColorPathEditorWindow:
         add_button("Next Label", [0.81, 0.95, 0.08, 0.04])
         add_button("Next Image", [0.90, 0.95, 0.08, 0.04])
 
-        # Key color: selection and its channels (applied while dragging)
-        add_button("Previous key", [0.02, 0.235, 0.08, 0.045])
-        add_button("Next key", [0.18, 0.235, 0.08, 0.045])
-        key_text = fig.text(0.14, 0.2575, "", ha="center", va="center", fontsize=9)
+        # Below the panels, two groups: the key color under the 3D panel (left), the
+        # operations on the path under the image and pH view (right)
+        left, right = 0.05, 0.54
+        title_y = 0.255
+        rows = [0.195, 0.145, 0.095]
+        height = 0.04
+        for x, title in ((left, "Key color"), (right, "Path")):
+            fig.text(x, title_y, title, fontsize=9, fontweight="bold", va="center")
+
+        # Key color: which key, selection, pipette (sets the selected key from the
+        # zoomed region of the image), and its channels (applied while dragging)
+        key_text = fig.text(left, rows[0] + 0.5 * height, "", ha="left", va="center")
+        add_button("Previous key", [left + 0.08, rows[0], 0.09, height])
+        add_button("Next key", [left + 0.18, rows[0], 0.09, height])
+        add_button("Pipette (zoom)", [left + 0.28, rows[0], 0.11, height])
         self.channel_sliders = [
             Slider(
-                fig.add_axes([0.32, 0.255 - row * 0.04, 0.34, 0.025]),
+                fig.add_axes([left + 0.03, y, 0.33, 0.025]),
                 channel,
                 -MIN_SLIDER_RANGE,
                 MIN_SLIDER_RANGE,
@@ -785,20 +796,20 @@ class ColorPathEditorWindow:
                 valstep=SLIDER_STEP,
                 valfmt="%+.3f",
             )
-            for row, channel in enumerate("RGB")
+            for y, channel in zip([0.15, 0.11, 0.07], "RGB")
         ]
-        add_button("Reset (auto)", [0.58, 0.12, 0.08, 0.05])
-        add_button("Auto", [0.67, 0.12, 0.08, 0.05])
 
-        add_button("Pipette", [0.02, 0.12, 0.08, 0.05])
-        add_button("+", [0.11, 0.12, 0.04, 0.05])
-        add_button("-", [0.16, 0.12, 0.04, 0.05])
+        # Path: automatic fit, keys, alignment
+        add_button("Auto", [right, rows[0], 0.1, height])
+        add_button("Reset (auto)", [right + 0.11, rows[0], 0.1, height])
+        add_button("Add key", [right, rows[1], 0.1, height])
+        add_button("Remove key", [right + 0.11, rows[1], 0.1, height])
         self.align_box = TextBox(
-            fig.add_axes([0.25, 0.12, 0.12, 0.05]), "Align", initial=""
+            fig.add_axes([right + 0.04, rows[2], 0.1, height]), "Keys", initial=""
         )
         # No submit when leaving the text box (Align applies it)
         self.align_box.canvas.mpl_disconnect(self.align_box._cids[-1])
-        add_button("Align", [0.38, 0.12, 0.07, 0.05])
+        add_button("Align", [right + 0.15, rows[2], 0.06, height])
 
         # Messages (repainted alone)
         self.blitter = SliderBlitter(fig)
@@ -811,7 +822,7 @@ class ColorPathEditorWindow:
         )
         """Result of saving, or that there are unsaved changes."""
         self.message = StatusText(
-            fig.text(0.02, 0.08, "", fontsize=8, color="red", va="top"), self.blitter
+            fig.text(left, 0.045, "", fontsize=8, color="red", va="top"), self.blitter
         )
         """Warnings of the last action (e.g. pipette skipped)."""
         self.busy_status = StatusText(
@@ -829,11 +840,11 @@ class ColorPathEditorWindow:
         self.buttons["Previous key"].on_clicked(lambda event: self._step_key(-1))
         self.buttons["Next key"].on_clicked(lambda event: self._step_key(1))
         self.buttons["Align"].on_clicked(self._on_align)
-        self.buttons["+"].on_clicked(self._on_add)
-        self.buttons["-"].on_clicked(self._on_remove)
+        self.buttons["Add key"].on_clicked(self._on_add)
+        self.buttons["Remove key"].on_clicked(self._on_remove)
         self.buttons["Reset (auto)"].on_clicked(self._on_reset)
         self.buttons["Auto"].on_clicked(self._on_auto)
-        self.buttons["Pipette"].on_clicked(self._on_pipette)
+        self.buttons["Pipette (zoom)"].on_clicked(self._on_pipette)
 
     # ! ---- SHOWING ----
 
