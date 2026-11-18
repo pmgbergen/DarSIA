@@ -28,6 +28,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from plotly.subplots import make_subplots
 
 import darsia
+from darsia.image.conversion_kernels import to_float64
 
 logger = logging.getLogger(__name__)
 
@@ -532,12 +533,17 @@ class Image:
         is_float = dtype in [float, np.float16, np.float32, np.float64]
         if data_type in [bool]:
             copy_image.img = skimage.img_as_bool(copy_image.img)
-        elif data_type in [float]:
-            copy_image.img = skimage.img_as_float(copy_image.img)
+        elif data_type in [float, np.float64]:
+            # Unsigned integers on all cores (same values as skimage)
+            converted = to_float64(copy_image.img)
+            if converted is not None:
+                copy_image.img = converted
+            elif data_type in [float]:
+                copy_image.img = skimage.img_as_float(copy_image.img)
+            else:
+                copy_image.img = skimage.img_as_float64(copy_image.img)
         elif data_type in [np.float32]:
             copy_image.img = skimage.img_as_float32(copy_image.img)
-        elif data_type in [np.float64]:
-            copy_image.img = skimage.img_as_float64(copy_image.img)
         elif data_type in [int]:
             copy_image.img = skimage.img_as_int(copy_image.img)
         elif data_type in [np.uint8]:
