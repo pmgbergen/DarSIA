@@ -1,12 +1,14 @@
-"""Toolbar builder for icon buttons (New, Open, Save, Play, Stop, Results) below the menu."""
+"""Toolbar builder below the menu: icon buttons (New, Open, Save, Play, Stop,
+Results, View, Logging) and the light/dark theme switch."""
 
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QPalette
 
 from .icons import themed_icon
-from .theme import theme_signal
+from .theme import is_dark, theme_signal
+from .widgets import ToggleSwitch
 
 _ICON_DIR = Path(__file__).parent.parent / "icons"
 
@@ -101,6 +103,16 @@ class ToolbarBuilder:
         )
         toolbar.addAction(self.menu_builder.show_logging_action)
 
+        # Light/dark switch (knob left = light, right = dark). It shows the
+        # current look, so from the System theme it reflects the system colors.
+        toolbar.addSeparator()
+        self.theme_switch = ToggleSwitch(checked=is_dark(), inner=self._theme_icons())
+        self.theme_switch.setToolTip("Switch Light / Dark Theme")
+        self.theme_switch.toggled.connect(
+            lambda dark: self.main_window.set_theme("Dark" if dark else "Light")
+        )
+        toolbar.addWidget(self.theme_switch)
+
         theme_signal.theme_changed.connect(self.refresh_icons)
 
     def _configure(self, action, key, tooltip):
@@ -113,6 +125,17 @@ class ToolbarBuilder:
         """Rebuild all qtawesome-backed icons from current palette."""
         for key, action in self._themed_actions.items():
             action.setIcon(self._load_icon(key))
+        # Follow theme changes from anywhere (View menu, or the switch itself).
+        self.theme_switch.set_inner(*self._theme_icons())
+        self.theme_switch.set_checked(is_dark(), emit=False)
+
+    @staticmethod
+    def _theme_icons():
+        """Sun and moon inside the switch track, in the knob (window) color."""
+        return (
+            themed_icon("fa5s.sun", role=QPalette.Window),
+            themed_icon("fa5s.moon", role=QPalette.Window),
+        )
 
     def _load_icon(self, key):
         custom_path = _ICON_DIR / f"{key}.png"

@@ -573,6 +573,11 @@ class MainWindow(QMainWindow):
 
         apply_theme(QApplication.instance(), mode)
         save_theme(mode)
+        # Keep the View > Switch Theme radio items in sync (the toolbar switch
+        # follows through theme_changed, see toolbar.refresh_icons).
+        action = self.menu_builder.theme_actions.get(mode)
+        if action is not None:
+            action.setChecked(True)
         self.print_log(f"Theme set to {mode}")
 
     def show_about_dialog(self):

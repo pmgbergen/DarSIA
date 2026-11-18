@@ -54,7 +54,8 @@ You should see an empty window like this:
   relevant to the selected step), **Run** ▶ the selected workflow / **Stop**
   ■ the running workflow, **Open Results Folder** (the selected step's
   output folder if it exists, else the `[data] results` folder),
-  **Streaming Preview** toggle, **Logging** toggle.
+  **Streaming Preview** toggle, **Logging** toggle, and the light/dark theme
+  switch (sun/moon; *View → Switch Theme* also offers *System*).
 - **File menu** also has `Ctrl+O` (Open Config), `Ctrl+S` (Save Config),
   `Ctrl+N` (New Config), recently-opened files under *Open Recent*, and
   *Open Results Folder*.
@@ -65,8 +66,9 @@ You should see an empty window like this:
 - **Logging dock** (bottom) shows what the app is doing. It is hidden on
   start and opens by itself on an error; toggle it with its toolbar icon or
   `Ctrl+L`. **Streaming Preview** (right dock, toolbar icon or `Ctrl+P`) is
-  shown on start; it shows a live image of the
-  current analysis step while a workflow runs and browses the results.
+  shown on start. Its switch selects *Streaming* (default: a live image of
+  the current analysis step while a workflow runs) or *Results* (browses the
+  selected step's output images).
 
 Nothing is loaded yet because no config file has been opened. That is the
 subject of the next chapter.
