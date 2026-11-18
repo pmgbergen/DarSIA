@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from sklearn.decomposition import PCA
-from sklearn.linear_model import LinearRegression
 from sklearn.manifold import LocallyLinearEmbedding
 
 import darsia
@@ -966,11 +965,17 @@ class LabelColorPathMapRegression:
             segment_embedding = sorted_embedding[segment_range]
             segment_relative_colors = sorted_relative_colors[segment_range]
 
-            # Create proper arrays for LinearRegression
-            X = np.array([segment_embedding[0], segment_embedding[-1]]).reshape(-1, 1)
-            y = np.array([segment_relative_colors[0], segment_relative_colors[-1]])
-            segment_interpolator = LinearRegression().fit(X, y)
-            prediction = segment_interpolator.predict(segment_embedding.reshape(-1, 1))
+            # Line through the end points (the least-squares line through two points,
+            # centered as in LinearRegression; constant mean for equal end points)
+            x_start, x_end = segment_embedding[0], segment_embedding[-1]
+            c_start, c_end = segment_relative_colors[0], segment_relative_colors[-1]
+            x_mean = 0.5 * (x_start + x_end)
+            c_mean = 0.5 * (c_start + c_end)
+            if x_end != x_start:
+                slope = (c_end - c_start) / (x_end - x_start)
+            else:
+                slope = np.zeros_like(c_mean)
+            prediction = c_mean + (segment_embedding - x_mean)[:, None] * slope
             segment_errors = np.linalg.norm(
                 prediction - segment_relative_colors,
                 axis=1,
