@@ -5,7 +5,8 @@ window shows, for the selected label, the colors of the calibration images (3D) 
 key colors and path, a calibration image with the label highlighted, and the
 pH-indicator interpretation of the whole domain (each label with its own path). The user
 selects a label by a click (or Next Label), moves, adds, removes and aligns key colors,
-samples one from the image (pipette) or returns to the automatic fit, and saves. The
+samples one from the image (pipette) or fits the path automatically (Auto: with the
+current number of key colors; Reset: with the number of the config), and saves. The
 pH view follows every change (computed in the background; only the edited label). It
 shows two signals (Next Signal): all labels in the colormap of the reference label's
 path (first), or each label in the colormap of its own path.
@@ -184,13 +185,37 @@ class LabelPath:
         self.selected = min(self.selected, len(self.key_colors) - 1)
         return None
 
+    def fit(self, segments: int) -> tuple[list[np.ndarray], str | None]:
+        """Automatic fit with a number of segments, without changing the path (e.g.
+        in the background); returns the key colors and a message if the spectrum
+        gives fewer segments."""
+        keys = [np.array(c, dtype=float) for c in self.inputs.auto_fit(segments)]
+        found = len(keys) - 1
+        if found < segments:
+            return keys, _warn(
+                f"Automatic fit found only {found} of {segments} segments (the "
+                "spectrum of the label cannot be split further)."
+            )
+        return keys, None
+
+    def set_keys(self, keys: list[np.ndarray], selected: int | None = None) -> None:
+        """Replace the key colors; select a key (default: keep the selection)."""
+        self.key_colors[:] = keys
+        self.selected = min(
+            self.selected if selected is None else selected, len(keys) - 1
+        )
+
     def reset(self) -> None:
-        """Return to the automatic fit."""
-        self.key_colors[:] = [
-            np.array(c, dtype=float)
-            for c in self.inputs.auto_fit(self.inputs.num_segments)
-        ]
-        self.selected = 0
+        """Return to the automatic fit (number of segments of the config)."""
+        keys, _ = self.fit(self.inputs.num_segments)
+        self.set_keys(keys, 0)
+
+    def auto(self) -> str | None:
+        """Automatic fit with the current number of key colors; returns a message if
+        the spectrum gives fewer segments."""
+        keys, message = self.fit(len(self.key_colors) - 1)
+        self.set_keys(keys)
+        return message
 
 
 class ColorPathEditorState:
@@ -763,6 +788,7 @@ class ColorPathEditorWindow:
             for row, channel in enumerate("RGB")
         ]
         add_button("Reset (auto)", [0.58, 0.12, 0.08, 0.05])
+        add_button("Auto", [0.67, 0.12, 0.08, 0.05])
 
         add_button("Pipette", [0.02, 0.12, 0.08, 0.05])
         add_button("+", [0.11, 0.12, 0.04, 0.05])
@@ -806,6 +832,7 @@ class ColorPathEditorWindow:
         self.buttons["+"].on_clicked(self._on_add)
         self.buttons["-"].on_clicked(self._on_remove)
         self.buttons["Reset (auto)"].on_clicked(self._on_reset)
+        self.buttons["Auto"].on_clicked(self._on_auto)
         self.buttons["Pipette"].on_clicked(self._on_pipette)
 
     # ! ---- SHOWING ----
@@ -1030,8 +1057,29 @@ class ColorPathEditorWindow:
             self.message.set(message)
 
     def _on_reset(self, event) -> None:
-        self.state.path.reset()
-        self._keys_changed()
+        path = self.state.path
+        self._run_fit(path.inputs.num_segments, selected=0)
+
+    def _on_auto(self, event) -> None:
+        self._run_fit(len(self.state.path.key_colors) - 1)
+
+    def _run_fit(self, segments: int, selected: int | None = None) -> None:
+        """Automatic fit of the selected label in the background; the key colors are
+        replaced when it is done (label switches wait for it)."""
+        if self.runner.refuse():
+            return
+        path = self.state.path
+        result = {}
+
+        def work(progress) -> None:
+            result["fit"] = path.fit(segments)
+
+        def done() -> None:
+            keys, message = result["fit"]
+            path.set_keys(keys, selected)
+            self._keys_changed(message)
+
+        self.runner.run("Fitting the path", work, done)
 
     def _on_pipette(self, event) -> None:
         message = self.state.pipette(self.ax_image.get_xlim(), self.ax_image.get_ylim())
