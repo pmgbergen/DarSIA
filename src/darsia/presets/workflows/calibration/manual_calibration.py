@@ -21,6 +21,7 @@ from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
 )
+from darsia.presets.workflows.windows.highlight import highlight_region
 from darsia.signals.models.pwtransformation import (
     monotonicity_message,
     monotonicity_violation,
@@ -662,10 +663,7 @@ class CalibrationState:
 
     def label_highlight(self, coarse_image: darsia.Image, label: int) -> np.ndarray:
         """Coarse image with everything outside the label turned (mostly) gray."""
-        image = coarse_image.img
-        outside = self.coarse_labels.img != label
-        gray = 0.7 * np.mean(image, axis=-1, keepdims=True) + 0.3 * image
-        return np.where(outside[..., np.newaxis], gray, image)
+        return highlight_region(coarse_image.img, self.coarse_labels.img != label)
 
     # ! ---- MASS ANALYSIS ----
 

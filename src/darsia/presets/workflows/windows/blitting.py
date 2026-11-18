@@ -10,6 +10,8 @@ repainted alone (`redraw`).
 
 from __future__ import annotations
 
+import math
+
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 from matplotlib.transforms import Bbox, IdentityTransform
@@ -144,21 +146,47 @@ class SliderBlitter:
 
         def region_of(ax) -> Bbox:
             boxes = [ax.bbox, now.get(ax), self._panels.get(ax)]
-            return Bbox.union([box for box in boxes if box is not None]).padded(2)
+            region = Bbox.union([box for box in boxes if box is not None]).padded(2)
+            # Whole pixels: a partly covered edge row would blend old and new
+            return Bbox.from_extents(
+                math.floor(region.x0),
+                math.floor(region.y0),
+                math.ceil(region.x1),
+                math.ceil(region.y1),
+            )
 
-        # Unchanged panels whose drawing reaches into a cleared region (e.g. a long
-        # text) are drawn as well
+        # Everything reaching into a cleared region (a long text of a panel, the
+        # edge of a button next to a title) is cleared and drawn as well
         axes = list(axes)
+        artists = list(artists or [])
         regions = [region_of(ax) for ax in axes]
+        texts = [t for t in fig.texts if t.get_visible() and not t.get_animated()]
         added = True
         while added:
             added = False
-            for ax, drawn in self._panels.items():
-                if ax in axes or drawn is None:
+            for ax in fig.axes:
+                if ax in axes or not ax.get_visible():
                     continue
-                if any(drawn.overlaps(region) for region in regions):
+                drawn = self._panels.get(ax) if ax in self._panels else ax.bbox
+                if drawn is not None and any(drawn.overlaps(r) for r in regions):
                     axes.append(ax)
                     regions.append(region_of(ax))
+                    added = True
+            for text in texts:
+                if text in artists:
+                    continue
+                extent = text.get_window_extent(renderer)
+                if any(extent.overlaps(r) for r in regions):
+                    artists.append(text)
+                    region = extent.padded(2)
+                    regions.append(
+                        Bbox.from_extents(
+                            math.floor(region.x0),
+                            math.floor(region.y0),
+                            math.ceil(region.x1),
+                            math.ceil(region.y1),
+                        )
+                    )
                     added = True
 
         for region in regions:
@@ -169,6 +197,7 @@ class SliderBlitter:
                 transform=IdentityTransform(),
                 facecolor=fig.get_facecolor(),
                 edgecolor="none",
+                antialiased=False,
             )
             clear.set_figure(fig)
             clear.draw(renderer)
@@ -176,7 +205,7 @@ class SliderBlitter:
             ax.draw(renderer)
             if ax in self._panels and ax in now:
                 self._panels[ax] = now[ax]
-        for artist in artists or []:
+        for artist in artists:
             artist.draw(renderer)
         self.background = canvas.copy_from_bbox(fig.bbox)
         for artist in self.artists:
@@ -205,3 +234,55 @@ class SliderBlitter:
         for artist in self.artists:
             fig.draw_artist(artist)
         fig.canvas.blit(region)
+
+
+class StatusText:
+    """A message in the figure, redrawn only when it changes.
+
+    Parameters
+    ----------
+    text : matplotlib.text.Text
+        The text artist.
+    blitter : SliderBlitter, optional
+        Repaints only the region of the text (otherwise the whole figure is redrawn).
+
+    """
+
+    def __init__(self, text, blitter: SliderBlitter | None = None) -> None:
+        self.text = text
+        self.blitter = blitter
+        if blitter is not None:
+            blitter.add_texts([text])
+
+    def get_text(self) -> str:
+        """Shown message."""
+        return self.text.get_text()
+
+    def set(self, message: str, color: str | None = None, now: bool = False) -> None:
+        """Show a message.
+
+        Parameters
+        ----------
+        message : str
+            Message; empty to clear.
+        color : str, optional
+            Color of the message; unchanged if None.
+        now : bool
+            Draw the figure right away (while a calculation blocks the event loop);
+            otherwise repaint only the text (with a blitter), or the figure when the
+            window is idle.
+
+        """
+        if message == self.text.get_text() and color in (None, self.text.get_color()):
+            return
+        self.text.set_text(message)
+        if color is not None:
+            self.text.set_color(color)
+        canvas = self.text.figure.canvas
+        if now:
+            canvas.draw()
+            canvas.flush_events()
+        elif self.blitter is not None:
+            self.blitter.blit_text(self.text)
+        else:
+            canvas.draw_idle()

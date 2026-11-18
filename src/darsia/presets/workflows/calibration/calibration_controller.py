@@ -9,12 +9,12 @@ and decides what happens when the window is closed.
 from __future__ import annotations
 
 import logging
-from concurrent.futures import Future, ThreadPoolExecutor
 from typing import TYPE_CHECKING, Callable
 
 import matplotlib.pyplot as plt
 
 from darsia.presets.workflows.calibration.calibration_view import CalibrationView
+from darsia.presets.workflows.windows.background import BUSY_MESSAGE, BackgroundRunner
 from darsia.utils.figure_window import ask_yes_no
 
 if TYPE_CHECKING:
@@ -26,9 +26,6 @@ if TYPE_CHECKING:
     )
 
 logger = logging.getLogger(__name__)
-
-BUSY_MESSAGE = "Busy - wait for the calculation to finish."
-"""Shown when a button or the image is clicked during a calculation."""
 
 
 class CalibrationController:
@@ -67,106 +64,18 @@ class CalibrationController:
         would change the stored calibration).
 
         """
-        self.busy = False
+        self.runner: BackgroundRunner | None = None
+        """Runs the calculations (in a worker thread for windows with an event
+        loop)."""
+
+    @property
+    def busy(self) -> bool:
         """Whether a calculation runs in the background."""
-        self._executor: ThreadPoolExecutor | None = None
-        self._future: Future | None = None
-        self._done: Callable[[], None] | None = None
-        self._message = ""
-        self._progress: tuple[int, int] | None = None
-        self._timer = None
+        return self.runner is not None and self.runner.busy
 
-    # ! ---- CALCULATIONS ----
-
-    def _in_background(self) -> bool:
-        """Whether calculations run in a worker thread (windows with an event loop).
-
-        Without an event loop (e.g. the Agg backend in scripts), they run directly.
-
-        """
-        return type(self.view.fig.canvas).required_interactive_framework is not None
-
-    def _run(
-        self, message: str, work: Callable[..., None], done: Callable[[], None]
-    ) -> None:
-        """Run a calculation, then update the window.
-
-        In a worker thread, `work` changes only the state, never the figure; `done`
-        draws, in the window's thread. One calculation runs at a time.
-
-        Parameters
-        ----------
-        message : str
-            Busy message (without the trailing dots).
-        work : Callable
-            The calculation; called with a progress callback (or None).
-        done : Callable
-            Updates the window after the calculation.
-
-        """
-        view = self.view
-        if not self._in_background():
-            view.show_busy(f"{message} ...")
-            work(None)
-            done()
-            view.show_busy("")
-            return
-        self.busy = True
-        self._message, self._progress, self._done = message, None, done
-        view.show_busy(f"{message} ...", now=False)
-        if self._executor is None:
-            self._executor = ThreadPoolExecutor(
-                max_workers=1, thread_name_prefix="calibration"
-            )
-        self._future = self._executor.submit(work, self._set_progress)
-        self._timer = view.fig.canvas.new_timer(interval=50)
-        self._timer.add_callback(self._poll)
-        self._timer.start()
-
-    def _set_progress(self, number: int, total: int) -> None:
-        """Progress of the calculation (called in the worker thread)."""
-        self._progress = (number, total)
-
-    def _poll(self) -> None:
-        """Show the progress; finish the calculation when it is done."""
-        if not self._future.done():
-            progress = self._progress
-            if progress is not None:
-                number, total = progress
-                self.view.show_busy(
-                    f"{self._message}: image {number}/{total} ...", now=False
-                )
-            return
-        self._timer.stop()
-        self._finish()
-
-    def _finish(self, draw: bool = True) -> None:
-        """End of a calculation: report errors, then update the window."""
-        future, done = self._future, self._done
-        self._future = self._done = self._timer = None
-        self.busy = False
-        if self.view.values_status.get_text() == BUSY_MESSAGE:
-            self.view.show_values_status(None)
-        try:
-            future.result()
-        except Exception:
-            logger.exception("The calculation failed.")
-            self.view.show_busy("Calculation failed, see log.", now=False)
-            return
-        if draw:
-            done()
-            self.view.show_busy("", now=False)
-
-    def _wait(self) -> None:
-        """Wait for a running calculation (without updating the window)."""
-        if self._future is None:
-            return
-        self._timer.stop()
-        try:
-            self._future.result()
-        except Exception:
-            pass
-        self._finish(draw=False)
+    def _refuse(self) -> bool:
+        """Whether an action must wait, because a calculation runs."""
+        return self.runner is not None and self.runner.refuse()
 
     def _thresholds(self) -> list[float]:
         """Contour thresholds of the sliders (read in the window's thread)."""
@@ -181,12 +90,6 @@ class CalibrationController:
         """
         self.state.coarse_signal
         self.state.contour_overlay(thresholds)
-
-    def _refuse(self) -> bool:
-        """Whether an action must wait, because a calculation runs."""
-        if self.busy:
-            self.view.show_values_status(BUSY_MESSAGE)
-        return self.busy
 
     def run(self) -> bool:
         """Show the window until it is closed.
@@ -205,11 +108,16 @@ class CalibrationController:
         if not state.mass_analysis_done:
             state.update_mass_analysis()
         view.build()
+        self.runner = BackgroundRunner(
+            view.fig,
+            show_busy=lambda message, now: view.show_busy(message, now=now),
+            show_refusal=view.show_values_status,
+            refusal_shown=lambda: view.values_status.get_text() == BUSY_MESSAGE,
+        )
         view.show_label(state.label_idx)
         self._connect()
         plt.show()
-        if self._executor is not None:
-            self._executor.shutdown(wait=True)
+        self.runner.shutdown()
         return not state.has_unsaved_changes()
 
     def _connect(self) -> None:
@@ -313,7 +221,7 @@ class CalibrationController:
             state.compute_maps()
             self._prepare_display(thresholds)
 
-        self._run("Computing", work, lambda: self.view.refresh(recompute=False))
+        self.runner.run("Computing", work, lambda: self.view.refresh(recompute=False))
 
     # ! ---- UPDATE, RESET, SAVE, CLOSE ----
 
@@ -345,7 +253,7 @@ class CalibrationController:
             view.refresh(recompute=False, signal_function=True, mass_plot=True)
 
         message = f"Computing at resolution 1/{level}" if new_level else "Computing"
-        self._run(message, work, done)
+        self.runner.run(message, work, done)
 
     def reset(self, event) -> None:
         """Restore the initial values of this label, flash, contours."""
@@ -402,7 +310,8 @@ class CalibrationController:
     def on_close(self, event) -> None:
         """Closing the window ends the calibration; unsaved changes are saved or
         discarded, as the user decides."""
-        self._wait()
+        if self.runner is not None:
+            self.runner.wait()
         try:
             message = self.check_values() if self.pending else None
             if self.pending and message is None:

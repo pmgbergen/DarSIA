@@ -20,7 +20,7 @@ import numpy as np
 from matplotlib.colors import to_rgba_array
 from matplotlib.widgets import Button, Slider
 
-from darsia.presets.workflows.windows.blitting import SliderBlitter
+from darsia.presets.workflows.windows.blitting import SliderBlitter, StatusText
 from darsia.presets.workflows.windows.screen_image import ScreenImage
 from darsia.signals.models.evaluation import curve_inverse, signal_curve
 from darsia.utils.figure_window import maximize_figure_window
@@ -63,58 +63,6 @@ def _dot_values(signal_func) -> np.ndarray:
     if used is not None:
         values[[i for i in range(len(values)) if i not in used]] = np.nan
     return values
-
-
-class StatusText:
-    """A message in the figure, redrawn only when it changes.
-
-    Parameters
-    ----------
-    text : matplotlib.text.Text
-        The text artist.
-    blitter : SliderBlitter, optional
-        Repaints only the region of the text (otherwise the whole figure is redrawn).
-
-    """
-
-    def __init__(self, text, blitter: SliderBlitter | None = None) -> None:
-        self.text = text
-        self.blitter = blitter
-        if blitter is not None:
-            blitter.add_texts([text])
-
-    def get_text(self) -> str:
-        """Shown message."""
-        return self.text.get_text()
-
-    def set(self, message: str, color: str | None = None, now: bool = False) -> None:
-        """Show a message.
-
-        Parameters
-        ----------
-        message : str
-            Message; empty to clear.
-        color : str, optional
-            Color of the message; unchanged if None.
-        now : bool
-            Draw the figure right away (while a calculation blocks the event loop);
-            otherwise repaint only the text (with a blitter), or the figure when the
-            window is idle.
-
-        """
-        if message == self.text.get_text() and color in (None, self.text.get_color()):
-            return
-        self.text.set_text(message)
-        if color is not None:
-            self.text.set_color(color)
-        canvas = self.text.figure.canvas
-        if now:
-            canvas.draw()
-            canvas.flush_events()
-        elif self.blitter is not None:
-            self.blitter.blit_text(self.text)
-        else:
-            canvas.draw_idle()
 
 
 class FlashMarkers:

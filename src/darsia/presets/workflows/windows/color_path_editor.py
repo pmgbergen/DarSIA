@@ -7,7 +7,9 @@ interpretation of that image with the current path. The user moves, adds, remove
 aligns key colors, samples one from the image (pipette) or returns to the automatic fit.
 
 `ColorPathEditorState` holds the data and the operations (no matplotlib);
-`edit_color_path` is the window. It is passed as `editor` to
+`ColorPathEditorWindow` is the window, built once and updated in place (partial
+repaint, previews at screen resolution with linked zoom, preview calculated in the
+background). `edit_color_path` is passed as `editor` to
 `LabelColorPathMapRegression.find_color_path` in manual mode.
 
 """
@@ -19,9 +21,13 @@ from typing import Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.widgets import Button, TextBox
+from matplotlib.widgets import Button, Slider, TextBox
 
 import darsia
+from darsia.presets.workflows.windows.background import BUSY_MESSAGE, BackgroundRunner
+from darsia.presets.workflows.windows.blitting import SliderBlitter, StatusText
+from darsia.presets.workflows.windows.highlight import LUMINANCE, highlight_region
+from darsia.presets.workflows.windows.screen_image import ScreenImage
 from darsia.utils.figure_window import maximize_figure_window
 
 logger = logging.getLogger(__name__)
@@ -71,6 +77,12 @@ def _parse_index_selection(text: str, size: int) -> list[list[int]]:
         else:
             runs.append([i])
     return runs
+
+
+def _warn(message: str) -> str:
+    """Log a warning and return its message (shown in the window)."""
+    logger.warning(message)
+    return message
 
 
 class ColorPathEditorState:
@@ -246,14 +258,7 @@ class ColorPathEditorState:
         image = self.coarse_image().img.copy().astype(float)
         if image.ndim != 3:
             return image
-        label_mask = self.label_mask()
-        gray = np.sum(
-            image * np.array([0.299, 0.587, 0.114])[None, None, :],
-            axis=2,
-            keepdims=True,
-        )
-        image[~label_mask] = 0.7 * gray[~label_mask] + 0.3 * image[~label_mask]
-        return image
+        return highlight_region(image, ~self.label_mask(), LUMINANCE)
 
     # ! ---- OPERATIONS ----
 
@@ -270,20 +275,23 @@ class ColorPathEditorState:
         self.key_colors[self.selected] = color
         self.preview_stale = True
 
-    def align(self, text: str) -> None:
-        """Place the selected runs of key colors evenly between their neighbours."""
+    def align(self, text: str) -> str | None:
+        """Place the selected runs of key colors evenly between their neighbours;
+        returns a message for runs without anchors on both sides (else None)."""
         n = len(self.key_colors)
+        messages = []
         for run in _parse_index_selection(text, n):
             lo, hi = run[0] - 1, run[-1] + 1
             if lo < 0 or hi > n - 1:
-                logger.warning(
-                    "Align skipped for %s: needs anchors on both sides.", run
+                messages.append(
+                    _warn(f"Align skipped for {run}: needs anchors on both sides.")
                 )
                 continue
             c_lo, c_hi = self.key_colors[lo], self.key_colors[hi]
             for i in run:
                 self.key_colors[i] = c_lo + (i - lo) / (hi - lo) * (c_hi - c_lo)
         self.preview_stale = True
+        return "; ".join(messages) or None
 
     def add(self) -> None:
         """Insert a key color halfway after the selected one (before the last)."""
@@ -294,15 +302,14 @@ class ColorPathEditorState:
         self.selected = i + 1
         self.preview_stale = True
 
-    def remove(self) -> bool:
-        """Remove the selected key color; False if only two are left."""
+    def remove(self) -> str | None:
+        """Remove the selected key color; returns a message if only two are left."""
         if len(self.key_colors) <= 2:
-            logger.warning("Cannot remove: a color path needs at least 2 colors.")
-            return False
+            return _warn("Cannot remove: a color path needs at least 2 colors.")
         del self.key_colors[self.selected]
         self.selected = min(self.selected, len(self.key_colors) - 1)
         self.preview_stale = True
-        return True
+        return None
 
     def reset(self) -> None:
         """Return to the automatic fit."""
@@ -324,7 +331,7 @@ class ColorPathEditorState:
         self.preview_idx = (self.preview_idx + step) % len(self.coarse_images)
         self.rerun_preview()
 
-    def pipette(self, col_limits, row_limits) -> bool:
+    def pipette(self, col_limits, row_limits) -> str | None:
         """Set the selected key color to the characteristic color of the label in a
         region of the shown image.
 
@@ -335,32 +342,26 @@ class ColorPathEditorState:
 
         Returns
         -------
-        bool
-            Whether a color was found (otherwise a warning is logged).
+        str or None
+            Message why no color was set; None if a color was set.
 
         """
         if not self.has_preview or self.label is None:
-            logger.warning("Pipette unavailable without preview calibration data.")
-            return False
+            return _warn("Pipette unavailable without preview calibration data.")
         assert self.baseline is not None
         label_mask = self.label_mask_full()
         if not np.any(label_mask):
-            logger.warning(
-                "Pipette skipped because selected label has no active pixels."
-            )
-            return False
+            return _warn("Pipette skipped because selected label has no active pixels.")
 
         coarse_rows, coarse_cols = self.coarse_image().img.shape[:2]
         if coarse_rows <= 0 or coarse_cols <= 0:
-            logger.warning("Pipette skipped due to invalid preview image dimensions.")
-            return False
+            return _warn("Pipette skipped due to invalid preview image dimensions.")
         col_start = int(np.floor(max(0.0, min(col_limits))))
         col_stop = int(np.ceil(min(float(coarse_cols), max(col_limits))))
         row_start = int(np.floor(max(0.0, min(row_limits))))
         row_stop = int(np.ceil(min(float(coarse_rows), max(row_limits))))
         if row_stop <= row_start or col_stop <= col_start:
-            logger.warning("Pipette skipped because the current zoom window is empty.")
-            return False
+            return _warn("Pipette skipped because the current zoom window is empty.")
 
         full_rows, full_cols = self.full_image().img.shape[:2]
         full_row_start = int(np.floor(row_start / coarse_rows * full_rows))
@@ -378,22 +379,385 @@ class ColorPathEditorState:
 
         full_image = self.full_image()
         if full_image.img.shape != self.baseline.img.shape:
-            logger.warning(
+            return _warn(
                 "Pipette skipped because preview and baseline dimensions differ."
             )
-            return False
         relative = np.subtract(full_image.img, self.baseline.img, dtype=float)
         characteristic_colors = darsia.extract_characteristic_data(
             signal=relative[sample], mask=label_mask[sample]
         )
         if len(characteristic_colors) == 0:
-            logger.warning("Pipette skipped because no characteristic color was found.")
-            return False
+            return _warn("Pipette skipped because no characteristic color was found.")
         self.key_colors[self.selected] = np.asarray(
             characteristic_colors[0], dtype=float
         )
         self.preview_stale = True
-        return True
+        return None
+
+
+class ColorPathEditorWindow:
+    """Window of the color-path editor: built once, updated in place.
+
+    Parameters
+    ----------
+    state : ColorPathEditorState
+        Key colors and preview data.
+    relative_colors : np.ndarray
+        Relative colors of the calibration images in the label (3D panel).
+    colors : np.ndarray
+        Their absolute colors (dot colors).
+
+    """
+
+    def __init__(
+        self,
+        state: ColorPathEditorState,
+        relative_colors: np.ndarray,
+        colors: np.ndarray,
+    ) -> None:
+        self.state = state
+        self.relative_colors = relative_colors
+        self.colors = colors
+        self.finalized = False
+        """Whether the user finalized the path (otherwise the window was closed)."""
+        self.buttons: dict[str, Button] = {}
+        """Buttons by their label."""
+
+    # ! ---- BUILDING ----
+
+    def build(self) -> None:
+        """Create the figure, panels and controls."""
+        fig = plt.figure(figsize=(14, 8))
+        self.fig = fig
+        maximize_figure_window(fig)
+        gs = fig.add_gridspec(
+            nrows=2,
+            ncols=2,
+            width_ratios=[1, 1],
+            height_ratios=[1, 1],
+            left=0.05,
+            right=0.98,
+            bottom=0.30,
+            top=0.91,
+            wspace=0.1,
+            hspace=0.12,
+        )
+        self.ax3d = fig.add_subplot(gs[:, 0], projection="3d")
+        self.ax_image = fig.add_subplot(gs[0, 1])
+        self.ax_interpretation = fig.add_subplot(gs[1, 1])
+        self._build_colors()
+        self._build_previews()
+        self._build_controls()
+        self.blitter.add_panels([self.ax3d, self.ax_image, self.ax_interpretation])
+        self.runner = BackgroundRunner(
+            fig,
+            show_busy=lambda message, now: self.busy_status.set(message, now=now),
+            show_refusal=lambda message: self.message.set(message or ""),
+            refusal_shown=lambda: self.message.get_text() == BUSY_MESSAGE,
+        )
+        fig.canvas.mpl_connect("close_event", self._on_close)
+        self._show_selected()
+
+    def _build_colors(self) -> None:
+        """3D panel: colors of the images, ignored colors, key colors and path."""
+        state, ax = self.state, self.ax3d
+        relative_colors = self.relative_colors
+        ax.scatter(
+            relative_colors[:, 0],
+            relative_colors[:, 1],
+            relative_colors[:, 2],
+            c=np.clip(self.colors, 0, 1),
+            s=10,
+            alpha=0.5,
+        )
+        ax.plot(*np.array(relative_colors).T, c="gray", linewidth=1, alpha=0.5)
+        if state.ignore is not None:
+            ignored = state.ignore.relative_colors
+            ax.scatter(
+                ignored[:, 0], ignored[:, 1], ignored[:, 2], c="r", s=10, alpha=0.1
+            )
+        [self.path_line] = ax.plot([], [], [], c="black", linewidth=2)
+        self.key_points = None
+        ax.set_title(f"{state.name} (manual)")
+        ax.set_xlabel("R")
+        ax.set_ylabel("G")
+        ax.set_zlabel("B")
+        self._update_path()
+
+    def _update_path(self) -> None:
+        """Key colors and the path through them; limits fit all colors."""
+        state, ax = self.state, self.ax3d
+        keys = np.array(state.key_colors)
+        if self.key_points is not None:
+            self.key_points.remove()
+            self.key_points = None
+        if len(keys) >= 2:
+            self.path_line.set_data_3d(*keys.T)
+            self.key_points = ax.scatter(
+                *keys.T, c=np.clip([state.base_color + c for c in keys], 0, 1), s=100
+            )
+        points = [self.relative_colors, keys.reshape(-1, 3)]
+        if state.ignore is not None:
+            points.append(state.ignore.relative_colors)
+        points = np.concatenate(points)
+        ax.auto_scale_xyz(points[:, 0], points[:, 1], points[:, 2], had_data=False)
+
+    def _build_previews(self) -> None:
+        """Calibration image (label highlighted) and its interpretation, zoom linked."""
+        state = self.state
+        ax_image, ax_interpretation = self.ax_image, self.ax_interpretation
+        ax_image.axis("off")
+        ax_interpretation.axis("off")
+        self.image = None
+        self.interpretation = None
+        if not (state.has_preview and state.label is not None):
+            for ax in (ax_image, ax_interpretation):
+                ax.text(
+                    0.5,
+                    0.5,
+                    "Manual preview unavailable.",
+                    ha="center",
+                    va="center",
+                    transform=ax.transAxes,
+                )
+            ax_image.set_title("Calibration image")
+            ax_interpretation.set_title("Native pH indicator interpretation")
+            return
+        image = state.highlighted_image()
+        self.image = ScreenImage(
+            ax_image, image, **({} if image.ndim == 3 else {"cmap": "gray"})
+        )
+        signal = state.preview_signal
+        if signal is None:
+            signal = np.full(state.coarse_shape, np.nan)
+        self.interpretation = ScreenImage(
+            ax_interpretation,
+            signal,
+            cmap=state.color_path().get_color_map(),
+            vmin=0,
+            vmax=1,
+        )
+        ax_interpretation.sharex(ax_image)
+        ax_interpretation.sharey(ax_image)
+        self._set_preview_titles()
+
+    def _set_preview_titles(self) -> None:
+        state = self.state
+        self.ax_image.set_title(
+            f"Calibration image {state.preview_idx + 1} / "
+            f"{len(state.coarse_images)} (selected label focus)"
+        )
+        self.ax_interpretation.set_title("Native pH indicator interpretation")
+
+    def _build_controls(self) -> None:
+        fig, state = self.fig, self.state
+
+        def add_button(name: str, rect: list[float]) -> None:
+            self.buttons[name] = Button(fig.add_axes(rect), name)
+
+        add_button("Reset (auto)", [0.01, 0.94, 0.09, 0.05])
+        add_button("Finalize", [0.11, 0.94, 0.09, 0.05])
+
+        # Key color: selection and channels (applied with Update)
+        add_button("Previous key", [0.02, 0.235, 0.08, 0.045])
+        add_button("Next key", [0.18, 0.235, 0.08, 0.045])
+        key_text = fig.text(0.14, 0.2575, "", ha="center", va="center", fontsize=9)
+        data = np.concatenate([self.relative_colors, np.array(state.key_colors)])
+        margin = 0.1
+        self.channel_sliders = []
+        for row, (channel, low, high) in enumerate(
+            zip("RGB", data.min(axis=0) - margin, data.max(axis=0) + margin)
+        ):
+            slider = Slider(
+                fig.add_axes([0.32, 0.255 - row * 0.04, 0.2, 0.025]),
+                channel,
+                float(low),
+                float(high),
+                valinit=0.0,
+                valstep=0.001,
+                valfmt="%.3f",
+            )
+            self.channel_sliders.append(slider)
+        add_button("Update", [0.58, 0.185, 0.08, 0.05])
+
+        add_button("Pipette", [0.02, 0.12, 0.08, 0.05])
+        add_button("+", [0.11, 0.12, 0.04, 0.05])
+        add_button("-", [0.16, 0.12, 0.04, 0.05])
+        self.align_box = TextBox(
+            fig.add_axes([0.25, 0.12, 0.12, 0.05]), "Align", initial=""
+        )
+        # No submit when leaving the text box (Align applies it)
+        self.align_box.canvas.mpl_disconnect(self.align_box._cids[-1])
+        add_button("Align", [0.38, 0.12, 0.07, 0.05])
+
+        # Preview: image and calculation
+        add_button("Previous", [0.70, 0.20, 0.10, 0.06])
+        add_button("Next", [0.82, 0.20, 0.10, 0.06])
+        add_button("Re-run pH preview", [0.70, 0.12, 0.22, 0.06])
+
+        # Messages (repainted alone)
+        self.blitter = SliderBlitter(fig)
+        self.blitter.add(self.channel_sliders)
+        self.key_status = StatusText(key_text, self.blitter)
+        """Selected key color (\"Key k / n\")."""
+        self.preview_note = StatusText(
+            fig.text(0.70, 0.095, "", fontsize=8, color="darkorange", va="top"),
+            self.blitter,
+        )
+        """Note when the preview does not show the current key colors."""
+        self.message = StatusText(
+            fig.text(0.02, 0.08, "", fontsize=8, color="red", va="top"), self.blitter
+        )
+        """Warnings of the last action (e.g. pipette skipped)."""
+        self.busy_status = StatusText(
+            fig.text(0.98, 0.02, "", fontsize=8, color="darkorange", ha="right"),
+            self.blitter,
+        )
+        """Message shown while the preview is computed."""
+
+        self.buttons["Previous key"].on_clicked(lambda event: self._step_key(-1))
+        self.buttons["Next key"].on_clicked(lambda event: self._step_key(1))
+        self.buttons["Update"].on_clicked(self._on_update)
+        self.buttons["Align"].on_clicked(self._on_align)
+        self.buttons["+"].on_clicked(self._on_add)
+        self.buttons["-"].on_clicked(self._on_remove)
+        self.buttons["Reset (auto)"].on_clicked(self._on_reset)
+        self.buttons["Pipette"].on_clicked(self._on_pipette)
+        self.buttons["Previous"].on_clicked(lambda event: self._step_image(-1))
+        self.buttons["Next"].on_clicked(lambda event: self._step_image(1))
+        self.buttons["Re-run pH preview"].on_clicked(self._on_rerun)
+        self.buttons["Finalize"].on_clicked(self._on_finalize)
+
+    # ! ---- SHOWING ----
+
+    def _show_selected(self) -> None:
+        """Show the selected key color on the sliders (without callbacks)."""
+        state = self.state
+        self.key_status.set(f"Key {state.selected} / {len(state.key_colors) - 1}")
+        for slider, value in zip(
+            self.channel_sliders, state.key_colors[state.selected]
+        ):
+            slider.eventson = False
+            try:
+                slider.set_val(float(value))
+            finally:
+                slider.eventson = True
+
+    def _keys_changed(self, message: str | None = None) -> None:
+        """Show changed key colors: path, sliders, messages; repaint the 3D panel."""
+        self._update_path()
+        self._show_selected()
+        self.message.set(message or "")
+        if self.state.preview_stale:
+            self.preview_note.set(
+                "Preview does not show the current key colors: click Re-run pH preview."
+            )
+        self.blitter.redraw([self.ax3d])
+
+    def _show_preview(self) -> None:
+        """Show the computed preview (after Re-run, Next or Previous)."""
+        state = self.state
+        if self.image is not None:
+            self.image.set_data(state.highlighted_image())
+        if self.interpretation is not None:
+            signal = state.preview_signal
+            if signal is None:
+                signal = np.full(state.coarse_shape, np.nan)
+            self.interpretation.set_data(signal)
+            self.interpretation.image.set_cmap(state.color_path().get_color_map())
+        self._set_preview_titles()
+        self.preview_note.set("")
+        self.blitter.redraw([self.ax_image, self.ax_interpretation])
+
+    # ! ---- ACTIONS ----
+
+    def _step_key(self, step: int) -> None:
+        state = self.state
+        state.selected = max(0, min(len(state.key_colors) - 1, state.selected + step))
+        self._show_selected()
+
+    def _on_update(self, event) -> None:
+        if self.runner.refuse():
+            return
+        self.state.set_color(
+            np.array([slider.val for slider in self.channel_sliders], dtype=float)
+        )
+        self._keys_changed()
+
+    def _on_align(self, event) -> None:
+        if self.runner.refuse():
+            return
+        self._keys_changed(self.state.align(self.align_box.text))
+
+    def _on_add(self, event) -> None:
+        if self.runner.refuse():
+            return
+        self.state.add()
+        self._keys_changed()
+
+    def _on_remove(self, event) -> None:
+        if self.runner.refuse():
+            return
+        message = self.state.remove()
+        if message is None:
+            self._keys_changed()
+        else:
+            self.message.set(message)
+
+    def _on_reset(self, event) -> None:
+        if self.runner.refuse():
+            return
+        self.state.reset()
+        self._keys_changed()
+
+    def _on_pipette(self, event) -> None:
+        if self.runner.refuse():
+            return
+        message = self.state.pipette(self.ax_image.get_xlim(), self.ax_image.get_ylim())
+        if message is None:
+            self._keys_changed()
+        else:
+            self.message.set(message)
+
+    def _on_rerun(self, event) -> None:
+        if self.runner.refuse():
+            return
+        state = self.state
+        self.runner.run(
+            "Computing preview",
+            lambda progress: state.rerun_preview(),
+            self._show_preview,
+        )
+
+    def _step_image(self, step: int) -> None:
+        if self.runner.refuse() or len(self.state.coarse_images) == 0:
+            return
+        state = self.state
+        self.runner.run(
+            "Computing preview",
+            lambda progress: state.step_image(step),
+            self._show_preview,
+        )
+
+    def _on_finalize(self, event) -> None:
+        self.finalized = True
+        plt.close(self.fig)
+
+    def _on_close(self, event) -> None:
+        self.runner.wait()
+
+    def run(self) -> bool:
+        """Show the window until it is closed.
+
+        Returns
+        -------
+        bool
+            Whether the user finalized the path.
+
+        """
+        plt.show()
+        self.runner.shutdown()
+        return self.finalized
 
 
 def edit_color_path(
@@ -470,234 +834,9 @@ def edit_color_path(
         labels=labels,
         mask=mask,
     )
-    finalized = False
-
-    fig = plt.figure(figsize=(14, 8))
-    maximize_figure_window(fig)
-    gs = fig.add_gridspec(
-        nrows=2,
-        ncols=2,
-        width_ratios=[1, 1],
-        height_ratios=[1, 1],
-        left=0.05,
-        right=0.98,
-        bottom=0.30,
-        top=0.91,
-        wspace=0.1,
-        hspace=0.12,
-    )
-    ax = fig.add_subplot(gs[:, 0], projection="3d")
-    ax_preview_image = fig.add_subplot(gs[0, 1])
-    ax_preview_interpretation = fig.add_subplot(gs[1, 1])
-    ax_preview_image.axis("off")
-    ax_preview_interpretation.axis("off")
-
-    def redraw() -> None:
-        key_colors = state.key_colors
-        ax.cla()
-        ax.scatter(
-            relative_colors[:, 0],
-            relative_colors[:, 1],
-            relative_colors[:, 2],
-            c=np.clip(colors, 0, 1),
-            s=10,
-            alpha=0.5,
-        )
-        absolute_key_colors = [base_color + c for c in key_colors]
-        if len(key_colors) >= 2:
-            key_arr = np.array(key_colors)
-            ax.plot(*key_arr.T, c="black", linewidth=2)
-            ax.scatter(*key_arr.T, c=np.clip(absolute_key_colors, 0, 1), s=100)
-        ax.plot(*np.array(relative_colors).T, c="gray", linewidth=1, alpha=0.5)
-        if ignore is not None:
-            base_relative_colors = ignore.relative_colors
-            ax.scatter(
-                base_relative_colors[:, 0],
-                base_relative_colors[:, 1],
-                base_relative_colors[:, 2],
-                c="r",
-                s=10,
-                alpha=0.1,
-            )
-        ax.set_title(f"{name} (manual)")
-        ax.set_xlabel("R")
-        ax.set_ylabel("G")
-        ax.set_zlabel("B")
-
-        ax_preview_image.cla()
-        ax_preview_interpretation.cla()
-        ax_preview_image.axis("off")
-        ax_preview_interpretation.axis("off")
-
-        if state.has_preview and label is not None:
-            image = state.highlighted_image()
-            if image.ndim == 3:
-                ax_preview_image.imshow(image)
-            else:
-                ax_preview_image.imshow(image, cmap="gray")
-            ax_preview_image.set_title(
-                f"Calibration image {state.preview_idx + 1} / "
-                f"{len(state.coarse_images)} (selected label focus)"
-            )
-            if state.preview_signal is not None:
-                ax_preview_interpretation.imshow(
-                    state.preview_signal,
-                    cmap=state.color_path().get_color_map(),
-                    vmin=0,
-                    vmax=1,
-                )
-                title = "Native pH indicator interpretation"
-                if state.preview_stale:
-                    title += " (stale - click Re-run pH preview)"
-                ax_preview_interpretation.set_title(title)
-            else:
-                ax_preview_interpretation.text(
-                    0.5,
-                    0.5,
-                    "No preview available.\nClick Re-run pH preview.",
-                    ha="center",
-                    va="center",
-                    transform=ax_preview_interpretation.transAxes,
-                )
-                ax_preview_interpretation.set_title(
-                    "Native pH indicator interpretation"
-                )
-        else:
-            for preview_ax in (ax_preview_image, ax_preview_interpretation):
-                preview_ax.text(
-                    0.5,
-                    0.5,
-                    "Manual preview unavailable.",
-                    ha="center",
-                    va="center",
-                    transform=preview_ax.transAxes,
-                )
-            ax_preview_image.set_title("Calibration image")
-            ax_preview_interpretation.set_title("Native pH indicator interpretation")
-        fig.canvas.draw_idle()
-
-    index_ax = plt.axes([0.05, 0.20, 0.08, 0.06])
-    r_ax = plt.axes([0.15, 0.20, 0.09, 0.06])
-    g_ax = plt.axes([0.26, 0.20, 0.09, 0.06])
-    b_ax = plt.axes([0.37, 0.20, 0.09, 0.06])
-    update_ax = plt.axes([0.48, 0.20, 0.09, 0.06])
-    finalize_ax = plt.axes([0.11, 0.94, 0.09, 0.05])
-    pipette_ax = plt.axes([0.05, 0.12, 0.09, 0.06])
-    previous_preview_ax = plt.axes([0.70, 0.20, 0.10, 0.06])
-    next_preview_ax = plt.axes([0.82, 0.20, 0.10, 0.06])
-    rerun_preview_ax = plt.axes([0.70, 0.12, 0.22, 0.06])
-    align_ax = plt.axes([0.05, 0.04, 0.12, 0.06])
-    align_button_ax = plt.axes([0.19, 0.04, 0.09, 0.06])
-    add_ax = plt.axes([0.15, 0.12, 0.04, 0.06])
-    remove_ax = plt.axes([0.20, 0.12, 0.04, 0.06])
-    reset_ax = plt.axes([0.01, 0.94, 0.09, 0.05])
-
-    index_box = TextBox(index_ax, "Index", initial=str(state.selected))
-    init_color = state.key_colors[state.selected]
-    r_box = TextBox(r_ax, "R", initial=f"{init_color[0]:.6f}")
-    g_box = TextBox(g_ax, "G", initial=f"{init_color[1]:.6f}")
-    b_box = TextBox(b_ax, "B", initial=f"{init_color[2]:.6f}")
-    # No submit on leaving the text boxes (values are applied with Update)
-    for box in (index_box, r_box, g_box, b_box):
-        box.canvas.mpl_disconnect(box._cids[-1])
-    align_box = TextBox(align_ax, "Align", initial="")
-    align_box.canvas.mpl_disconnect(align_box._cids[-1])
-    align_button = Button(align_button_ax, "Align")
-    add_button = Button(add_ax, "+")
-    remove_button = Button(remove_ax, "-")
-    reset_button = Button(reset_ax, "Reset (auto)")
-    update_button = Button(update_ax, "Update")
-    finalize_button = Button(finalize_ax, "Finalize")
-    pipette_button = Button(pipette_ax, "Pipette")
-    previous_preview_button = Button(previous_preview_ax, "Previous")
-    next_preview_button = Button(next_preview_ax, "Next")
-    rerun_preview_button = Button(rerun_preview_ax, "Re-run pH preview")
-
-    def refresh_color_fields() -> None:
-        color = state.key_colors[state.selected]
-        r_box.set_val(f"{color[0]:.6f}")
-        g_box.set_val(f"{color[1]:.6f}")
-        b_box.set_val(f"{color[2]:.6f}")
-
-    def on_index_submit(text: str) -> None:
-        state.select(text)
-        refresh_color_fields()
-
-    def on_update(_) -> None:
-        try:
-            new_color = np.array(
-                [float(r_box.text), float(g_box.text), float(b_box.text)], dtype=float
-            )
-        except ValueError:
-            logger.warning("Manual color-path update skipped due to invalid RGB input.")
-            return
-        state.set_color(new_color)
-        redraw()
-
-    def on_align(_) -> None:
-        state.align(align_box.text)
-        refresh_color_fields()
-        redraw()
-
-    def on_add(_) -> None:
-        state.add()
-        refresh_color_fields()
-        redraw()
-
-    def on_remove(_) -> None:
-        if state.remove():
-            refresh_color_fields()
-            redraw()
-
-    def on_reset(_) -> None:
-        state.reset()
-        refresh_color_fields()
-        redraw()
-
-    def on_rerun_preview(_) -> None:
-        state.rerun_preview()
-        redraw()
-
-    def on_pipette(_) -> None:
-        if not state.has_preview or label is None:
-            logger.warning("Pipette unavailable without preview calibration data.")
-            return
-        if state.pipette(ax_preview_image.get_xlim(), ax_preview_image.get_ylim()):
-            refresh_color_fields()
-            redraw()
-
-    def on_previous_preview(_) -> None:
-        if len(state.coarse_images) == 0:
-            return
-        state.step_image(-1)
-        redraw()
-
-    def on_next_preview(_) -> None:
-        if len(state.coarse_images) == 0:
-            return
-        state.step_image(1)
-        redraw()
-
-    def on_finalize(_) -> None:
-        nonlocal finalized
-        finalized = True
-        plt.close(fig)
-
-    index_box.on_submit(on_index_submit)
-    update_button.on_clicked(on_update)
-    align_button.on_clicked(on_align)
-    add_button.on_clicked(on_add)
-    remove_button.on_clicked(on_remove)
-    reset_button.on_clicked(on_reset)
-    pipette_button.on_clicked(on_pipette)
-    previous_preview_button.on_clicked(on_previous_preview)
-    next_preview_button.on_clicked(on_next_preview)
-    rerun_preview_button.on_clicked(on_rerun_preview)
-    finalize_button.on_clicked(on_finalize)
-
     state.rerun_preview()
-    redraw()
-    plt.show()
-    if not finalized:
+    window = ColorPathEditorWindow(state, relative_colors, colors)
+    window.build()
+    if not window.run():
         logger.info("Manual color-path editor closed without explicit finalize.")
     return state.key_colors
