@@ -24,6 +24,7 @@ from darsia.presets.workflows.config.sections import (
 )
 from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.presets.workflows.utils.roi_visualization import draw_active_region
+from darsia.presets.workflows.windows.color_path_editor import edit_color_path
 from darsia.signals.color import ColorPathEmbedding
 from darsia.utils.standard_images import roi_to_mask
 
@@ -296,6 +297,7 @@ def calibration_color_paths_from_context(
             mode=calibration_cfg.calibration_mode,
             ignore_labels=calibration_cfg.ignore_labels,
             initial_paths=initial_paths,
+            editor=edit_color_path,
             preview_image=preview_calibration_image,
             preview_images=calibration_images,
             preview_baseline=fluidflower.baseline,
