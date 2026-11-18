@@ -260,7 +260,6 @@ analysis outputs. Supported `modes`:
 
 Supported keys:
 - `formats` (list of output formats: `["jpg", "npz"]`)
-- `folder` (output folder, defaults to `<results>/thresholding`)
 - `filter_background` (bool, default `false`): overlays on a copy of the image with each
   color channel stretched from its minimum and maximum to the full range (display only;
   masks and extents use the original image)
@@ -287,7 +286,8 @@ Supported keys:
   - `box_padding`
 
 Notes:
-- JPG and NPZ outputs are stored in separate subfolders: `<folder>/jpg/` and `<folder>/npz/`.
+- JPG and NPZ outputs are stored in separate subfolders: `<results>/thresholding/jpg/` and
+  `<results>/thresholding/npz/` (fixed results layout; there is no `folder` key).
 - JPG outputs are source-image overlays using each layer’s `fill` and `stroke` styling.
 - Legacy `modes` + `thresholds` is still accepted and mapped to default layers.
 

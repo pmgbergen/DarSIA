@@ -90,8 +90,8 @@ fill_alpha = 0.4
 stroke_width = 2
 ```
 
-JPG and NPZ outputs land in separate subfolders (`<folder>/jpg/`,
-`<folder>/npz/`); JPG output overlays the layer's `fill`/`stroke` styling on
+JPG and NPZ outputs land in separate subfolders (`<results>/thresholding/jpg/`,
+`<results>/thresholding/npz/`); JPG output overlays the layer's `fill`/`stroke` styling on
 the source image. A `[analysis.thresholding.legend]` table (same shape as
 `[video.overlay]`) can draw a text-box legend on the JPG output.
 
