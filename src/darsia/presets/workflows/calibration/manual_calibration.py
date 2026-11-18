@@ -724,8 +724,17 @@ class CalibrationState:
 
     @darsia.timing_decorator
     @darsia.timed("mass series (all images)")
-    def update_mass_analysis(self) -> None:
-        """Update the series (per roi) of detected and injected mass over all images."""
+    def update_mass_analysis(
+        self, progress: Callable[[int, int], None] | None = None
+    ) -> None:
+        """Update the series (per roi) of detected and injected mass over all images.
+
+        Parameters
+        ----------
+        progress : Callable, optional
+            Called with (number of the image, number of images) before each image.
+
+        """
         analysis = self.level.analysis
         experiment = self.experiment
         rois = self.rois
@@ -739,6 +748,8 @@ class CalibrationState:
             roi_key: {"time": [], "exact": [], "detected": []} for roi_key in rois
         }
         for idx, img in enumerate(self.level.images):
+            if progress is not None:
+                progress(idx + 1, len(self.level.images))
             color_interpretation = self.color_interpretation_of(idx)
 
             # Update thermodynamic state

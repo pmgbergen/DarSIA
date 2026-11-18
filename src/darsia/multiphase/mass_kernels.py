@@ -98,7 +98,7 @@ if NUMBA_AVAILABLE:
         ma = chi * ca * aqueous
         return ca, sg, mg, ma
 
-    @njit(cache=True, error_model="numpy", parallel=True)
+    @njit(cache=True, error_model="numpy", parallel=True, nogil=True)
     def _flash_and_mass(
         signal,
         bounds,
@@ -132,7 +132,7 @@ if NUMBA_AVAILABLE:
                 mass_aq[i, j] = ma
                 mass[i, j] = mg + ma
 
-    @njit(cache=True, error_model="numpy", parallel=True)
+    @njit(cache=True, error_model="numpy", parallel=True, nogil=True)
     def _column_sums(
         signal,
         bounds,

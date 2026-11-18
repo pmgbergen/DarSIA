@@ -30,6 +30,8 @@ class SliderBlitter:
         """Moving parts of all sliders (bar, handle, value text)."""
         self.background = None
         """Figure without the moving parts, stored at every full draw."""
+        self._extents: dict = {}
+        """Last drawn region of each text added with `add_texts`."""
         fig.canvas.mpl_connect("draw_event", self._store_background)
 
     def add(self, sliders: list[Slider]) -> None:
@@ -48,6 +50,42 @@ class SliderBlitter:
         for slider in sliders:
             slider.drawon = False
             slider.on_changed(lambda val, slider=slider: self.blit(slider))
+
+    def add_texts(self, texts: list) -> None:
+        """Repaint these texts by blitting (see `blit_text`).
+
+        Parameters
+        ----------
+        texts : list[matplotlib.text.Text]
+            Texts of the figure which change often (e.g. status messages).
+
+        """
+        for text in texts:
+            text.set_animated(True)
+            self.artists.append(text)
+            self._extents[id(text)] = None
+
+    def blit_text(self, text) -> None:
+        """Repaint the region of a text after a change (old and new extent).
+
+        Parameters
+        ----------
+        text : matplotlib.text.Text
+            A text added with `add_texts`.
+
+        """
+        fig = self.fig
+        if self.background is None or not fig.canvas.supports_blit:
+            fig.canvas.draw_idle()
+            return
+        extent = text.get_window_extent(fig.canvas.get_renderer())
+        previous = self._extents.get(id(text))
+        region = extent if previous is None else Bbox.union([extent, previous])
+        self._extents[id(text)] = extent
+        fig.canvas.restore_region(self.background)
+        for artist in self.artists:
+            fig.draw_artist(artist)
+        fig.canvas.blit(region.padded(2))
 
     def _store_background(self, event) -> None:
         fig = self.fig

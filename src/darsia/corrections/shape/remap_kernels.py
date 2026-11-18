@@ -55,7 +55,7 @@ if NUMBA_AVAILABLE:
                 value += img[y0 + 1, x0 + 1, channel] * wy * wx
         return value
 
-    @njit(cache=True, error_model="numpy", parallel=True)
+    @njit(cache=True, error_model="numpy", parallel=True, nogil=True)
     def _bilinear_unsigned(img, rows, cols, out):
         """For unsigned integer images of any width (compiled per type)."""
         for i in prange(out.shape[0]):
@@ -66,7 +66,7 @@ if NUMBA_AVAILABLE:
                 # The value lies within the range of the image (it is an average).
                 out[i, channel] = int(np.floor(_interpolate(img, y, x, channel) + 0.5))
 
-    @njit(cache=True, error_model="numpy", parallel=True)
+    @njit(cache=True, error_model="numpy", parallel=True, nogil=True)
     def _bilinear_float(img, rows, cols, out):
         for i in prange(out.shape[0]):
             y = np.float64(rows[i])
