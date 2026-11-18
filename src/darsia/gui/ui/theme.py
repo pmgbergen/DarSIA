@@ -17,6 +17,16 @@ class _ThemeSignal(QObject):
 theme_signal = _ThemeSignal()
 
 
+def is_dark(pal: QPalette | None = None) -> bool:
+    """Whether the palette (default: the application's) looks dark.
+
+    Judged by the window background, so it also answers for the System theme.
+    """
+    if pal is None:
+        pal = QApplication.instance().palette()
+    return pal.color(QPalette.Window).lightnessF() < 0.5
+
+
 def muted_text_color(pal: QPalette, weight: float = 0.55) -> QColor:
     """Blend WindowText toward Window background for theme-agnostic 'muted' text.
 

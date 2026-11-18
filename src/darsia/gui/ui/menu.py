@@ -127,6 +127,8 @@ class MenuBuilder:
         theme_group.setExclusive(True)
 
         current_theme = get_theme()
+        # Kept so a theme change from the toolbar switch checks the right item.
+        self.theme_actions: dict[str, QAction] = {}
         for theme_name in ["System", "Light", "Dark"]:
             action = self._add_action(
                 theme_menu,
@@ -136,6 +138,7 @@ class MenuBuilder:
             action.setCheckable(True)
             action.setChecked(theme_name == current_theme)
             theme_group.addAction(action)
+            self.theme_actions[theme_name] = action
 
         # Logging dock's built-in toggle action (checkable, tracks the dock's
         # shown/hidden state automatically) — same pattern as the View dock.

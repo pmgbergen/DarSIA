@@ -1,9 +1,182 @@
 """Small reusable custom Qt widgets shared across the GUI."""
 
 import numpy as np
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QIcon, QImage, QPixmap
-from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QSlider, QWidget
+from PySide6.QtCore import (
+    Property,
+    QEasingCurve,
+    QPropertyAnimation,
+    QRectF,
+    QSize,
+    Qt,
+    Signal,
+)
+from PySide6.QtGui import QIcon, QImage, QPainter, QPalette, QPixmap
+from PySide6.QtWidgets import (
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QSizePolicy,
+    QSlider,
+    QWidget,
+)
+
+from .theme import muted_text_color
+
+
+class ToggleSwitch(QWidget):
+    """Pill-shaped two-state switch with a sliding knob.
+
+    Unchecked = knob left, checked = knob right. Optional labels outside the
+    track (``left``, ``right``: text) name the two states; the label of the
+    current state is drawn in the normal text color, the other one muted.
+    Optional icons inside the track (``inner``: (left icon, right icon)) sit
+    under the knob's two positions, so the free side shows the other state's
+    icon. The track takes the text color and the knob the window color, so the
+    switch inverts with the theme; inner icons should be built in the window
+    color (their colors are baked in, pass new ones via ``set_inner`` after a
+    theme change). A click anywhere flips the state and emits ``toggled``.
+    """
+
+    toggled = Signal(bool)
+
+    _TRACK_WIDTH = 44
+    _TRACK_HEIGHT = 24
+    _KNOB_MARGIN = 3
+    _GAP = 6
+    _ICON_SIZE = 12
+
+    def __init__(self, left=None, right=None, checked=False, inner=None, parent=None):
+        super().__init__(parent)
+        self._left = left
+        self._right = right
+        self._inner = inner or (None, None)
+        self._checked = bool(checked)
+        self._position = 1.0 if self._checked else 0.0
+        self._animation = QPropertyAnimation(self, b"knob_position", self)
+        self._animation.setDuration(150)
+        self._animation.setEasingCurve(QEasingCurve.InOutQuad)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+    # Animated knob position: 0 = left (unchecked), 1 = right (checked).
+    def _get_position(self) -> float:
+        return self._position
+
+    def _set_position(self, value: float) -> None:
+        self._position = value
+        self.update()
+
+    knob_position = Property(float, _get_position, _set_position)
+
+    def is_checked(self) -> bool:
+        return self._checked
+
+    def set_checked(self, checked: bool, *, emit: bool = True, animate: bool = True):
+        """Set the state; slides the knob and emits ``toggled`` if it changed."""
+        checked = bool(checked)
+        if checked == self._checked:
+            return
+        self._checked = checked
+        target = 1.0 if checked else 0.0
+        self._animation.stop()
+        if animate and self.isVisible():
+            self._animation.setStartValue(self._position)
+            self._animation.setEndValue(target)
+            self._animation.start()
+        else:
+            self._set_position(target)
+        if emit:
+            self.toggled.emit(checked)
+
+    def set_inner(self, left=None, right=None) -> None:
+        """Replace the icons inside the track (e.g. rebuilt for a new theme)."""
+        self._inner = (left, right)
+        self.update()
+
+    def _item_width(self, item) -> int:
+        if item is None:
+            return 0
+        return self.fontMetrics().horizontalAdvance(str(item))
+
+    def sizeHint(self) -> QSize:
+        widths = [self._item_width(self._left), self._item_width(self._right)]
+        width = self._TRACK_WIDTH + sum(w + self._GAP for w in widths if w)
+        height = max(self._TRACK_HEIGHT, self.fontMetrics().height()) + 4
+        return QSize(width, height)
+
+    def minimumSizeHint(self) -> QSize:
+        return self.sizeHint()
+
+    def _draw_item(self, painter, item, x, active) -> int:
+        """Draw a text label at x (vertically centered); returns its width."""
+        width = self._item_width(item)
+        if not width:
+            return 0
+        pal = self.palette()
+        color = pal.color(QPalette.WindowText) if active else muted_text_color(pal)
+        painter.setPen(color)
+        painter.drawText(
+            QRectF(x, 0, width, self.height()),
+            Qt.AlignVCenter | Qt.AlignLeft,
+            str(item),
+        )
+        return width
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        pal = self.palette()
+
+        x = 0.0
+        left_width = self._draw_item(painter, self._left, x, not self._checked)
+        if left_width:
+            x += left_width + self._GAP
+
+        track = QRectF(
+            x,
+            (self.height() - self._TRACK_HEIGHT) / 2,
+            self._TRACK_WIDTH,
+            self._TRACK_HEIGHT,
+        )
+        radius = self._TRACK_HEIGHT / 2
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(muted_text_color(pal, 0.2))
+        painter.drawRoundedRect(track, radius, radius)
+
+        diameter = self._TRACK_HEIGHT - 2 * self._KNOB_MARGIN
+        travel = self._TRACK_WIDTH - 2 * self._KNOB_MARGIN - diameter
+        top = track.top() + self._KNOB_MARGIN
+        for index, icon in enumerate(self._inner):
+            if icon is None:
+                continue
+            size = self._ICON_SIZE
+            centre_x = track.left() + self._KNOB_MARGIN + index * travel + diameter / 2
+            pixmap = icon.pixmap(QSize(size, size))
+            painter.drawPixmap(
+                int(centre_x - size / 2), int(top + (diameter - size) / 2), pixmap
+            )
+
+        knob = QRectF(
+            track.left() + self._KNOB_MARGIN + self._position * travel,
+            top,
+            diameter,
+            diameter,
+        )
+        painter.setBrush(pal.color(QPalette.Window))
+        painter.drawEllipse(knob)
+
+        x = track.right() + self._GAP
+        self._draw_item(painter, self._right, x, self._checked)
+        painter.end()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self.rect().contains(
+            event.position().toPoint()
+        ):
+            self.set_checked(not self._checked)
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
 
 
 class NoScrollComboBox(QComboBox):

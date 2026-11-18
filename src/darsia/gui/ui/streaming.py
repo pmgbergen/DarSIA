@@ -1,7 +1,7 @@
 """View panel for the DarSIA GUI: streaming preview and results browsing.
 
 Two modes share one image display/slider/status trio, switched via
-mode_selector:
+mode_switch (Streaming | Results):
 
 - Streaming mode displays the low-resolution preview images an Analysis run
   publishes while "Stream preview" is enabled (options.analysis.stream_preview),
@@ -45,7 +45,7 @@ from darsia.presets.workflows.analysis.streaming import try_decode_stream_notify
 from darsia.presets.workflows.results_folder import list_workflow_output_images
 
 from .image_canvas import ImageCanvas
-from .widgets import NoScrollComboBox
+from .widgets import NoScrollComboBox, ToggleSwitch
 
 _NO_SELECTION_TEXT = "Select a step to see its results."
 _NO_IMAGE_TEXT = "No image output yet for this step."
@@ -58,7 +58,7 @@ class StreamingPanel(QWidget):
     def __init__(self, main_window):
         super().__init__()
         self.main_window = main_window
-        self._mode = "results"
+        self._mode = "streaming"
 
         # Streaming-mode state.
         self._cache_dir: Path | None = None
@@ -73,16 +73,16 @@ class StreamingPanel(QWidget):
 
         layout = QVBoxLayout(self)
 
-        # Built and defaulted to "Results" before the signal is connected
-        # (below, once the rest of the widgets exist): its handler calls
-        # refresh_results(), which reads main_window state not yet set up
-        # this early in MainWindow.__init__.
-        self.mode_selector = NoScrollComboBox()
-        self.mode_selector.addItems(["Streaming", "Results"])
-        self.mode_selector.blockSignals(True)
-        self.mode_selector.setCurrentText("Results")
-        self.mode_selector.blockSignals(False)
-        layout.addWidget(self.mode_selector)
+        # Switch Streaming (unchecked, default) | Results (checked). Its signal
+        # is connected below, once the rest of the widgets exist: the handler
+        # calls refresh_results(), which reads main_window state not yet set
+        # up this early in MainWindow.__init__.
+        self.mode_switch = ToggleSwitch("Streaming", "Results", checked=False)
+        self.mode_switch.setToolTip("Switch between streaming preview and results")
+        switch_row = QHBoxLayout()
+        switch_row.addWidget(self.mode_switch)
+        switch_row.addStretch()
+        layout.addLayout(switch_row)
 
         self.status_label = QLabel("Streaming disabled.")
         layout.addWidget(self.status_label)
@@ -111,13 +111,13 @@ class StreamingPanel(QWidget):
         slider_row.addWidget(self.jump_to_latest_button)
         layout.addLayout(slider_row)
 
-        self.key_selector.setVisible(False)
-        self._show_message(_NO_SELECTION_TEXT)
+        # Start in Streaming mode (no run yet: "Streaming disabled.").
+        self._apply_mode(self._mode)
 
         # Connected only now that every widget _apply_mode/refresh_results
-        # touches exists (see the comment by mode_selector's construction).
-        self.mode_selector.currentTextChanged.connect(
-            lambda text: self._apply_mode(text.lower())
+        # touches exists (see the comment by mode_switch's construction).
+        self.mode_switch.toggled.connect(
+            lambda results: self._apply_mode("results" if results else "streaming")
         )
 
     # ------------------------------------------------------------------
@@ -228,9 +228,7 @@ class StreamingPanel(QWidget):
         self.jump_to_latest_button.setEnabled(False)
         self.timeline_label.setText("")
         if enabled:
-            self.mode_selector.blockSignals(True)
-            self.mode_selector.setCurrentText("Streaming")
-            self.mode_selector.blockSignals(False)
+            self.mode_switch.set_checked(False, emit=False)
             self._apply_mode("streaming")
             self._show_message("Streaming enabled. Waiting for data...")
         elif self._mode == "streaming":
