@@ -164,8 +164,9 @@ TAB_VISIBILITY = {
     ("setup", "segmentation"): ("labeling", "options"),
     ("setup", "facies"): ("facies", "options"),
     ("setup", "rig"): ("rig", "corrections", "image_porosity", "options"),
-    # Calibration > Color & Mass
-    ("calibration", "color"): ("color", "calibration", "options"),
+    # Calibration > Color & Mass. The color registry is edited under the Registry
+    # sidebar category; it is only force-shown here while it is still missing.
+    ("calibration", "color"): ("calibration", "options"),
     ("calibration", "mass"): ("calibration", "options"),
     # Analysis
     ("analysis", "cropping"): ("analysis", "options"),
