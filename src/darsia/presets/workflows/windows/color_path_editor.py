@@ -5,7 +5,8 @@ window shows, for the selected label, the colors of the calibration images (3D) 
 key colors and path, a calibration image with the label highlighted, and the
 pH-indicator interpretation of the whole domain (each label with its own path). The user
 selects a label by a click (or Next Label), moves, adds, removes and aligns key colors,
-samples one from the image (pipette) or returns to the automatic fit, and saves.
+samples one from the image (pipette) or returns to the automatic fit, and saves. The
+pH view follows every change (computed in the background; only the edited label).
 
 Like the mass calibration window: changes are tracked, Save stores all paths, closing
 with unsaved changes asks whether to save them; switching the label drops slider moves
@@ -35,11 +36,9 @@ from darsia.utils.figure_window import ask_yes_no, maximize_figure_window
 
 logger = logging.getLogger(__name__)
 
-MIN_PREVIEW_ROWS = 120
-"""Smallest number of rows of the preview images."""
-
-PREVIEW_DOWNSAMPLING = 4
-"""Reduction of the preview images per axis (relative to the labels)."""
+PREVIEW_SIZE = 600
+"""Largest size (pixels, long side) of the preview images: about the panel's size on
+screen; the previews are for display, colors for the paths come from full resolution."""
 
 MASK_THRESHOLD = 0.5
 """Threshold of the interpolated calibration mask on the preview grid."""
@@ -113,14 +112,14 @@ class LabelPath:
         """Key colors when last saved (or at the start)."""
         self.preview: np.ndarray | None = None
         """Interpretation of the shown image with this path (NaN outside the label)."""
-        self.preview_stale = True
-        """Whether the key colors changed since the preview was computed."""
 
-    def color_path(self) -> darsia.ColorPath:
-        """Color path through the current key colors."""
+    def color_path(
+        self, key_colors: list[np.ndarray] | None = None
+    ) -> darsia.ColorPath:
+        """Color path through the current key colors (or through given ones)."""
         return darsia.ColorPath(
             colors=None,
-            relative_colors=self.key_colors,
+            relative_colors=self.key_colors if key_colors is None else key_colors,
             base_color=self.inputs.base_color,
             mode="rgb",
             name=self.inputs.name,
@@ -135,7 +134,6 @@ class LabelPath:
     def set_color(self, color: np.ndarray) -> None:
         """Set the selected key color."""
         self.key_colors[self.selected] = color
-        self.preview_stale = True
 
     def align(self, text: str) -> str | None:
         """Place the selected runs of key colors evenly between their neighbours;
@@ -152,7 +150,6 @@ class LabelPath:
             c_lo, c_hi = self.key_colors[lo], self.key_colors[hi]
             for i in run:
                 self.key_colors[i] = c_lo + (i - lo) / (hi - lo) * (c_hi - c_lo)
-        self.preview_stale = True
         return "; ".join(messages) or None
 
     def add(self) -> None:
@@ -162,7 +159,6 @@ class LabelPath:
         midpoint = 0.5 * (self.key_colors[i] + self.key_colors[i + 1])
         self.key_colors.insert(i + 1, midpoint)
         self.selected = i + 1
-        self.preview_stale = True
 
     def remove(self) -> str | None:
         """Remove the selected key color; returns a message if only two are left."""
@@ -170,7 +166,6 @@ class LabelPath:
             return _warn("Cannot remove: a color path needs at least 2 colors.")
         del self.key_colors[self.selected]
         self.selected = min(self.selected, len(self.key_colors) - 1)
-        self.preview_stale = True
         return None
 
     def reset(self) -> None:
@@ -180,7 +175,6 @@ class LabelPath:
             for c in self.inputs.auto_fit(self.inputs.num_segments)
         ]
         self.selected = 0
-        self.preview_stale = True
 
 
 class ColorPathEditorState:
@@ -227,6 +221,8 @@ class ColorPathEditorState:
         self.stored = stored
         self.preview_idx = 0
         """Index of the shown calibration image."""
+        self.picture: np.ndarray | None = None
+        """Interpretation of the whole domain as colors (`update_picture`)."""
 
         self.images = [
             img for img in preview_images if img.img.shape[:2] == labels.img.shape
@@ -255,15 +251,19 @@ class ColorPathEditorState:
         self.coarse_labels: darsia.Image | None = None
         self.coarse_mask: np.ndarray | None = None
         if self.has_preview:
-            rows = max(MIN_PREVIEW_ROWS, labels.img.shape[0] // PREVIEW_DOWNSAMPLING)
-            rows = min(rows, labels.img.shape[0])
-            cols = max(1, int(round(labels.img.shape[1] / labels.img.shape[0] * rows)))
+            # Display only: about screen size (the pipette samples full resolution)
+            full_rows, full_cols = labels.img.shape[:2]
+            scale = min(1.0, PREVIEW_SIZE / max(full_rows, full_cols))
+            rows = max(1, int(round(full_rows * scale)))
+            cols = max(1, int(round(full_cols * scale)))
             self.coarse_shape = (rows, cols)
+            # Area averages: each preview pixel shows the mean color it covers
             self.coarse_images = [
-                darsia.resize(img, shape=self.coarse_shape) for img in self.images
+                darsia.resize(img, shape=self.coarse_shape, interpolation="inter_area")
+                for img in self.images
             ]
             self.coarse_baseline = darsia.resize(
-                preview_baseline, shape=self.coarse_shape
+                preview_baseline, shape=self.coarse_shape, interpolation="inter_area"
             )
             self.coarse_labels = darsia.resize(
                 labels, shape=self.coarse_shape, interpolation="inter_nearest"
@@ -310,8 +310,12 @@ class ColorPathEditorState:
             path.saved = [c.copy() for c in path.key_colors]
         self.stored = True
 
-    def compute_preview(self, label: int) -> np.ndarray | None:
-        """pH-indicator interpretation of the shown image in a label with its path."""
+    def compute_preview(
+        self, label: int, key_colors: list[np.ndarray] | None = None
+    ) -> np.ndarray | None:
+        """pH-indicator interpretation of the shown image in a label with its path
+        (through `key_colors` if given, e.g. a snapshot for a background calculation).
+        """
         if not self.has_preview:
             return None
         assert self.coarse_baseline is not None
@@ -325,7 +329,7 @@ class ColorPathEditorState:
         selected = relative[label_mask].reshape((-1, 3))
         if selected.shape[0] == 0:
             return np.full(self.coarse_shape, np.nan, dtype=float)
-        color_path = path.color_path()
+        color_path = path.color_path(key_colors)
         interpolation = darsia.ColorPathInterpolation(
             color_path=color_path,
             color_mode=darsia.ColorMode.RELATIVE,
@@ -336,17 +340,17 @@ class ColorPathEditorState:
         interpretation[label_mask] = interpolation(selected)
         return interpretation
 
-    def rerun_preview(self, label: int | None = None) -> None:
+    def rerun_preview(
+        self, label: int | None = None, key_colors: list[np.ndarray] | None = None
+    ) -> None:
         """Compute the preview of a label (default: the selected one)."""
         label = self.label if label is None else label
-        path = self.paths[label]
-        path.preview = self.compute_preview(label)
-        path.preview_stale = False
+        self.paths[label].preview = self.compute_preview(label, key_colors)
 
-    def rerun_all_previews(self) -> None:
+    def rerun_all_previews(self, key_colors: dict | None = None) -> None:
         """Compute the previews of all labels (e.g. for another image)."""
         for label in self.paths:
-            self.rerun_preview(label)
+            self.rerun_preview(label, None if key_colors is None else key_colors[label])
 
     def step_image(self, step: int) -> None:
         """Show another calibration image (cyclic) and compute all previews."""
@@ -355,17 +359,41 @@ class ColorPathEditorState:
         self.preview_idx = (self.preview_idx + step) % len(self.coarse_images)
         self.rerun_all_previews()
 
-    def domain_picture(self) -> np.ndarray:
+    def _paint_label(
+        self, picture: np.ndarray, label: int, key_colors: list[np.ndarray] | None
+    ) -> None:
+        path = self.paths[label]
+        if path.preview is None:
+            return
+        valid = ~np.isnan(path.preview)
+        colormap = path.color_path(key_colors).get_color_map()
+        picture[valid] = colormap(np.clip(path.preview[valid], 0, 1))[:, :3]
+
+    def domain_picture(self, key_colors: dict | None = None) -> np.ndarray:
         """Interpretation of the whole domain as colors: each label in the colormap of
         its own path; white where there is no interpretation."""
         picture = np.ones((*self.coarse_shape, 3))
-        for path in self.paths.values():
-            if path.preview is None:
-                continue
-            valid = ~np.isnan(path.preview)
-            colormap = path.color_path().get_color_map()
-            picture[valid] = colormap(np.clip(path.preview[valid], 0, 1))[:, :3]
+        for label in self.paths:
+            self._paint_label(
+                picture, label, None if key_colors is None else key_colors[label]
+            )
         return picture
+
+    def update_picture(
+        self,
+        label: int | None = None,
+        key_colors: list[np.ndarray] | dict | None = None,
+    ) -> None:
+        """Update the cached domain picture: one label (its region recolored), or all
+        labels (`label` None; `key_colors` then per label)."""
+        if label is None or self.picture is None:
+            self.picture = self.domain_picture(key_colors if label is None else None)
+            return
+        picture = self.picture.copy()
+        if self.coarse_labels is not None:
+            picture[self.label_mask(label)] = 1.0
+        self._paint_label(picture, label, key_colors)
+        self.picture = picture
 
     def highlighted_image(self) -> np.ndarray:
         """Shown image with everything outside the selected label turned gray."""
@@ -460,7 +488,6 @@ class ColorPathEditorState:
         path.key_colors[path.selected] = np.asarray(
             characteristic_colors[0], dtype=float
         )
-        path.preview_stale = True
         return None
 
 
@@ -487,6 +514,8 @@ class ColorPathEditorWindow:
         """Buttons by their label."""
         self.pending = False
         """Whether a channel slider was moved since the last Update."""
+        self._queued: set[int] = set()
+        """Labels whose preview waits for the running calculation."""
 
     # ! ---- BUILDING ----
 
@@ -602,7 +631,7 @@ class ColorPathEditorWindow:
         self.image = ScreenImage(
             ax_image, image, **({} if image.ndim == 3 else {"cmap": "gray"})
         )
-        self.interpretation = ScreenImage(ax_interpretation, state.domain_picture())
+        self.interpretation = ScreenImage(ax_interpretation, state.picture)
         ax_interpretation.sharex(ax_image)
         ax_interpretation.sharey(ax_image)
         self._set_preview_titles()
@@ -657,7 +686,6 @@ class ColorPathEditorWindow:
         # No submit when leaving the text box (Align applies it)
         self.align_box.canvas.mpl_disconnect(self.align_box._cids[-1])
         add_button("Align", [0.38, 0.12, 0.07, 0.05])
-        add_button("Re-run pH preview", [0.70, 0.12, 0.22, 0.06])
 
         # Messages (repainted alone)
         self.blitter = SliderBlitter(fig)
@@ -669,11 +697,6 @@ class ColorPathEditorWindow:
             self.blitter,
         )
         """Result of saving, or that there are unsaved changes."""
-        self.preview_note = StatusText(
-            fig.text(0.70, 0.095, "", fontsize=8, color="darkorange", va="top"),
-            self.blitter,
-        )
-        """Note when the preview does not show the current key colors."""
         self.message = StatusText(
             fig.text(0.02, 0.08, "", fontsize=8, color="red", va="top"), self.blitter
         )
@@ -697,7 +720,6 @@ class ColorPathEditorWindow:
         self.buttons["-"].on_clicked(self._on_remove)
         self.buttons["Reset (auto)"].on_clicked(self._on_reset)
         self.buttons["Pipette"].on_clicked(self._on_pipette)
-        self.buttons["Re-run pH preview"].on_clicked(self._on_rerun)
 
     # ! ---- SHOWING ----
 
@@ -728,14 +750,6 @@ class ColorPathEditorWindow:
             self.blitter.blit(slider)
         self.pending = False
 
-    def _show_preview_note(self) -> None:
-        if self.state.path.preview_stale:
-            self.preview_note.set(
-                "Preview does not show the current key colors: click Re-run pH preview."
-            )
-        else:
-            self.preview_note.set("")
-
     def _mark_unsaved(self) -> None:
         if self.save_status.get_text() != UNSAVED_TEXT:
             self.save_status.set(UNSAVED_TEXT, "darkorange")
@@ -745,9 +759,36 @@ class ColorPathEditorWindow:
         self._update_path()
         self._show_selected()
         self.message.set(message or "")
-        self._show_preview_note()
         self._mark_unsaved()
         self.blitter.redraw([self.ax3d])
+        self._request_preview(self.state.label)
+
+    def _request_preview(self, label: int) -> None:
+        """Compute the preview of a label in the background with its current key
+        colors; while another calculation runs, it is queued (latest colors win)."""
+        if self.interpretation is None:
+            return
+        if self.runner.busy:
+            self._queued.add(label)
+            return
+        state = self.state
+        key_colors = [c.copy() for c in state.paths[label].key_colors]
+
+        def work(progress) -> None:
+            state.rerun_preview(label, key_colors)
+            state.update_picture(label, key_colors)
+
+        self.runner.run("Computing preview", work, self._show_interpretation)
+
+    def _show_interpretation(self) -> None:
+        """Show the domain picture after a preview of one label; run a queued one."""
+        self.interpretation.set_data(self.state.picture)
+        self.blitter.redraw([self.ax_interpretation])
+        self._run_queued()
+
+    def _run_queued(self) -> None:
+        if self._queued:
+            self._request_preview(self._queued.pop())
 
     def _show_previews(self) -> None:
         """Show the calibration image and the interpretation of the whole domain."""
@@ -755,10 +796,10 @@ class ColorPathEditorWindow:
         if self.image is not None:
             self.image.set_data(state.highlighted_image())
         if self.interpretation is not None:
-            self.interpretation.set_data(state.domain_picture())
+            self.interpretation.set_data(state.picture)
         self._set_preview_titles()
-        self._show_preview_note()
         self.blitter.redraw([self.ax_image, self.ax_interpretation])
+        self._run_queued()
 
     def _switch_label(self) -> None:
         """Show the label selected in the state; slider moves not applied are dropped."""
@@ -769,7 +810,6 @@ class ColorPathEditorWindow:
         if self.image is not None:
             self.image.set_data(self.state.highlighted_image())
         self._set_preview_titles()
-        self._show_preview_note()
         self.blitter.redraw(
             [self.ax3d, self.ax_image] + [slider.ax for slider in self.channel_sliders]
         )
@@ -820,32 +860,32 @@ class ColorPathEditorWindow:
         if self.runner.refuse() or len(self.state.coarse_images) == 0:
             return
         state = self.state
-        self.runner.run(
-            "Computing preview",
-            lambda progress: state.step_image(1),
-            self._show_previews,
-        )
+        # The image index changes here (the pipette uses it); the previews of all
+        # labels are computed in the background with the key colors of now
+        state.preview_idx = (state.preview_idx + 1) % len(state.coarse_images)
+        key_colors = {
+            label: [c.copy() for c in path.key_colors]
+            for label, path in state.paths.items()
+        }
+
+        def work(progress) -> None:
+            state.rerun_all_previews(key_colors)
+            state.update_picture(None, key_colors)
+
+        self.runner.run("Computing preview", work, self._show_previews)
 
     def _on_update(self, event) -> None:
-        if self.runner.refuse():
-            return
         self._apply_sliders()
         self._keys_changed()
 
     def _on_align(self, event) -> None:
-        if self.runner.refuse():
-            return
         self._keys_changed(self.state.path.align(self.align_box.text))
 
     def _on_add(self, event) -> None:
-        if self.runner.refuse():
-            return
         self.state.path.add()
         self._keys_changed()
 
     def _on_remove(self, event) -> None:
-        if self.runner.refuse():
-            return
         message = self.state.path.remove()
         if message is None:
             self._keys_changed()
@@ -853,29 +893,15 @@ class ColorPathEditorWindow:
             self.message.set(message)
 
     def _on_reset(self, event) -> None:
-        if self.runner.refuse():
-            return
         self.state.path.reset()
         self._keys_changed()
 
     def _on_pipette(self, event) -> None:
-        if self.runner.refuse():
-            return
         message = self.state.pipette(self.ax_image.get_xlim(), self.ax_image.get_ylim())
         if message is None:
             self._keys_changed()
         else:
             self.message.set(message)
-
-    def _on_rerun(self, event) -> None:
-        if self.runner.refuse():
-            return
-        state = self.state
-        self.runner.run(
-            "Computing preview",
-            lambda progress: state.rerun_preview(),
-            self._show_previews,
-        )
 
     # ! ---- SAVE AND CLOSE ----
 
@@ -994,6 +1020,7 @@ def edit_color_paths(
             save({})
         return True
     state.rerun_all_previews()
+    state.update_picture()
     window = ColorPathEditorWindow(state, save)
     window.build()
     return window.run()
