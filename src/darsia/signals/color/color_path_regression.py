@@ -2,6 +2,7 @@
 
 import copy
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Literal, Optional
 from warnings import warn
@@ -62,6 +63,32 @@ def _voxel_faces(
     if not quads:
         return np.empty((0, 4, 3)), np.empty((0, 3), dtype=int)
     return np.concatenate(quads), np.concatenate(owners)
+
+
+@dataclass
+class ColorPathInputs:
+    """Data of one label for editing its color path by hand."""
+
+    label: int | None
+    """The label."""
+    name: str
+    """Name of the color path."""
+    spectrum: "darsia.ColorSpectrum"
+    """Color spectrum of the label (relative colors)."""
+    ignore: "darsia.ColorSpectrum | None"
+    """Ignored spectrum (baseline fluctuations)."""
+    relative_colors: np.ndarray
+    """Relative colors of the spectrum."""
+    colors: np.ndarray
+    """Absolute colors of the spectrum."""
+    key_relative_colors: list[np.ndarray]
+    """Key colors at the start (previous calibration or automatic fit)."""
+    base_color: np.ndarray
+    """Base color of the label."""
+    auto_fit: Callable[[int], list[np.ndarray]]
+    """Automatic fit with a given number of segments."""
+    num_segments: int
+    """Number of segments of the automatic fit."""
 
 
 # ! ---- ALGORITHMIC COLOR PATH DEFINITION ----
@@ -625,7 +652,7 @@ class LabelColorPathMapRegression:
         return expanded_color_spectrum
 
     @darsia.timing_decorator
-    def _find_color_path(
+    def _prepare_label(
         self,
         spectrum: darsia.ColorSpectrum,
         label: int | None = None,
@@ -634,20 +661,17 @@ class LabelColorPathMapRegression:
         name: str = "Color Path",
         directory: Path | None = None,
         weighting: Literal["threshold", "wls", "wls_sqrt", "wls_log"] = "threshold",
-        mode: Literal["auto", "manual"] = "auto",
-        preview_image: darsia.Image | None = None,
-        preview_images: list[darsia.Image] | None = None,
-        preview_baseline: darsia.Image | None = None,
         initial_key_relative_colors: list[np.ndarray] | None = None,
-        editor: Callable[..., list[np.ndarray]] | None = None,
         verbose: bool = False,
-    ) -> darsia.ColorPath:
-        """Find a relative color path through the significant boxes.
+    ) -> "ColorPathInputs | darsia.ColorPath":
+        """Fit a relative color path through the significant boxes of one label.
 
         Parameters
         ----------
         spectrum : ColorSpectrum
             The color spectrum to analyze.
+        label : int, optional
+            The label (for messages).
         ignore : ColorSpectrum | None
             The color spectrum to ignore.
         num_segments : int
@@ -659,33 +683,25 @@ class LabelColorPathMapRegression:
         weighting : str
             How to use histogram counts when fitting the path.
             ``"threshold"`` (default) uses binary 0/1 weights controlled by
-            the spectrum threshold – counts are not used beyond that.
+            the spectrum threshold - counts are not used beyond that.
             ``"wls"`` weights each active bin by its normalised probability.
             ``"wls_sqrt"`` weights by the square-root of the probability.
             ``"wls_log"`` weights by ``log(1 + count)`` where count is
             derived from the normalised probability scaled by the total
             number of active bins.
-        mode : str
-            Color-path selection mode.
-            ``"auto"`` returns the automated result.
-            ``"manual"`` starts from the automated result and allows
-            interactive key-color editing before finalizing.
         initial_key_relative_colors : list[np.ndarray] | None
-            Previously calibrated key colors. In manual mode they replace the
-            automated result as starting point (the number of segments is
-            then given by their count); ignored in auto mode.
-        editor : Callable, optional
-            Interactive editor of the key colors, required in manual mode (e.g.
-            `darsia.presets.workflows.windows.color_path_editor.edit_color_path`).
-            Called with keyword arguments (see the call below); returns the key
-            relative colors.
+            Previously calibrated key colors; replace the automated fit as start
+            (manual calibration).
         verbose : bool
             Whether to print additional information.
 
         Returns
         -------
-        darsia.ColorPath
-            The relative color path through the significant boxes.
+        ColorPathInputs or darsia.ColorPath
+            The key colors (start) with the data to edit them; a fixed default (zero)
+            path if no path can be fitted (too few colors, failed embedding, no key
+            colors).
+
         """
         assert (
             spectrum.color_range.color_mode == darsia.ColorMode.RELATIVE
@@ -1352,10 +1368,9 @@ class LabelColorPathMapRegression:
                 sorted_relative_colors[segment["range"].start] for segment in segments
             ] + [sorted_relative_colors[segments[-1]["range"].stop - 1]]
 
-        initial_relative_colors = initial_key_relative_colors
-        if mode == "manual" and initial_relative_colors:
+        if initial_key_relative_colors:
             key_relative_colors = [
-                np.array(c, dtype=float) for c in initial_relative_colors
+                np.array(c, dtype=float) for c in initial_key_relative_colors
             ]
         else:
             key_relative_colors = auto_fit(num_segments)
@@ -1374,33 +1389,46 @@ class LabelColorPathMapRegression:
                 name=name,
             )
 
-        if mode not in ("auto", "manual"):
-            raise ValueError(
-                f"Unknown color-path mode '{mode}'. Allowed: 'auto', 'manual'."
-            )
+        return ColorPathInputs(
+            label=label,
+            name=name,
+            spectrum=spectrum,
+            ignore=ignore,
+            relative_colors=relative_colors,
+            colors=colors,
+            key_relative_colors=key_relative_colors,
+            base_color=spectrum.base_color,
+            auto_fit=auto_fit,
+            num_segments=num_segments,
+        )
 
-        if mode == "manual":
-            if editor is None:
-                raise ValueError(
-                    "Manual color-path calibration needs an editor (argument "
-                    "'editor')."
-                )
-            key_relative_colors = editor(
-                relative_colors=relative_colors,
-                colors=colors,
-                key_relative_colors=key_relative_colors,
-                base_color=spectrum.base_color,
-                ignore=ignore,
-                auto_fit=auto_fit,
-                default_num_segments=num_segments,
-                name=name,
-                label=label,
-                preview_image=preview_image,
-                preview_images=preview_images,
-                preview_baseline=preview_baseline,
-                labels=self.labels,
-                mask=self.mask,
-            )
+    def _path_from_keys(
+        self,
+        inputs: "ColorPathInputs",
+        key_relative_colors: list[np.ndarray],
+        directory: Path | None = None,
+        verbose: bool = False,
+    ) -> darsia.ColorPath:
+        """Color path through key colors; saves a plot of it (if `directory`).
+
+        Parameters
+        ----------
+        inputs : ColorPathInputs
+            Data of the label (spectrum, base color, name).
+        key_relative_colors : list[np.ndarray]
+            Key colors relative to the base color.
+        directory : Path, optional
+            Directory of the plot.
+        verbose : bool
+            Whether to print the key colors and show the plot.
+
+        Returns
+        -------
+        darsia.ColorPath
+            The relative color path.
+
+        """
+        spectrum, ignore, name = inputs.spectrum, inputs.ignore, inputs.name
 
         # Step 5: Define the corresponding absolute colors
         key_colors = [spectrum.base_color + c for c in key_relative_colors]
@@ -1453,6 +1481,138 @@ class LabelColorPathMapRegression:
 
         return relative_color_path
 
+    def _find_color_path(
+        self,
+        spectrum: darsia.ColorSpectrum,
+        label: int | None = None,
+        ignore: darsia.ColorSpectrum | None = None,
+        num_segments: int = 1,
+        name: str = "Color Path",
+        directory: Path | None = None,
+        weighting: Literal["threshold", "wls", "wls_sqrt", "wls_log"] = "threshold",
+        mode: Literal["auto", "manual"] = "auto",
+        verbose: bool = False,
+    ) -> darsia.ColorPath:
+        """Automatic color path of one label (see `_prepare_label`)."""
+        if mode == "manual":
+            raise ValueError(
+                "Manual color-path mode: use prepare_color_path_editing and "
+                "color_path_map with an interactive editor."
+            )
+        if mode != "auto":
+            raise ValueError(
+                f"Unknown color-path mode '{mode}'. Allowed: 'auto', 'manual'."
+            )
+        prepared = self._prepare_label(
+            spectrum=spectrum,
+            label=label,
+            ignore=ignore,
+            num_segments=num_segments,
+            name=name,
+            directory=directory,
+            weighting=weighting,
+            verbose=verbose,
+        )
+        if isinstance(prepared, darsia.ColorPath):
+            return prepared
+        return self._path_from_keys(
+            prepared, prepared.key_relative_colors, directory, verbose
+        )
+
+    def prepare_color_path_editing(
+        self,
+        color_spectrum: darsia.LabelColorSpectrumMap,
+        ignore: darsia.LabelColorSpectrumMap | None = None,
+        num_segments: int = 1,
+        weighting: Literal["threshold", "wls", "wls_sqrt", "wls_log"] = "threshold",
+        ignore_labels: list[int] | None = None,
+        initial_paths: dict[int, list[np.ndarray]] | None = None,
+        verbose: bool = False,
+    ) -> dict[int, "ColorPathInputs | darsia.ColorPath"]:
+        """Start of the manual calibration: the data to edit the paths of all labels.
+
+        Parameters
+        ----------
+        color_spectrum : LabelColorSpectrumMap
+            The color spectrum map to analyze.
+        ignore : LabelColorSpectrumMap | None
+            The color spectrum map to ignore.
+        num_segments : int
+            The number of segments of the automatic fit.
+        weighting : Literal
+            How to use histogram counts when fitting (see `_prepare_label`).
+        ignore_labels : list[int] | None
+            Labels with a zero path (not editable).
+        initial_paths : dict[int, list[np.ndarray]] | None
+            Previously calibrated relative key colors per label; start instead of the
+            automatic fit.
+        verbose : bool
+            Whether to print additional information.
+
+        Returns
+        -------
+        dict
+            Per label the inputs of the editor (`ColorPathInputs`), or a fixed path
+            (zero path of an ignored label, default path if no path can be fitted).
+
+        """
+        ignore_labels = ignore_labels or []
+        initial_paths = initial_paths or {}
+        prepared = {}
+        for label in color_spectrum.keys():
+            if label in ignore_labels:
+                prepared[label] = darsia.ColorPath(
+                    colors=[np.zeros(3), np.zeros(3)],
+                    mode="rgb",
+                    name=f"Zero Path for Label {label}",
+                )
+                continue
+            prepared[label] = self._prepare_label(
+                spectrum=color_spectrum[label],
+                label=label,
+                ignore=ignore[label] if ignore is not None else None,
+                num_segments=num_segments,
+                name=f"Color Path for Label {label}",
+                weighting=weighting,
+                initial_key_relative_colors=initial_paths.get(label),
+                verbose=verbose,
+            )
+        return prepared
+
+    def color_path_map(
+        self,
+        prepared: dict[int, "ColorPathInputs | darsia.ColorPath"],
+        keys: dict[int, list[np.ndarray]],
+        directory: Path | None = None,
+    ) -> darsia.LabelColorPathMap:
+        """Color paths of all labels from the edited key colors.
+
+        Parameters
+        ----------
+        prepared : dict
+            Result of `prepare_color_path_editing`.
+        keys : dict[int, list[np.ndarray]]
+            Relative key colors of the edited labels.
+        directory : Path, optional
+            Directory of the plots of the paths.
+
+        Returns
+        -------
+        LabelColorPathMap
+            Edited paths, and the fixed paths of the labels that are not editable.
+
+        """
+        return darsia.LabelColorPathMap(
+            {
+                label: (
+                    item
+                    if isinstance(item, darsia.ColorPath)
+                    else self._path_from_keys(item, keys[label], directory)
+                )
+                for label, item in prepared.items()
+            }
+        )
+
     @darsia.timing_decorator
     def find_color_path(
         self,
@@ -1462,15 +1622,13 @@ class LabelColorPathMapRegression:
         directory: Path | None = None,
         weighting: Literal["threshold", "wls", "wls_sqrt", "wls_log"] = "threshold",
         mode: Literal["auto", "manual"] = "auto",
-        preview_image: darsia.Image | None = None,
-        preview_images: list[darsia.Image] | None = None,
-        preview_baseline: darsia.Image | None = None,
         ignore_labels: list[int] | None = None,
-        initial_paths: dict[int, list[np.ndarray]] | None = None,
-        editor: Callable[..., list[np.ndarray]] | None = None,
         verbose: bool = False,
     ) -> darsia.LabelColorPathMap:
-        """Find relative color paths for each label in the spectrum map.
+        """Find relative color paths for each label in the spectrum map (automatic).
+
+        For the manual calibration, see `prepare_color_path_editing` and
+        `color_path_map`.
 
         Parameters
         ----------
@@ -1488,26 +1646,10 @@ class LabelColorPathMapRegression:
             ``"wls"``, ``"wls_sqrt"``, and ``"wls_log"`` use count-weighted
             average errors – see :meth:`_find_color_path` for details.
         mode : Literal
-            Color-path selection mode.
-            ``"auto"`` returns the automated result.
-            ``"manual"`` enables interactive key-color postprocessing.
-        preview_image : darsia.Image | None
-            Calibration image for manual preview.
-        preview_images : list[darsia.Image] | None
-            Calibration images for manual
-            preview navigation.
-        preview_baseline : darsia.Image | None
-            Baseline used for relative color preview.
+            Only ``"auto"``; ``"manual"`` raises (see `prepare_color_path_editing`).
         ignore_labels : list[int] | None
             Label IDs to skip fitting and produce
             zero-paths for instead. Defaults to None (no labels ignored).
-        initial_paths : dict[int, list[np.ndarray]] | None
-            Previously calibrated relative key colors per label. In manual mode,
-            labels found here start from these (each with its own number of
-            segments) instead of the automated fit. Ignored in auto mode.
-        editor : Callable, optional
-            Interactive editor of the key colors, required in manual mode; see
-            :meth:`_find_color_path`.
         verbose : bool
             Whether to print additional information.
 
@@ -1518,8 +1660,15 @@ class LabelColorPathMapRegression:
         """
         if ignore_labels is None:
             ignore_labels = []
-        if initial_paths is None:
-            initial_paths = {}
+        if mode == "manual":
+            raise ValueError(
+                "Manual color-path mode: use prepare_color_path_editing and "
+                "color_path_map with an interactive editor."
+            )
+        if mode != "auto":
+            raise ValueError(
+                f"Unknown color-path mode '{mode}'. Allowed: 'auto', 'manual'."
+            )
 
         # Helper to create a zero-path (all-zero color path for ignored labels)
         def create_zero_path(label: int) -> darsia.ColorPath:
@@ -1545,12 +1694,6 @@ class LabelColorPathMapRegression:
                             name=f"Color Path for Label {label}",
                             directory=directory,
                             weighting=weighting,
-                            mode=mode,
-                            preview_image=preview_image,
-                            preview_images=preview_images,
-                            preview_baseline=preview_baseline,
-                            initial_key_relative_colors=initial_paths.get(label),
-                            editor=editor,
                             verbose=verbose,
                         )
                     ),
