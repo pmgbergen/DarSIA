@@ -194,6 +194,16 @@ class ProcessRunner:
         except (OSError, ValueError):
             return None
 
+    def abort_all(self) -> bool:
+        """Abort every running workflow process, whatever the sidebar selection.
+
+        Returns whether a workflow was running.
+        """
+        running = [process for process, _label in list(self.active.values())]
+        for process in running:
+            self.abort_workflow_process(process)
+        return bool(running)
+
     def abort_workflow_process(self, process):
         """Abort a process started via start_workflow_process, killing its whole tree."""
         if process is None or process.state() == QProcess.NotRunning:

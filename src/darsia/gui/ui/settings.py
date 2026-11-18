@@ -3069,6 +3069,8 @@ class SettingsFactory:
         # Replay the last view to refresh
         if self.main_window._last_settings_view[0] == "full":
             self.display_full_settings()
+        elif self.main_window._last_settings_view[0] == "sections":
+            self.display_sections(self.main_window._last_settings_view[1])
         elif self.main_window._last_settings_view[0] == "action":
             _, action, checked_ids = self.main_window._last_settings_view
             self.display_settings(action, checked_ids)
@@ -3235,3 +3237,18 @@ class SettingsFactory:
         self.main_window._last_settings_view = ("full",)
         all_settings = self.get_all_settings()
         self._render_settings_tabs(all_settings)
+
+    def display_sections(self, sections):
+        """Display only the given fixed-schema sections (e.g. one registry)."""
+        sections = tuple(sections)
+        self.main_window._last_settings_view = ("sections", sections)
+        settings_by_section = {}
+        for section in sections:
+            section_fields = get_section_fields(section)
+            if section_fields is None:
+                self.main_window.print_log(
+                    f"No dataclass found for section '{section}'"
+                )
+                continue
+            settings_by_section[section] = section_fields
+        self._render_settings_tabs(settings_by_section)

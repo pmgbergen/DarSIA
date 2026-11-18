@@ -3,16 +3,12 @@ from pathlib import Path
 
 import psutil
 from PySide6.QtCore import QSettings, Qt, QTimer, Signal
-from PySide6.QtGui import QIcon, QPalette
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
-    QApplication,
     QDockWidget,
-    QHBoxLayout,
     QLabel,
     QMainWindow,
-    QPushButton,
     QScrollArea,
-    QSizePolicy,
     QSplitter,
     QTextEdit,
     QVBoxLayout,
@@ -20,7 +16,12 @@ from PySide6.QtWidgets import (
 )
 
 from darsia.presets.workflows.analysis.progress import try_decode_progress_line
-from darsia.presets.workflows.results_folder import has_workflow_output
+from darsia.presets.workflows.results_folder import (
+    _results_folder_from_merged_config,
+    has_workflow_output,
+    open_in_file_explorer,
+    suggested_workflow_results_folder,
+)
 from darsia.presets.workflows.status import (
     MISSING,
     OUTDATED,
@@ -43,7 +44,6 @@ from .sidebar import Sidebar
 from .streaming import StreamingPanel
 from .theme import apply_theme
 from .theme import set_theme as save_theme
-from .theme import theme_signal
 from .toolbar import ToolbarBuilder
 from .utils_tab import UtilsTab
 from .wizards import has_wizard, load_wizard_dialog_class
@@ -74,8 +74,6 @@ class MainWindow(QMainWindow):
 
     _SIDEBAR_WIDTH_SETTINGS_KEY = "ui/sidebar_width"
     _DEFAULT_SIDEBAR_WIDTH = 120
-    _LOG_VISIBLE_SETTINGS_KEY = "ui/log_visible"
-    _VIEW_VISIBLE_SETTINGS_KEY = "ui/view_visible"
 
     def __init__(self):
         super().__init__()
@@ -118,14 +116,12 @@ class MainWindow(QMainWindow):
         self.streaming_panel = StreamingPanel(self)
         self.streaming_dock = QDockWidget("View", self)
         self.streaming_dock.setWidget(self.streaming_panel)
-        # Closable only: no float/drag, so the fixed edge-toggle button (see
-        # below) always points at where the panel actually is.
+        # Closable only: no float/drag, the panel stays docked on the right.
         self.streaming_dock.setFeatures(QDockWidget.DockWidgetClosable)
         self.addDockWidget(Qt.RightDockWidgetArea, self.streaming_dock)
-        view_visible = QSettings().value(
-            self._VIEW_VISIBLE_SETTINGS_KEY, True, type=bool
-        )
-        self.streaming_dock.setVisible(view_visible)
+        # Every start shows the View (results) and hides the Logging dock;
+        # Logging reveals itself on an error line (see _append_log).
+        self.streaming_dock.setVisible(True)
 
         # Logging dock (bottom), created before the menu builder for the same
         # reason as the View dock: it wires a View-menu toggle action.
@@ -137,12 +133,10 @@ class MainWindow(QMainWindow):
         log_layout.addWidget(self.log_text)
         self.log_dock = QDockWidget("Logging", self)
         self.log_dock.setWidget(log_container)
-        # Closable only: no float/drag, so the fixed edge-toggle button (see
-        # below) always points at where the panel actually is.
+        # Closable only: no float/drag, the panel stays docked at the bottom.
         self.log_dock.setFeatures(QDockWidget.DockWidgetClosable)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.log_dock)
-        log_visible = QSettings().value(self._LOG_VISIBLE_SETTINGS_KEY, True, type=bool)
-        self.log_dock.setVisible(log_visible)
+        self.log_dock.setVisible(False)
 
         # Set up the menu bar
         self.menu_builder = MenuBuilder(self)
@@ -254,62 +248,14 @@ class MainWindow(QMainWindow):
         root_splitter.splitterMoved.connect(self._on_splitter_moved)
         self.root_splitter = root_splitter
 
-        # Create central widget with all components. Outer layout is
-        # horizontal so the streaming edge-handle can span the *entire*
-        # window height on the right, edge to edge (matching the log
-        # edge-handle spanning the entire window width along the bottom);
-        # everything else (content + log bar) lives in a left column next to it.
+        # Central widget: sidebar and settings. The View and Logging docks
+        # are toggled from the toolbar icons (and View menu, Ctrl+P / Ctrl+L).
         main_container = QWidget()
-        main_layout = QHBoxLayout(main_container)
+        main_layout = QVBoxLayout(main_container)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
+        main_layout.addWidget(root_splitter, 1)
         self.setCentralWidget(main_container)
-
-        left_column = QWidget()
-        left_column_layout = QVBoxLayout(left_column)
-        left_column_layout.setContentsMargins(0, 0, 0, 0)
-        left_column_layout.setSpacing(0)
-        left_column_layout.addWidget(root_splitter, 1)
-
-        # Thin edge handle to reveal/hide the Logging dock, spanning the
-        # full width of the left column along the bottom.
-        self.log_toggle_button = QPushButton()
-        self.log_toggle_button.setFixedHeight(14)
-        self.log_toggle_button.setFlat(True)
-        self.log_toggle_button.setCursor(Qt.PointingHandCursor)
-        self.log_toggle_button.clicked.connect(
-            self.menu_builder.show_logging_action.trigger
-        )
-        self._refresh_log_toggle_style()
-        theme_signal.theme_changed.connect(self._refresh_log_toggle_style)
-        self.log_dock.visibilityChanged.connect(self._sync_log_toggle_button)
-        self._sync_log_toggle_button(self.log_dock.isVisible())
-        left_column_layout.addWidget(self.log_toggle_button)
-
-        main_layout.addWidget(left_column, 1)
-
-        # Thin edge handle to reveal/hide the View dock, sitting
-        # at the boundary between the main content and the (right-docked,
-        # now closable-only) dock, spanning the full window height. Drives
-        # the same toggleViewAction as Ctrl+P/View menu/toolbar, so all four
-        # controls stay in sync for free.
-        self.streaming_toggle_button = QPushButton("<")
-        self.streaming_toggle_button.setFixedWidth(14)
-        self.streaming_toggle_button.setSizePolicy(
-            QSizePolicy.Fixed, QSizePolicy.Expanding
-        )
-        self.streaming_toggle_button.setFlat(True)
-        self.streaming_toggle_button.setCursor(Qt.PointingHandCursor)
-        self.streaming_toggle_button.clicked.connect(
-            self.menu_builder.streaming_toggle_action.trigger
-        )
-        self._refresh_streaming_toggle_style()
-        theme_signal.theme_changed.connect(self._refresh_streaming_toggle_style)
-        self.streaming_dock.visibilityChanged.connect(
-            self._sync_streaming_toggle_button
-        )
-        self._sync_streaming_toggle_button(self.streaming_dock.isVisible())
-        main_layout.addWidget(self.streaming_toggle_button)
 
         self._init_dashboard()
 
@@ -317,59 +263,6 @@ class MainWindow(QMainWindow):
 
         # Display welcome message
         self.welcome_message()
-
-    def _sync_streaming_toggle_button(self, visible):
-        """Keep the edge-toggle glyph/tooltip in sync with the dock's actual
-        visibility, whatever triggered the change (Ctrl+P, View menu,
-        toolbar, this button, or the dock's own close button)."""
-        self.streaming_toggle_button.setText(">" if visible else "<")
-        self.streaming_toggle_button.setToolTip(
-            "Hide View (Ctrl+P)" if visible else "Show View (Ctrl+P)"
-        )
-        QSettings().setValue(self._VIEW_VISIBLE_SETTINGS_KEY, visible)
-
-    def _refresh_streaming_toggle_style(self):
-        """Rebuild the edge-toggle button's palette-aware styling (theme-safe)."""
-        pal = QApplication.instance().palette()
-        bg_base = pal.color(QPalette.Button)
-        is_dark_mode = pal.color(QPalette.Window).lightnessF() < 0.5
-        bg_color = bg_base.lighter(130) if is_dark_mode else bg_base.darker(120)
-        bg = bg_color.name()
-        hover = bg_color.lighter(115).name()
-        pressed = bg_color.darker(110).name()
-        border = pal.color(QPalette.Mid).name()
-        self.streaming_toggle_button.setStyleSheet(
-            f"QPushButton {{ background-color: {bg}; border: none; "
-            f"border-left: 1px solid {border}; }}"
-            f"QPushButton:hover {{ background-color: {hover}; }}"
-            f"QPushButton:pressed {{ background-color: {pressed}; }}"
-        )
-
-    def _sync_log_toggle_button(self, visible):
-        """Keep the log edge-toggle glyph/tooltip in sync with the dock's
-        actual visibility, and persist it as the default for next launch."""
-        self.log_toggle_button.setText("⌄" if visible else "⌃")
-        self.log_toggle_button.setToolTip(
-            "Hide Logging (Ctrl+L)" if visible else "Show Logging (Ctrl+L)"
-        )
-        QSettings().setValue(self._LOG_VISIBLE_SETTINGS_KEY, visible)
-
-    def _refresh_log_toggle_style(self):
-        """Rebuild the log edge-toggle button's palette-aware styling (theme-safe)."""
-        pal = QApplication.instance().palette()
-        bg_base = pal.color(QPalette.Button)
-        is_dark_mode = pal.color(QPalette.Window).lightnessF() < 0.5
-        bg_color = bg_base.lighter(130) if is_dark_mode else bg_base.darker(120)
-        bg = bg_color.name()
-        hover = bg_color.lighter(115).name()
-        pressed = bg_color.darker(110).name()
-        border = pal.color(QPalette.Mid).name()
-        self.log_toggle_button.setStyleSheet(
-            f"QPushButton {{ background-color: {bg}; border: none; "
-            f"border-top: 1px solid {border}; }}"
-            f"QPushButton:hover {{ background-color: {hover}; }}"
-            f"QPushButton:pressed {{ background-color: {pressed}; }}"
-        )
 
     def _init_dashboard(self):
         """Set up the status-bar dashboard (CPU / memory / process status)."""
@@ -524,6 +417,13 @@ class MainWindow(QMainWindow):
         self.settings_factory.display_full_settings()
         self.clear_selection()
 
+    def open_registry(self, section: str):
+        """Show one registry section (Registry menu): deselect the sidebar, as
+        for the full config view."""
+        self.sidebar.deselect_all()
+        self.settings_factory.display_sections([section])
+        self.clear_selection()
+
     def clear_selection(self):
         """Reset sidebar-selection state (e.g. after New/Open Config, or opening
         the full config view) — sidebar.deselect_all() only clears the sidebar's
@@ -618,14 +518,48 @@ class MainWindow(QMainWindow):
             tab_manager.on_run_clicked()
 
     def abort_selected_workflow(self):
-        """Abort the currently running workflow (Stop button / Ctrl+Escape)."""
-        if self.selected_action is None:
-            self.print_log("No workflow running.")
-            return
+        """Abort the running workflow (Stop button / Ctrl+Escape).
 
-        tab_manager = self.action_dispatch.get(self.selected_action)
-        if tab_manager:
-            tab_manager.on_abort_clicked()
+        Independent of the sidebar selection: the process runner knows every
+        running process, so Stop works after selecting another category too.
+        """
+        if not self.process_runner.abort_all():
+            self.print_log("No workflow running.")
+
+    def open_results_folder(self):
+        """Open the results folder in the file explorer (toolbar / File menu).
+
+        The output folder of the selected step if it exists, else the
+        [data].results root of the loaded config.
+        """
+        if not self.config_file:
+            self.print_log("Open results folder: load a config file first.")
+            return
+        folder = self._selected_step_results_folder()
+        if folder is None:
+            folder = _results_folder_from_merged_config(self.config_dict)
+        if folder is None:
+            self.print_log("Open results folder: no [data] results folder configured.")
+            return
+        try:
+            open_in_file_explorer(folder)
+        except (FileNotFoundError, RuntimeError) as e:
+            self.print_log(f"Could not open results folder: {e}")
+
+    def _selected_step_results_folder(self):
+        """Existing output folder of the selected sidebar step, or None."""
+        if self.selected_action is None or self.selected_checkbox_id is None:
+            return None
+        label = self.action_label_for(self.selected_action, self.selected_checkbox_id)
+        try:
+            folder = suggested_workflow_results_folder(
+                self.selected_action, Path(self.config_file), [label]
+            )
+        except (OSError, ValueError):
+            return None
+        if folder is None or not Path(folder).exists():
+            return None
+        return Path(folder)
 
     def set_theme(self, mode: str):
         """Set the application theme (System/Light/Dark).
