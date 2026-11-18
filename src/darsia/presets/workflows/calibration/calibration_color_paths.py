@@ -363,6 +363,7 @@ def calibration_color_paths_from_context(
                 )
             ),
             stored=stored,
+            reference_label=embedding.reference_label,
         )
         if not saved:
             logger.info(
