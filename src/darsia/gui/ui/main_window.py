@@ -38,6 +38,7 @@ from .helper import HelperTab
 from .menu import MenuBuilder
 from .preprocessing import PreprocessingTab
 from .process_runner import ProcessRunner
+from .registry_tab import RegistryTab
 from .settings import SettingsFactory
 from .setup import SetupTab
 from .sidebar import Sidebar
@@ -164,6 +165,7 @@ class MainWindow(QMainWindow):
         # Setting up the middle upper layout with sidebar
         # Initialize tab managers
         self.preprocessing_tab = PreprocessingTab(self)
+        self.registry_tab = RegistryTab(self)
         self.setup_tab = SetupTab(self)
         self.calibration_tab = CalibrationTab(self)
         self.analysis_tab = AnalysisTab(self)
@@ -174,6 +176,7 @@ class MainWindow(QMainWindow):
         # Build action dispatch dict (needed by toolbar Play/Stop)
         self.action_dispatch = {
             "preprocessing": self.preprocessing_tab,
+            "registry": self.registry_tab,
             "setup": self.setup_tab,
             "calibration": self.calibration_tab,
             "analysis": self.analysis_tab,
@@ -189,6 +192,7 @@ class MainWindow(QMainWindow):
                 "fa5s.tasks",
                 self.preprocessing_tab.sidebar_items(),
             ),
+            "registry": ("Registry", "fa5s.book", self.registry_tab.sidebar_items()),
             "setup": ("Setup", "fa5s.cogs", self.setup_tab.sidebar_items()),
             "calibration": (
                 "Calibration",
@@ -385,7 +389,13 @@ class MainWindow(QMainWindow):
         """Handle sidebar row selection: update state and auto-open settings."""
         self.selected_action = action
         self.selected_checkbox_id = checkbox_id
-        self.settings_factory.display_settings(action, [checkbox_id])
+        if action == "registry":
+            # A registry has no workflow (and so no required sections): show
+            # just its own section.
+            section = self.registry_tab.section_for(checkbox_id)
+            self.settings_factory.display_sections([section])
+        else:
+            self.settings_factory.display_settings(action, [checkbox_id])
         self.streaming_panel.refresh_results()
         self._sync_wizard_action_state()
 
@@ -415,13 +425,6 @@ class MainWindow(QMainWindow):
         """Handle opening full config: deselect sidebar and show all settings."""
         self.sidebar.deselect_all()
         self.settings_factory.display_full_settings()
-        self.clear_selection()
-
-    def open_registry(self, section: str):
-        """Show one registry section (Registry menu): deselect the sidebar, as
-        for the full config view."""
-        self.sidebar.deselect_all()
-        self.settings_factory.display_sections([section])
         self.clear_selection()
 
     def clear_selection(self):

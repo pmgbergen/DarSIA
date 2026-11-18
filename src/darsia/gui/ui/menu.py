@@ -69,18 +69,6 @@ class MenuBuilder:
             "Ctrl+E",
         )
 
-        # Shortcuts to the registries other sections refer to by name.
-        registry_menu = menu_bar.addMenu("&Registry")
-        for text, section in (
-            ("&Data", "registry"),
-            ("&Format", "format_registry"),
-            ("&ROI", "roi"),
-            ("&Color", "color"),
-        ):
-            self._add_action(
-                registry_menu, text, partial(self.main_window.open_registry, section)
-            )
-
         # One action per registered wizard (see wizards.py) — adding a wizard for
         # a new category needs no change here, it just appears the next time the
         # menu is built.

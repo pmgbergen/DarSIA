@@ -26,6 +26,13 @@ HELP_TEXT_PREPROCESSING = {
     "show_plots": "Display visualization plots during preprocessing execution.",
 }
 
+HELP_TEXT_REGISTRY = {
+    "data": "Named image selections (folders, times) that the steps refer to.",
+    "format": "Named export formats (file type, colormap, value range) for results.",
+    "roi": "Named regions of interest for calibration, analysis and helpers.",
+    "color": "Color embeddings (color paths) and their key colors per label.",
+}
+
 HELP_TEXT_CALIBRATION = {
     "color": "Calibrate color paths for RGB image analysis using color targets.",
     "mass": (
@@ -76,6 +83,7 @@ HELP_TEXT_COMPARISON = {
 _HELP_TEXT_BY_ACTION = {
     "setup": HELP_TEXT_SETUP,
     "preprocessing": HELP_TEXT_PREPROCESSING,
+    "registry": HELP_TEXT_REGISTRY,
     "calibration": HELP_TEXT_CALIBRATION,
     "analysis": HELP_TEXT_ANALYSIS,
     "helper": HELP_TEXT_HELPER,
