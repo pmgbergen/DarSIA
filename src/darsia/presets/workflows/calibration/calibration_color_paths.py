@@ -24,7 +24,7 @@ from darsia.presets.workflows.config.sections import (
 )
 from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.presets.workflows.utils.roi_visualization import draw_active_region
-from darsia.presets.workflows.windows.color_path_editor import edit_color_path
+from darsia.presets.workflows.windows.color_path_editor import edit_color_paths
 from darsia.signals.color import ColorPathEmbedding
 from darsia.utils.standard_images import roi_to_mask
 
@@ -62,6 +62,43 @@ def _load_initial_paths(
         "Initializing from existing color paths for labels %s", list(initial_paths)
     )
     return initial_paths
+
+
+def save_color_paths(
+    label_color_path_map: darsia.LabelColorPathMap,
+    *,
+    embedding: ColorPathEmbedding,
+    basis,
+    label_ids: list[int],
+    ignore_labels: list[int],
+) -> None:
+    """Store color paths: metadata, CSV and the colormap of each path.
+
+    Parameters
+    ----------
+    label_color_path_map : darsia.LabelColorPathMap
+        Color paths of all labels.
+    embedding : ColorPathEmbedding
+        The embedding (files and folders of the calibration).
+    basis : optional
+        Basis of the labels (metadata).
+    label_ids : list[int]
+        Labels (metadata).
+    ignore_labels : list[int]
+        Labels with a zero path (metadata).
+
+    """
+    write_calibration_metadata(
+        embedding.metadata_file,
+        basis=basis,
+        label_ids=label_ids,
+        extra={"ignore_labels": ignore_labels},
+    )
+    label_color_path_map.save_csv(embedding.color_paths_csv_file)
+    # Colormap of each color path (format registry: color_path.<id>.<label>)
+    label_color_path_map.save_cmaps(
+        embedding.figures_folder, name=f"color_path.{embedding.embedding_id}"
+    )
 
 
 @required_sections("rig", "data", "protocols", "color", "calibration.color")
@@ -277,7 +314,6 @@ def calibration_color_paths_from_context(
         path=embedding.figures_folder,
         verbose=show,
     )
-    preview_calibration_image = calibration_images[0] if calibration_images else None
 
     # Initialize manual calibration from a previous calibration, if available
     initial_paths = (
@@ -286,38 +322,67 @@ def calibration_color_paths_from_context(
         else {}
     )
 
-    # Find a relative color path through the significant boxes
-    label_color_path_map: darsia.LabelColorPathMap = (
-        color_path_regression.find_color_path(
+    label_ids = label_ids_from_image(selected_labels)
+
+    def save(label_color_path_map: darsia.LabelColorPathMap) -> None:
+        save_color_paths(
+            label_color_path_map,
+            embedding=embedding,
+            basis=selected_basis,
+            label_ids=label_ids,
+            ignore_labels=calibration_cfg.ignore_labels,
+        )
+
+    if calibration_cfg.calibration_mode == "manual":
+        # One window for all labels; it saves (Save button, or on closing if the
+        # user wants to keep unsaved changes)
+        prepared = color_path_regression.prepare_color_path_editing(
             color_spectrum=tracer_color_spectrum,
             ignore=ignore_spectrum,
             num_segments=calibration_cfg.num_segments,
-            directory=embedding.figures_folder,
             weighting=calibration_cfg.histogram_weighting,
-            mode=calibration_cfg.calibration_mode,
             ignore_labels=calibration_cfg.ignore_labels,
             initial_paths=initial_paths,
-            editor=edit_color_path,
-            preview_image=preview_calibration_image,
-            preview_images=calibration_images,
-            preview_baseline=fluidflower.baseline,
             verbose=show,
         )
-    )
-
-    # Store color paths to CSV and metadata
-    write_calibration_metadata(
-        embedding.metadata_file,
-        basis=selected_basis,
-        label_ids=label_ids_from_image(selected_labels),
-        extra={"ignore_labels": calibration_cfg.ignore_labels},
-    )
-    label_color_path_map.save_csv(embedding.color_paths_csv_file)
-
-    # Store the colormap of each color path (format registry: color_path.<id>.<label>)
-    label_color_path_map.save_cmaps(
-        embedding.figures_folder, name=f"color_path.{embedding.embedding_id}"
-    )
+        editable = [
+            label
+            for label, item in prepared.items()
+            if not isinstance(item, darsia.ColorPath)
+        ]
+        stored = len(editable) > 0 and all(label in initial_paths for label in editable)
+        saved = edit_color_paths(
+            prepared,
+            preview_images=calibration_images,
+            preview_baseline=fluidflower.baseline,
+            labels=color_path_regression.labels,
+            mask=color_path_regression.mask,
+            save=lambda keys: save(
+                color_path_regression.color_path_map(
+                    prepared, keys, directory=embedding.figures_folder
+                )
+            ),
+            stored=stored,
+        )
+        if not saved:
+            logger.info(
+                "The color paths in the window were not saved; the stored color "
+                "paths are unchanged."
+            )
+            return
+    else:
+        # Find a relative color path through the significant boxes
+        save(
+            color_path_regression.find_color_path(
+                color_spectrum=tracer_color_spectrum,
+                ignore=ignore_spectrum,
+                num_segments=calibration_cfg.num_segments,
+                directory=embedding.figures_folder,
+                weighting=calibration_cfg.histogram_weighting,
+                ignore_labels=calibration_cfg.ignore_labels,
+                verbose=show,
+            )
+        )
 
     # Display the color paths
     # if show:
