@@ -111,6 +111,9 @@ class ScreenImage:
             width = max(round(crop.shape[1] * scale), 1)
             height = max(round(crop.shape[0] * scale), 1)
             crop = _shrink(np.ascontiguousarray(crop), width, height)
+            if crop.ndim == 3 and np.issubdtype(crop.dtype, np.floating):
+                # Averaging may exceed [0, 1] by rounding (matplotlib clips RGB anyway)
+                crop = np.clip(crop, 0.0, 1.0)
         self._updating = True
         try:
             self.image.set_data(crop)
