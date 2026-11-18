@@ -1141,22 +1141,23 @@ def edit_color_paths(
         discarded or saving failed).
 
     """
-    state = ColorPathEditorState(
-        prepared,
-        list(preview_images or []),
-        preview_baseline,
-        labels,
-        mask,
-        stored=stored,
-        reference_label=reference_label,
-    )
-    if len(state.paths) == 0:
-        logger.info("No label with an editable color path.")
-        if not stored and save is not None:
-            save({})
-        return True
-    state.rerun_all_previews()
-    state.update_picture()
-    window = ColorPathEditorWindow(state, save)
-    window.build()
+    with darsia.timed("editor start"):
+        state = ColorPathEditorState(
+            prepared,
+            list(preview_images or []),
+            preview_baseline,
+            labels,
+            mask,
+            stored=stored,
+            reference_label=reference_label,
+        )
+        if len(state.paths) == 0:
+            logger.info("No label with an editable color path.")
+            if not stored and save is not None:
+                save({})
+            return True
+        state.rerun_all_previews()
+        state.update_picture()
+        window = ColorPathEditorWindow(state, save)
+        window.build()
     return window.run()
