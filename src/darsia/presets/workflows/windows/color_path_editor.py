@@ -8,9 +8,11 @@ selects a label by a click (or Next Label), moves, adds, removes and aligns key 
 samples one from the image (pipette) or returns to the automatic fit, and saves. The
 pH view follows every change (computed in the background; only the edited label).
 
+The R, G, B sliders show the selected key color (relative to the baseline; range
+symmetric around 0 and covering the label's colors); a change applies while dragging.
+
 Like the mass calibration window: changes are tracked, Save stores all paths, closing
-with unsaved changes asks whether to save them; switching the label drops slider moves
-not applied with Update.
+with unsaved changes asks whether to save them.
 
 `ColorPathEditorState` holds the data and the operations (no matplotlib);
 `ColorPathEditorWindow` is the window; `edit_color_paths` runs it.
@@ -42,6 +44,12 @@ screen; the previews are for display, colors for the paths come from full resolu
 
 MASK_THRESHOLD = 0.5
 """Threshold of the interpolated calibration mask on the preview grid."""
+
+SLIDER_STEP = 0.001
+"""Step of the channel sliders (relative color)."""
+
+MIN_SLIDER_RANGE = 0.01
+"""Smallest half-width of a channel slider (for a channel with almost no colors)."""
 
 UNSAVED_TEXT = "Changes not saved."
 """Save status while the shown paths differ from the saved ones."""
@@ -512,8 +520,8 @@ class ColorPathEditorWindow:
         self.save = save
         self.buttons: dict[str, Button] = {}
         """Buttons by their label."""
-        self.pending = False
-        """Whether a channel slider was moved since the last Update."""
+        self._dragging = False
+        """Whether a channel slider is dragged (the 3D limits then only grow)."""
         self._queued: set[int] = set()
         """Labels whose preview waits for the running calculation."""
 
@@ -551,6 +559,7 @@ class ColorPathEditorWindow:
             refusal_shown=lambda: self.message.get_text() == BUSY_MESSAGE,
         )
         fig.canvas.mpl_connect("button_press_event", self._on_click)
+        fig.canvas.mpl_connect("button_release_event", self._on_release)
         fig.canvas.mpl_connect("close_event", self._on_close)
         self._set_slider_ranges()
         self._show_selected()
@@ -587,7 +596,8 @@ class ColorPathEditorWindow:
         self._update_path()
 
     def _update_path(self) -> None:
-        """Key colors and the path through them; limits fit all colors."""
+        """Key colors and the path through them; limits fit all colors (while a slider
+        is dragged they only grow, when a key color leaves the view)."""
         state, ax = self.state, self.ax3d
         inputs = state.path.inputs
         keys = np.array(state.path.key_colors)
@@ -600,6 +610,11 @@ class ColorPathEditorWindow:
                 *keys.T, c=np.clip([inputs.base_color + c for c in keys], 0, 1), s=100
             )
         points = [inputs.relative_colors, keys.reshape(-1, 3)]
+        if self._dragging:
+            limits = np.array([ax.get_xlim3d(), ax.get_ylim3d(), ax.get_zlim3d()])
+            if np.all((keys >= limits[:, 0]) & (keys <= limits[:, 1])):
+                return
+            points.append(limits.T)
         if inputs.ignore is not None:
             points.append(inputs.ignore.relative_colors)
         points = np.concatenate(points)
@@ -658,23 +673,22 @@ class ColorPathEditorWindow:
         add_button("Next Label", [0.81, 0.95, 0.08, 0.04])
         add_button("Next Image", [0.90, 0.95, 0.08, 0.04])
 
-        # Key color: selection and channels (applied with Update)
+        # Key color: selection and its channels (applied while dragging)
         add_button("Previous key", [0.02, 0.235, 0.08, 0.045])
         add_button("Next key", [0.18, 0.235, 0.08, 0.045])
         key_text = fig.text(0.14, 0.2575, "", ha="center", va="center", fontsize=9)
         self.channel_sliders = [
             Slider(
-                fig.add_axes([0.32, 0.255 - row * 0.04, 0.2, 0.025]),
+                fig.add_axes([0.32, 0.255 - row * 0.04, 0.34, 0.025]),
                 channel,
-                0.0,
-                1.0,
+                -MIN_SLIDER_RANGE,
+                MIN_SLIDER_RANGE,
                 valinit=0.0,
-                valstep=0.001,
-                valfmt="%.3f",
+                valstep=SLIDER_STEP,
+                valfmt="%+.3f",
             )
             for row, channel in enumerate("RGB")
         ]
-        add_button("Update", [0.58, 0.185, 0.08, 0.05])
         add_button("Reset (auto)", [0.58, 0.12, 0.08, 0.05])
 
         add_button("Pipette", [0.02, 0.12, 0.08, 0.05])
@@ -714,7 +728,6 @@ class ColorPathEditorWindow:
         self.buttons["Next Image"].on_clicked(self._on_next_image)
         self.buttons["Previous key"].on_clicked(lambda event: self._step_key(-1))
         self.buttons["Next key"].on_clicked(lambda event: self._step_key(1))
-        self.buttons["Update"].on_clicked(self._on_update)
         self.buttons["Align"].on_clicked(self._on_align)
         self.buttons["+"].on_clicked(self._on_add)
         self.buttons["-"].on_clicked(self._on_remove)
@@ -724,38 +737,62 @@ class ColorPathEditorWindow:
     # ! ---- SHOWING ----
 
     def _set_slider_ranges(self) -> None:
-        """Ranges of the channel sliders from the colors of the selected label."""
+        """Ranges of the channel sliders: [-a, a] per channel with a the largest
+        absolute value of the selected label's colors and key colors (at most 1), on
+        the slider step."""
         path = self.state.path
-        data = np.concatenate(
-            [path.inputs.relative_colors, np.array(path.key_colors).reshape(-1, 3)]
+        colors = np.concatenate(
+            [
+                np.asarray(path.inputs.relative_colors).reshape(-1, 3),
+                np.array(path.key_colors).reshape(-1, 3),
+            ]
         )
-        margin = 0.1
-        for slider, low, high in zip(
-            self.channel_sliders, data.min(axis=0) - margin, data.max(axis=0) + margin
-        ):
-            slider.valmin, slider.valmax = float(low), float(high)
-            slider.ax.set_xlim(slider.valmin, slider.valmax)
+        extent = np.max(np.abs(colors), axis=0) if len(colors) > 0 else np.zeros(3)
+        for slider, value in zip(self.channel_sliders, extent):
+            self._set_range(slider, value)
+
+    @staticmethod
+    def _set_range(slider: Slider, value: float) -> None:
+        """Slider range [-a, a] containing a value (a on the slider step, in
+        [MIN_SLIDER_RANGE, 1])."""
+        steps = np.ceil(np.clip(abs(value), MIN_SLIDER_RANGE, 1.0) / SLIDER_STEP)
+        half = float(steps * SLIDER_STEP)
+        slider.valmin, slider.valmax = -half, half
+        slider.ax.set_xlim(-half, half)
+        slider.poly.set_x(-half)
+        slider.poly.set_width(slider.val + half)
 
     def _show_selected(self) -> None:
-        """Show the selected key color on the sliders (without callbacks)."""
+        """Show which key color is selected and its value on the sliders (without
+        callbacks); a slider range grows to a value outside it."""
         path = self.state.path
         self.key_status.set(f"Key {path.selected} / {len(path.key_colors) - 1}")
+        resized = []
         for slider, value in zip(self.channel_sliders, path.key_colors[path.selected]):
+            value = float(value)
+            if not slider.valmin <= value <= slider.valmax:
+                self._set_range(slider, value)
+                resized.append(slider.ax)
+            if value == slider.val and slider.ax not in resized:
+                continue
             slider.eventson = False
             try:
-                slider.set_val(float(value))
+                slider.set_val(value)
             finally:
                 slider.eventson = True
             # Without callbacks the slider does not repaint itself
-            self.blitter.blit(slider)
-        self.pending = False
+            if slider.ax not in resized:
+                self.blitter.blit(slider)
+        if resized:
+            self.blitter.redraw(resized)
 
     def _mark_unsaved(self) -> None:
         if self.save_status.get_text() != UNSAVED_TEXT:
             self.save_status.set(UNSAVED_TEXT, "darkorange")
 
     def _keys_changed(self, message: str | None = None) -> None:
-        """Show changed key colors: path, sliders, messages; repaint the 3D panel."""
+        """Show changed key colors: path, sliders, messages; repaint the 3D panel and
+        compute the preview."""
         self._update_path()
         self._show_selected()
         self.message.set(message or "")
@@ -802,10 +839,10 @@ class ColorPathEditorWindow:
         self._run_queued()
 
     def _switch_label(self) -> None:
-        """Show the label selected in the state; slider moves not applied are dropped."""
+        """Show the label selected in the state."""
         self.message.set("")
-        self._build_colors()
         self._set_slider_ranges()
+        self._build_colors()
         self._show_selected()
         if self.image is not None:
             self.image.set_data(self.state.highlighted_image())
@@ -817,14 +854,20 @@ class ColorPathEditorWindow:
     # ! ---- ACTIONS ----
 
     def _on_slider(self, *args) -> None:
-        self.pending = True
-        self._mark_unsaved()
+        """Selected key color = slider values, within [-1, 1] (relative to the
+        baseline of each pixel)."""
+        self._dragging = True
+        values = np.array([slider.val for slider in self.channel_sliders], dtype=float)
+        self.state.path.set_color(np.clip(values, -1.0, 1.0))
+        self._keys_changed()
 
-    def _apply_sliders(self) -> None:
-        """Apply the channel sliders to the selected key color."""
-        self.state.path.set_color(
-            np.array([slider.val for slider in self.channel_sliders], dtype=float)
-        )
+    def _on_release(self, event) -> None:
+        """End of a slider drag: the 3D view fits all colors."""
+        if not self._dragging:
+            return
+        self._dragging = False
+        self._update_path()
+        self.blitter.redraw([self.ax3d])
 
     def _step_key(self, step: int) -> None:
         path = self.state.path
@@ -874,10 +917,6 @@ class ColorPathEditorWindow:
 
         self.runner.run("Computing preview", work, self._show_previews)
 
-    def _on_update(self, event) -> None:
-        self._apply_sliders()
-        self._keys_changed()
-
     def _on_align(self, event) -> None:
         self._keys_changed(self.state.path.align(self.align_box.text))
 
@@ -920,12 +959,9 @@ class ColorPathEditorWindow:
         return True
 
     def _on_save(self, event) -> None:
-        """Apply moved sliders and save; the window stays open."""
+        """Save; the window stays open."""
         if self.runner.refuse():
             return
-        if self.pending:
-            self._apply_sliders()
-            self._keys_changed()
         saved = self._save()
         self.save_status.set(
             "Saved." if saved else "Saving failed, see log.",
@@ -937,8 +973,6 @@ class ColorPathEditorWindow:
         user decides."""
         self.runner.wait()
         try:
-            if self.pending:
-                self._apply_sliders()
             if self.state.has_unsaved_changes():
                 keep = ask_yes_no(
                     "Unsaved color paths",
