@@ -929,12 +929,9 @@ class PreprocessingWizardDialog(QDialog):
         sidebar does.
 
         Registers the process with the Preprocessing tab manager and marks
-        "preprocessing" as the active sidebar selection, so the toolbar/Run-menu
-        Stop button — which dispatches via main_window.selected_action to
-        action_dispatch[...].on_abort_clicked() — can actually find and abort a
-        run started from here, exactly as it would one started from the flat
-        Preprocessing sidebar. Without this, a wizard-launched run has no
-        tab-tracked process at all and Stop silently does nothing.
+        "preprocessing" as the active sidebar selection, as for a run started
+        from the flat Preprocessing sidebar. The toolbar/Run-menu Stop button
+        aborts it through process_runner.active, independent of the selection.
         """
         process = self.main_window.process_runner.start_workflow_process(
             argv,

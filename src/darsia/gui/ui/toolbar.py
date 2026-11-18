@@ -1,4 +1,4 @@
-"""Toolbar builder for icon buttons (New, Open, Save, Play, Stop) below the menu bar."""
+"""Toolbar builder for icon buttons (New, Open, Save, Play, Stop, Results) below the menu."""
 
 from pathlib import Path
 
@@ -18,6 +18,7 @@ _QTA_ICONS = {
     "wizard": "fa5s.magic",
     "play": "fa5s.play",
     "stop": "fa5s.stop",
+    "results": "fa5s.folder",
     "stream": "fa5s.stream",
     "log": "fa5s.align-left",
 }
@@ -77,9 +78,14 @@ class ToolbarBuilder:
         self._configure(self.stop_action, "stop", "Stop Workflow (Ctrl+Escape)")
         toolbar.addAction(self.stop_action)
 
+        toolbar.addSeparator()
+        self._configure(
+            self.menu_builder.open_results_action, "results", "Open Results Folder"
+        )
+        toolbar.addAction(self.menu_builder.open_results_action)
+
         # Reuse each dock's own checkable toggleViewAction so these buttons
-        # stay in sync with their shortcuts/menu items/edge buttons with no
-        # extra bookkeeping.
+        # stay in sync with their shortcuts and View-menu items.
         toolbar.addSeparator()
         self._configure(
             self.menu_builder.streaming_toggle_action,

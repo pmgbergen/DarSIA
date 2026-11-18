@@ -47,6 +47,12 @@ class MenuBuilder:
             "Ctrl+Shift+S",
         )
         file_menu.addSeparator()
+        self.open_results_action = self._add_action(
+            file_menu,
+            "Open &Results Folder",
+            self.main_window.open_results_folder,
+        )
+        file_menu.addSeparator()
         self._add_action(file_menu, "&Close", self.main_window.close, "Ctrl+W")
         # Also bind Ctrl+Q to close (common shortcut)
         quit_action = QAction(self.main_window)
@@ -62,6 +68,18 @@ class MenuBuilder:
             self.main_window._on_open_full_config,
             "Ctrl+E",
         )
+
+        # Shortcuts to the registries other sections refer to by name.
+        registry_menu = menu_bar.addMenu("&Registry")
+        for text, section in (
+            ("&Data", "registry"),
+            ("&Format", "format_registry"),
+            ("&ROI", "roi"),
+            ("&Color", "color"),
+        ):
+            self._add_action(
+                registry_menu, text, partial(self.main_window.open_registry, section)
+            )
 
         # One action per registered wizard (see wizards.py) — adding a wizard for
         # a new category needs no change here, it just appears the next time the

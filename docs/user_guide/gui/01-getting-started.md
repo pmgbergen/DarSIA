@@ -51,15 +51,22 @@ You should see an empty window like this:
   …) that mirror the TOML sections in [Core Concepts](03-core-concepts.md).
 - **Toolbar**, left to right: **New** config, **Open** config, **Save**
   config, **Open Full Config** (shows every section, not just the ones
-  relevant to the selected step), **Run** ▶ / **Stop** ■ the selected
-  workflow, **Streaming Preview** toggle, **Logging** toggle.
+  relevant to the selected step), **Run** ▶ the selected workflow / **Stop**
+  ■ the running workflow, **Open Results Folder** (the selected step's
+  output folder if it exists, else the `[data] results` folder),
+  **Streaming Preview** toggle, **Logging** toggle.
 - **File menu** also has `Ctrl+O` (Open Config), `Ctrl+S` (Save Config),
-  `Ctrl+N` (New Config), and recently-opened files under *Open Recent*.
+  `Ctrl+N` (New Config), recently-opened files under *Open Recent*, and
+  *Open Results Folder*.
+- **Registry menu**: *Data*, *Format*, *ROI* and *Color* show that registry
+  alone, the entries other sections refer to by name.
 - **Run menu**: `Ctrl+Enter` runs the currently selected sidebar step;
-  `Ctrl+Esc` stops it.
-- **Logging dock** (bottom) shows what the app is doing; keep it open while
-  you learn the tool. **Streaming Preview** (right dock, `Ctrl+P`) shows a
-  live image of the current analysis step while a workflow runs.
+  `Ctrl+Esc` stops the running workflow, whichever step is selected.
+- **Logging dock** (bottom) shows what the app is doing. It is hidden on
+  start and opens by itself on an error; toggle it with its toolbar icon or
+  `Ctrl+L`. **Streaming Preview** (right dock, toolbar icon or `Ctrl+P`) is
+  shown on start; it shows a live image of the
+  current analysis step while a workflow runs and browses the results.
 
 Nothing is loaded yet because no config file has been opened. That is the
 subject of the next chapter.
