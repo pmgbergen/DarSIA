@@ -42,8 +42,8 @@ You should see an empty window like this:
 
 ## A tour of the main window
 
-- **Sidebar (left)** — six categories: **Setup**, **Calibration**, **Analysis**,
-  **Helper**, **Comparison**, **Utils**. Each expands into concrete steps
+- **Sidebar (left)** — categories: **Preprocessing**, **Registry**, **Setup**,
+  **Calibration**, **Analysis**, **Helper**, **Comparison**, **Utils**. Each expands into concrete steps
   (e.g. Setup → Rig, Protocols, Depth, Facies). Clicking a step opens the
   matching settings form on the right and marks it as the "selected workflow."
 - **Settings panel (right)** — a form built automatically from your config
@@ -59,8 +59,9 @@ You should see an empty window like this:
 - **File menu** also has `Ctrl+O` (Open Config), `Ctrl+S` (Save Config),
   `Ctrl+N` (New Config), recently-opened files under *Open Recent*, and
   *Open Results Folder*.
-- **Registry menu**: *Data*, *Format*, *ROI* and *Color* show that registry
-  alone, the entries other sections refer to by name.
+- **Registry** (sidebar, after Preprocessing): *Data*, *Format*, *ROI* and
+  *Color* each show that registry alone, the named entries other steps refer
+  to. They are edited and saved, not run.
 - **Run menu**: `Ctrl+Enter` runs the currently selected sidebar step;
   `Ctrl+Esc` stops the running workflow, whichever step is selected.
 - **Logging dock** (bottom) shows what the app is doing. It is hidden on
