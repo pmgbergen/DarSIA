@@ -6,7 +6,9 @@ key colors and path, a calibration image with the label highlighted, and the
 pH-indicator interpretation of the whole domain (each label with its own path). The user
 selects a label by a click (or Next Label), moves, adds, removes and aligns key colors,
 samples one from the image (pipette) or returns to the automatic fit, and saves. The
-pH view follows every change (computed in the background; only the edited label).
+pH view follows every change (computed in the background; only the edited label). It
+shows two signals (Next Signal): all labels in the colormap of the reference label's
+path (first), or each label in the colormap of its own path.
 
 The R, G, B sliders show the selected key color (relative to the baseline; range
 symmetric around 0 and covering the label's colors); a change applies while dragging.
@@ -50,6 +52,12 @@ SLIDER_STEP = 0.001
 
 MIN_SLIDER_RANGE = 0.01
 """Smallest half-width of a channel slider (for a channel with almost no colors)."""
+
+SIGNAL_TITLES = {
+    "reference": "colormap of label {reference} (reference)",
+    "own": "own colormap of each label",
+}
+"""Signals of the pH view (first: reference) and their titles."""
 
 UNSAVED_TEXT = "Changes not saved."
 """Save status while the shown paths differ from the saved ones."""
@@ -204,6 +212,8 @@ class ColorPathEditorState:
     stored : bool
         Whether the paths at the start are the stored ones; otherwise they count as
         unsaved.
+    reference_label : int, optional
+        Label whose path gives the colormap of the reference signal of the pH view.
 
     """
 
@@ -215,6 +225,7 @@ class ColorPathEditorState:
         labels: darsia.Image,
         mask: darsia.Image,
         stored: bool = False,
+        reference_label: int | None = None,
     ) -> None:
         self.paths = {
             label: LabelPath(item)
@@ -222,6 +233,25 @@ class ColorPathEditorState:
             if isinstance(item, ColorPathInputs)
         }
         """Editable paths by label."""
+        self.fixed_paths = {
+            label: item
+            for label, item in prepared.items()
+            if isinstance(item, darsia.ColorPath)
+        }
+        """Paths of the labels which are not edited."""
+        self.reference_label = reference_label
+        self.signals = ["own"]
+        """Signals of the pH view (`SIGNAL_TITLES`)."""
+        if reference_label in self.paths or reference_label in self.fixed_paths:
+            self.signals = ["reference", "own"]
+        elif reference_label is not None:
+            logger.warning(
+                "Reference label %s has no color path; the pH view shows each label "
+                "in its own colormap only.",
+                reference_label,
+            )
+        self.signal_idx = 0
+        """Index of the shown signal."""
         self.label = next(iter(self.paths), None)
         """Selected label."""
         self.labels = labels
@@ -308,6 +338,38 @@ class ColorPathEditorState:
         """Key colors of all editable labels."""
         return {label: path.key_colors for label, path in self.paths.items()}
 
+    def key_snapshot(self) -> dict[int, list[np.ndarray]]:
+        """Copy of the key colors of all editable labels (for a background
+        calculation)."""
+        return {
+            label: [c.copy() for c in path.key_colors]
+            for label, path in self.paths.items()
+        }
+
+    @property
+    def signal(self) -> str:
+        """Shown signal of the pH view."""
+        return self.signals[self.signal_idx]
+
+    def signal_title(self) -> str:
+        """Title of the shown signal."""
+        return SIGNAL_TITLES[self.signal].format(reference=self.reference_label)
+
+    def next_signal(self) -> str:
+        """Move to the next signal (cyclic)."""
+        self.signal_idx = (self.signal_idx + 1) % len(self.signals)
+        return self.signal
+
+    def colormap(self, label: int, key_colors: dict | None = None):
+        """Colormap of a label in the shown signal: its own path, or the reference
+        path (through the key colors of `key_colors` if given)."""
+        if self.signal == "reference":
+            label = self.reference_label
+            if label in self.fixed_paths:
+                return self.fixed_paths[label].get_color_map()
+        keys = None if key_colors is None else key_colors[label]
+        return self.paths[label].color_path(keys).get_color_map()
+
     def has_unsaved_changes(self) -> bool:
         """Whether the paths differ from the saved ones (or were never saved)."""
         return not self.stored or any(path.changed() for path in self.paths.values())
@@ -368,34 +430,31 @@ class ColorPathEditorState:
         self.rerun_all_previews()
 
     def _paint_label(
-        self, picture: np.ndarray, label: int, key_colors: list[np.ndarray] | None
+        self, picture: np.ndarray, label: int, key_colors: dict | None
     ) -> None:
         path = self.paths[label]
         if path.preview is None:
             return
         valid = ~np.isnan(path.preview)
-        colormap = path.color_path(key_colors).get_color_map()
+        colormap = self.colormap(label, key_colors)
         picture[valid] = colormap(np.clip(path.preview[valid], 0, 1))[:, :3]
 
     def domain_picture(self, key_colors: dict | None = None) -> np.ndarray:
-        """Interpretation of the whole domain as colors: each label in the colormap of
-        its own path; white where there is no interpretation."""
+        """Interpretation of the whole domain as colors, in the colormaps of the shown
+        signal; white where there is no interpretation. `key_colors`: per label (e.g.
+        a snapshot), default the current ones."""
         picture = np.ones((*self.coarse_shape, 3))
         for label in self.paths:
-            self._paint_label(
-                picture, label, None if key_colors is None else key_colors[label]
-            )
+            self._paint_label(picture, label, key_colors)
         return picture
 
     def update_picture(
-        self,
-        label: int | None = None,
-        key_colors: list[np.ndarray] | dict | None = None,
+        self, label: int | None = None, key_colors: dict | None = None
     ) -> None:
         """Update the cached domain picture: one label (its region recolored), or all
-        labels (`label` None; `key_colors` then per label)."""
+        labels (`label` None). `key_colors`: per label, default the current ones."""
         if label is None or self.picture is None:
-            self.picture = self.domain_picture(key_colors if label is None else None)
+            self.picture = self.domain_picture(key_colors)
             return
         picture = self.picture.copy()
         if self.coarse_labels is not None:
@@ -671,7 +730,7 @@ class ColorPathEditorWindow:
             f"{len(state.coarse_images)} - label {state.label} (click selects a label)"
         )
         self.ax_interpretation.set_title(
-            "Native pH indicator interpretation (all labels)"
+            f"pH indicator interpretation - {self.state.signal_title()}"
         )
 
     def _build_controls(self) -> None:
@@ -683,6 +742,7 @@ class ColorPathEditorWindow:
         # Top: Save with its status (left), navigation (right) as in the mass
         # calibration window
         add_button("Save", [0.02, 0.95, 0.08, 0.04])
+        add_button("Next Signal", [0.72, 0.95, 0.08, 0.04])
         add_button("Next Label", [0.81, 0.95, 0.08, 0.04])
         add_button("Next Image", [0.90, 0.95, 0.08, 0.04])
 
@@ -737,6 +797,7 @@ class ColorPathEditorWindow:
         for slider in self.channel_sliders:
             slider.on_changed(self._on_slider)
         self.buttons["Save"].on_clicked(self._on_save)
+        self.buttons["Next Signal"].on_clicked(self._on_next_signal)
         self.buttons["Next Label"].on_clicked(self._on_next_label)
         self.buttons["Next Image"].on_clicked(self._on_next_image)
         self.buttons["Previous key"].on_clicked(lambda event: self._step_key(-1))
@@ -822,11 +883,13 @@ class ColorPathEditorWindow:
             self._queued.add(label)
             return
         state = self.state
-        key_colors = [c.copy() for c in state.paths[label].key_colors]
+        key_colors = state.key_snapshot()
+        # In the reference signal the reference path colors all labels
+        recolor_all = state.signal == "reference" and label == state.reference_label
 
         def work(progress) -> None:
-            state.rerun_preview(label, key_colors)
-            state.update_picture(label, key_colors)
+            state.rerun_preview(label, key_colors[label])
+            state.update_picture(None if recolor_all else label, key_colors)
 
         self.runner.run("Computing preview", work, self._show_interpretation)
 
@@ -924,16 +987,33 @@ class ColorPathEditorWindow:
         # The image index changes here (the pipette uses it); the previews of all
         # labels are computed in the background with the key colors of now
         state.preview_idx = (state.preview_idx + 1) % len(state.coarse_images)
-        key_colors = {
-            label: [c.copy() for c in path.key_colors]
-            for label, path in state.paths.items()
-        }
+        key_colors = state.key_snapshot()
 
         def work(progress) -> None:
             state.rerun_all_previews(key_colors)
             state.update_picture(None, key_colors)
 
         self.runner.run("Computing preview", work, self._show_previews)
+
+    def _on_next_signal(self, event) -> None:
+        if self.runner.refuse() or self.interpretation is None:
+            return
+        state = self.state
+        if len(state.signals) < 2:
+            self.message.set("No reference color path: only the own colormaps.")
+            return
+        state.next_signal()
+        key_colors = state.key_snapshot()
+
+        def work(progress) -> None:
+            state.update_picture(None, key_colors)
+
+        self.runner.run("Coloring", work, self._show_signal)
+
+    def _show_signal(self) -> None:
+        """Show the domain picture of another signal (and its title)."""
+        self._set_preview_titles()
+        self._show_interpretation()
 
     def _on_align(self, event) -> None:
         self._keys_changed(self.state.path.align(self.align_box.text))
@@ -1029,6 +1109,7 @@ def edit_color_paths(
     mask: darsia.Image,
     save: Callable[[dict[int, list[np.ndarray]]], None] | None = None,
     stored: bool = False,
+    reference_label: int | None = None,
 ) -> bool:
     """Interactively edit the color paths of all labels in one window.
 
@@ -1050,6 +1131,8 @@ def edit_color_paths(
         when the window is closed with unsaved changes which the user keeps.
     stored : bool
         Whether the paths at the start are the stored ones.
+    reference_label : int, optional
+        Label whose path colors all labels in the first signal of the pH view.
 
     Returns
     -------
@@ -1065,6 +1148,7 @@ def edit_color_paths(
         labels,
         mask,
         stored=stored,
+        reference_label=reference_label,
     )
     if len(state.paths) == 0:
         logger.info("No label with an editable color path.")
