@@ -601,14 +601,9 @@ class ColorPathEditorWindow:
         state, ax = self.state, self.ax3d
         inputs = state.path.inputs
         keys = np.array(state.path.key_colors)
-        if self.key_points is not None:
-            self.key_points.remove()
-            self.key_points = None
         if len(keys) >= 2:
             self.path_line.set_data_3d(*keys.T)
-            self.key_points = ax.scatter(
-                *keys.T, c=np.clip([inputs.base_color + c for c in keys], 0, 1), s=100
-            )
+        self._draw_keys()
         points = [inputs.relative_colors, keys.reshape(-1, 3)]
         if self._dragging:
             limits = np.array([ax.get_xlim3d(), ax.get_ylim3d(), ax.get_zlim3d()])
@@ -619,6 +614,24 @@ class ColorPathEditorWindow:
             points.append(inputs.ignore.relative_colors)
         points = np.concatenate(points)
         ax.auto_scale_xyz(points[:, 0], points[:, 1], points[:, 2], had_data=False)
+
+    def _draw_keys(self) -> None:
+        """Key colors in their colors; the selected one larger with a black ring."""
+        path = self.state.path
+        if self.key_points is not None:
+            self.key_points.remove()
+            self.key_points = None
+        keys = np.array(path.key_colors)
+        if len(keys) < 2:
+            return
+        selected = np.arange(len(keys)) == path.selected
+        self.key_points = self.ax3d.scatter(
+            *keys.T,
+            c=np.clip([path.inputs.base_color + c for c in keys], 0, 1),
+            s=np.where(selected, 220, 100),
+            edgecolors=["black" if s else "none" for s in selected],
+            linewidths=np.where(selected, 2.0, 0.0),
+        )
 
     def _build_previews(self) -> None:
         """Calibration image (label highlighted) and the interpretation of the whole
@@ -871,8 +884,13 @@ class ColorPathEditorWindow:
 
     def _step_key(self, step: int) -> None:
         path = self.state.path
-        path.selected = max(0, min(len(path.key_colors) - 1, path.selected + step))
+        selected = max(0, min(len(path.key_colors) - 1, path.selected + step))
+        if selected == path.selected:
+            return
+        path.selected = selected
         self._show_selected()
+        self._draw_keys()
+        self.blitter.redraw([self.ax3d])
 
     def _on_click(self, event) -> None:
         """A click in an image selects the label at that pixel."""
