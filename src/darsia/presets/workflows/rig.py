@@ -1256,9 +1256,9 @@ class Rig:
         with darsia.timed("labels"):
             rig.setup_labels(path=folder / "labels.npz", apply_corrections=False)
 
-        # Setup inner labels information
-        with darsia.timed("inner labels"):
-            rig.setup_inner_labels()
+        # Inner labels (only for restorations ignoring label boundaries): computed on
+        # first use
+        rig._defer(("inner_labels",), rig.setup_inner_labels)
 
         # Load facies information - corrections not needed assuming facies are aligned with
         with darsia.timed("facies"):
