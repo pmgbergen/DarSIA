@@ -662,13 +662,10 @@ class CalibrationState:
 
     def label_highlight(self, coarse_image: darsia.Image, label: int) -> np.ndarray:
         """Coarse image with everything outside the label turned (mostly) gray."""
-        highlighted = coarse_image.img.copy()
+        image = coarse_image.img
         outside = self.coarse_labels.img != label
-        highlighted[outside] = (
-            0.7 * np.mean(highlighted[outside], axis=-1, keepdims=True)
-            + 0.3 * coarse_image.img[outside]
-        )
-        return highlighted
+        gray = 0.7 * np.mean(image, axis=-1, keepdims=True) + 0.3 * image
+        return np.where(outside[..., np.newaxis], gray, image)
 
     # ! ---- MASS ANALYSIS ----
 

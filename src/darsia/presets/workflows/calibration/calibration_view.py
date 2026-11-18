@@ -21,6 +21,7 @@ from matplotlib.colors import to_rgba_array
 from matplotlib.widgets import Button, Slider
 
 from darsia.presets.workflows.windows.blitting import SliderBlitter
+from darsia.presets.workflows.windows.screen_image import ScreenImage
 from darsia.signals.models.evaluation import curve_inverse, signal_curve
 from darsia.utils.figure_window import maximize_figure_window
 from darsia.utils.units import (
@@ -357,9 +358,12 @@ class CalibrationView:
         # Top left: image with the selected label highlighted (click selects a label)
         self.ax_coarse_image = plt.subplot(gs[0, 0])
         self.ax_coarse_image.axis("off")
-        self.coarse_image_img = self.ax_coarse_image.imshow(
-            state.label_highlight(state.coarse_image, self.label_idx)
+        self.coarse_image_img = ScreenImage(
+            self.ax_coarse_image,
+            state.label_highlight(state.coarse_image, self.label_idx),
         )
+        self._shown_image = (state.image_idx, self.label_idx)
+        """Image and label shown in the image panel."""
         image_box = self.ax_coarse_image.get_position()
         fig.text(
             image_box.x0,
@@ -374,19 +378,19 @@ class CalibrationView:
         self.ax_signal = plt.subplot(gs[0, 1])
         self.ax_signal.axis("off")
         self.ax_signal.set_title(state.signal_title)
-        self.coarse_signal_img = self.ax_signal.imshow(
-            state.coarse_signal.img, cmap=self.cmap
+        self.coarse_signal_img = ScreenImage(
+            self.ax_signal, state.coarse_signal.img, cmap=self.cmap
         )
         signal_box = self.ax_signal.get_position()
         colorbar_ax = fig.add_axes(
             [signal_box.x1 + 0.01, signal_box.y0, 0.01, signal_box.height]
         )
         self.coarse_signal_colorbar = fig.colorbar(
-            self.coarse_signal_img, cax=colorbar_ax
+            self.coarse_signal_img.image, cax=colorbar_ax
         )
         signal_min, signal_max = state.signal_range()
         self.coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
-        self.coarse_signal_colorbar.update_normal(self.coarse_signal_img)
+        self.coarse_signal_colorbar.update_normal(self.coarse_signal_img.image)
 
         # Top right: phase segmentation (CO2) or concentration contours (tracer)
         ax_contour = plt.subplot(gs[0, 2])
@@ -394,7 +398,10 @@ class CalibrationView:
         ax_contour.set_title(
             "Phase Segmentation" if analysis.has_gas else "Concentration Contours"
         )
-        self.coarse_contour_img = ax_contour.imshow(state.contour_overlay().img)
+        self.ax_contour = ax_contour
+        self._shown_contour = state.contour_overlay()
+        """Contour overlay shown in the contour panel."""
+        self.coarse_contour_img = ScreenImage(ax_contour, self._shown_contour.img)
 
         # Bottom left: signal function of the label
         self.ax_signal_function = plt.subplot(gs[1, 0])
@@ -445,7 +452,7 @@ class CalibrationView:
         self.unused_note = ax.text(
             x=0.01,
             y=0.99,
-            s="Unused key colors (no dot): the signal is affine in the "
+            s="Unused key colors (no dot): the signal is affine in the\n"
             "color and bends at every key color.",
             transform=ax.transAxes,
             ha="left",
@@ -545,6 +552,17 @@ class CalibrationView:
         self.blitter.add(
             self.all_sliders
             + ([] if self.resolution_slider is None else [self.resolution_slider])
+        )
+        # Panels repainted alone after calculations (`refresh`)
+        self.blitter.add_panels(
+            [
+                self.ax_coarse_image,
+                self.ax_signal,
+                self.coarse_signal_colorbar.ax,
+                self.ax_contour,
+                self.ax_signal_function,
+                self.ax_mass,
+            ]
         )
 
     def _section_title(self, title: str):
@@ -703,6 +721,7 @@ class CalibrationView:
             f"Current Image {state.image_idx} and Label {label}"
         )
         self.coarse_image_img.set_data(state.label_highlight(state.coarse_image, label))
+        self._shown_image = (state.image_idx, label)
 
         # Signal function panel
         ax = self.ax_signal_function
@@ -769,7 +788,16 @@ class CalibrationView:
             self._set_slider(
                 self.resolution_slider, levels.index(state.resolution_level)
             )
-        self.fig.canvas.draw_idle()
+
+        # Repaint the image panel, the signal function and the controls (rows moved)
+        rows = self.all_sliders + (
+            [] if self.resolution_slider is None else [self.resolution_slider]
+        )
+        self.blitter.redraw(
+            [self.ax_coarse_image, self.ax_signal_function, self.ax_sliders]
+            + [slider.ax for slider in rows],
+            artists=[entry[1] for entry in self._layout],
+        )
 
     @staticmethod
     def _set_slider(slider: Slider, value: float) -> None:
@@ -899,29 +927,43 @@ class CalibrationView:
         if recompute:
             state.compute_maps()
 
-        # Image panel and signal panel
-        self.ax_coarse_image.set_title(
-            f"Current Image {state.image_idx} and Label {self.label_idx}"
-        )
-        self.coarse_image_img.set_data(
-            state.label_highlight(state.coarse_image, self.label_idx)
-        )
+        # Image panel (only if another image or label is shown)
+        changed = []
+        shown_image = (state.image_idx, self.label_idx)
+        if shown_image != self._shown_image:
+            self.ax_coarse_image.set_title(
+                f"Current Image {state.image_idx} and Label {self.label_idx}"
+            )
+            self.coarse_image_img.set_data(
+                state.label_highlight(state.coarse_image, self.label_idx)
+            )
+            self._shown_image = shown_image
+            changed.append(self.ax_coarse_image)
+
+        # Signal panel
         self.coarse_signal_img.set_data(state.coarse_signal.img)
         self.ax_signal.set_title(state.signal_title)
         signal_min, signal_max = state.signal_range()
         self.coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
-        self.coarse_signal_colorbar.update_normal(self.coarse_signal_img)
+        self.coarse_signal_colorbar.update_normal(self.coarse_signal_img.image)
+        changed += [self.ax_signal, self.coarse_signal_colorbar.ax]
 
-        # Phase segmentation panel
-        self.coarse_contour_img.set_data(
-            state.contour_overlay([slider.val for slider in self.threshold_sliders]).img
+        # Phase segmentation panel (the state keeps the overlay while it is valid)
+        overlay = state.contour_overlay(
+            [slider.val for slider in self.threshold_sliders]
         )
+        if overlay is not self._shown_contour:
+            self.coarse_contour_img.set_data(overlay.img)
+            self._shown_contour = overlay
+            changed.append(self.ax_contour)
 
         if signal_function:
             self.update_signal_function_plot()
+            changed.append(self.ax_signal_function)
         if mass_plot:
             self.update_mass_plot()
-        self.fig.canvas.draw_idle()
+            changed.append(self.ax_mass)
+        self.blitter.redraw(changed)
 
     # ! ---- MESSAGES ----
 
