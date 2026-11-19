@@ -374,6 +374,45 @@ class FluidMassAnalysis:
             color_signal=None,
         )
 
+    def _fast_inverse_mass_analysis(
+        self, mass: darsia.Image
+    ) -> "darsia.SimpleMassAnalysisResults | None":
+        """`inverse_mass_analysis` in one compiled pass (`mass_kernels.inverse_mass`).
+
+        Returns None if not applicable: without numba, for images other than 2D, if a
+        property varies along rows, or if a subclass defines its own `mass_analysis`.
+        """
+        if (
+            not _mass_kernels.NUMBA_AVAILABLE
+            or mass.img.ndim != 2
+            or type(self).mass_analysis is not FluidMassAnalysis.mass_analysis
+        ):
+            return None
+        shape = mass.img.shape
+        density_gas = _mass_kernels.row_values(self.density_gas, shape)
+        aqueous_capacity = _mass_kernels.row_values(self.aqueous_capacity, shape)
+        if density_gas is None or aqueous_capacity is None:
+            return None
+        c_aq, s_g, total, mass_g, mass_aq = _mass_kernels.inverse_mass(
+            mass.img, density_gas, aqueous_capacity, self.has_gas, EPSILON
+        )
+        metadata = mass.metadata()
+
+        def image(array: np.ndarray) -> darsia.Image:
+            return type(mass)(array, **metadata)
+
+        return darsia.SimpleMassAnalysisResults(
+            name=mass.name,
+            date=mass.date,
+            time=mass.time,
+            mass=image(total),
+            mass_g=image(mass_g),
+            mass_aq=image(mass_aq),
+            saturation_g=image(s_g),
+            color_signal=None,
+            concentration_aq=image(c_aq),
+        )
+
     def inverse_mass_analysis(
         self, mass: darsia.Image
     ) -> "darsia.SimpleMassAnalysisResults":
@@ -392,6 +431,10 @@ class FluidMassAnalysis:
         darsia.SimpleMassAnalysisResults
             Reconstructed concentration, saturation, and component masses.
         """
+        fast = self._fast_inverse_mass_analysis(mass)
+        if fast is not None:
+            return fast
+
         capacity = np.broadcast_to(self.aqueous_capacity, mass.img.shape)
         c_aq_array = np.divide(
             mass.img,

@@ -12,6 +12,10 @@ kernels compute all fields, or only their integrals over a geometry, in a single
 pass, with the arithmetic of `SimpleFlash.__call__`, `FluidMassAnalysis.mass_analysis`
 and `Geometry.integrate`; change them together.
 
+The inverse (`inverse_mass`) splits a total mass into these fields: up to the aqueous
+capacity the mass is dissolved, the excess is gas, with the arithmetic of
+`FluidMassAnalysis.inverse_mass_analysis`; change them together.
+
 The kernel requires numba; without it `NUMBA_AVAILABLE` is False and callers use the
 array-based implementation.
 
@@ -31,6 +35,7 @@ __all__ = [
     "row_values",
     "flash_and_mass",
     "flash_and_mass_integrals",
+    "inverse_mass",
 ]
 
 
@@ -175,6 +180,56 @@ if NUMBA_AVAILABLE:
                         sums_g[j] += weighted_g
                         sums_aq[j] += weighted_aq
 
+    @njit(cache=True, error_model="numpy", parallel=True, nogil=True)
+    def _inverse_mass(
+        mass,
+        density_gas,
+        aqueous_capacity,
+        has_gas,
+        epsilon,
+        c_aq,
+        s_g,
+        total,
+        mass_g,
+        mass_aq,
+    ):
+        for i in prange(mass.shape[0]):
+            rho = density_gas[i]
+            chi = aqueous_capacity[i]
+            denominator = rho - chi
+            for j in range(mass.shape[1]):
+                m = mass[i, j]
+
+                # Dissolved up to the aqueous capacity (np.divide with `where`, np.clip)
+                ca = m / chi if abs(chi) > epsilon else 0.0
+                if ca < 0.0:
+                    ca = 0.0
+                if ca > 1.0:
+                    ca = 1.0
+
+                # Excess as gas
+                sg = 0.0
+                if has_gas:
+                    excess = m - chi
+                    if excess < 0.0:
+                        excess = 0.0
+                    sg = excess / denominator if abs(denominator) > epsilon else 0.0
+                    if sg < 0.0:
+                        sg = 0.0
+                    if sg > 1.0:
+                        sg = 1.0
+
+                mg = rho * sg
+                aqueous = 1 - sg
+                if aqueous < 0:
+                    aqueous = 0.0
+                ma = chi * ca * aqueous
+                c_aq[i, j] = ca
+                s_g[i, j] = sg
+                mass_g[i, j] = mg
+                mass_aq[i, j] = ma
+                total[i, j] = mg + ma
+
 
 def _kernel_arguments(signal, bounds, density_gas, aqueous_capacity, keep_aq, keep_g):
     """Arguments shared by the kernels, in their types."""
@@ -284,3 +339,45 @@ def flash_and_mass_integrals(
         sums_aq,
     )
     return np.sum(sums_g, axis=0), np.sum(sums_aq, axis=0)
+
+
+def inverse_mass(
+    mass: np.ndarray,
+    density_gas: np.ndarray,
+    aqueous_capacity: np.ndarray,
+    has_gas: bool,
+    epsilon: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Concentration, saturation and masses from a total mass.
+
+    Parameters
+    ----------
+    mass : np.ndarray
+        Total mass per pore volume, shape (rows, cols).
+    density_gas : np.ndarray
+        Gas density of each row.
+    aqueous_capacity : np.ndarray
+        Mass per aqueous volume at concentration 1 of each row.
+    has_gas : bool
+        Whether the system has a gas phase; without, the saturation is zero.
+    epsilon : float
+        Divisors of at most this size in absolute value give zero.
+
+    Returns
+    -------
+    tuple
+        Concentration in the aqueous phase, gas saturation, total mass, mass in the gas
+        phase and mass in the aqueous phase, each of shape (rows, cols).
+
+    """
+    mass = np.ascontiguousarray(mass, dtype=np.float64)
+    fields = [np.empty(mass.shape, dtype=np.float64) for _ in range(5)]
+    _inverse_mass(
+        mass,
+        np.ascontiguousarray(density_gas, dtype=np.float64),
+        np.ascontiguousarray(aqueous_capacity, dtype=np.float64),
+        bool(has_gas),
+        float(epsilon),
+        *fields,
+    )
+    return tuple(fields)
