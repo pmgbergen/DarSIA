@@ -107,7 +107,7 @@ docs = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-darsia = ["py.typed"]
+darsia = ["py.typed", "*.pyi"]
 
 # ── pytest (migrated from setup.cfg [tool:pytest]) ───────────────────────────
 [tool.pytest.ini_options]
