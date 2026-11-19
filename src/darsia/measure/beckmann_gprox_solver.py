@@ -12,6 +12,7 @@ import pyamg
 import scipy.sparse as sps
 
 import darsia
+from darsia.utils import linalg
 
 
 class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
@@ -476,7 +477,7 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         )
         # store the kantorovich potential
         self.kantorovich_potential[:] = pressure[:]
-        if isinstance(weighted_Poisson_solver, darsia.linalg.KSP):
+        if isinstance(weighted_Poisson_solver, linalg.KSP):
             weighted_Poisson_solver.kill()
         else:
             weighted_Poisson_solver = []
@@ -549,7 +550,7 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
 
         Returns
         -------
-        darsia.linalg.KSP
+        linalg.KSP
             Poisson solver.
         """
 
@@ -591,7 +592,7 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
         #
         if self.linear_solver_type == "cg":
             # Define CG solver
-            Poisson_solver = darsia.linalg.CG(Laplacian_matrix)
+            Poisson_solver = linalg.CG(Laplacian_matrix)
 
             # Define AMG preconditioner
             self.setup_amg_options()
@@ -614,7 +615,7 @@ class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
             Poisson_solver.setup(solver_options)
 
         elif self.linear_solver_type == "ksp":
-            Poisson_solver = darsia.linalg.KSP(
+            Poisson_solver = linalg.KSP(
                 Laplacian_matrix,
                 nullspace=[kernel],
                 appctx={},
