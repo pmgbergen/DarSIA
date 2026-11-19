@@ -43,6 +43,7 @@ dependencies = [
   "scipy",
   "matplotlib",
   "scikit-image",
+  "lazy_loader",
   "future",
   "colour-science",
   "colour-checker-detection",
@@ -122,7 +123,6 @@ required-version = "24.10.0"
 [tool.isort]
 profile = "black"
 line_length = 88
-skip = ["src/darsia/__init__.py"]
 
 # ── numpydoc docstring linting (advisory CI job "numpydoc-lint") ──────────────
 # Run locally with:  uv run numpydoc lint <file(s)>
