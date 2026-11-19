@@ -373,6 +373,14 @@ class HeterogeneousColorToMassAnalysis:
             return darsia.ScalarImage(array[..., 0], **metadata)
         return type(image)(array, **metadata)
 
+    def has_fast_color_interpretation(self, image: darsia.Image) -> bool:
+        """Whether the color interpretation of `image` runs in one compiled pass.
+
+        Then it is cheap enough to be computed again instead of being kept.
+
+        """
+        return self._fast_color_interpretation_arguments(image) is not None
+
     def _fast_color_interpretation(self, image: darsia.Image) -> darsia.Image | None:
         """Color interpretation in one pass (None if not applicable).
 
@@ -380,6 +388,16 @@ class HeterogeneousColorToMassAnalysis:
         label of each pixel, without forming the difference image.
 
         """
+        arguments = self._fast_color_interpretation_arguments(image)
+        if arguments is None:
+            return None
+        array, labels, data, base = arguments
+        values = color_kernels.evaluate_labeled_image(array, labels, data, base=base)
+        return self._wrap(values, image)
+
+    def _fast_color_interpretation_arguments(self, image: darsia.Image) -> tuple | None:
+        """Arguments of `color_kernels.evaluate_labeled_image` for `image` (None if the
+        compiled pass does not apply)."""
         analysis = self.color_analysis
         model = analysis.model
         if not (
@@ -402,13 +420,12 @@ class HeterogeneousColorToMassAnalysis:
         active = interpretations.color_path_labels(array.shape)
         if active is None:
             return None
-        values = color_kernels.evaluate_labeled_image(
+        return (
             array,
             interpretations.masks.labels.img,
             {label: interpretations[label].kernel_data() for label in active},
-            base=base,
+            base,
         )
-        return self._wrap(values, image)
 
     def _fast_signal(self, color_interpretation: darsia.Image) -> darsia.Image | None:
         """Signal in one pass (None if not applicable).
