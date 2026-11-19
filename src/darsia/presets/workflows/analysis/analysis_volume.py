@@ -163,6 +163,9 @@ def analysis_volume_from_context(
         random.shuffle(image_paths)
 
     for image_index, path in enumerate(image_paths, start=1):
+        # Free the previous image before reading the next one
+        img = mass_analysis_result = concentration_aq = None
+        saturation_g = saturation_aq = stream_payload = None
         image_started_at = time.monotonic()
         try:
             img = fluidflower.read_image(path)

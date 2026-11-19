@@ -86,6 +86,8 @@ def analysis_cropping_from_context(
         random.shuffle(image_paths)
 
     for image_index, path in enumerate(image_paths, start=1):
+        # Free the previous image before reading the next one
+        img = picture = exports = source = export_image = None
         image_started_at = time.monotonic()
         # Read image
         try:
