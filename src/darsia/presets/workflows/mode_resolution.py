@@ -94,6 +94,8 @@ def _resolve_color_mode(
             "Color mode resolution requires runtime context with rig/baseline."
         )
     embedding = color_embedding_registry.resolve(embedding_id)
+    if isinstance(image, darsia.Image):
+        image = image.as_float()
     return embedding.to_scalar_image(image, color_embedding_runtime)
 
 

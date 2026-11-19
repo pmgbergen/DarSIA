@@ -29,6 +29,7 @@ from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.results_folder import analysis_folder
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SegmentationContours
+from darsia.presets.workflows.utils.images import read_native
 from darsia.utils.augmented_plotting import stretch_channels
 
 logger = logging.getLogger(__name__)
@@ -115,7 +116,7 @@ def analysis_segmentation_from_context(
         image_started_at = time.monotonic()
         # Extract color signal and assign mass
         try:
-            img = fluidflower.read_image(path)
+            img = read_native(fluidflower, path)
         except Exception as e:
             logger.error(f"Failed to read image '{path}': {e}")
             continue
@@ -146,7 +147,9 @@ def analysis_segmentation_from_context(
         contour_image = segmentation_contours(
             img,
             background=(
-                stretch_channels(img) if segmentation_config.filter_background else None
+                stretch_channels(img.as_float())
+                if segmentation_config.filter_background
+                else None
             ),
             scalar_products=scalar_products,
             mass_analysis_result=mass_analysis_result,

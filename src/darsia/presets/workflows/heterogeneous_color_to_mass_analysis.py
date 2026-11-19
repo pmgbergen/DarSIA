@@ -116,6 +116,7 @@ class HeterogeneousColorToMassAnalysis:
         labels = self._labels
         ignore_labels = self._ignore_labels
         projects = self.evaluation_mode.projects_onto_path
+        masks = darsia.Masks(labels)
 
         base_model = (
             darsia.CombinedModel(
@@ -124,6 +125,7 @@ class HeterogeneousColorToMassAnalysis:
                         self.color_path_interpretation,
                         labels,
                         ignore_labels=ignore_labels,
+                        masks=masks,
                     )
                 ]
             )
@@ -188,6 +190,7 @@ class HeterogeneousColorToMassAnalysis:
                     signal_functions,
                     labels,
                     ignore_labels=ignore_labels,
+                    masks=masks,
                 ),
             ],
         )
