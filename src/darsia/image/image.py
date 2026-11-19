@@ -28,7 +28,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from plotly.subplots import make_subplots
 
 import darsia
-from darsia.image.conversion_kernels import to_float64
+from darsia.image.conversion_kernels import to_float64, to_ubyte
 
 logger = logging.getLogger(__name__)
 
@@ -526,36 +526,43 @@ class Image:
         Returns
         -------
         Image
-            Image with transformed data type.
+            Image with transformed data type (a copy; its data are never shared with
+            this image).
         """
-        copy_image = self.copy()
-        dtype = copy_image.img.dtype
-        is_float = dtype in [float, np.float16, np.float32, np.float64]
+        img = self.img
+        is_float = img.dtype in [float, np.float16, np.float32, np.float64]
+        converted = None
         if data_type in [bool]:
-            copy_image.img = skimage.img_as_bool(copy_image.img)
+            converted = skimage.img_as_bool(img)
         elif data_type in [float, np.float64]:
             # Unsigned integers on all cores (same values as skimage)
-            converted = to_float64(copy_image.img)
-            if converted is not None:
-                copy_image.img = converted
-            elif data_type in [float]:
-                copy_image.img = skimage.img_as_float(copy_image.img)
-            else:
-                copy_image.img = skimage.img_as_float64(copy_image.img)
+            converted = to_float64(img)
+            if converted is None:
+                if data_type in [float]:
+                    converted = skimage.img_as_float(img)
+                else:
+                    converted = skimage.img_as_float64(img)
         elif data_type in [np.float32]:
-            copy_image.img = skimage.img_as_float32(copy_image.img)
+            converted = skimage.img_as_float32(img)
         elif data_type in [int]:
-            copy_image.img = skimage.img_as_int(copy_image.img)
+            converted = skimage.img_as_int(img)
         elif data_type in [np.uint8]:
-            copy_image.img = skimage.img_as_ubyte(
-                np.clip(copy_image.img, -1, 1) if is_float else copy_image.img
-            )
+            # Floats on all cores, as skimage after clipping to [-1, 1]: negative
+            # values give 0 either way
+            converted = to_ubyte(img) if is_float else None
+            if converted is None:
+                converted = skimage.img_as_ubyte(
+                    np.clip(img, -1, 1) if is_float else img
+                )
         elif data_type in [np.uint16]:
-            copy_image.img = skimage.img_as_uint(copy_image.img)
+            converted = skimage.img_as_uint(img)
         else:
             raise NotImplementedError
 
-        return copy_image
+        if np.shares_memory(converted, img):
+            converted = converted.copy()
+        # Copy of all attributes, with the converted data instead of a copy of the data
+        return copy.deepcopy(self, {id(self.img): converted})
 
     def as_float(self) -> "Image":
         """This image with floats as data.
