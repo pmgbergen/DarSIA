@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from bisect import bisect_left
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -220,7 +220,7 @@ class ProtocolledExperiment:
         times_is_list = isinstance(times, list)
         if not times_is_list:
             times = [times]
-        datetimes = [self.experiment_start + darsia.timedelta(hours=t) for t in times]
+        datetimes = [self.experiment_start + timedelta(hours=t) for t in times]
         source_paths = data or self.data
 
         available_seconds, available_paths, available_indices = (
