@@ -135,6 +135,35 @@ def _to_bgr_array(
     raise ValueError(f"Unsupported image shape for streaming: {array.shape}.")
 
 
+def _reduced_scalar(
+    image_like: Any, max_width: int, max_height: int
+) -> np.ndarray | None:
+    """Scalar data area-averaged to fit within max_width x max_height.
+
+    Returns None for data which is not scalar (colored images).
+    """
+    if hasattr(image_like, "to_trichromatic"):
+        return None
+    array = np.asarray(image_like.img if hasattr(image_like, "img") else image_like)
+    if array.ndim == 3 and array.shape[2] == 1:
+        array = array[..., 0]
+    if array.ndim != 2:
+        return None
+    height, width = array.shape
+    if width == 0 or height == 0:
+        return array
+    if not np.issubdtype(array.dtype, np.floating):
+        array = array.astype(np.float32)
+    scale = min(max_width / width, max_height / height, 1.0)
+    if scale < 1.0:
+        array = cv2.resize(
+            array,
+            (max(int(width * scale), 1), max(int(height * scale), 1)),
+            interpolation=cv2.INTER_AREA,
+        )
+    return array
+
+
 def encode_low_resolution_png(
     image_like: Any,
     max_width: int = 640,
@@ -144,9 +173,13 @@ def encode_low_resolution_png(
 ) -> bytes:
     """Encode an image-like object as low-resolution PNG bytes.
 
-    Scalar data is colored with `cmap` and `value_range` (see `_scalar_to_bgr`).
+    Scalar data is reduced first and then colored with `cmap` and `value_range` (see
+    `_scalar_to_bgr`); without a fixed range, the min-max of the reduced data is used.
     """
-    bgr_array = _to_bgr_array(image_like, cmap=cmap, value_range=value_range)
+    reduced = _reduced_scalar(image_like, max_width, max_height)
+    bgr_array = _to_bgr_array(
+        image_like if reduced is None else reduced, cmap=cmap, value_range=value_range
+    )
     height, width = bgr_array.shape[:2]
     if width == 0 or height == 0:
         raise ValueError(
