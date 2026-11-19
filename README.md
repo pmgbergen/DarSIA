@@ -2,6 +2,7 @@
 [![docs](https://github.com/pmgbergen/DarSIA/workflows/Documentation/badge.svg)](https://pmgbergen.github.io/DarSIA)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License: Apache v2](https://img.shields.io/hexpm/l/apa)](https://opensource.org/licenses/Apache-2.0)
+[![SPEC 1 — Lazy Loading of Submodules and Functions](https://img.shields.io/badge/SPEC-1-green?labelColor=%23004811&color=%235CA038)](https://scientific-python.org/specs/spec-0001/)
 
 # DarSIA
 
