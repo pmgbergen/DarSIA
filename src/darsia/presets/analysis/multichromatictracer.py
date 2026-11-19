@@ -4,6 +4,7 @@ color analysis.
 """
 
 import logging
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -138,7 +139,7 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
         return concentration
 
     # ! ---- SAVE AND LOAD ----
-    def save(self, path: darsia.Path) -> None:
+    def save(self, path: Path) -> None:
         """Save calibration data to a file.
 
         Parameters
@@ -156,7 +157,7 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
         )
         print(f"Calibration data saved to {path}.")
 
-    def load(self, path: darsia.Path) -> None:
+    def load(self, path: Path) -> None:
         """Load calibration data from a file.
 
         Parameters

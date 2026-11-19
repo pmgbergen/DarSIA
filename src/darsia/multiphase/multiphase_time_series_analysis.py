@@ -116,7 +116,7 @@ class MultiphaseTimeSeriesAnalysis:
         self,
         mass_analysis_result: darsia.MassAnalysisResults,
         component,
-        path: darsia.Path,
+        path: Path,
         vmax: Optional[float] = None,
     ) -> None:
         """Plot the result of the mass analysis for a specific component.
@@ -129,7 +129,7 @@ class MultiphaseTimeSeriesAnalysis:
         component : str
             The component to plot, e.g., 'normalized_signal_aq',
             'normalized_signal_g', or 'mass'.
-        path : darsia.Path
+        path : Path
             Path to save the plot.
         vmax : Optional[float]
             Maximum value for the color scale. If None, the maximum
