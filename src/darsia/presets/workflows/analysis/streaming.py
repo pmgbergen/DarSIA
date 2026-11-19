@@ -135,33 +135,57 @@ def _to_bgr_array(
     raise ValueError(f"Unsupported image shape for streaming: {array.shape}.")
 
 
-def _reduced_scalar(
-    image_like: Any, max_width: int, max_height: int
-) -> np.ndarray | None:
-    """Scalar data area-averaged to fit within max_width x max_height.
+def _reduce(array: np.ndarray, max_width: int, max_height: int) -> np.ndarray:
+    """Area average of an image array (rows, cols[, channels]) to fit within
+    max_width x max_height; smaller (or empty) arrays are returned unchanged."""
+    height, width = array.shape[:2]
+    if width == 0 or height == 0:
+        return array
+    scale = min(max_width / width, max_height / height, 1.0)
+    if scale == 1.0:
+        return array
+    if array.dtype not in (np.uint8, np.uint16, np.float32, np.float64):
+        array = array.astype(np.float32)
+    return cv2.resize(
+        array,
+        (max(int(width * scale), 1), max(int(height * scale), 1)),
+        interpolation=cv2.INTER_AREA,
+    )
 
-    Returns None for data which is not scalar (colored images).
+
+def _reduced_bgr(
+    image_like: Any,
+    max_width: int,
+    max_height: int,
+    cmap: Any = None,
+    value_range: tuple[float, float] | None = None,
+) -> np.ndarray | None:
+    """Reduced BGR uint8 preview: the data is reduced first, then colored or converted.
+
+    Returns None if the data must be converted at full size: images in a color space
+    other than RGB or BGR (e.g. an averaged hue is meaningless) and series.
     """
-    if hasattr(image_like, "to_trichromatic"):
-        return None
     array = np.asarray(image_like.img if hasattr(image_like, "img") else image_like)
     if array.ndim == 3 and array.shape[2] == 1:
         array = array[..., 0]
-    if array.ndim != 2:
+    if hasattr(image_like, "to_trichromatic"):
+        color_space = getattr(image_like, "color_space", None)
+        if color_space not in ("RGB", "BGR") or array.ndim != 3 or array.shape[2] < 3:
+            return None
+        bgr = _reduce(array[..., :3], max_width, max_height)
+        if color_space == "RGB":
+            bgr = bgr[..., ::-1]
+        if bgr.dtype != np.uint8:
+            # Stretch to the min-max of the full image, as for a full-size conversion
+            lower, upper = float(np.min(array[..., :3])), float(np.max(array[..., :3]))
+            scale = 255.0 / (upper - lower) if upper > lower else 0.0
+            bgr = (bgr * scale - lower * scale).astype(np.uint8)
+        return np.ascontiguousarray(bgr)
+    if array.ndim not in (2, 3):
         return None
-    height, width = array.shape
-    if width == 0 or height == 0:
-        return array
-    if not np.issubdtype(array.dtype, np.floating):
-        array = array.astype(np.float32)
-    scale = min(max_width / width, max_height / height, 1.0)
-    if scale < 1.0:
-        array = cv2.resize(
-            array,
-            (max(int(width * scale), 1), max(int(height * scale), 1)),
-            interpolation=cv2.INTER_AREA,
-        )
-    return array
+    return _to_bgr_array(
+        _reduce(array, max_width, max_height), cmap=cmap, value_range=value_range
+    )
 
 
 def encode_low_resolution_png(
@@ -173,25 +197,19 @@ def encode_low_resolution_png(
 ) -> bytes:
     """Encode an image-like object as low-resolution PNG bytes.
 
-    Scalar data is reduced first and then colored with `cmap` and `value_range` (see
-    `_scalar_to_bgr`); without a fixed range, the min-max of the reduced data is used.
+    The data is reduced first (see `_reduced_bgr`) and then colored, scalar data with
+    `cmap` and `value_range` (see `_scalar_to_bgr`); without a fixed range, the min-max
+    of the reduced data is used.
     """
-    reduced = _reduced_scalar(image_like, max_width, max_height)
-    bgr_array = _to_bgr_array(
-        image_like if reduced is None else reduced, cmap=cmap, value_range=value_range
-    )
+    bgr_array = _reduced_bgr(image_like, max_width, max_height, cmap, value_range)
+    if bgr_array is None:
+        bgr_array = _to_bgr_array(image_like, cmap=cmap, value_range=value_range)
+        bgr_array = _reduce(bgr_array, max_width, max_height)
     height, width = bgr_array.shape[:2]
     if width == 0 or height == 0:
         raise ValueError(
             f"Cannot encode an image with zero dimensions: width={width}, "
             f"height={height}."
-        )
-    scale = min(max_width / width, max_height / height, 1.0)
-    if scale < 1.0:
-        bgr_array = cv2.resize(
-            bgr_array,
-            (int(width * scale), int(height * scale)),
-            interpolation=cv2.INTER_AREA,
         )
 
     success, encoded = cv2.imencode(".png", bgr_array)
