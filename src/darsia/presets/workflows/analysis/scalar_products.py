@@ -30,7 +30,10 @@ RESCALED_MODES = {
 class RescaledMassProducts:
     """Rescaled mass products and scaling metadata."""
 
-    rescaled_result: darsia.SimpleMassAnalysisResults
+    rescaled_mass: darsia.Image
+    rescaled_concentration_aq: darsia.Image
+    rescaled_saturation_g: darsia.Image | None
+    """None without a gas phase."""
     mass_scaling_factor: float
     detected_mass_total: float
     exact_mass_total: float
@@ -40,6 +43,12 @@ class RescaledMassProducts:
     """Injected volume (volume basis only)."""
     basis: str = "mass"
     """Quantity the rescaling matches the injection protocol on: 'mass' or 'volume'."""
+    rescaled_mass_g: darsia.Image | None = None
+    """Mass in the gas phase; only if requested (and with a gas phase)."""
+    rescaled_mass_aq: darsia.Image | None = None
+    """Mass in the aqueous phase; only if requested."""
+    owned: bool = False
+    """Whether the rescaled fields are new arrays, which may be modified in place."""
 
 
 def rescale_basis(fluid_model: Any) -> str:
@@ -111,6 +120,32 @@ def _apply_expert_knowledge_constraints(
     return constrained
 
 
+def _constrain_rescaled(
+    rescaled: RescaledMassProducts,
+    expert_knowledge_adapter: "ExpertKnowledgeAdapter | None",
+) -> None:
+    """Expert-knowledge constraints of the rescaled concentration and saturation.
+
+    Fields owned by `rescaled` are constrained in place, others replaced by constrained
+    copies (`ExpertKnowledgeAdapter.apply`); the values are the same.
+    """
+    if expert_knowledge_adapter is None:
+        return
+    for attribute, mode in (
+        ("rescaled_concentration_aq", "concentration_aq"),
+        ("rescaled_saturation_g", "saturation_g"),
+    ):
+        image = getattr(rescaled, attribute)
+        if image is None:
+            continue
+        if rescaled.owned:
+            mask = expert_knowledge_adapter.mask_for(image, mode)
+            if mask is not None:
+                image.img[~mask] = 0.0
+        else:
+            setattr(rescaled, attribute, expert_knowledge_adapter.apply(image, mode))
+
+
 def requires_rescaled_modes(modes: set[str] | list[str] | tuple[str, ...]) -> bool:
     """Check if any requested mode requires mass rescaling."""
     return any(mode in RESCALED_MODES for mode in modes)
@@ -125,6 +160,7 @@ def compute_rescaled_mass_products(
     date: Any = None,
     epsilon: float = EPSILON,
     basis: str | None = None,
+    phase_masses: bool = False,
 ) -> RescaledMassProducts:
     """Compute rescaled mass products and scaling metadata.
 
@@ -137,6 +173,8 @@ def compute_rescaled_mass_products(
     ----------
     basis : str, optional
         "mass" or "volume"; by default derived from the fluid model.
+    phase_masses : bool
+        Whether to also compute the rescaled masses in the gas and the aqueous phase.
     """
     basis = rescale_basis(fluid_model) if basis is None else basis
     if basis not in ("mass", "volume"):
@@ -159,10 +197,30 @@ def compute_rescaled_mass_products(
     mass_scaling_factor = (
         exact_total / detected_total if np.abs(detected_total) > epsilon else 1.0
     )
-    rescaled_mass = darsia.weight(mass_analysis_result.mass, mass_scaling_factor)
-    rescaled_result = fluid_model.inverse_mass_analysis(rescaled_mass)
+    inverse_mass_fields = getattr(fluid_model, "inverse_mass_fields", None)
+    if inverse_mass_fields is not None:
+        fields = inverse_mass_fields(
+            mass_analysis_result.mass, mass_scaling_factor, phase_masses=phase_masses
+        )
+        owned = True
+    else:
+        rescaled_mass = darsia.weight(mass_analysis_result.mass, mass_scaling_factor)
+        result = fluid_model.inverse_mass_analysis(rescaled_mass)
+        fields = {
+            "mass": result.mass,
+            "concentration_aq": result.concentration_aq,
+            "saturation_g": getattr(result, "saturation_g", None),
+            "mass_g": getattr(result, "mass_g", None) if phase_masses else None,
+            "mass_aq": getattr(result, "mass_aq", None) if phase_masses else None,
+        }
+        owned = False
     return RescaledMassProducts(
-        rescaled_result=rescaled_result,
+        rescaled_mass=fields["mass"],
+        rescaled_concentration_aq=fields["concentration_aq"],
+        rescaled_saturation_g=fields["saturation_g"],
+        rescaled_mass_g=fields["mass_g"],
+        rescaled_mass_aq=fields["mass_aq"],
+        owned=owned,
         mass_scaling_factor=mass_scaling_factor,
         detected_mass_total=float(detected_mass_total),
         exact_mass_total=float(exact_mass_total),
@@ -220,14 +278,15 @@ def analysis_scalar_products(
         fluid_model=fluid_model,
         date=date,
         basis=basis,
+        phase_masses=bool(requested_modes & {"rescaled_mass_g", "rescaled_mass_aq"}),
     )
-    products["rescaled_mass"] = rescaled.rescaled_result.mass
+    _constrain_rescaled(rescaled, expert_knowledge_adapter)
+    products["rescaled_mass"] = rescaled.rescaled_mass
     if "rescaled_mass_aq" in requested_modes:
-        products["rescaled_mass_aq"] = rescaled.rescaled_result.mass_aq
+        products["rescaled_mass_aq"] = rescaled.rescaled_mass_aq
     if not single_phase:
-        products["rescaled_saturation_g"] = rescaled.rescaled_result.saturation_g
+        products["rescaled_saturation_g"] = rescaled.rescaled_saturation_g
         if "rescaled_mass_g" in requested_modes:
-            products["rescaled_mass_g"] = rescaled.rescaled_result.mass_g
-    products["rescaled_concentration_aq"] = rescaled.rescaled_result.concentration_aq
-    products = _apply_expert_knowledge_constraints(products, expert_knowledge_adapter)
+            products["rescaled_mass_g"] = rescaled.rescaled_mass_g
+    products["rescaled_concentration_aq"] = rescaled.rescaled_concentration_aq
     return products, rescaled
