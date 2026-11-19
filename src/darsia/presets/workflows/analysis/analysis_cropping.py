@@ -25,6 +25,7 @@ from darsia.presets.workflows.analysis.progress import (
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.results_folder import analysis_folder
 from darsia.presets.workflows.rig import Rig
+from darsia.presets.workflows.utils.images import read_native
 from darsia.utils.augmented_plotting import stretch_channels
 
 if TYPE_CHECKING:
@@ -91,7 +92,7 @@ def analysis_cropping_from_context(
         image_started_at = time.monotonic()
         # Read image
         try:
-            img = fluidflower.read_image(path)
+            img = read_native(fluidflower, path)
         except Exception as e:
             logger.error(f"Failed to read image '{path}': {e}")
             continue
@@ -100,7 +101,7 @@ def analysis_cropping_from_context(
         img = darsia.OpticalImage(img.img, **img.metadata())
 
         # Pictures may be contrast-stretched; data exports keep the original values
-        picture = stretch_channels(img) if filter_background else img
+        picture = stretch_channels(img.as_float()) if filter_background else img
 
         if show:
             picture.show()
