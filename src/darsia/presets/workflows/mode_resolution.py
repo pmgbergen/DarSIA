@@ -22,6 +22,8 @@ LEGACY_COLOR_TO_MASS_MODES = {
 
 SCALAR_PRODUCT_MODES = {
     "rescaled_mass",
+    "rescaled_mass_g",
+    "rescaled_mass_aq",
     "rescaled_saturation_g",
     "rescaled_concentration_aq",
 }

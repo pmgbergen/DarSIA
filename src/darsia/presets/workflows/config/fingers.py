@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_ANALYSIS_FINGER_MODES = {
     "mass",
+    "mass_g",
+    "mass_aq",
     "rescaled_mass",
     "extensive_mass",
     "extensive_rescaled_mass",

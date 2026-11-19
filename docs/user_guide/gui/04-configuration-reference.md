@@ -356,8 +356,11 @@ color = "color_path"
 `export` controls which scalar products are written (default: `mass` only).
 Full list of supported values:
 `mass`, `rescaled_mass`, `extensive_mass`, `extensive_rescaled_mass`,
+`mass_g`, `rescaled_mass_g`, `extensive_mass_g`, `extensive_rescaled_mass_g`,
+`mass_aq`, `rescaled_mass_aq`, `extensive_mass_aq`, `extensive_rescaled_mass_aq`,
 `saturation_g`, `rescaled_saturation_g`, `concentration_aq`,
-`rescaled_concentration_aq`.
+`rescaled_concentration_aq`. `mass_g` is the mass in the gas phase and `mass_aq` the
+dissolved mass (together the total `mass`); the gas modes need a fluid with a gas phase.
 
 **`[analysis.segmentation]`** — see
 [Advanced analysis](05-advanced-analysis.md#segmentation-contours) for the
@@ -398,7 +401,8 @@ data_selection = ["all"]
 Top-level `[helper] data_selection` is a fallback used when a sub-section
 omits its own. `helper.roi.mode` accepts `none`, `concentration_aq`,
 `saturation_g`, `mass`/`mass_total`, `mass_g`, `mass_aq`, `rescaled_mass`,
-`rescaled_saturation_g`, `rescaled_concentration_aq`.
+`rescaled_mass_g`, `rescaled_mass_aq`, `rescaled_saturation_g`,
+`rescaled_concentration_aq`.
 
 ## `[options]`
 

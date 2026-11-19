@@ -41,7 +41,14 @@ INTERPRETATIONS = {
 }
 """Default interpretation (preset) of each supported fluid."""
 
-GAS_MODES = ("saturation_g", "rescaled_saturation_g", "mass_g")
+GAS_MODES = (
+    "saturation_g",
+    "rescaled_saturation_g",
+    "mass_g",
+    "rescaled_mass_g",
+    "extensive_mass_g",
+    "extensive_rescaled_mass_g",
+)
 """Analysis modes that only exist with a gas phase."""
 
 GAS_EXPERT_KNOWLEDGE_KEYS = ("saturation_g", "no_saturation_g")

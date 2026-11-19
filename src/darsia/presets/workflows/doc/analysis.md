@@ -61,16 +61,28 @@ Supported `export` values:
 - `rescaled_mass`
 - `extensive_mass`
 - `extensive_rescaled_mass`
+- `mass_g`
+- `rescaled_mass_g`
+- `extensive_mass_g`
+- `extensive_rescaled_mass_g`
+- `mass_aq`
+- `rescaled_mass_aq`
+- `extensive_mass_aq`
+- `extensive_rescaled_mass_aq`
 - `saturation_g`
 - `rescaled_saturation_g`
 - `concentration_aq`
 - `rescaled_concentration_aq`
 
 ### Segmentation and thresholding mode notes
-- Segmentation `mode` supports: `saturation_g`, `concentration_aq`, `mass`,
-  `rescaled_mass`, `rescaled_saturation_g`, `rescaled_concentration_aq`, and `color.<id>`.
+- Segmentation `mode` supports: `saturation_g`, `concentration_aq`, `mass`, `mass_g`,
+  `mass_aq`, `rescaled_mass`, `rescaled_mass_g`, `rescaled_mass_aq`,
+  `rescaled_saturation_g`, `rescaled_concentration_aq`, and `color.<id>`.
 - Thresholding layer `mode` supports the standard mass products plus
-  `rescaled_mass`, `rescaled_saturation_g`, `rescaled_concentration_aq`, and `color.<id>`.
+  `rescaled_mass`, `rescaled_mass_g`, `rescaled_mass_aq`, `rescaled_saturation_g`,
+  `rescaled_concentration_aq`, and `color.<id>`.
+- Fingers `mode` supports the unscaled fields only (`mass`, `mass_g`, `mass_aq`,
+  `saturation_g`, `concentration_aq`).
 - `mass` remains a segmentation alias for total mass (`mass_total`).
 
 ### Expert knowledge ROI constraints
@@ -110,6 +122,14 @@ When GUI streaming is enabled for analysis, the latest image payload can include
     - `rescaled_mass/<type>_<identifier>/<stem>.<type>`
     - `extensive_mass/<type>_<identifier>/<stem>.<type>`
     - `extensive_rescaled_mass/<type>_<identifier>/<stem>.<type>`
+    - `mass_g/<type>_<identifier>/<stem>.<type>`
+    - `rescaled_mass_g/<type>_<identifier>/<stem>.<type>`
+    - `extensive_mass_g/<type>_<identifier>/<stem>.<type>`
+    - `extensive_rescaled_mass_g/<type>_<identifier>/<stem>.<type>`
+    - `mass_aq/<type>_<identifier>/<stem>.<type>`
+    - `rescaled_mass_aq/<type>_<identifier>/<stem>.<type>`
+    - `extensive_mass_aq/<type>_<identifier>/<stem>.<type>`
+    - `extensive_rescaled_mass_aq/<type>_<identifier>/<stem>.<type>`
     - `saturation_g/<type>_<identifier>/<stem>.<type>`
     - `rescaled_saturation_g/<type>_<identifier>/<stem>.<type>`
     - `concentration_aq/<type>_<identifier>/<stem>.<type>`
