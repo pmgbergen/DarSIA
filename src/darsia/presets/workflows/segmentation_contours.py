@@ -13,7 +13,7 @@ import darsia
 from darsia.presets.workflows.config.fluidflower_config import SegmentationConfig
 from darsia.presets.workflows.mode_resolution import resolve_mode_image
 from darsia.signals.color import ColorEmbeddingRuntime
-from darsia.utils.augmented_plotting import plot_contour_on_image
+from darsia.utils.augmented_plotting import as_ubyte, plot_contour_on_image
 
 if TYPE_CHECKING:
     from darsia.presets.workflows.config.color_embedding_registry import (
@@ -398,7 +398,13 @@ class SegmentationContours:
             "rescaled_concentration_aq": rescaled_concentration_aq,
             "rescaled_mass": rescaled_mass,
         }
-        contour_img = (img if background is None else background).copy()
+        # Contours are drawn on an 8-bit copy of the picture (see plot_contour_on_image)
+        picture = img if background is None else background
+        contour_img = (
+            darsia.full_like(picture, as_ubyte(picture.img), dtype=np.uint8)
+            if self.config
+            else picture.copy()
+        )
         if mass_analysis_result is None:
             mass_analysis_result = _compose_mass_analysis_result(
                 saturation_g, concentration_aq, mass

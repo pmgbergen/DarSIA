@@ -7,6 +7,31 @@ import numpy as np
 import skimage
 
 import darsia
+from darsia.image.conversion_kernels import to_ubyte
+
+
+def as_ubyte(array: np.ndarray) -> np.ndarray:
+    """8-bit copy of an image array, as drawn on by `plot_contour_on_image`.
+
+    8-bit data is copied; other data is clipped to [0, 1] and converted as
+    ``skimage.img_as_ubyte`` (floats in one pass by `to_ubyte`).
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Image array.
+
+    Returns
+    -------
+    np.ndarray
+        New uint8 array of the same shape.
+    """
+    if array.dtype == np.uint8:
+        return np.clip(array, 0, 255)
+    converted = to_ubyte(array)
+    if converted is not None:
+        return converted
+    return skimage.img_as_ubyte(np.clip(array, 0, 1))
 
 
 def plot_contour_on_image(
@@ -49,17 +74,7 @@ def plot_contour_on_image(
         The composited image when ``return_image`` is True.
     """
     # Start with the original image
-    if isinstance(img, darsia.Image):
-        if img.img.dtype == np.uint8:
-            original_img = np.clip(img.img, 0, 255)
-        else:
-            original_img = np.clip(img.img, 0, 1)
-    else:
-        if img.dtype == np.uint8:
-            original_img = np.clip(img, 0, 255)
-        else:
-            original_img = np.clip(img, 0, 1)
-    original_img = skimage.img_as_ubyte(original_img)
+    original_img = as_ubyte(img.img if isinstance(img, darsia.Image) else img)
 
     if len(original_img.shape) == 2 or (
         len(original_img.shape) == 3 and original_img.shape[-1] == 1
@@ -76,15 +91,13 @@ def plot_contour_on_image(
     if alpha is None:
         alpha = len(mask) * [1]
 
-    # Convert mask to float and resize mask to same size as img
+    # Boolean masks of the image size as they are; others via float, resized
+    shape = img.num_voxels if isinstance(img, darsia.Image) else img.shape[:2]
     for m, c, a in zip(mask, color, alpha):
-        m = m.img_as(np.float32)
-        m = darsia.resize(
-            m,
-            shape=img.num_voxels if isinstance(img, darsia.Image) else img.shape[:2],
-            interpolation="inter_nearest",
-        )
-        m = m.img_as(bool)
+        if not (m.img.dtype == bool and tuple(m.img.shape) == tuple(shape)):
+            m = m.img_as(np.float32)
+            m = darsia.resize(m, shape=shape, interpolation="inter_nearest")
+            m = m.img_as(bool)
 
         # Choose an effective color through weighting with alpha
         c_eff = tuple(int(comp * a) for comp in c)
