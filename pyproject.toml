@@ -81,7 +81,7 @@ darsia-install-desktop = "darsia.gui.desktop_integration:main"
 dev = [
   "pytest>=7.1",
   "pytest-qt",
-  "black==24.10.0",
+  "black==26.10.1",
   "isort",
   "flake8",
   "mypy",
