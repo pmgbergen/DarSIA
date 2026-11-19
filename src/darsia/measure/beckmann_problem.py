@@ -12,6 +12,7 @@ import scipy.sparse as sps
 from scipy.stats import hmean
 
 import darsia
+from darsia.utils import quadrature
 
 
 class L1Mode(StrEnum):
@@ -211,19 +212,17 @@ class BeckmannProblem(darsia.EMD):
             case L1Mode.RAVIART_THOMAS:
                 # Apply numerical integration of RT0 extensions into cells.
                 # Underlying functional for mixed finite element method (MFEM).
-                quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
-                    dim, "max"
-                )
+                quad_pts, quad_weights = quadrature.gauss_reference_cell(dim, "max")
 
             case L1Mode.CONSTANT_SUBCELL_PROJECTION:
                 # Apply subcell_based projection onto constant vectors and sum up.
                 # Equivalent to a mixed finite volume method (FV). Identical to quadrature
                 # over corners.
-                quad_pts, quad_weights = darsia.quadrature.reference_cell_corners(dim)
+                quad_pts, quad_weights = quadrature.reference_cell_corners(dim)
 
             case L1Mode.CONSTANT_CELL_PROJECTION:
                 # L2 projection onto constant vectors identical to quadrature of order 0.
-                quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(dim, 0)
+                quad_pts, quad_weights = quadrature.gauss_reference_cell(dim, 0)
 
             case _:
                 raise ValueError(f"Mode {l1_mode} not supported.")
