@@ -1,6 +1,7 @@
 """Module for a mapping between integer labels and their corresponding color spectrum."""
 
 import logging
+from pathlib import Path
 
 import darsia
 
@@ -33,14 +34,14 @@ class LabelColorSpectrumMap(dict[int, darsia.ColorSpectrum]):
             str_str += f"Label {label}: {str(color_spectrum)}\n"
         return str_str
 
-    def save(self, directory: darsia.Path) -> None:
+    def save(self, directory: Path) -> None:
         """Save color spectra to a directory.
 
         Stores each color spectrum in a separate file named `color_spectrum_{label}.json`.
 
         Parameters
         ----------
-        directory : darsia.Path
+        directory : Path
             The directory to save the color spectrum files.
         """
         directory.mkdir(parents=True, exist_ok=True)
@@ -49,14 +50,14 @@ class LabelColorSpectrumMap(dict[int, darsia.ColorSpectrum]):
         logger.info(f"Saved color spectra to {directory}.")
 
     @classmethod
-    def load(cls, directory: darsia.Path) -> "LabelColorSpectrumMap":
+    def load(cls, directory: Path) -> "LabelColorSpectrumMap":
         """Load color spectra from a directory.
 
         Identifies files named `color_spectrum_{label}.json` and loads them.
 
         Parameters
         ----------
-        directory : darsia.Path
+        directory : Path
             The directory containing color spectrum files.
         """
         color_spectra = {}
