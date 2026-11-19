@@ -324,6 +324,12 @@ def analysis_fingers_from_context(
     image_total = len(image_paths)
 
     for image_index, path in enumerate(image_paths, start=1):
+        # Free the previous image before reading the next one
+        img = mass_analysis_result = picture = segmentation = None
+        gradient_based_segmentation = stream_images = None
+        tips_plot_raw = paths_plot_raw = skeleton_plot_raw = None
+        leaf_paths_plot_raw = junction_paths_plot_raw = None
+        interface_tips_plot_raw = None
         image_started_at = monotonic()
         # Extract color signal and assign mass
         try:

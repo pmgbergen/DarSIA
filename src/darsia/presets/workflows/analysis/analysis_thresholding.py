@@ -238,6 +238,11 @@ def analysis_thresholding_from_context(
         random.shuffle(image_paths)
 
     for image_index, path in enumerate(image_paths, start=1):
+        # Free the previous image before reading the next one
+        img = result = mode_images = background = img_bgr = None
+        master_preview = master_preview_image = stream_payload = None
+        mode_image = scalar = mask = mask_image = cc_labels = None
+        preview = preview_image = None
         image_started_at = time.monotonic()
         try:
             img = fluidflower.read_image(path)

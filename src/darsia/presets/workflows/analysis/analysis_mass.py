@@ -270,6 +270,11 @@ def analysis_mass_from_context(
         random.shuffle(image_paths)
 
     for image_index, path in enumerate(image_paths, start=1):
+        # Free the previous image before reading the next one
+        img = mass_analysis_result = products = rescaled = None
+        mass = mass_g = mass_aq = concentration_aq = saturation_g = None
+        rescaled_mass = rescaled_concentration_aq = rescaled_saturation_g = None
+        export_images = stream_payload = None
         image_started_at = time.monotonic()
         try:
             img = fluidflower.read_image(path)

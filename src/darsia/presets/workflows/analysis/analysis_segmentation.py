@@ -110,6 +110,8 @@ def analysis_segmentation_from_context(
         random.shuffle(image_paths)
 
     for image_index, path in enumerate(image_paths, start=1):
+        # Free the previous image before reading the next one
+        img = mass_analysis_result = scalar_products = contour_image = None
         image_started_at = time.monotonic()
         # Extract color signal and assign mass
         try:
