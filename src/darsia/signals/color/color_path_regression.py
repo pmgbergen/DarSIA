@@ -273,7 +273,9 @@ class LabelColorPathMapRegression:
         images : list[darsia.Image]
             The images to analyze. An empty list stands for the baseline alone: all
             relative colors are zero, as for ``images=[baseline]``, but without
-            copying the baseline or looping over its pixels.
+            copying the baseline or looping over its pixels. Images in an integer type
+            (see `native` in `darsia.imread_from_optical`) are converted to floats one
+            at a time.
         baseline : darsia.Image | None
             The baseline image for comparison.
         ignore : darsia.LabelColorSpectrumMap | darsia.ColorSpectrum | None
@@ -340,6 +342,8 @@ class LabelColorPathMapRegression:
         # Loop over all images; without images (None), each label has the zero relative
         # color only, which gives the same normalized histogram as images=[baseline].
         for image in images if len(images) > 0 else [None]:
+            if image is not None:
+                image = image.as_float()
             # Get relative image
             if single_pass:
                 counts = color_spectrum_kernels.label_color_histograms(

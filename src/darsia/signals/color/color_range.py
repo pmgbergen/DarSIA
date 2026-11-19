@@ -64,7 +64,8 @@ class ColorRange:
         Parameters
         ----------
         images : list[darsia.Image]
-            List of images to analyze.
+            List of images to analyze; images in an integer type (see `native` in
+            `darsia.imread_from_optical`) are converted to floats one at a time.
         baseline : darsia.Image, optional
             Baseline image for relative color range.
         mask : darsia.Image, optional
@@ -76,6 +77,7 @@ class ColorRange:
         mask_used = mask is not None and bool(np.any(mask.img))
 
         for image in images:
+            image = image.as_float()
             if (
                 baseline is not None
                 and mask_used

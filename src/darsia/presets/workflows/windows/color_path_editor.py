@@ -29,6 +29,7 @@ from typing import Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
+import skimage
 from matplotlib.widgets import Button, Slider, TextBox
 
 import darsia
@@ -227,7 +228,8 @@ class ColorPathEditorState:
         Per label `ColorPathInputs` (editable) or a fixed `darsia.ColorPath`
         (`LabelColorPathMapRegression.prepare_color_path_editing`).
     preview_images : list[darsia.Image]
-        Calibration images (on the grid of `labels`).
+        Calibration images (on the grid of `labels`); images in an integer type (see
+        `native` in `darsia.imread_from_optical`) are converted to floats where needed.
     preview_baseline : darsia.Image, optional
         Baseline image (on the grid of `labels`).
     labels : darsia.Image
@@ -322,7 +324,9 @@ class ColorPathEditorState:
             self.coarse_shape = (rows, cols)
             # Area averages: each preview pixel shows the mean color it covers
             self.coarse_images = [
-                darsia.resize(img, shape=self.coarse_shape, interpolation="inter_area")
+                darsia.resize(
+                    img.as_float(), shape=self.coarse_shape, interpolation="inter_area"
+                )
                 for img in self.images
             ]
             self.coarse_baseline = darsia.resize(
@@ -571,9 +575,12 @@ class ColorPathEditorState:
             return _warn(
                 "Pipette skipped because preview and baseline dimensions differ."
             )
-        relative = np.subtract(full_image.img, self.baseline.img, dtype=float)
+        colors = full_image.img[sample]
+        if not np.issubdtype(colors.dtype, np.floating):
+            colors = skimage.img_as_float(colors)  # as `Image.as_float`
+        relative = np.subtract(colors, self.baseline.img[sample], dtype=float)
         characteristic_colors = darsia.extract_characteristic_data(
-            signal=relative[sample], mask=label_mask[sample]
+            signal=relative, mask=label_mask[sample]
         )
         if len(characteristic_colors) == 0:
             return _warn("Pipette skipped because no characteristic color was found.")
