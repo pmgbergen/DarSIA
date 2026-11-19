@@ -52,7 +52,9 @@ def exact_for(image: np.ndarray, baseline: np.ndarray, mask: np.ndarray) -> bool
     Parameters
     ----------
     image, baseline : np.ndarray
-        Color images (rows, cols, 3).
+        Color images (rows, cols, 3). An 8-bit or 16-bit unsigned image counts as its
+        float64 conversion (`Image.as_float`), which the caller has to pass to the
+        kernels.
     mask : np.ndarray
         Boolean mask (rows, cols).
 
@@ -63,10 +65,13 @@ def exact_for(image: np.ndarray, baseline: np.ndarray, mask: np.ndarray) -> bool
         with three channels, and the mask matches them.
 
     """
+    image_type = (
+        np.float64 if image.dtype.type in (np.uint8, np.uint16) else image.dtype.type
+    )
     return (
         NUMBA_AVAILABLE
-        and image.dtype == baseline.dtype
-        and image.dtype.type in FLOAT_TYPES
+        and image_type is baseline.dtype.type
+        and image_type in FLOAT_TYPES
         and image.ndim == 3
         and image.shape[2] == 3
         and image.shape == baseline.shape
@@ -217,6 +222,15 @@ MAX_LABEL_SPAN = 1 << 20
 """Largest span of integer labels counted directly (else `np.unique`)."""
 
 
+def _index_type(num_labels: int) -> type:
+    """Smallest unsigned integer type for indices of `num_labels` labels."""
+    if num_labels <= 1 << 8:
+        return np.uint8
+    if num_labels <= 1 << 16:
+        return np.uint16
+    return np.intp
+
+
 def label_values_and_indices(labels: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Sorted labels (as `np.unique`) and the index of each pixel's label.
 
@@ -230,7 +244,8 @@ def label_values_and_indices(labels: np.ndarray) -> tuple[np.ndarray, np.ndarray
     Returns
     -------
     tuple[np.ndarray, np.ndarray]
-        Labels (type of `labels`) and indices (rows, cols).
+        Labels (type of `labels`) and indices (rows, cols), in the smallest unsigned
+        integer type for the number of labels.
 
     """
     if labels.dtype.kind in "iu" and labels.size > 0:
@@ -239,7 +254,7 @@ def label_values_and_indices(labels: np.ndarray) -> tuple[np.ndarray, np.ndarray
             offsets = labels.astype(np.intp) - low
             present = np.bincount(offsets.ravel(), minlength=high - low + 1) > 0
             values = (np.flatnonzero(present) + low).astype(labels.dtype)
-            table = np.cumsum(present) - 1
+            table = (np.cumsum(present) - 1).astype(_index_type(len(values)))
             return values, table[offsets]
     values = np.unique(labels)
     return values, label_indices(labels, values)
@@ -258,10 +273,12 @@ def label_indices(labels: np.ndarray, label_values: np.ndarray) -> np.ndarray:
     Returns
     -------
     np.ndarray
-        Indices (rows, cols).
+        Indices (rows, cols), in the smallest unsigned integer type for the number of
+        labels.
 
     """
-    return np.searchsorted(label_values, labels).astype(np.intp)
+    indices = np.searchsorted(label_values, labels)
+    return indices.astype(_index_type(len(label_values)))
 
 
 def label_color_histograms(

@@ -189,6 +189,7 @@ def calibration_color_paths_from_context(
                 paths=baseline_image_paths,
                 use_cache=config.data.use_cache,
                 cache_dir=config.data.cache,
+                native=True,
             )
     elif uses_baseline_spectrum:
         logger.info(
@@ -204,6 +205,7 @@ def calibration_color_paths_from_context(
             paths=calibration_image_paths,
             use_cache=config.data.use_cache,
             cache_dir=config.data.cache,
+            native=True,
         )
 
     # ! ---- BUILD CALIBRATION MASK ----
