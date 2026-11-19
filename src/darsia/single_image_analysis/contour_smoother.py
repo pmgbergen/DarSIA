@@ -279,8 +279,12 @@ class SavitzkyGolaySmoother(ContourSmoother):
     """
     Savitzky–Golay contour smoothing (requires SciPy).
 
-    window_length: odd integer, automatically adjusted to be valid for N
+    window_length: odd integer (an even value is increased by one), at least 3
     polyorder: must be < window_length, automatically clamped
+
+    Contours with fewer points than the window are returned unchanged: a window
+    covering the whole contour fits a single polynomial to it, which deforms the
+    (closed) contour instead of smoothing it.
     """
 
     def __init__(self, window_length: int = 11, polyorder: int = 3):
@@ -289,15 +293,13 @@ class SavitzkyGolaySmoother(ContourSmoother):
 
     def _smooth_xy(self, xy: np.ndarray) -> np.ndarray:
         n = len(xy)
-        if n < 3:
-            return xy
 
-        # --- make window_length valid: odd, >=3, <= n ---
+        # --- make window_length valid: odd, >=3 ---
         wl = max(3, self.window_length)
         if wl % 2 == 0:
             wl += 1
-        if wl > n:
-            wl = n if n % 2 == 1 else max(3, n - 1)
+        if n < wl:
+            return xy
 
         # --- make polyorder valid: < window_length ---
         po = min(self.polyorder, wl - 1)
