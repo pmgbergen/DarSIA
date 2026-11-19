@@ -1,8 +1,10 @@
 """Generic read-only table viewer for GUI inspection of tabular data."""
 
-from pathlib import Path
+from __future__ import annotations
 
-import pandas as pd
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
@@ -11,6 +13,9 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QVBoxLayout,
 )
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class TableViewerDialog(QDialog):
@@ -67,6 +72,8 @@ def load_csv_table(path: Path) -> pd.DataFrame:
     -------
         Pandas.DataFrame with the CSV contents, or empty DataFrame if file doesn't exist.
     """
+    import pandas as pd
+
     path = Path(path)
     if not path.exists():
         return pd.DataFrame()
