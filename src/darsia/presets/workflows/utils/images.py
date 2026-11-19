@@ -1,5 +1,6 @@
 """Utilities for loading images with optional caching in preset workflows."""
 
+import inspect
 import logging
 from os.path import commonpath
 from pathlib import Path
@@ -8,6 +9,30 @@ import darsia
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
+
+
+def read_native(rig: Rig, path: Path) -> darsia.Image:
+    """Image read by `rig` in the type of the corrections (`Rig.read_image`, native).
+
+    The 8-bit image of a photo takes an eighth of the memory of floats. Users of the
+    image convert it where they need floats (`Image.as_float`). Rigs whose `read_image`
+    has no `native` option read as usual.
+
+    Parameters
+    ----------
+    rig : Rig
+        Object with a `read_image(path)` method.
+    path : Path
+        Path to the image.
+
+    Returns
+    -------
+    darsia.Image
+        The corrected image.
+    """
+    if "native" in inspect.signature(rig.read_image).parameters:
+        return rig.read_image(path, native=True)
+    return rig.read_image(path)
 
 
 def load_images_with_cache(
