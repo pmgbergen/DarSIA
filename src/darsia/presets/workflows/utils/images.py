@@ -1,12 +1,17 @@
 """Utilities for loading images with optional caching in preset workflows."""
 
+from __future__ import annotations
+
 import inspect
 import logging
 from os.path import commonpath
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import darsia
-from darsia.presets.workflows.rig import Rig
+
+if TYPE_CHECKING:
+    from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
 

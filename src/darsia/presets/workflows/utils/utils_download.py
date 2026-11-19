@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import darsia
-from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.sections import (
     list_required_sections,
@@ -63,6 +62,12 @@ def prepare_download_data(path: Path | list[Path] | list[str] | str) -> Download
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
 
     # ! ---- LOAD IMAGES ----
+
+    # Imported here: the analysis context loads the whole analysis (the GUI imports
+    # this module)
+    from darsia.presets.workflows.analysis.analysis_context import (
+        select_image_paths,
+    )
 
     image_paths = select_image_paths(
         config,
