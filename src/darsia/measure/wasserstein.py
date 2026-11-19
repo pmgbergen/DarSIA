@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import darsia
+from darsia.utils import plotting
 
 
 def wasserstein_distance(
@@ -100,4 +101,4 @@ def wasserstein_distance_to_vtk(
             ("weight_inv", darsia.Format.TENSOR),
         ]
     ]
-    darsia.plotting.to_vtk(Path(path), data)
+    plotting.to_vtk(Path(path), data)

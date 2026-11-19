@@ -5,6 +5,8 @@ particular, grid information etc. may need to be adapted.
 
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Union
 from warnings import warn

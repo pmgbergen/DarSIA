@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import darsia
+from darsia.utils import plotting
 
 # %%
 # Two blobs of identical total mass at opposite corners of the domain.
@@ -62,7 +63,7 @@ print(f"Newton distance: {distance_newton:.4f} m")
 # %%
 # The transport fields for this solution.
 
-darsia.plotting.plot_2d_wasserstein_distance(
+plotting.plot_2d_wasserstein_distance(
     info, **{"resolution": 1, "save": False, "name": "blobs"}
 )
 plt.show()

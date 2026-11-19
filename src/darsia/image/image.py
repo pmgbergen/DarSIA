@@ -29,6 +29,7 @@ from plotly.subplots import make_subplots
 
 import darsia
 from darsia.image.conversion_kernels import to_float64, to_ubyte
+from darsia.utils import plotting
 
 logger = logging.getLogger(__name__)
 
@@ -1945,7 +1946,7 @@ class Image:
             name = self.name
         if name is None:
             name = "data"
-        darsia.plotting.to_vtk(
+        plotting.to_vtk(
             path,
             [
                 (
