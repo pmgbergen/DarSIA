@@ -13,6 +13,7 @@ import pyamg
 import scipy.sparse as sps
 
 import darsia
+from darsia.utils import linalg
 
 
 # Define BeckmannLinearSolverType
@@ -208,7 +209,7 @@ class BeckmannCGSolver(BeckmannLinearSolver):
         }
         """dict: options for the iterative linear solver"""
 
-        self.linear_solver: Optional[darsia.linalg.CG] = None
+        self.linear_solver: Optional[linalg.CG] = None
         """Initialize CG solver with AMG preconditioner."""
 
     def setup(self, matrix: sps.csc_matrix) -> None:
@@ -224,7 +225,7 @@ class BeckmannCGSolver(BeckmannLinearSolver):
         Sets up the AMG solver (``pyamg``) and a dict of AMG solver options.
         """
         # Define CG solver
-        self.linear_solver = darsia.linalg.CG(matrix)
+        self.linear_solver = linalg.CG(matrix)
 
         # Define AMG preconditioner
         with warnings.catch_warnings():
@@ -312,7 +313,7 @@ class BeckmannKSPSolver(BeckmannLinearSolver):
         Sets up the PETSc KSP solver and a dict of KSP solver options.
         """
         # Define CG solver
-        self.linear_solver = darsia.linalg.KSP(
+        self.linear_solver = linalg.KSP(
             matrix
             # , field_ises=self.field_ises, nullspace=self.nullspace
         )
