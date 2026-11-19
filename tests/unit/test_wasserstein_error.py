@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 import darsia
+from darsia.utils import plotting
 
 """
 Analytical solution to the Wasserstein distance problem for
@@ -195,8 +196,8 @@ def block_test(factor, block1, block2, options, weights=None, method="newton"):
             "name": "squares",
             "dpi": 800,
         }
-        darsia.plotting.plot_2d_wasserstein_distance(info, **plot_options)
-        # darsia.plotting.to_vtk('test', flux)
+        plotting.plot_2d_wasserstein_distance(info, **plot_options)
+        # plotting.to_vtk('test', flux)
 
     flux = info["flux"]
 

@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import darsia
+from darsia.utils import plotting
 
 # %%
 # Coarse source and target, then normalise to equal integrated mass and refine.
@@ -64,7 +65,7 @@ print(f"Wasserstein distance: {distance:.4f}")
 # %%
 # DarSIA's built-in visualisation of the solution fields.
 
-darsia.plotting.plot_2d_wasserstein_distance(
+plotting.plot_2d_wasserstein_distance(
     info, **{"resolution": 1, "save": False, "name": "squares"}
 )
 plt.show()
