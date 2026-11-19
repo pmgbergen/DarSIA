@@ -374,13 +374,14 @@ class FluidMassAnalysis:
             color_signal=None,
         )
 
-    def _fast_inverse_mass_analysis(
+    def _inverse_kernel_rows(
         self, mass: darsia.Image
-    ) -> "darsia.SimpleMassAnalysisResults | None":
-        """`inverse_mass_analysis` in one compiled pass (`mass_kernels.inverse_mass`).
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        """Gas density and aqueous capacity per row for `mass_kernels.inverse_mass`.
 
-        Returns None if not applicable: without numba, for images other than 2D, if a
-        property varies along rows, or if a subclass defines its own `mass_analysis`.
+        Returns None if the kernel does not apply: without numba, for images other than
+        2D, if a property varies along rows, or if a subclass defines its own
+        `mass_analysis`.
         """
         if (
             not _mass_kernels.NUMBA_AVAILABLE
@@ -393,8 +394,73 @@ class FluidMassAnalysis:
         aqueous_capacity = _mass_kernels.row_values(self.aqueous_capacity, shape)
         if density_gas is None or aqueous_capacity is None:
             return None
+        return density_gas, aqueous_capacity
+
+    def inverse_mass_fields(
+        self, mass: darsia.Image, scale: float = 1.0, phase_masses: bool = False
+    ) -> dict[str, darsia.Image | None]:
+        """Fields of `inverse_mass_analysis(darsia.weight(mass, scale))`, as needed.
+
+        Parameters
+        ----------
+        mass : darsia.Image
+            Total mass map.
+        scale : float
+            Factor applied to the mass first.
+        phase_masses : bool
+            Whether to return the masses in the gas and in the aqueous phase.
+
+        Returns
+        -------
+        dict
+            "mass", "concentration_aq", "saturation_g" (None without a gas phase),
+            "mass_g" and "mass_aq" (None unless requested). All fields are new arrays,
+            shared neither with `mass` nor with each other.
+        """
+        rows = self._inverse_kernel_rows(mass)
+        if rows is None:
+            result = self.inverse_mass_analysis(darsia.weight(mass, scale))
+            return {
+                "mass": result.mass,
+                "concentration_aq": result.concentration_aq,
+                "saturation_g": result.saturation_g if self.has_gas else None,
+                "mass_g": result.mass_g if phase_masses else None,
+                "mass_aq": result.mass_aq if phase_masses else None,
+            }
         c_aq, s_g, total, mass_g, mass_aq = _mass_kernels.inverse_mass(
-            mass.img, density_gas, aqueous_capacity, self.has_gas, EPSILON
+            mass.img,
+            *rows,
+            self.has_gas,
+            EPSILON,
+            scale=scale,
+            phase_masses=phase_masses,
+            saturation=self.has_gas,
+        )
+        metadata = mass.metadata()
+
+        def image(array: np.ndarray | None) -> darsia.Image | None:
+            return None if array is None else type(mass)(array, **metadata)
+
+        return {
+            "mass": image(total),
+            "concentration_aq": image(c_aq),
+            "saturation_g": image(s_g),
+            "mass_g": image(mass_g),
+            "mass_aq": image(mass_aq),
+        }
+
+    def _fast_inverse_mass_analysis(
+        self, mass: darsia.Image
+    ) -> "darsia.SimpleMassAnalysisResults | None":
+        """`inverse_mass_analysis` in one compiled pass (`mass_kernels.inverse_mass`).
+
+        Returns None if not applicable (see `_inverse_kernel_rows`).
+        """
+        rows = self._inverse_kernel_rows(mass)
+        if rows is None:
+            return None
+        c_aq, s_g, total, mass_g, mass_aq = _mass_kernels.inverse_mass(
+            mass.img, *rows, self.has_gas, EPSILON
         )
         metadata = mass.metadata()
 

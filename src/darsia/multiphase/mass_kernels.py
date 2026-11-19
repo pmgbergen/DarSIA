@@ -187,6 +187,9 @@ if NUMBA_AVAILABLE:
         aqueous_capacity,
         has_gas,
         epsilon,
+        scale,
+        keep_sg,
+        keep_phases,
         c_aq,
         s_g,
         total,
@@ -198,7 +201,7 @@ if NUMBA_AVAILABLE:
             chi = aqueous_capacity[i]
             denominator = rho - chi
             for j in range(mass.shape[1]):
-                m = mass[i, j]
+                m = mass[i, j] * scale
 
                 # Dissolved up to the aqueous capacity (np.divide with `where`, np.clip)
                 ca = m / chi if abs(chi) > epsilon else 0.0
@@ -225,9 +228,11 @@ if NUMBA_AVAILABLE:
                     aqueous = 0.0
                 ma = chi * ca * aqueous
                 c_aq[i, j] = ca
-                s_g[i, j] = sg
-                mass_g[i, j] = mg
-                mass_aq[i, j] = ma
+                if keep_sg:
+                    s_g[i, j] = sg
+                if keep_phases:
+                    mass_g[i, j] = mg
+                    mass_aq[i, j] = ma
                 total[i, j] = mg + ma
 
 
@@ -347,8 +352,13 @@ def inverse_mass(
     aqueous_capacity: np.ndarray,
     has_gas: bool,
     epsilon: float,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Concentration, saturation and masses from a total mass.
+    scale: float = 1.0,
+    phase_masses: bool = True,
+    saturation: bool = True,
+) -> tuple[
+    np.ndarray, np.ndarray | None, np.ndarray, np.ndarray | None, np.ndarray | None
+]:
+    """Concentration, saturation and masses from a (scaled) total mass.
 
     Parameters
     ----------
@@ -362,22 +372,48 @@ def inverse_mass(
         Whether the system has a gas phase; without, the saturation is zero.
     epsilon : float
         Divisors of at most this size in absolute value give zero.
+    scale : float
+        Factor applied to the mass first (as `darsia.weight`).
+    phase_masses : bool
+        Whether to return the masses in the gas and in the aqueous phase.
+    saturation : bool
+        Whether to return the gas saturation.
 
     Returns
     -------
     tuple
         Concentration in the aqueous phase, gas saturation, total mass, mass in the gas
-        phase and mass in the aqueous phase, each of shape (rows, cols).
+        phase and mass in the aqueous phase, each of shape (rows, cols); None for the
+        fields not requested.
 
     """
     mass = np.ascontiguousarray(mass, dtype=np.float64)
-    fields = [np.empty(mass.shape, dtype=np.float64) for _ in range(5)]
+    unused = np.empty((1, 1), dtype=np.float64)
+
+    def field(keep: bool) -> np.ndarray:
+        return np.empty(mass.shape, dtype=np.float64) if keep else unused
+
+    c_aq, s_g, total = field(True), field(saturation), field(True)
+    mass_g, mass_aq = field(phase_masses), field(phase_masses)
     _inverse_mass(
         mass,
         np.ascontiguousarray(density_gas, dtype=np.float64),
         np.ascontiguousarray(aqueous_capacity, dtype=np.float64),
         bool(has_gas),
         float(epsilon),
-        *fields,
+        float(scale),
+        bool(saturation),
+        bool(phase_masses),
+        c_aq,
+        s_g,
+        total,
+        mass_g,
+        mass_aq,
     )
-    return tuple(fields)
+    return (
+        c_aq,
+        s_g if saturation else None,
+        total,
+        mass_g if phase_masses else None,
+        mass_aq if phase_masses else None,
+    )
