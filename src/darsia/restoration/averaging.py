@@ -140,8 +140,12 @@ class VolumeAveraging:
             Two-dimensional volume averaged array.
         """
         masked_data = np.multiply(arr, self.mask.img)
-        mean_masked_data = self._heterogeneous_uniform_filter(masked_data)
-        result = np.divide(mean_masked_data, self.mean_pore_volume)
+        result = self._heterogeneous_uniform_filter(masked_data)
+        del masked_data
+        if result.dtype == np.result_type(result, self.mean_pore_volume):
+            np.divide(result, self.mean_pore_volume, out=result)
+        else:
+            result = np.divide(result, self.mean_pore_volume)
         result[self.zero_indices] = 0
         return result
 

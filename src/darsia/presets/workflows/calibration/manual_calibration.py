@@ -341,14 +341,21 @@ class CalibrationState:
                         )
                         if display is not None:
                             display.append(self._display_image(image))
-            # The projection onto the color path is expensive, so the color
-            # interpretations of the images are cached. Without projection, they are
-            # merely the baseline relative colors (3 channels, i.e., larger), cheap to
-            # compute and not cached.
+            # The color interpretations of the images are cached only if computing
+            # them is expensive: the projection onto the color path without the
+            # compiled pass. Otherwise (compiled pass, or merely the baseline relative
+            # colors without projection) they are computed when needed, which saves
+            # one field per image.
             with darsia.timed("color interpretations"):
+                is_fast = getattr(analysis, "has_fast_color_interpretation", None)
+                cache = (
+                    analysis.evaluation_mode.projects_onto_path
+                    and len(images) > 0
+                    and not (is_fast is not None and is_fast(images[0]))
+                )
                 color_interpretations = (
                     [analysis.call_color_interpretation(image) for image in images]
-                    if analysis.evaluation_mode.projects_onto_path
+                    if cache
                     else None
                 )
             level = ResolutionLevel(factor, analysis, images, color_interpretations, [])
@@ -743,6 +750,9 @@ class CalibrationState:
             roi_key: {"time": [], "exact": [], "detected": []} for roi_key in rois
         }
         for idx, img in enumerate(self.level.images):
+            # Free the fields of the previous image before computing the next one
+            color_interpretation = pH = mass_analysis_result = None
+            roi_mass_analysis_result = None
             if progress is not None:
                 progress(idx + 1, len(self.level.images))
             color_interpretation = self.color_interpretation_of(idx)
