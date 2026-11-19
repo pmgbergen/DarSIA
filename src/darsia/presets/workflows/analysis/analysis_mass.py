@@ -186,6 +186,19 @@ def analysis_mass_from_context(
         "rescaled_mass": {"vmin": 0.0, "vmax": vmax_mass},
         "extensive_mass": {"vmin": 0.0, "vmax": vmax_extensive_mass},
         "extensive_rescaled_mass": {"vmin": 0.0, "vmax": vmax_extensive_mass},
+        **{
+            f"{prefix}mass_{phase}": {"vmin": 0.0, "vmax": vmax_mass}
+            for prefix in ("", "rescaled_")
+            for phase in ("g", "aq")
+        },
+        **{
+            f"extensive_{prefix}mass_{phase}": {
+                "vmin": 0.0,
+                "vmax": vmax_extensive_mass,
+            }
+            for prefix in ("", "rescaled_")
+            for phase in ("g", "aq")
+        },
         "saturation_g": {"vmin": 0.0, "vmax": 1.0},
         "rescaled_saturation_g": {"vmin": 0.0, "vmax": 1.0},
         "concentration_aq": {"vmin": 0.0, "vmax": 1.0},
@@ -200,6 +213,11 @@ def analysis_mass_from_context(
         return kwargs["vmin"], kwargs["vmax"]
 
     stream_cmap = exporter.preview_cmap()
+    rescaled_phase_modes = {
+        mode
+        for mode in ("rescaled_mass_g", "rescaled_mass_aq")
+        if mode in export_modes or f"extensive_{mode}" in export_modes
+    }
     stream_value_ranges = {
         "mass_total": _range("mass"),
         "mass_aq": _range("mass"),
@@ -293,7 +311,8 @@ def analysis_mass_from_context(
                 "rescaled_mass",
                 "rescaled_saturation_g",
                 "rescaled_concentration_aq",
-            },
+            }
+            | rescaled_phase_modes,
             geometry=fluidflower.geometry,
             injection_protocol=experiment.injection_protocol,
             fluid_model=fluid_model,
@@ -313,6 +332,7 @@ def analysis_mass_from_context(
             "rescaled_mass": rescaled_mass,
             "concentration_aq": concentration_aq,
             "rescaled_concentration_aq": rescaled_concentration_aq,
+            "mass_aq": mass_aq,
         }
         if has_gas:
             mass_g = products["mass_g"]
@@ -320,12 +340,15 @@ def analysis_mass_from_context(
             rescaled_saturation_g = products["rescaled_saturation_g"]
             export_images["saturation_g"] = saturation_g
             export_images["rescaled_saturation_g"] = rescaled_saturation_g
-        if "extensive_mass" in export_modes:
-            export_images["extensive_mass"] = fluidflower.geometry.make_extensive(mass)
-        if "extensive_rescaled_mass" in export_modes:
-            export_images["extensive_rescaled_mass"] = (
-                fluidflower.geometry.make_extensive(rescaled_mass)
-            )
+            export_images["mass_g"] = mass_g
+        for mode in rescaled_phase_modes:
+            if mode in products:
+                export_images[mode] = products[mode]
+        for mode in export_modes:
+            if mode.startswith("extensive_"):
+                export_images[mode] = fluidflower.geometry.make_extensive(
+                    export_images[mode.removeprefix("extensive_")]
+                )
         for mode in export_modes:
             _save_scalar_image_artifacts(
                 export_images[mode],

@@ -19,6 +19,8 @@ EPSILON = 1e-12
 
 RESCALED_MODES = {
     "rescaled_mass",
+    "rescaled_mass_g",
+    "rescaled_mass_aq",
     "rescaled_concentration_aq",
     "rescaled_saturation_g",
 }
@@ -220,8 +222,12 @@ def analysis_scalar_products(
         basis=basis,
     )
     products["rescaled_mass"] = rescaled.rescaled_result.mass
+    if "rescaled_mass_aq" in requested_modes:
+        products["rescaled_mass_aq"] = rescaled.rescaled_result.mass_aq
     if not single_phase:
         products["rescaled_saturation_g"] = rescaled.rescaled_result.saturation_g
+        if "rescaled_mass_g" in requested_modes:
+            products["rescaled_mass_g"] = rescaled.rescaled_result.mass_g
     products["rescaled_concentration_aq"] = rescaled.rescaled_result.concentration_aq
     products = _apply_expert_knowledge_constraints(products, expert_knowledge_adapter)
     return products, rescaled

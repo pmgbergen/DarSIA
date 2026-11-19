@@ -24,6 +24,8 @@ class HelperRoiConfig:
         "mass_g",
         "mass_aq",
         "rescaled_mass",
+        "rescaled_mass_g",
+        "rescaled_mass_aq",
         "rescaled_saturation_g",
         "rescaled_concentration_aq",
     }

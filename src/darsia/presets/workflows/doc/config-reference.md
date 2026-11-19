@@ -146,6 +146,14 @@ Each analysis mode owns its own `data_selection` and `formats`:
       - `rescaled_mass`
       - `extensive_mass`
       - `extensive_rescaled_mass`
+      - `mass_g`
+      - `rescaled_mass_g`
+      - `extensive_mass_g`
+      - `extensive_rescaled_mass_g`
+      - `mass_aq`
+      - `rescaled_mass_aq`
+      - `extensive_mass_aq`
+      - `extensive_rescaled_mass_aq`
       - `saturation_g`
       - `rescaled_saturation_g`
       - `concentration_aq`
@@ -156,6 +164,14 @@ Each analysis mode owns its own `data_selection` and `formats`:
     - `<results>/rescaled_mass/{npz,jpg}/`
     - `<results>/extensive_mass/{npz,jpg}/`
     - `<results>/extensive_rescaled_mass/{npz,jpg}/`
+    - `<results>/mass_g/{npz,jpg}/`
+    - `<results>/rescaled_mass_g/{npz,jpg}/`
+    - `<results>/extensive_mass_g/{npz,jpg}/`
+    - `<results>/extensive_rescaled_mass_g/{npz,jpg}/`
+    - `<results>/mass_aq/{npz,jpg}/`
+    - `<results>/rescaled_mass_aq/{npz,jpg}/`
+    - `<results>/extensive_mass_aq/{npz,jpg}/`
+    - `<results>/extensive_rescaled_mass_aq/{npz,jpg}/`
     - `<results>/saturation_g/{npz,jpg}/`
     - `<results>/rescaled_saturation_g/{npz,jpg}/`
     - `<results>/concentration_aq/{npz,jpg}/`
@@ -191,8 +207,10 @@ Each analysis mode owns its own `data_selection` and `formats`:
     - `mass_g`
     - `mass_aq`
     - `rescaled_mass`
-  - `rescaled_saturation_g`
-  - `rescaled_concentration_aq`
+    - `rescaled_mass_g`
+    - `rescaled_mass_aq`
+    - `rescaled_saturation_g`
+    - `rescaled_concentration_aq`
   - `data`: selector key or keys resolved from top-level `[data.*]` registry.
 - `[helper.color]`: interactive color histogram helper.
   - `data`: selector key(s) resolved from top-level `[data.*]` registry.
@@ -237,7 +255,11 @@ Supported segmentation `mode` values:
 - `saturation_g`
 - `concentration_aq`
 - `mass` (backward-compatible alias for total mass)
+- `mass_g`
+- `mass_aq`
 - `rescaled_mass`
+- `rescaled_mass_g`
+- `rescaled_mass_aq`
 - `rescaled_saturation_g`
 - `rescaled_concentration_aq`
 
@@ -255,6 +277,8 @@ analysis outputs. Supported `modes`:
 - `mass_aq`
 - `color.<id>` (named entry from top-level `[color.path.*]`, `[color.range.*]`, `[color.channel.*]`)
 - `rescaled_mass`
+- `rescaled_mass_g`
+- `rescaled_mass_aq`
 - `rescaled_saturation_g`
 - `rescaled_concentration_aq`
 
