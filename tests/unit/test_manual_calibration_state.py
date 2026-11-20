@@ -156,8 +156,9 @@ def test_images_in_native_type_give_the_images_of_float_images(dtype):
     derived = state.coarse_images + state.level.images
     expected = reference.coarse_images + reference.level.images
     assert len(derived) == len(expected) == 4
-    for image, expected_image in zip(derived, expected):
-        assert image.img.dtype == expected_image.img.dtype == np.float64
+    dtypes = [np.uint8, np.uint8, np.float64, np.float64]  # display copies 8-bit
+    for image, expected_image, expected_dtype in zip(derived, expected, dtypes):
+        assert image.img.dtype == expected_image.img.dtype == expected_dtype
         np.testing.assert_array_equal(image.img, expected_image.img)
     # The storage stays native; floats on request
     assert state.images[0].img.dtype == dtype
@@ -261,10 +262,10 @@ def test_contour_overlay_is_cached_per_thresholds(monkeypatch):
 def test_label_highlight_grays_only_the_rest():
     state, _, _ = _make_state()
     image = state.coarse_image
-    image.img[..., 0] = 1.0  # reddish
+    image.img[..., 0] = 255  # reddish (display copies are 8-bit)
     highlighted = state.label_highlight(image, 1)
     inside = state.coarse_labels.img == 1
-    np.testing.assert_array_equal(highlighted[inside], image.img[inside])
+    np.testing.assert_array_equal(highlighted[inside], image.as_float().img[inside])
     outside_red = highlighted[~inside][:, 0]
     assert (outside_red < 1.0).all()
 
