@@ -7,6 +7,7 @@ height and depth of pixels.
 
 from __future__ import annotations
 
+import logging
 from functools import partial
 from typing import Callable, Optional
 
@@ -14,6 +15,8 @@ import cv2
 import numpy as np
 
 import darsia
+
+logger = logging.getLogger(__name__)
 
 
 def _without_nan(weight: float | np.ndarray) -> float | np.ndarray:
@@ -341,7 +344,14 @@ class Geometry:
 
 
 class WeightedGeometry(Geometry):
-    """Geometry with weighted volume."""
+    """Geometry with weighted volume.
+
+    The voxel volume is the voxel size times the weight. Voxels where the weight is NaN
+    (e.g. a facies without porosity, a gap in the depth measurements) contribute no
+    volume: the weight is zero there, in the whole geometry as in its regions. Such
+    voxels are reported by a warning when the geometry is built.
+
+    """
 
     def __init__(
         self,
@@ -369,8 +379,9 @@ class WeightedGeometry(Geometry):
         voxel_size : list
             See Geometry.
         weight_source : Callable, optional
-            Gives the weight (NaN replaced by zero) whenever :attr:`weight` is asked
-            for; then the weight is not kept. Otherwise a copy of `weight` is kept.
+            Gives the weight (NaN replaced by zero, as `weight` after the replacement)
+            whenever :attr:`weight` is asked for; then the weight is not kept.
+            Otherwise a copy of `weight` is kept.
 
         Raises
         ------
@@ -385,8 +396,17 @@ class WeightedGeometry(Geometry):
                 "Weight must have the same number of dimensions as the geometry."
             )
 
-        # Convert nans to zeros, as they typically arise due to ROIs that remove
-        # signals.
+        # NaN (and infinite values) as in `weight`, so that the voxel volumes are the
+        # voxel size times `weight`
+        if isinstance(weight, np.ndarray) and not np.isfinite(weight).all():
+            invalid = np.count_nonzero(~np.isfinite(weight))
+            logger.warning(
+                f"The weight of the geometry (e.g. porosity x depth) is NaN or "
+                f"infinite in {invalid} of {weight.size} voxels "
+                f"({100 * invalid / weight.size:.2g} %); NaN voxels contribute no "
+                f"volume."
+            )
+            weight = _without_nan(weight)
         self._weight_source = weight_source
         self._weight = None if weight_source is not None else _without_nan(weight)
         self.voxel_volume = np.multiply(self.voxel_volume, weight)

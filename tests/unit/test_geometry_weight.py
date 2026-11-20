@@ -7,6 +7,7 @@ and the integrals bit for bit, and how many full-size arrays a geometry owns.
 """
 
 import gc
+import logging
 import weakref
 
 import cv2
@@ -59,9 +60,10 @@ def test_weight_and_voxel_volume(porosity_kind, depth_kind):
     product = np.multiply(_values(porosity), _values(depth))
     if np.ndim(product) == 0:
         assert np.ndim(geometry.weight) == np.ndim(geometry.voxel_volume) == 0
-    # Weight without NaN (0 instead), voxel volume with the NaN of the product
-    np.testing.assert_array_equal(geometry.weight, np.nan_to_num(product, nan=0.0))
-    np.testing.assert_array_equal(geometry.voxel_volume, np.multiply(AREA, product))
+    # Weight and voxel volume without NaN (no volume instead)
+    weight = np.nan_to_num(product, nan=0.0)
+    np.testing.assert_array_equal(geometry.weight, weight)
+    np.testing.assert_array_equal(geometry.voxel_volume, np.multiply(AREA, weight))
     assert geometry.porosity is porosity and geometry.depth is depth
 
 
@@ -100,6 +102,27 @@ def test_integrals():
     resized = cv2.resize(voxel_volume, (4, 3), interpolation=cv2.INTER_AREA) * 4.0
     np.testing.assert_array_equal(geometry.voxel_volumes(reduced.shape), resized)
     assert geometry.integrate(reduced) == np.sum(np.sum(resized * reduced, 0), 0)
+
+
+def test_nan_voxels_contribute_no_volume(caplog):
+    porosity, depth = _input("image", 0.3), _input("image", 0.02, nan=False)
+    with caplog.at_level(logging.WARNING, logger="darsia.measure.integration"):
+        geometry = _geometry(porosity, depth)
+    assert len(caplog.records) == 1
+    assert "1 of 48 voxels" in caplog.records[0].getMessage()
+
+    data = _field(1.0, nan=False)
+    without = data.copy()
+    without[2, 3] = 0.0
+    integral = geometry.integrate(data)
+    assert np.isfinite(integral)
+    assert integral == geometry.integrate(without)
+
+
+def test_finite_weight_gives_no_warning(caplog):
+    with caplog.at_level(logging.WARNING, logger="darsia.measure.integration"):
+        _geometry(_input("image", 0.3, nan=False), _input("image", 0.02, nan=False))
+    assert len(caplog.records) == 0
 
 
 def _owned_arrays(geometry, inputs: list) -> int:
