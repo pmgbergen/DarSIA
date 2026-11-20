@@ -23,6 +23,28 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
+def _crop_section(crop_config: CropCorrectionConfig) -> dict:
+    """Crop section of the TOML config, in plain Python types.
+
+    The toml library writes numpy numbers as the text of their repr (e.g.
+    "np.int64(743)"), so the corners are stored as lists of int.
+
+    """
+
+    def corner(value) -> list[int] | None:
+        return None if value is None else [int(x) for x in value]
+
+    return {
+        "top_left": corner(crop_config.top_left),
+        "bottom_left": corner(crop_config.bottom_left),
+        "bottom_right": corner(crop_config.bottom_right),
+        "top_right": corner(crop_config.top_right),
+        "width": float(crop_config.width),
+        "height": float(crop_config.height),
+        "in_meters": bool(crop_config.in_meters),
+    }
+
+
 @required_sections("data", "corrections", "rig")
 def setup_crop_correction(path: Path | list[Path], show: bool = False) -> None:
     """Setup and store crop correction configuration interactively.
@@ -98,19 +120,7 @@ def setup_crop_correction(path: Path | list[Path], show: bool = False) -> None:
     if "curvature" not in config_dict["corrections"]:
         config_dict["corrections"]["curvature"] = {}
 
-    def make_voxel_or_none(c):
-        """Auxiliary conversion."""
-        return darsia.Voxel(c) if c is not None else None
-
-    config_dict["corrections"]["curvature"]["crop"] = {
-        "top_left": make_voxel_or_none(crop_config.top_left),
-        "bottom_left": make_voxel_or_none(crop_config.bottom_left),
-        "bottom_right": make_voxel_or_none(crop_config.bottom_right),
-        "top_right": make_voxel_or_none(crop_config.top_right),
-        "width": float(crop_config.width),
-        "height": float(crop_config.height),
-        "in_meters": bool(crop_config.in_meters),
-    }
+    config_dict["corrections"]["curvature"]["crop"] = _crop_section(crop_config)
 
     if "active" not in config_dict["corrections"]["curvature"]:
         config_dict["corrections"]["curvature"]["active"] = []
