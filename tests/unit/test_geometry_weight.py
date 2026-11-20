@@ -133,6 +133,26 @@ def test_freed_without_garbage_collection():
         gc.enable()
 
 
+@pytest.mark.parametrize("porous", [True, False])
+def test_region_does_not_keep_the_parent(porous):
+    if porous:
+        geometry = _geometry(_input("image", 0.3), _input("image", 0.02))
+    else:
+        geometry = darsia.WeightedGeometry(
+            _field(0.3, nan=True), space_dim=2, num_voxels=SHAPE, dimensions=DIMENSIONS
+        )
+    gc.disable()
+    try:
+        sub = geometry.subregion(darsia.CoordinateArray([[0.15, 0.12], [0.55, 0.43]]))
+        weight = sub.weight
+        parent = weakref.ref(geometry)
+        del geometry
+        assert parent() is None
+        np.testing.assert_array_equal(sub.weight, weight)
+    finally:
+        gc.enable()
+
+
 def test_update_is_not_available():
     geometry = _geometry(_input("image", 0.3), _input("image", 0.02))
     with pytest.raises(NotImplementedError):

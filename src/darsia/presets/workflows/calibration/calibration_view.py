@@ -303,7 +303,7 @@ class CalibrationView:
             hspace=0.25,
         )
 
-        # Top left: image with the selected label highlighted (click selects a label)
+        # Top left: image with the selected label highlighted
         self.ax_coarse_image = plt.subplot(gs[0, 0])
         self.ax_coarse_image.axis("off")
         self.coarse_image_img = ScreenImage(
@@ -316,7 +316,7 @@ class CalibrationView:
         fig.text(
             image_box.x0,
             image_box.y0 - 0.01,
-            "Click in the image to select a label.",
+            "Click in any top panel to select a label.",
             fontsize=8,
             ha="left",
             va="top",
@@ -351,7 +351,10 @@ class CalibrationView:
         """Contour overlay shown in the contour panel."""
         self.coarse_contour_img = ScreenImage(ax_contour, self._shown_contour.img)
 
-        # The top row shows the same coarse grid: zoom and pan apply to all three
+        # The top row shows the same coarse grid: zoom and pan apply to all three, and
+        # a click in any of them selects a label
+        self.top_row_axes = (self.ax_coarse_image, self.ax_signal, ax_contour)
+        """Panels of the coarse grid (without the colorbar)."""
         for ax in (self.ax_signal, ax_contour):
             ax.sharex(self.ax_coarse_image)
             ax.sharey(self.ax_coarse_image)
@@ -769,7 +772,7 @@ class CalibrationView:
     def set_resolution_title(self) -> None:
         """Show the resolution level in use."""
         if self.resolution_status is not None:
-            self.resolution_status.text.set_text(self._resolution_title())
+            self.resolution_status.set(self._resolution_title())
 
     def selected_level(self) -> int:
         """Resolution level chosen with the slider."""

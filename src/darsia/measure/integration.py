@@ -40,6 +40,30 @@ def _porous_weight(
     return _without_nan(_porosity_times_depth(porosity, depth))
 
 
+def _region_weight(
+    weight: float | np.ndarray,
+    dimensions: list,
+    space_dim: int,
+    roi: darsia.CoordinateArray,
+) -> float | np.ndarray:
+    """Weight of a geometry restricted to a region (a copy for arrays)."""
+    if not isinstance(weight, np.ndarray):
+        return weight
+    weight_image = darsia.Image(weight, dimensions=dimensions, space_dim=space_dim)
+    return weight_image.subregion(roi).img.copy()
+
+
+def _porous_region_weight(
+    porosity: float | np.ndarray | darsia.Image,
+    depth: float | np.ndarray | darsia.Image,
+    dimensions: list,
+    space_dim: int,
+    roi: darsia.CoordinateArray,
+) -> float | np.ndarray:
+    """Weight of a porous geometry restricted to a region."""
+    return _region_weight(_porous_weight(porosity, depth), dimensions, space_dim, roi)
+
+
 class Geometry:
     """Geometry of a physical domain, supporting geometric integration.
 
@@ -379,15 +403,16 @@ class WeightedGeometry(Geometry):
             return self._weight_source()
         return self._weight
 
-    def _subregion_weight(self, roi: darsia.CoordinateArray) -> float | np.ndarray:
-        """Weight restricted to a subregion (a copy for arrays)."""
-        weight = self.weight
-        if not isinstance(weight, np.ndarray):
-            return weight
-        weight_image = darsia.Image(
-            weight, dimensions=self.dimensions, space_dim=self.space_dim
-        )
-        return weight_image.subregion(roi).img.copy()
+    def _region_weight_source(
+        self, roi: darsia.CoordinateArray
+    ) -> Callable[[], float | np.ndarray] | None:
+        """Source of the weight of a region geometry (None: the region keeps it).
+
+        A source must not reference this geometry, so that a region does not keep it
+        alive.
+
+        """
+        return None
 
     def subregion(self, roi: darsia.CoordinateArray) -> "WeightedGeometry":
         """Extract subregion of the geometry.
@@ -400,21 +425,21 @@ class WeightedGeometry(Geometry):
         Returns
         -------
         WeightedGeometry
-            Subregion geometry. Its weight is taken from this geometry when asked
-            for, not kept.
+            Subregion geometry. It keeps its weight, or computes it when asked for
+            (see `_region_weight_source`); it does not reference this geometry.
         """
         # Extract sub-geometry using base class method
         sub_geometry = super().subregion(roi)
 
         # Create sub-weighted geometry
-        sub_weight = self._subregion_weight(roi)
+        sub_weight = _region_weight(self.weight, self.dimensions, self.space_dim, roi)
         return WeightedGeometry(
             sub_weight,
             sub_geometry.space_dim,
             list(sub_weight.shape),
             sub_geometry.dimensions,
             sub_geometry.voxel_size,
-            weight_source=partial(self._subregion_weight, roi),
+            weight_source=self._region_weight_source(roi),
         )
 
 
@@ -536,6 +561,19 @@ class ExtrudedPorousGeometry(WeightedGeometry):
             dimensions,
             voxel_size,
             weight_source=partial(_porous_weight, porosity, depth),
+        )
+
+    def _region_weight_source(
+        self, roi: darsia.CoordinateArray
+    ) -> Callable[[], float | np.ndarray]:
+        """Weight of a region from porosity and depth (not from this geometry)."""
+        return partial(
+            _porous_region_weight,
+            self.porosity,
+            self.depth,
+            list(self.dimensions),
+            self.space_dim,
+            roi,
         )
 
     def update(self, depth: float | np.ndarray | darsia.Image) -> None:
