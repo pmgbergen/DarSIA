@@ -201,7 +201,7 @@ class CalibrationState:
                 interpolation="inter_nearest",
             )
         self.coarse_images: list[darsia.Image] = []
-        """Display copies of the images, made together with the start level."""
+        """Display copies of the images (8-bit), made together with the start level."""
         with darsia.timed("display geometry"):
             self.coarse_depth = darsia.resize(
                 analysis.geometry.depth, shape=self.coarse_shape
@@ -420,8 +420,14 @@ class CalibrationState:
         return level.analysis.call_color_interpretation(level.images[idx])
 
     def _display_image(self, image: darsia.Image) -> darsia.Image:
-        """Display copy of a (float) calibration image."""
-        return darsia.resize(image, shape=self.coarse_shape)
+        """Display copy (8-bit) of a (float) calibration image.
+
+        Converted as `plot_contour_on_image` converts its background (`as_ubyte`), so
+        the contour overlay is that of the float copy.
+
+        """
+        display = darsia.resize(image, shape=self.coarse_shape)
+        return darsia.full_like(display, darsia.as_ubyte(display.img), dtype=np.uint8)
 
     def _display_color_interpretation(self, color_interpretation: darsia.Image):
         """Scalar color interpretation for display (colors: size of the color)."""
@@ -677,7 +683,9 @@ class CalibrationState:
 
     def label_highlight(self, coarse_image: darsia.Image, label: int) -> np.ndarray:
         """Coarse image with everything outside the label turned (mostly) gray."""
-        return highlight_region(coarse_image.img, self.coarse_labels.img != label)
+        return highlight_region(
+            coarse_image.as_float().img, self.coarse_labels.img != label
+        )
 
     # ! ---- MASS ANALYSIS ----
 
