@@ -56,7 +56,7 @@ def _fake_analysis(shape, functions, flash, has_gas, calls, states, reducible):
         )
         return _scalar(color_interpretation.img * scale)
 
-    def call_flash_and_mass_analysis(signal):
+    def call_flash_and_mass_analysis(signal, phase_masses=True):
         c_aq, s_g = flash(signal)
         return SimpleNamespace(
             mass=_scalar(1.5 * c_aq.img + 2.0 * s_g.img),
