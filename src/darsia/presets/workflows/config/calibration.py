@@ -319,6 +319,16 @@ class KernelEvaluationConfig:
             "colors. Zero means exact interpolation.",
         },
     )
+    clip: bool = field(
+        default=False,
+        metadata={
+            "name": "Clip signal",
+            "help": "Clip the signal to the range of the values at the key colors. "
+            "Without clipping, the signal may over- and undershoot them, e.g. to "
+            "keep it unbiased for the restoration (the tracer concentration is not "
+            "clipped afterwards either).",
+        },
+    )
 
     def load(self, sec: dict) -> "KernelEvaluationConfig":
         self.kernel = _get_key(
@@ -336,6 +346,9 @@ class KernelEvaluationConfig:
             default=self.regularization,
             required=False,
             type_=float,
+        )
+        self.clip = _get_key(
+            sec, "clip", default=self.clip, required=False, type_=bool
         )
         return self
 
@@ -511,6 +524,7 @@ class CalibrationMassConfig:
                 "gamma": options.gamma,
                 "shift": options.shift,
                 "regularization": options.regularization,
+                "clip": options.clip,
             }
         return {}
 

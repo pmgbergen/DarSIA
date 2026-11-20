@@ -268,7 +268,8 @@ class KernelSignalFunction:
     signal values at the key colors as goal values. In contrast to the piecewise
     functions, it is evaluated at the colors themselves and not at their projection onto
     the color path: colors far away from all key colors decay towards the baseline
-    signal. The output is clipped to the range of the values.
+    signal. The interpolation may over- and undershoot the range of the values; with
+    ``clip``, the output is clipped to it.
 
     """
 
@@ -281,11 +282,14 @@ class KernelSignalFunction:
         kernel: "darsia.BaseKernel",
         regularization: float = 1e-8,
         support_indices: list[int] | None = None,
+        clip: bool = False,
     ) -> None:
         self.color_path = color_path
         self.color_mode = color_mode
         self.kernel = kernel
         self.regularization = regularization
+        self.clip = clip
+        """Whether the output is clipped to the range of the values."""
         self.supports = np.asarray(supports, dtype=float)
         """Equidistant parameters of the key colors along the color path."""
         self.key_colors = np.asarray(
@@ -326,9 +330,9 @@ class KernelSignalFunction:
                 new_values[np.array(dofs)] = values
             else:
                 new_values = np.array(values, dtype=float)
-        assert len(new_values) == len(
-            self.supports
-        ), f"wrong size: {len(new_values)} vs. {len(self.supports)}"
+        assert len(new_values) == len(self.supports), (
+            f"wrong size: {len(new_values)} vs. {len(self.supports)}"
+        )
         violation = monotonicity_violation(new_values, self.support_indices)
         if violation is not None:
             raise ValueError(monotonicity_message(new_values, violation))
@@ -355,6 +359,8 @@ class KernelSignalFunction:
     def __call__(self, colors: np.ndarray) -> np.ndarray:
         """Evaluate the signal at colors of shape (..., 3)."""
         signal = self._interpolation(np.asarray(colors))
+        if not self.clip:
+            return signal
         used_values = self.values[self.support_indices]
         return np.clip(signal, np.min(used_values), np.max(used_values))
 
@@ -387,6 +393,10 @@ class KernelEvaluation(EvaluationMode):
     the color and can interpolate at most 4 key colors; for more key colors, 4 are
     selected, see :func:`select_affine_supports`, and stored per label in ``per_label``.
 
+    The signal is not clipped, e.g. to keep it unbiased for a restoration; it may then
+    leave the range of the values at the key colors. With ``clip=True`` it is clipped
+    to that range.
+
     """
 
     type = "kernel"
@@ -400,6 +410,7 @@ class KernelEvaluation(EvaluationMode):
         gamma: float = 10.0,
         shift: float = 1.0,
         regularization: float = 1e-8,
+        clip: bool = False,
     ) -> None:
         if kernel not in self.KERNELS:
             raise ValueError(
@@ -413,6 +424,7 @@ class KernelEvaluation(EvaluationMode):
         self.gamma = float(gamma)
         self.shift = float(shift)
         self.regularization = float(regularization)
+        self.clip = bool(clip)
 
     def parameters(self) -> dict:
         kernel_parameter = (
@@ -424,6 +436,7 @@ class KernelEvaluation(EvaluationMode):
             "kernel": self.kernel,
             **kernel_parameter,
             "regularization": self.regularization,
+            "clip": self.clip,
         }
 
     @classmethod
@@ -432,7 +445,7 @@ class KernelEvaluation(EvaluationMode):
             **{
                 key: parameters[key]
                 for key in parameters
-                if key in {"kernel", "gamma", "shift", "regularization"}
+                if key in {"kernel", "gamma", "shift", "regularization", "clip"}
             }
         )
 
@@ -491,6 +504,7 @@ class KernelEvaluation(EvaluationMode):
             kernel=kernel,
             regularization=self.regularization,
             support_indices=indices,
+            clip=self.clip,
         )
 
 
