@@ -7,12 +7,37 @@ height and depth of pixels.
 
 from __future__ import annotations
 
-from typing import Optional
+from functools import partial
+from typing import Callable, Optional
 
 import cv2
 import numpy as np
 
 import darsia
+
+
+def _without_nan(weight: float | np.ndarray) -> float | np.ndarray:
+    """Weight with NaN replaced by zero (a new array; scalars as they are)."""
+    return np.nan_to_num(weight, nan=0.0) if isinstance(weight, np.ndarray) else weight
+
+
+def _porosity_times_depth(
+    porosity: float | np.ndarray | darsia.Image,
+    depth: float | np.ndarray | darsia.Image,
+) -> float | np.ndarray:
+    """Product of porosity and depth (values of images)."""
+    return np.multiply(
+        porosity.img if isinstance(porosity, darsia.Image) else porosity,
+        depth.img if isinstance(depth, darsia.Image) else depth,
+    )
+
+
+def _porous_weight(
+    porosity: float | np.ndarray | darsia.Image,
+    depth: float | np.ndarray | darsia.Image,
+) -> float | np.ndarray:
+    """Weight of a porous geometry: porosity times depth, NaN replaced by zero."""
+    return _without_nan(_porosity_times_depth(porosity, depth))
 
 
 class Geometry:
@@ -301,6 +326,7 @@ class WeightedGeometry(Geometry):
         num_voxels: tuple[int] | list[int],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
+        weight_source: Callable[[], float | np.ndarray] | None = None,
         **kwargs,
     ) -> None:
         """
@@ -318,6 +344,9 @@ class WeightedGeometry(Geometry):
             See Geometry.
         voxel_size : list
             See Geometry.
+        weight_source : Callable, optional
+            Gives the weight (NaN replaced by zero) whenever :attr:`weight` is asked
+            for; then the weight is not kept. Otherwise a copy of `weight` is kept.
 
         Raises
         ------
@@ -332,20 +361,33 @@ class WeightedGeometry(Geometry):
                 "Weight must have the same number of dimensions as the geometry."
             )
 
-        # Add weight. # Convert nans to zeros, as they typically arise due to ROIs
-        # that remove signals.
-        self.weight = (
-            np.nan_to_num(weight.copy(), nan=0.0)
-            if isinstance(weight, np.ndarray)
-            else weight
-        )
-        """Weight of the geometry, can be a scalar or an array."""
+        # Convert nans to zeros, as they typically arise due to ROIs that remove
+        # signals.
+        self._weight_source = weight_source
+        self._weight = None if weight_source is not None else _without_nan(weight)
         self.voxel_volume = np.multiply(self.voxel_volume, weight)
         """Effective voxel volume in 3d."""
         self.cached_voxel_volume = self.voxel_volume
         """Voxel volume for data of the current shape (the voxel volume itself, or a
         resized one, see `_prepare_cached_voxel_volume`). It may be the same array as
         `voxel_volume`: neither of them may be modified in place."""
+
+    @property
+    def weight(self) -> float | np.ndarray:
+        """Weight of the geometry, a scalar or an array (NaN replaced by zero)."""
+        if self._weight_source is not None:
+            return self._weight_source()
+        return self._weight
+
+    def _subregion_weight(self, roi: darsia.CoordinateArray) -> float | np.ndarray:
+        """Weight restricted to a subregion (a copy for arrays)."""
+        weight = self.weight
+        if not isinstance(weight, np.ndarray):
+            return weight
+        weight_image = darsia.Image(
+            weight, dimensions=self.dimensions, space_dim=self.space_dim
+        )
+        return weight_image.subregion(roi).img.copy()
 
     def subregion(self, roi: darsia.CoordinateArray) -> "WeightedGeometry":
         """Extract subregion of the geometry.
@@ -358,28 +400,21 @@ class WeightedGeometry(Geometry):
         Returns
         -------
         WeightedGeometry
-            Subregion geometry.
+            Subregion geometry. Its weight is taken from this geometry when asked
+            for, not kept.
         """
         # Extract sub-geometry using base class method
         sub_geometry = super().subregion(roi)
 
-        # Extract weight
-        if isinstance(self.weight, np.ndarray):
-            weight_image = darsia.Image(
-                self.weight, dimensions=self.dimensions, space_dim=self.space_dim
-            )
-            sub_weight_image = weight_image.subregion(roi)
-            sub_weight = sub_weight_image.img
-        else:
-            sub_weight = self.weight
-
         # Create sub-weighted geometry
+        sub_weight = self._subregion_weight(roi)
         return WeightedGeometry(
             sub_weight,
             sub_geometry.space_dim,
             list(sub_weight.shape),
             sub_geometry.dimensions,
             sub_geometry.voxel_size,
+            weight_source=partial(self._subregion_weight, roi),
         )
 
 
@@ -453,7 +488,14 @@ class PorousGeometry(WeightedGeometry):
 
 
 class ExtrudedPorousGeometry(WeightedGeometry):
-    """Class containing information of a porous geometry."""
+    """Class containing information of a porous geometry.
+
+    The pore volume of a voxel is its area times porosity times depth. Porosity and
+    depth are referenced, not copied, and must not be changed afterwards: the weight
+    (porosity times depth) is computed from them whenever it is asked for, while the
+    voxel volumes are computed once.
+
+    """
 
     def __init__(
         self,
@@ -484,38 +526,41 @@ class ExtrudedPorousGeometry(WeightedGeometry):
             See Geometry.
         """
         self.porosity = porosity
+        """Porosity (referenced)."""
         self.depth = depth
-        if isinstance(porosity, darsia.Image) and isinstance(depth, darsia.Image):
-            integrated_porosity = np.multiply(porosity.img, depth.img)
-        elif isinstance(depth, darsia.Image):
-            integrated_porosity = np.multiply(porosity, depth.img)
-        elif isinstance(porosity, darsia.Image):
-            integrated_porosity = np.multiply(porosity.img, depth)
-        else:
-            integrated_porosity = np.multiply(porosity, depth)
+        """Depth (referenced)."""
         super().__init__(
-            integrated_porosity, space_dim, num_voxels, dimensions, voxel_size
+            _porosity_times_depth(porosity, depth),
+            space_dim,
+            num_voxels,
+            dimensions,
+            voxel_size,
+            weight_source=partial(_porous_weight, porosity, depth),
         )
 
     def update(self, depth: float | np.ndarray | darsia.Image) -> None:
-        """Update effective depth and recompute weighted volume.
+        """Change the depth (not available).
+
+        A new depth would have to reach everything derived from the geometry: the
+        voxel volumes (area times porosity times depth, with NaN as in the
+        constructor, not by dividing by the old weight, which is zero where the
+        porosity is), the voxel volumes resized for data of other shapes, region
+        geometries (:meth:`subregion`) and reduced copies (e.g. of the calibration).
+        For a calibration of the depth, note that a global factor cannot be told
+        apart from the scaling of the signal; a depth model with a few parameters
+        can.
 
         Parameters
         ----------
         depth : float or array
             Effective depth.
+
+        Raises
+        ------
+        NotImplementedError
+            Always; build a new geometry instead.
         """
-        self.depth = depth
-        if isinstance(self.porosity, darsia.Image) and isinstance(depth, darsia.Image):
-            integrated_porosity = np.multiply(self.porosity.img, depth.img)
-        elif isinstance(depth, darsia.Image):
-            integrated_porosity = np.multiply(self.porosity, depth.img)
-        elif isinstance(self.porosity, darsia.Image):
-            integrated_porosity = np.multiply(self.porosity.img, depth)
-        else:
-            integrated_porosity = np.multiply(self.porosity, depth)
-        self.voxel_volume = np.multiply(
-            self.voxel_volume / self.weight, integrated_porosity
+        raise NotImplementedError(
+            "ExtrudedPorousGeometry.update is not available: build a new geometry "
+            "(see the docstring for what a depth update would have to refresh)."
         )
-        self.cached_voxel_volume = self.voxel_volume
-        self.weight = integrated_porosity
