@@ -179,9 +179,9 @@ class CalibrationController:
         self.view.show_label(self.state.label_idx)
 
     def on_click(self, event) -> None:
-        """A click in the image panel selects the label at that pixel."""
+        """A click in a panel of the top row selects the label at that pixel."""
         view = self.view
-        if event.inaxes is not view.ax_coarse_image or event.button != 1:
+        if event.inaxes not in view.top_row_axes or event.button != 1:
             return
         toolbar = view.fig.canvas.toolbar
         if toolbar is not None and toolbar.mode:
