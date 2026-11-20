@@ -6,6 +6,9 @@ and the integrals bit for bit, and how many full-size arrays a geometry owns.
 
 """
 
+import gc
+import weakref
+
 import cv2
 import numpy as np
 import pytest
@@ -99,19 +102,38 @@ def test_integrals():
     assert geometry.integrate(reduced) == np.sum(np.sum(resized * reduced, 0), 0)
 
 
-def _owned_full_size_arrays(geometry) -> int:
-    """Distinct full-size arrays of the geometry not shared with porosity or depth."""
-    inputs = [_values(geometry.porosity), _values(geometry.depth)]
+def _owned_arrays(geometry, inputs: list) -> int:
+    """Distinct arrays of the geometry not shared with the inputs."""
     owned = {
         id(value)
         for value in vars(geometry).values()
         if isinstance(value, np.ndarray)
-        and value.shape == SHAPE
         and not any(np.shares_memory(value, field) for field in inputs)
     }
     return len(owned)
 
 
 def test_owned_arrays():
+    porosity, depth = _input("image", 0.3), _input("image", 0.02)
+    geometry = _geometry(porosity, depth)
+    assert _owned_arrays(geometry, [porosity.img, depth.img]) == 1  # voxel volume
+    sub = geometry.subregion(darsia.CoordinateArray([[0.15, 0.12], [0.55, 0.43]]))
+    assert _owned_arrays(sub, []) == 1
+
+
+def test_freed_without_garbage_collection():
+    gc.disable()
+    try:
+        geometry = _geometry(_input("image", 0.3), _input("image", 0.02))
+        sub = geometry.subregion(darsia.CoordinateArray([[0.15, 0.12], [0.55, 0.43]]))
+        references = [weakref.ref(geometry), weakref.ref(sub)]
+        del geometry, sub
+        assert all(reference() is None for reference in references)
+    finally:
+        gc.enable()
+
+
+def test_update_is_not_available():
     geometry = _geometry(_input("image", 0.3), _input("image", 0.02))
-    assert _owned_full_size_arrays(geometry) == 2
+    with pytest.raises(NotImplementedError):
+        geometry.update(0.03)
