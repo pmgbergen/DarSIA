@@ -347,9 +347,7 @@ class KernelEvaluationConfig:
             required=False,
             type_=float,
         )
-        self.clip = _get_key(
-            sec, "clip", default=self.clip, required=False, type_=bool
-        )
+        self.clip = _get_key(sec, "clip", default=self.clip, required=False, type_=bool)
         return self
 
 
