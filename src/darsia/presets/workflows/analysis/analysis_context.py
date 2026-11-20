@@ -125,23 +125,22 @@ class AnalysisContext:
         The protocolled experiment.
     fluidflower
         The loaded rig instance.
-    image_paths
-        List of image paths to analyze.
     restoration
         Restoration model (e.g. VolumeAveraging or TVD), or None
         if no restoration is configured.  Available to all analysis workflows.
     color_to_mass_analysis
         The color to mass analysis pipeline
         (for mass/volume/segmentation).
+
+    The images of a step are not part of the context: each step selects them with
+    :func:`select_image_paths` from its own config section.
     """
 
     config: FluidFlowerConfig
     experiment: darsia.ProtocolledExperiment
     fluidflower: Rig
-    analysis_labels: darsia.Image | None
 
     # Optional - only initialized for mass/volume/segmentation analyses
-    image_paths: list[Path] | None = None
     restoration: darsia.VolumeAveraging | darsia.TVD | None = None
     color_to_mass_analysis: HeterogeneousColorToMassAnalysis | None = None
     expert_knowledge_adapter: ExpertKnowledgeAdapter | None = None
@@ -153,9 +152,9 @@ class AnalysisContext:
 def select_image_paths(
     config: FluidFlowerConfig,
     experiment: darsia.ProtocolledExperiment,
-    all: bool = False,  # TODO all=True used anywhere?
-    sub_config=None,  # TODO: sub_config used anywhere?
-    source: Path | None = None,  # TODO: source used anywhere?
+    all: bool = False,
+    sub_config=None,
+    source: Path | None = None,
 ) -> list[Path]:
     """Select image paths based on configuration and flags.
 
@@ -501,19 +500,13 @@ def prepare_analysis_context(
                 restoration=restoration,
                 expert_knowledge_adapter=expert_knowledge_adapter,
             )
-
-        # TODO: refactor and remove analysis_labels.
-        embedding = config.color.resolve(config.analysis.mass.color)
-        analysis_labels = embedding.get_labels(fluidflower)
     else:
         color_to_mass_analysis = None
-        analysis_labels = None
 
     return AnalysisContext(
         config=config,
         experiment=experiment,
         fluidflower=fluidflower,
-        analysis_labels=analysis_labels,  # TODO: remove, not used much
         restoration=restoration,
         color_to_mass_analysis=color_to_mass_analysis,
         expert_knowledge_adapter=expert_knowledge_adapter,
