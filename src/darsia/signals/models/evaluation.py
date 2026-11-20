@@ -330,9 +330,9 @@ class KernelSignalFunction:
                 new_values[np.array(dofs)] = values
             else:
                 new_values = np.array(values, dtype=float)
-        assert len(new_values) == len(self.supports), (
-            f"wrong size: {len(new_values)} vs. {len(self.supports)}"
-        )
+        assert len(new_values) == len(
+            self.supports
+        ), f"wrong size: {len(new_values)} vs. {len(self.supports)}"
         violation = monotonicity_violation(new_values, self.support_indices)
         if violation is not None:
             raise ValueError(monotonicity_message(new_values, violation))

@@ -5,17 +5,26 @@ import numpy as np
 import darsia
 
 # Key colors (relative to the baseline) of a path with values 0, 0.5, 1.
-RELATIVE_COLORS = [np.zeros(3), np.array([-0.4, -0.05, 0.05]), np.array([-0.8, -0.2, 0.1])]
+RELATIVE_COLORS = [
+    np.zeros(3),
+    np.array([-0.4, -0.05, 0.05]),
+    np.array([-0.8, -0.2, 0.1]),
+]
 VALUES = [0.0, 0.5, 1.0]
 # Colors on the line through the first and last key color, where the Gaussian
 # interpolation undershoots (before the first) and overshoots (close to the last).
 PROBE = np.array(
-    [RELATIVE_COLORS[0] + t * (RELATIVE_COLORS[2] - RELATIVE_COLORS[0]) for t in (-0.2, 0.95)]
+    [
+        RELATIVE_COLORS[0] + t * (RELATIVE_COLORS[2] - RELATIVE_COLORS[0])
+        for t in (-0.2, 0.95)
+    ]
 )
 
 
 def signal_function(evaluation: darsia.KernelEvaluation):
-    color_path = darsia.ColorPath(relative_colors=RELATIVE_COLORS, base_color=np.ones(3))
+    color_path = darsia.ColorPath(
+        relative_colors=RELATIVE_COLORS, base_color=np.ones(3)
+    )
     supports = color_path.equidistant_distances
     return evaluation.signal_function(
         color_path, darsia.ColorMode.RELATIVE, supports, VALUES
