@@ -3,6 +3,49 @@
 import sys
 from pathlib import Path
 
+from PySide6.QtWidgets import QMessageBox
+
+
+def _confirm_resolution_level(main_window, config_file: str) -> bool:
+    """Warn if the requested resolution level of the mass calibration is unavailable.
+
+    Returns
+    -------
+        True if the calibration may start, False if the user cancelled.
+
+    """
+    try:
+        from darsia.presets.workflows.calibration.consistency import (
+            unavailable_resolution_level,
+        )
+
+        reason = unavailable_resolution_level(Path(config_file).resolve())
+    except Exception as error:  # a check must never block the calibration
+        main_window.print_log(f"Skipped the resolution level check: {error}")
+        return True
+    if reason is None:
+        return True
+
+    main_window.print_log(reason)
+    box = QMessageBox(main_window)
+    box.setIcon(QMessageBox.Warning)
+    box.setWindowTitle("Resolution level not available")
+    box.setText(reason)
+    box.setInformativeText(
+        "The calibration runs at full resolution (1/1), without the level slider: "
+        "each Update takes longer and needs more memory. To calibrate at a reduced "
+        "level, remove the restoration method; set resolution_level = 1 to start at "
+        "full resolution without this warning.\n\nContinue at full resolution?"
+    )
+    continue_button = box.addButton("Continue", QMessageBox.AcceptRole)
+    box.addButton("Cancel", QMessageBox.RejectRole)
+    box.setDefaultButton(continue_button)
+    box.exec()
+    if box.clickedButton() is not continue_button:
+        main_window.print_log("Calibration cancelled: resolution level not available.")
+        return False
+    return True
+
 
 class CalibrationTab:
     """Manages the calibration tab UI and workflow execution."""
@@ -30,6 +73,11 @@ class CalibrationTab:
         selected_id = self.main_window.selected_checkbox_id
         if not selected_id:
             self.main_window.print_log("Please select an option in the sidebar.")
+            return
+
+        if selected_id == "mass" and not _confirm_resolution_level(
+            self.main_window, config_file
+        ):
             return
 
         # Sync GUI widgets to config_dict before reading live values
