@@ -542,18 +542,27 @@ class CalibrationState:
     def _keep_analyzed(
         self, image_idx: int, pH: darsia.Image, result: SimpleMassAnalysisResults
     ) -> None:
-        """Keep the analysis of an image for :meth:`compute_maps`.
+        """Keep the analysis of an image for :meth:`compute_maps`, coarsened.
 
         The mass series analyze all images, including the displayed one; its maps
-        then need no second analysis as long as the parameters stay the same.
+        then need no second analysis as long as the parameters stay the same. Only the
+        coarse maps for the display are kept.
 
         """
+        image_type, shape, dtype = type(pH), pH.img.shape, pH.dtype
+        metadata = pH.metadata()
+
+        def full_map(value: np.ndarray | float) -> darsia.Image:
+            """Coarse map of a value in the shape of the signal (as `full_like`)."""
+            return self._coarsen(image_type(np.full(shape, value, dtype), **metadata))
+
         self._analyzed = {
             "key": (self.level.factor, image_idx, self._parameter_key()),
-            "pH": pH,
-            "density": result.mass,
+            "pH": self._coarsen(pH),
+            "density": self._coarsen(result.mass),
             "c_aq": self._coarsen(result.concentration_aq),
             "s_g": self._coarsen(result.saturation_g),
+            "full_map": full_map,
         }
 
     @darsia.timed("maps of the shown image")
@@ -574,14 +583,17 @@ class CalibrationState:
         if self._analyzed is None or self._analyzed["key"] != key:
             pH = analysis.call_pH_analysis(self.color_interpretation_of(image_idx))
             self._keep_analyzed(
-                image_idx, pH, analysis.call_flash_and_mass_analysis(pH)
+                image_idx,
+                pH,
+                analysis.call_flash_and_mass_analysis(pH, phase_masses=False),
             )
         analyzed = self._analyzed
         assert analyzed is not None
-        pH, density = analyzed["pH"], analyzed["density"]
-        c_aq, s_g = analyzed["c_aq"], analyzed["s_g"]
+        pH, c_aq, s_g = analyzed["pH"], analyzed["c_aq"], analyzed["s_g"]
 
         ready = {
+            "pH": pH,
+            "rho_co2": analyzed["density"],
             "color": self.coarse_color_interpretations[image_idx],
             "c_aq": c_aq,
             "labels": self.coarse_labels,
@@ -590,19 +602,14 @@ class CalibrationState:
             "effective_depth": self.coarse_effective_depth,
         }
         signals = {name: (lambda img=img: img) for name, img in ready.items()}
-        signals["pH"] = lambda: self._coarsen(pH)
-        signals["rho_co2"] = lambda: self._coarsen(density)
         if analysis.has_gas:
             # Properties at the state of this image (the fluid model moves on)
             density_gas = analysis.fluid_model.density_gas
             aqueous_capacity = analysis.fluid_model.aqueous_capacity
+            full_map = analyzed["full_map"]
             signals["s_g"] = lambda: s_g
-            signals["rho_co2(g)"] = lambda: self._coarsen(
-                darsia.full_like(pH, density_gas)
-            )
-            signals["solubility_co2(aq)"] = lambda: self._coarsen(
-                darsia.full_like(pH, aqueous_capacity)
-            )
+            signals["rho_co2(g)"] = lambda: full_map(density_gas)
+            signals["solubility_co2(aq)"] = lambda: full_map(aqueous_capacity)
 
         self.maps = {
             "image_idx": image_idx,
@@ -762,13 +769,20 @@ class CalibrationState:
 
             # Signal analysis
             pH = analysis.call_pH_analysis(color_interpretation)
+            color_interpretation = None
 
-            # Only the masses of the regions are needed (except for the shown image,
-            # whose maps are kept): integrate them without the fields, if possible.
-            if idx != self.image_idx and analysis.has_gas:
-                integrated = self._integrate_without_fields(pH, img, run_analysis)
-                if integrated:
-                    continue
+            # Only the masses of the regions are needed: integrate them without the
+            # fields, if possible. The shown image also keeps its maps for display.
+            if analysis.has_gas and self._integrate_without_fields(
+                pH, img, run_analysis
+            ):
+                if idx == self.image_idx:
+                    self._keep_analyzed(
+                        idx,
+                        pH,
+                        analysis.call_flash_and_mass_analysis(pH, phase_masses=False),
+                    )
+                continue
 
             # Mass computation
             mass_analysis_result = analysis.call_flash_and_mass_analysis(pH)

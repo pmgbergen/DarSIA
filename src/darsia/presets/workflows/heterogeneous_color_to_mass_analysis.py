@@ -548,7 +548,7 @@ class HeterogeneousColorToMassAnalysis:
         )
 
     def _fast_flash_and_mass(
-        self, pH: darsia.Image
+        self, pH: darsia.Image, phase_masses: bool = True
     ) -> SimpleMassAnalysisResults | None:
         """Flash and mass in one pass (None if not applicable).
 
@@ -560,11 +560,13 @@ class HeterogeneousColorToMassAnalysis:
         arguments = self._flash_and_mass_arguments(pH)
         if arguments is None:
             return None
-        c_aq, s_g, mass, mass_g, mass_aq = mass_kernels.flash_and_mass(*arguments)
+        c_aq, s_g, mass, mass_g, mass_aq = mass_kernels.flash_and_mass(
+            *arguments, phase_masses=phase_masses
+        )
         metadata = pH.metadata()
 
-        def image(array: np.ndarray) -> darsia.Image:
-            return type(pH)(array, **metadata)
+        def image(array: np.ndarray | None) -> darsia.Image | None:
+            return None if array is None else type(pH)(array, **metadata)
 
         return SimpleMassAnalysisResults(
             name=pH.name,
@@ -581,10 +583,21 @@ class HeterogeneousColorToMassAnalysis:
     @darsia.timed("flash and mass")
     @darsia.timing_decorator
     def call_flash_and_mass_analysis(
-        self, pH: darsia.Image
+        self, pH: darsia.Image, phase_masses: bool = True
     ) -> SimpleMassAnalysisResults:
-        """Run the mass analysis on a single image."""
-        fast = self._fast_flash_and_mass(pH)
+        """Run the mass analysis on a single image.
+
+        Parameters
+        ----------
+        pH : darsia.Image
+            Signal.
+        phase_masses : bool
+            Whether the masses in the gas and in the aqueous phase are needed; if not,
+            the single-pass evaluation leaves them out (None), the generic one still
+            computes them.
+
+        """
+        fast = self._fast_flash_and_mass(pH, phase_masses)
         if fast is not None:
             return fast
         c_aq, s_g = self.flash(pH)

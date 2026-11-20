@@ -113,6 +113,7 @@ if NUMBA_AVAILABLE:
         keep_aq,
         use_keep_g,
         keep_g,
+        keep_phases,
         c_aq,
         s_g,
         mass,
@@ -133,8 +134,9 @@ if NUMBA_AVAILABLE:
                 )
                 c_aq[i, j] = ca
                 s_g[i, j] = sg
-                mass_g[i, j] = mg
-                mass_aq[i, j] = ma
+                if keep_phases:
+                    mass_g[i, j] = mg
+                    mass_aq[i, j] = ma
                 mass[i, j] = mg + ma
 
     @njit(cache=True, error_model="numpy", parallel=True, nogil=True)
@@ -258,7 +260,8 @@ def flash_and_mass(
     aqueous_capacity: np.ndarray,
     keep_aq: np.ndarray | None = None,
     keep_g: np.ndarray | None = None,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    phase_masses: bool = True,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray | None, np.ndarray | None]:
     """Concentration, saturation and masses from a signal.
 
     Parameters
@@ -274,20 +277,30 @@ def flash_and_mass(
         Mass per aqueous volume at concentration 1 of each row.
     keep_aq, keep_g : np.ndarray, optional
         Boolean masks; concentration and saturation are set to zero where False.
+    phase_masses : bool
+        Whether to return the masses in the gas and in the aqueous phase.
 
     Returns
     -------
     tuple
         Concentration in the aqueous phase, gas saturation, total mass, mass in the gas
-        phase and mass in the aqueous phase, each of shape (rows, cols).
+        phase and mass in the aqueous phase, each of shape (rows, cols); None for the
+        phase masses if not requested.
 
     """
     arguments = _kernel_arguments(
         signal, bounds, density_gas, aqueous_capacity, keep_aq, keep_g
     )
-    fields = [np.empty(arguments[0].shape, dtype=np.float64) for _ in range(5)]
-    _flash_and_mass(*arguments, *fields)
-    return tuple(fields)
+    shape = arguments[0].shape
+    unused = np.empty((1, 1), dtype=np.float64)
+    c_aq, s_g, mass = (np.empty(shape, dtype=np.float64) for _ in range(3))
+    mass_g, mass_aq = (
+        np.empty(shape, dtype=np.float64) if phase_masses else unused for _ in range(2)
+    )
+    _flash_and_mass(*arguments, bool(phase_masses), c_aq, s_g, mass, mass_g, mass_aq)
+    if not phase_masses:
+        return c_aq, s_g, mass, None, None
+    return c_aq, s_g, mass, mass_g, mass_aq
 
 
 def flash_and_mass_integrals(
