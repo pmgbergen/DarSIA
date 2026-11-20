@@ -153,6 +153,46 @@ def mass_calibration_status(config_path: Path) -> dict | None:
         return None
 
 
+def unavailable_resolution_level(config_path: Path) -> str | None:
+    """Why the requested resolution level of the mass calibration is not available.
+
+    A reduced level (`[calibration.mass] resolution_level` other than 1) needs an
+    analysis which can be reduced (`HeterogeneousColorToMassAnalysis.
+    supports_reduction`): a restoration is set up for the full resolution. The
+    calibration then starts at full resolution. Lightweight (no images are loaded).
+
+    Returns
+    -------
+    str | None
+        The reason; None if the level is available or the config cannot be read.
+
+    """
+    from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+
+    try:
+        config = FluidFlowerConfig(
+            config_path, require_data=False, require_results=False
+        )
+        mass = None if config.calibration is None else config.calibration.mass
+        if mass is None or mass.resolution_level == 1:
+            return None
+        reasons = []
+        restoration = config.restoration
+        if restoration is not None and restoration.method is not None:
+            reasons.append(
+                f'a restoration ([restoration] method = "{restoration.method}")'
+            )
+        if not reasons:
+            return None
+        return (
+            f"[calibration.mass] requests resolution level 1/{mass.resolution_level}, "
+            f"but reduced levels are not available with {' and '.join(reasons)}."
+        )
+    except Exception as error:  # a check must never block the workflow
+        logger.debug("Could not check the resolution level: %s", error)
+        return None
+
+
 def calibration_embedding(config, prefer_analysis: bool = False):
     """Color path embedding of the interpretation calibration of a loaded config.
 
