@@ -77,7 +77,9 @@ def _spectrum() -> darsia.ColorSpectrum:
     )
 
 
-def _analysis(ignore_mode: str = "norm", expert=None, ignore_labels=None):
+def _analysis(
+    ignore_mode: str = "norm", expert=None, ignore_labels=None, geometry=None
+):
     rng = np.random.default_rng(1)
     baseline = darsia.OpticalImage(
         0.3 + 0.3 * rng.random((*SHAPE, 3)), color_space="RGB", **META
@@ -119,7 +121,7 @@ def _analysis(ignore_mode: str = "norm", expert=None, ignore_labels=None):
         signal_functions=signal_functions,
         flash=darsia.SimpleFlash(0.05, 0.6, 0.5, 1.1),
         fluid_model=fluid_model,
-        geometry=None,
+        geometry=geometry,
         ignore_labels=ignore_labels,
         expert_knowledge_adapter=expert,
     )
@@ -349,3 +351,32 @@ def test_generic_stages_are_used_for_other_setups(monkeypatch):
     analysis.color_analysis.balancing = lambda signal: signal
     analysis.signal_model.balancing = lambda signal: signal
     _assert_identical(analysis, image, monkeypatch, (False, False, True))
+
+
+def test_reduced_analysis_takes_labels_at_the_centers_and_averages_the_geometry():
+    """Labels (also of the expert knowledge) at the center of each reduced pixel,
+    depth and porosity averaged."""
+    rng = np.random.default_rng(3)
+    depth = darsia.ScalarImage(rng.random(SHAPE), **META)
+    porosity = darsia.ScalarImage(rng.random(SHAPE), **META)
+    geometry = darsia.ExtrudedPorousGeometry(
+        depth=depth, porosity=porosity, **depth.shape_metadata()
+    )
+    numbered = darsia.ScalarImage(np.arange(np.prod(SHAPE)).reshape(SHAPE), **META)
+    expert = ExpertKnowledgeAdapter(labels_image=numbered)
+    analysis, _ = _analysis(expert=expert, geometry=geometry)
+
+    reduced = analysis.reduced(4)
+
+    centers = np.s_[2::4, 2::4]
+    assert np.array_equal(reduced.labels.img, analysis.labels.img[centers])
+    assert reduced.labels.img.dtype == analysis.labels.img.dtype
+    assert np.array_equal(
+        reduced.expert_knowledge_adapter.labels_image.img, numbered.img[centers]
+    )
+    for reduced_field, field in (
+        (reduced.geometry.depth, depth),
+        (reduced.geometry.porosity, porosity),
+    ):
+        expected = darsia.resize(field, shape=(6, 9), interpolation="inter_area")
+        assert np.allclose(reduced_field.img, expected.img)

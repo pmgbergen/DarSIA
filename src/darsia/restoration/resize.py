@@ -353,6 +353,67 @@ def resize(
     return resizer(image)
 
 
+def _center_indices(n_source: int, n_target: int) -> np.ndarray:
+    """Source index of the pixel containing the center of each target pixel.
+
+    Exact integer arithmetic; a center on a pixel boundary takes the later pixel.
+
+    """
+    return (2 * np.arange(n_target) + 1) * n_source // (2 * n_target)
+
+
+def transfer(image: darsia.Image, grid: darsia.Image) -> darsia.Image:
+    """Image on the grid of another image covering the same domain.
+
+    The resampling follows the data type:
+
+    - bool and integer (labels, masks): each pixel takes the value at its center,
+      exact for every type. OpenCV is not used: it cannot resize bool, narrows int64,
+      and approximates the position.
+    - float: area averaging if no axis grows, linear interpolation otherwise; an
+      :class:`darsia.ExtensiveImage` keeps its sum (see :class:`Resize`).
+
+    Integer images that are not categorical, e.g. 8-bit photographs, are to be
+    converted to float first (``as_float``).
+
+    Parameters
+    ----------
+    image : darsia.Image
+        Two-dimensional image to be transferred.
+    grid : darsia.Image
+        Image whose grid is desired; only its shape and domain are used.
+
+    Returns
+    -------
+    darsia.Image
+        New image with the shape of the grid and the metadata of the image.
+
+    Raises
+    ------
+    ValueError
+        If the images cover different domains.
+
+    """
+    if not (
+        np.allclose(image.dimensions, grid.dimensions)
+        and np.allclose(image.origin, grid.origin)
+    ):
+        raise ValueError(
+            "transfer: the image and the grid cover different domains "
+            f"(dimensions {image.dimensions} and {grid.dimensions}, "
+            f"origins {image.origin} and {grid.origin})."
+        )
+    shape = tuple(grid.num_voxels)
+    array = image.img
+    if array.dtype == bool or np.issubdtype(array.dtype, np.integer):
+        rows = _center_indices(array.shape[0], shape[0])
+        cols = _center_indices(array.shape[1], shape[1])
+        return type(image)(array[np.ix_(rows, cols)], **image.metadata())
+    grows = any(n_target > n for n_target, n in zip(shape, array.shape[:2]))
+    interpolation = "inter_linear" if grows else "inter_area"
+    return Resize(shape=shape, interpolation=interpolation)(image)
+
+
 def equalize_voxel_size(
     image: darsia.Image, voxel_size: Optional[float] = None, **kwargs
 ) -> darsia.Image:

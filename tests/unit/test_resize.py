@@ -184,3 +184,84 @@ def test_resize_object_extensive_image_default_is_conservative():
 
     assert isinstance(resized_image, darsia.ExtensiveImage)
     assert np.isclose(np.sum(resized_image.img), np.sum(image.img))
+
+
+def _scalar(array, dimensions=(1.0, 2.0)) -> darsia.ScalarImage:
+    return darsia.ScalarImage(array, dimensions=list(dimensions), space_dim=2)
+
+
+@pytest.mark.parametrize(
+    "size, centers",
+    [(10, [2, 7]), (8, [2, 6])],  # odd and even block size; a tie takes the later pixel
+)
+def test_transfer_takes_labels_at_the_pixel_centers(size, centers):
+    labels = _scalar(np.arange(size * size).reshape((size, size)))
+
+    transferred = darsia.transfer(labels, _scalar(np.zeros((2, 2))))
+
+    assert np.array_equal(transferred.img, labels.img[np.ix_(centers, centers)])
+
+
+@pytest.mark.parametrize("dtype", [bool, np.uint8, np.int32, np.int64])
+def test_transfer_keeps_bool_and_integer_types(dtype):
+    rng = np.random.default_rng(0)
+    array = rng.integers(0, 2, size=(12, 18)).astype(dtype)
+    if dtype is np.int64:
+        array += 2**40  # beyond int32, which OpenCV would narrow to
+
+    transferred = darsia.transfer(_scalar(array), _scalar(np.zeros((5, 7))))
+
+    assert transferred.img.dtype == array.dtype
+    assert set(np.unique(transferred.img)) <= set(np.unique(array))
+
+
+def test_transfer_enlarges_labels_without_new_values():
+    labels = np.array([[0, 1, 2], [3, 4, 5]])
+
+    transferred = darsia.transfer(_scalar(labels), _scalar(np.zeros((4, 6))))
+
+    assert np.array_equal(transferred.img, np.repeat(np.repeat(labels, 2, 0), 2, 1))
+
+
+@pytest.mark.parametrize(
+    "shape, interpolation",
+    [((3, 4), "inter_area"), ((12, 16), "inter_linear"), ((3, 16), "inter_linear")],
+)
+def test_transfer_averages_floats_unless_an_axis_grows(shape, interpolation):
+    image = _scalar(np.random.default_rng(1).random((6, 8)))
+
+    transferred = darsia.transfer(image, _scalar(np.zeros(shape)))
+
+    expected = darsia.resize(image, shape=shape, interpolation=interpolation)
+    assert np.array_equal(transferred.img, expected.img)
+
+
+def test_transfer_keeps_the_sum_of_extensive_images():
+    array = np.random.default_rng(2).random((6, 8))
+    image = darsia.ExtensiveImage(array, dimensions=[1.0, 2.0], scalar=True)
+
+    transferred = darsia.transfer(image, _scalar(np.zeros((3, 4))))
+
+    assert isinstance(transferred, darsia.ExtensiveImage)
+    assert np.isclose(transferred.img.sum(), array.sum())
+
+
+@pytest.mark.parametrize("dtype", [int, float])
+def test_transfer_takes_the_shape_of_the_grid_and_keeps_the_metadata(dtype):
+    image = _scalar(np.ones((6, 8), dtype=dtype))
+    grid = _scalar(np.zeros((3, 5)))
+
+    transferred = darsia.transfer(image, grid)
+
+    assert type(transferred) is type(image)
+    assert transferred.img.shape == (3, 5)
+    assert np.allclose(transferred.dimensions, image.dimensions)
+    assert np.allclose(transferred.origin, image.origin)
+    assert np.allclose(transferred.voxel_size, grid.voxel_size)
+
+
+def test_transfer_rejects_a_grid_of_another_domain():
+    image = _scalar(np.ones((6, 8)))
+
+    with pytest.raises(ValueError, match="different domains"):
+        darsia.transfer(image, _scalar(np.zeros((3, 4)), dimensions=(1.0, 1.0)))

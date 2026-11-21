@@ -318,6 +318,7 @@ from .restoration.resize import SINGLE_CALL_CHANNELS as SINGLE_CALL_CHANNELS
 from .restoration.resize import Resize as Resize
 from .restoration.resize import equalize_voxel_size as equalize_voxel_size
 from .restoration.resize import resize as resize
+from .restoration.resize import transfer as transfer
 from .restoration.resize import uniform_refinement as uniform_refinement
 from .restoration.split_bregman_tvd import split_bregman_tvd as split_bregman_tvd
 from .restoration.tvd import TVD as TVD
