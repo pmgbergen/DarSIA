@@ -41,12 +41,15 @@ VALUES = {0: [0.0, 0.4], 1: [0.0, 0.3, 0.9], 2: [0.0, 0.2, 0.7, 1.2]}
 class Regions:
     """Expert knowledge with given masks (the real rule of applying them)."""
 
-    def __init__(self, keep_aq, keep_g):
+    def __init__(self, keep_aq, keep_g, bounds=None):
         self.masks = {"concentration_aq": keep_aq, "saturation_g": keep_g}
+        self.bounds = {} if bounds is None else bounds
 
     def mask_for(self, image, mode):
         return self.masks[mode]
 
+    constrains = ExpertKnowledgeAdapter.constrains
+    constrain = ExpertKnowledgeAdapter.constrain
     apply = ExpertKnowledgeAdapter.apply
 
 
@@ -235,6 +238,24 @@ def test_single_pass_stages_with_expert_knowledge(monkeypatch):
     for regions in (Regions(keep_aq, keep_g), Regions(None, keep_g)):
         analysis, baseline = _analysis(expert=regions)
         _assert_identical(analysis, _image(baseline), monkeypatch)
+
+
+def test_single_pass_stages_with_bounds(monkeypatch):
+    """Bounds which the ramps of the flash meet anyway keep the single pass; others are
+    left to the generic path, which applies them."""
+    keep_aq = np.zeros(SHAPE, dtype=bool)
+    keep_aq[: SHAPE[0] // 2] = True
+    met = {"concentration_aq": (0.0, None), "saturation_g": (None, 1.0)}
+    analysis, baseline = _analysis(expert=Regions(keep_aq, None, met))
+    image = _image(baseline)
+    _assert_identical(analysis, image, monkeypatch)
+
+    analysis, _ = _analysis(
+        expert=Regions(keep_aq, None, {"concentration_aq": (0, 0.5)})
+    )
+    _assert_identical(analysis, image, monkeypatch, (True, True, False))
+    fields, _ = _stages(analysis, image, True, monkeypatch)
+    assert fields["concentration_aq"].img.max() == 0.5
 
 
 def test_single_pass_stages_with_ignored_label(monkeypatch):

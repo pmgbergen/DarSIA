@@ -500,6 +500,12 @@ class HeterogeneousColorToMassAnalysis:
         density_gas, aqueous_capacity = properties
         keep_aq = keep_g = None
         if self.expert_knowledge_adapter is not None:
+            # The ramps give values in [0, 1]; bounds inside it are not compiled
+            for lower, upper in self.expert_knowledge_adapter.bounds.values():
+                if (lower is not None and lower > 0) or (
+                    upper is not None and upper < 1
+                ):
+                    return None
             keep_aq = self.expert_knowledge_adapter.mask_for(pH, "concentration_aq")
             keep_g = self.expert_knowledge_adapter.mask_for(pH, "saturation_g")
             if any(

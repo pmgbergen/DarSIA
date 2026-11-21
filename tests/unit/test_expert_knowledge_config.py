@@ -77,6 +77,107 @@ no_concentration_aq = ["calibration"]
     assert config.no_concentration_aq == ["calibration"]
 
 
+def test_expert_knowledge_without_bounds_bounds_no_field(tmp_path: Path) -> None:
+    config_path = _write(tmp_path / "config.toml", "[expert_knowledge]")
+
+    config = ExpertKnowledgeConfig().load(path=config_path)
+
+    assert config.bounds.concentration_aq is None
+    assert config.bounds.saturation_g is None
+
+
+def test_expert_knowledge_bounds_default_to_zero_and_none(tmp_path: Path) -> None:
+    """An empty table bounds a field to [0, None]; a blank value means the default."""
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[expert_knowledge.bounds.concentration_aq]
+
+[expert_knowledge.bounds.saturation_g]
+upper = 1
+lower = ""
+""".strip(),
+    )
+
+    config = ExpertKnowledgeConfig().load(path=config_path)
+
+    assert _bounds(config, "concentration_aq") == (0.0, None)
+    assert _bounds(config, "saturation_g") == (0.0, 1.0)
+
+
+def _bounds(config: ExpertKnowledgeConfig, name: str) -> tuple:
+    field_bounds = getattr(config.bounds, name)
+    return field_bounds.lower, field_bounds.upper
+
+
+def test_expert_knowledge_bounds_none_means_no_bound(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[expert_knowledge.bounds.concentration_aq]
+lower = "none"
+upper = 1.0
+
+[expert_knowledge.bounds.saturation_g]
+upper = "None"
+""".strip(),
+    )
+
+    config = ExpertKnowledgeConfig().load(path=config_path)
+
+    assert _bounds(config, "concentration_aq") == (None, 1.0)
+    assert _bounds(config, "saturation_g") == (0.0, None)
+
+
+def test_expert_knowledge_bounds_reject_no_bound_at_all(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        '[expert_knowledge.bounds.concentration_aq]\nlower = "none"',
+    )
+
+    with pytest.raises(ValueError, match="needs a lower or an upper bound"):
+        ExpertKnowledgeConfig().load(path=config_path)
+
+
+def test_expert_knowledge_bounds_active_list_selects_fields(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[expert_knowledge.bounds]
+active = ["saturation_g"]
+
+[expert_knowledge.bounds.concentration_aq]
+upper = 1.0
+
+[expert_knowledge.bounds.saturation_g]
+""".strip(),
+    )
+
+    config = ExpertKnowledgeConfig().load(path=config_path)
+
+    assert config.bounds.concentration_aq is None
+    assert config.bounds.saturation_g is not None
+
+
+def test_expert_knowledge_bounds_reject_unknown_fields(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml", "[expert_knowledge.bounds.concentration]"
+    )
+
+    with pytest.raises(ValueError, match="unknown fields \\['concentration'\\]"):
+        ExpertKnowledgeConfig().load(path=config_path)
+
+
+def test_expert_knowledge_bounds_reject_upper_below_lower(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        "[expert_knowledge.bounds.concentration_aq]\nlower = 0.5\nupper = 0.1",
+    )
+
+    with pytest.raises(ValueError, match="bounds.concentration_aq"):
+        ExpertKnowledgeConfig().load(path=config_path)
+
+
 def test_expert_knowledge_rejects_non_list_values(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
