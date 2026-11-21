@@ -139,9 +139,7 @@ def _constrain_rescaled(
         if image is None:
             continue
         if rescaled.owned:
-            mask = expert_knowledge_adapter.mask_for(image, mode)
-            if mask is not None:
-                image.img[~mask] = 0.0
+            expert_knowledge_adapter.constrain(image, mode)
         else:
             setattr(rescaled, attribute, expert_knowledge_adapter.apply(image, mode))
 

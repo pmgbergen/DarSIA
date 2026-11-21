@@ -391,6 +391,26 @@ Notes:
 - Empty lists are a strict no-op (analysis behavior is unchanged).
 - If provided, values outside the union of the configured ROIs are set to zero.
 
+Bounds restrict the range of the values of `concentration_aq` and
+`saturation_g`, one table per field under `[expert_knowledge.bounds]`:
+- `lower`: smaller values are raised to it (default `0.0`; `"none"` for no
+  bound).
+- `upper`: larger values are lowered to it (default: no bound).
+- At least one of the two is a number.
+- A present table bounds its field; an empty table means `[0, no bound]`,
+  e.g. to remove negative concentrations. An optional `active` list, as for
+  the corrections, restricts this to the fields listed.
+- Bounds act after the flash (and thus after any restoration of the signal),
+  before the ROI constraints, so zeroed regions stay zero.
+
+Example:
+```toml
+[expert_knowledge.bounds.concentration_aq]   # [0, no bound]
+
+[expert_knowledge.bounds.saturation_g]
+upper = 1.0
+```
+
 ## Notes on legacy vs current naming
 - Current rig section is `[rig]`.
 - Curvature settings are part of `[corrections.curvature.*]`.

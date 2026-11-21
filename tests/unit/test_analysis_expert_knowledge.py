@@ -31,6 +31,81 @@ def test_adapter_empty_config_is_noop() -> None:
     assert constrained_caq is img
 
 
+def _make_ramp_image(rows: int = 10, cols: int = 20) -> darsia.ScalarImage:
+    """Values from -1 to 2 along the columns."""
+    arr = np.tile(np.linspace(-1.0, 2.0, cols), (rows, 1))
+    return darsia.ScalarImage(arr, space_dim=2, dimensions=[1.0, 2.0])
+
+
+def test_adapter_clips_to_the_bounds_of_the_mode() -> None:
+    img = _make_ramp_image()
+    adapter = ExpertKnowledgeAdapter(bounds={"concentration_aq": (0.0, None)})
+
+    constrained = adapter.apply(img, "concentration_aq")
+
+    assert constrained is not img
+    assert np.array_equal(constrained.img, np.clip(img.img, 0.0, None))
+    assert img.img.min() == -1.0  # the field itself is untouched
+    assert adapter.apply(img, "saturation_g") is img
+
+
+def test_adapter_clips_only_from_above_without_lower_bound() -> None:
+    img = _make_ramp_image()
+    adapter = ExpertKnowledgeAdapter(bounds={"concentration_aq": (None, 1.0)})
+
+    constrained = adapter.apply(img, "concentration_aq")
+
+    assert np.array_equal(constrained.img, np.clip(img.img, None, 1.0))
+    assert constrained.img.min() == -1.0
+
+
+def test_adapter_clips_before_zeroing_outside_the_rois() -> None:
+    """A positive lower bound does not lift the zeroed regions."""
+    img = _make_ramp_image()
+    roi = _make_roi([0.0, 0.0], [1.0, 1.0], "left_half")
+    adapter = ExpertKnowledgeAdapter(
+        bounds={"concentration_aq": (0.2, 1.0)},
+        concentration_aq_rois={"left_half": roi},
+    )
+
+    constrained = adapter.apply(img, "concentration_aq")
+    inside = roi_to_mask(roi.roi, img).img.astype(bool)
+
+    assert np.array_equal(constrained.img[inside], np.clip(img.img, 0.2, 1.0)[inside])
+    assert np.all(constrained.img[~inside] == 0.0)
+
+
+def test_adapter_constrains_in_place() -> None:
+    img = _make_ramp_image()
+    expected = ExpertKnowledgeAdapter(bounds={"saturation_g": (0.0, 1.0)}).apply(
+        img, "saturation_g"
+    )
+
+    ExpertKnowledgeAdapter(bounds={"saturation_g": (0.0, 1.0)}).constrain(
+        img, "saturation_g"
+    )
+
+    assert np.array_equal(img.img, expected.img)
+
+
+def test_adapter_takes_the_bounds_of_the_config(tmp_path) -> None:
+    from darsia.presets.workflows.config.expert_knowledge import ExpertKnowledgeConfig
+
+    path = tmp_path / "config.toml"
+    path.write_text(
+        "[expert_knowledge.bounds.concentration_aq]\n"
+        "[expert_knowledge.bounds.saturation_g]\nlower = -0.5\nupper = 1.0\n"
+    )
+    config = ExpertKnowledgeConfig().load(path)
+
+    adapter = ExpertKnowledgeAdapter.from_config(config, roi_registry=None)
+
+    assert adapter.bounds == {
+        "concentration_aq": (0.0, None),
+        "saturation_g": (-0.5, 1.0),
+    }
+
+
 def test_adapter_constrains_only_target_mode() -> None:
     img = _make_scalar_image()
     roi = _make_roi([0.0, 0.0], [1.0, 1.0], "left_half")

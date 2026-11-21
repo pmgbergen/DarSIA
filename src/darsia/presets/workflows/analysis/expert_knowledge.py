@@ -1,4 +1,4 @@
-"""Expert-knowledge adapter for constraining scalar analysis fields by ROIs."""
+"""Expert-knowledge adapter for constraining scalar analysis fields by bounds and ROIs."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import darsia
+from darsia.presets.workflows.config.expert_knowledge import BOUNDED_FIELDS
 from darsia.utils.standard_images import roi_to_mask
 
 if TYPE_CHECKING:
@@ -18,8 +19,10 @@ if TYPE_CHECKING:
 
 @dataclass
 class ExpertKnowledgeAdapter:
-    """Adapter converting expert-knowledge ROI config into reusable image masks."""
+    """Adapter converting expert-knowledge config into bounds and reusable image masks."""
 
+    bounds: dict[str, tuple[float | None, float | None]] = field(default_factory=dict)
+    """Lower and upper bound (None: no bound; not both) per bounded field."""
     saturation_g_rois: dict[str, "RoiConfig"] = field(default_factory=dict)
     concentration_aq_rois: dict[str, "RoiConfig"] = field(default_factory=dict)
     no_saturation_g_rois: dict[str, "RoiConfig"] = field(default_factory=dict)
@@ -62,7 +65,14 @@ class ExpertKnowledgeAdapter:
                     config.no_concentration_aq
                 )
 
+        bounds = {}
+        for name in BOUNDED_FIELDS:
+            field_bounds = getattr(config.bounds, name)
+            if field_bounds is not None:
+                bounds[name] = (field_bounds.lower, field_bounds.upper)
+
         return cls(
+            bounds=bounds,
             saturation_g_rois=saturation_rois,
             concentration_aq_rois=concentration_rois,
             no_saturation_g_rois=no_saturation_rois,
@@ -199,13 +209,27 @@ class ExpertKnowledgeAdapter:
             self._mask_cache[cache_key] = keep_mask
         return self._mask_cache[cache_key]
 
-    def apply(self, image: darsia.Image | None, mode: str) -> darsia.Image | None:
-        if image is None:
-            return None
-        mask = self.mask_for(image, mode)
-        if mask is None:
-            return image
+    def constrains(self, image: darsia.Image, mode: str) -> bool:
+        """Whether `mode` has bounds or ROI constraints."""
+        return mode in self.bounds or self.mask_for(image, mode) is not None
 
+    def constrain(self, image: darsia.Image, mode: str) -> None:
+        """Constrain a field in place: clip to its bounds, then zero outside the ROIs.
+
+        Clipping first keeps the zeroed regions exactly zero, also for a positive
+        lower bound.
+        """
+        if mode in self.bounds:
+            lower, upper = self.bounds[mode]
+            np.clip(image.img, lower, upper, out=image.img)
+        mask = self.mask_for(image, mode)
+        if mask is not None:
+            image.img[~mask] = 0.0
+
+    def apply(self, image: darsia.Image | None, mode: str) -> darsia.Image | None:
+        """Constrained copy of a field (the field itself if `mode` is unconstrained)."""
+        if image is None or not self.constrains(image, mode):
+            return image
         constrained = image.copy()
-        constrained.img[~mask] = 0.0
+        self.constrain(constrained, mode)
         return constrained
