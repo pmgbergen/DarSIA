@@ -256,10 +256,10 @@ class HeterogeneousColorToMassAnalysis:
         """Copy of the analysis for images reduced by a factor per axis.
 
         Baseline, depth and porosity are averaged over the reduced pixels, a reduced
-        pixel gets the label at its center, and the fluid properties are evaluated on
-        the reduced grid. The copy shares the color paths and the flash with this
-        analysis, and starts from its signal values (the signal functions are
-        copies). Used for a faster, approximate calibration.
+        pixel gets the label at its center (:func:`darsia.transfer`), and the fluid
+        properties are evaluated on the reduced grid. The copy shares the color paths
+        and the flash with this analysis, and starts from its signal values (the
+        signal functions are copies). Used for a faster, approximate calibration.
 
         Parameters
         ----------
@@ -277,21 +277,18 @@ class HeterogeneousColorToMassAnalysis:
                 "A reduced analysis is not available with a restoration."
             )
         shape = tuple(max(1, int(n) // int(factor)) for n in self.labels.img.shape[:2])
+        baseline = darsia.resize(
+            self._baseline, shape=shape, interpolation="inter_area"
+        )
 
-        def average(quantity):
+        def on_grid(quantity):
             if isinstance(quantity, darsia.Image):
-                return darsia.resize(quantity, shape=shape, interpolation="inter_area")
+                return darsia.transfer(quantity, baseline)
             return quantity
 
-        def nearest(image):
-            if image is None:
-                return None
-            return darsia.resize(image, shape=shape, interpolation="inter_nearest")
-
-        baseline = average(self._baseline)
         geometry = darsia.ExtrudedPorousGeometry(
-            depth=average(self.geometry.depth),
-            porosity=average(self.geometry.porosity),
+            depth=on_grid(self.geometry.depth),
+            porosity=on_grid(self.geometry.porosity),
             **baseline.shape_metadata(),
         )
         fluid_model = darsia.FluidMassAnalysis(
@@ -309,13 +306,13 @@ class HeterogeneousColorToMassAnalysis:
             # Label and facies based regions are masks at the image resolution
             expert_knowledge_adapter = dataclasses.replace(
                 expert_knowledge_adapter,
-                labels_image=nearest(expert_knowledge_adapter.labels_image),
-                facies_image=nearest(expert_knowledge_adapter.facies_image),
+                labels_image=on_grid(expert_knowledge_adapter.labels_image),
+                facies_image=on_grid(expert_knowledge_adapter.facies_image),
             )
         functions = self.signal_model.model[1]
         reduced = HeterogeneousColorToMassAnalysis(
             baseline=baseline,
-            labels=nearest(self.labels),
+            labels=on_grid(self.labels),
             color_mode=self._color_mode,
             color_path_interpretation=self.color_path_interpretation,
             signal_functions={label: functions[label] for label in functions.keys()},
