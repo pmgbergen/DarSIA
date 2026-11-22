@@ -1,5 +1,6 @@
 """Module with tools for mass analysis of fluids (CO2, tracer)."""
 
+import copy
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -273,6 +274,28 @@ class FluidMassAnalysis:
             self.atmospheric_temperature_gradient = atmospheric_temperature_gradient
         if self._state() != self._state_key:
             self.setup_state()
+
+    def on_grid(self, baseline: darsia.Image) -> "FluidMassAnalysis":
+        """Copy with the pressure and temperature fields on the grid of `baseline`.
+
+        The state and the fluid system are kept. Without a baseline, the properties
+        are uniform and the copy has none either.
+
+        Parameters
+        ----------
+        baseline : darsia.Image
+            Image on the desired grid, covering the domain of the current baseline.
+
+        Returns
+        -------
+        FluidMassAnalysis
+            Copy of the same type.
+        """
+        fluid_model = copy.copy(self)
+        if self.baseline is not None:
+            fluid_model.baseline = baseline
+            fluid_model.setup_state()
+        return fluid_model
 
     @property
     def max_density(self) -> float:
