@@ -1,6 +1,5 @@
 # TODO review noqa F824 usage
 
-import dataclasses
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -281,38 +280,21 @@ class HeterogeneousColorToMassAnalysis:
             self._baseline, shape=shape, interpolation="inter_area"
         )
 
-        def on_grid(quantity):
+        def _transfer(quantity):
             if isinstance(quantity, darsia.Image):
                 return darsia.transfer(quantity, baseline)
             return quantity
 
         geometry = darsia.ExtrudedPorousGeometry(
-            depth=on_grid(self.geometry.depth),
-            porosity=on_grid(self.geometry.porosity),
+            depth=_transfer(self.geometry.depth),
+            porosity=_transfer(self.geometry.porosity),
             **baseline.shape_metadata(),
         )
-        fluid_model = darsia.FluidMassAnalysis(
-            baseline=None if self.fluid_model.baseline is None else baseline,
-            atmospheric_pressure=self.fluid_model.atmospheric_pressure,
-            atmospheric_temperature=self.fluid_model.atmospheric_temperature,
-            atmospheric_pressure_gradient=self.fluid_model.atmospheric_pressure_gradient,
-            atmospheric_temperature_gradient=(
-                self.fluid_model.atmospheric_temperature_gradient
-            ),
-            system=self.fluid_model.system,
-        )
-        expert_knowledge_adapter = self.expert_knowledge_adapter
-        if expert_knowledge_adapter is not None:
-            # Label and facies based regions are masks at the image resolution
-            expert_knowledge_adapter = dataclasses.replace(
-                expert_knowledge_adapter,
-                labels_image=on_grid(expert_knowledge_adapter.labels_image),
-                facies_image=on_grid(expert_knowledge_adapter.facies_image),
-            )
+        fluid_model = self.fluid_model.on_grid(baseline)
         functions = self.signal_model.model[1]
         reduced = HeterogeneousColorToMassAnalysis(
             baseline=baseline,
-            labels=on_grid(self.labels),
+            labels=_transfer(self.labels),
             color_mode=self._color_mode,
             color_path_interpretation=self.color_path_interpretation,
             signal_functions={label: functions[label] for label in functions.keys()},
@@ -322,7 +304,7 @@ class HeterogeneousColorToMassAnalysis:
             restoration=None,
             ignore_labels=self._ignore_labels,
             basis=self.basis,
-            expert_knowledge_adapter=expert_knowledge_adapter,
+            expert_knowledge_adapter=self.expert_knowledge_adapter,
             contour_smoother=self.contour_smoother,
             mass_unit=self.mass_unit,
             time_unit=self.time_unit,
