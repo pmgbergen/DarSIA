@@ -1,6 +1,7 @@
 """Settings and input widget factory for DarSIA GUI."""
 
 import ast
+from dataclasses import fields as dataclass_fields
 
 from PySide6.QtCore import QSize
 from PySide6.QtWidgets import (
@@ -15,6 +16,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QPushButton,
     QToolButton,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -209,6 +211,7 @@ class SettingsFactory:
         "number_map",
         "int_rows",
         "dataclass_group_map",
+        "dataclass_list",
         "key_list",
     }
 
@@ -266,6 +269,12 @@ class SettingsFactory:
             if "array_key" in field_or_result:
                 entry["array_key"] = field_or_result["array_key"]
             return entry
+        elif "dataclass_list" in field_or_result:
+            return {
+                k: v
+                for k, v in field_or_result.items()
+                if k not in ("widget", "add_button")
+            }
         elif "key_list" in field_or_result:
             result_dict = {
                 "key_list": True,
@@ -826,6 +835,14 @@ class SettingsFactory:
                 entry_dataclass=entry_dataclass,
                 form_context=form_context,
             )
+        elif setting_type == "dataclass_list":
+            entry_dataclass = setting_dict.get("entry_dataclass")
+            assert entry_dataclass is not None
+            return self.create_dataclass_list_input(
+                setting_dict,
+                entry_dataclass=entry_dataclass,
+                form_context=form_context,
+            )
         elif setting_type == "key_list":
             return self.create_key_list_input(setting_dict, form_context=form_context)
         else:
@@ -1318,6 +1335,191 @@ class SettingsFactory:
         else:
             result = {"dataclass_group_map": True, "entries": []}
             return display_name, result
+
+    def create_dataclass_list_input(
+        self, setting_dict, entry_dataclass, form_context=None
+    ):
+        """Create an ordered list editor for a list[entry_dataclass] field.
+
+        Unlike `create_dataclass_group_map_input`, entries have no name and their order
+        matters (an array of tables in the config, e.g. ``[[restoration.steps]]``).
+        Each entry is a box with the entry's fields (as `create_group_input`: dropdowns,
+        option groups shown by `depends_on`) and buttons to move it up or down or to
+        remove it. A bool field of the entry with metadata ``section_active`` is the
+        checkbox of the box; an unchecked entry keeps its values.
+
+        The metadata ``single_entry_keys`` names keys of the parent table which form
+        a single entry in an older form of the config (e.g. ``method`` and ``options``
+        of ``[restoration]``): without a list, they are shown as one entry, and they
+        are removed when the list is saved.
+
+        Parameters
+        ----------
+        setting_dict : dict
+            Setting configuration dictionary with "key", "name", "help", and the
+            optional "entry_title" and "single_entry_keys".
+        entry_dataclass : type
+            The dataclass type of each entry.
+        form_context : dict, optional
+            Context dict with "form" (QFormLayout) for row insertion.
+
+        Returns
+        -------
+        tuple
+            (display_name, result) where result has "widget" (header widget),
+            "dataclass_list": True (marker), "add_button" and "entries" (list of dicts
+            with "widget", "group", "checkbox" and the buttons "up", "down", "remove").
+        """
+        key = setting_dict["key"]
+        display_name = setting_dict.get("name", key)
+        entry_title = setting_dict.get("entry_title", "Entry")
+        single_entry_keys = list(setting_dict.get("single_entry_keys") or [])
+        parent_key = key.rsplit(".", 1)[0] if "." in key else ""
+        entries = []
+        result = {
+            "dataclass_list": True,
+            "entries": entries,
+            "single_entry_keys": single_entry_keys,
+            "parent_key": parent_key,
+        }
+        if not form_context:
+            return display_name, result
+
+        # Entries of the config (or the single entry of the older form)
+        values = self.get_value(self.main_window.config_dict, key)
+        if values is None and single_entry_keys:
+            parent = self.get_value(self.main_window.config_dict, parent_key) or {}
+            # "none" means no value in the config (e.g. method = "none")
+            single = {
+                k: parent[k]
+                for k in single_entry_keys
+                if k in parent and str(parent[k]).strip().lower() != "none"
+            }
+            values = [single] if single else []
+        values = [value for value in values or [] if isinstance(value, dict)]
+
+        entry_schema = _build_fields(entry_dataclass, "entry")
+        active_name = next(
+            (
+                f.name
+                for f in dataclass_fields(entry_dataclass)
+                if f.metadata.get("section_active")
+            ),
+            None,
+        )
+
+        form = form_context["form"]
+        add_button = QPushButton(f"Add {entry_title.lower()}")
+        header_widget = QWidget()
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(4)
+        header_layout.addWidget(add_button, stretch=1)
+        header_layout.addWidget(build_help_column(setting_dict))
+        form.addRow("", header_widget)
+
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        form.addRow(container)
+
+        def refresh():
+            for index, entry in enumerate(entries):
+                entry["widget"].setTitle(f"{entry_title} {index + 1}")
+                entry["up"].setEnabled(index > 0)
+                entry["down"].setEnabled(index < len(entries) - 1)
+
+        def move(entry, offset):
+            index = entries.index(entry)
+            target = index + offset
+            if not 0 <= target < len(entries):
+                return
+            entries.insert(target, entries.pop(index))
+            container_layout.removeWidget(entry["widget"])
+            container_layout.insertWidget(target, entry["widget"])
+            refresh()
+
+        def remove(entry):
+            entries.remove(entry)
+            container_layout.removeWidget(entry["widget"])
+            entry["widget"].deleteLater()
+            refresh()
+
+        def add_entry(entry_data=None):
+            entry_data = dict(entry_data or {})
+            # Fields read their values from config_dict: show this entry's values
+            self.set_value(self.main_window.config_dict, "entry", entry_data)
+            try:
+                _, group = self.create_group_input(
+                    {
+                        "key": "entry",
+                        "type": "group",
+                        "name": entry_title,
+                        "fields": entry_schema,
+                    }
+                )
+            finally:
+                self.main_window.config_dict.pop("entry", None)
+            box = group["widget"]
+            checkbox = None
+            if active_name is not None:
+                box.setCheckable(True)
+                box.setChecked(bool(entry_data.get(active_name, True)))
+                checkbox = box
+
+            buttons = QWidget()
+            buttons_layout = QHBoxLayout(buttons)
+            buttons_layout.setContentsMargins(0, 0, 0, 0)
+            up_button = QPushButton("Move up")
+            down_button = QPushButton("Move down")
+            buttons_layout.addWidget(up_button)
+            buttons_layout.addWidget(down_button)
+            buttons_layout.addStretch()
+            remove_button = make_remove_button(lambda: remove(entry))
+            buttons_layout.addWidget(remove_button)
+            box.layout().addRow(buttons)
+
+            entry = {
+                "widget": box,
+                "group": group,
+                "checkbox": checkbox,
+                "active_name": active_name,
+                "up": up_button,
+                "down": down_button,
+                "remove": remove_button,
+            }
+            up_button.clicked.connect(lambda: move(entry, -1))
+            down_button.clicked.connect(lambda: move(entry, 1))
+            entries.append(entry)
+            container_layout.addWidget(box)
+            refresh()
+
+        add_button.clicked.connect(lambda: add_entry())
+        for value in values:
+            add_entry(value)
+
+        result["widget"] = header_widget
+        result["add_button"] = add_button
+        return display_name, result
+
+    def _dataclass_list_entry_value(self, entry) -> dict:
+        """Values of one entry of a `create_dataclass_list_input` list.
+
+        The entry's widgets are saved like those of a section (same rules, e.g. option
+        groups hidden by `depends_on` are left out), into a dict of its own.
+        """
+        group = entry["group"]
+        saved = (self.main_window.settings_inputs, self.main_window.config_dict)
+        self.main_window.settings_inputs = {"entry": group, **group["sub_inputs"]}
+        self.main_window.config_dict = {}
+        try:
+            self._sync_settings_inputs_to_config_dict()
+            value = self.main_window.config_dict.get("entry", {})
+        finally:
+            self.main_window.settings_inputs, self.main_window.config_dict = saved
+        if entry["checkbox"] is not None and not entry["checkbox"].isChecked():
+            value[entry["active_name"]] = False
+        return value
 
     def create_key_list_input(self, setting_dict, form_context=None):
         """Create a multi-row selector of registry entry names, backed by dropdowns.
@@ -2689,6 +2891,7 @@ class SettingsFactory:
                 or "int_rows" in value
                 or "key_list" in value
                 or "dataclass_group_map" in value
+                or "dataclass_list" in value
             ):
                 continue
             # Skip sub-inputs of unchecked groups
@@ -3031,6 +3234,23 @@ class SettingsFactory:
                     # loaders (e.g. AnalysisSegmentationConfig, AnalysisFingersConfig)
                     # which require [[<key>]] entries with a "name" field.
                     self.set_value(self.main_window.config_dict, key, result)
+
+        # Sixth pass (b): ordered lists of dataclass entries (array of tables). The
+        # keys of an older single-entry form are removed. A list inside an unchecked
+        # section keeps its stored value, as the other fields of the section.
+        for key, value in list(self.main_window.settings_inputs.items()):
+            if not (isinstance(value, dict) and "dataclass_list" in value):
+                continue
+            if key in skip_keys:
+                continue
+            entries = [
+                self._dataclass_list_entry_value(entry) for entry in value["entries"]
+            ]
+            self.set_value(self.main_window.config_dict, key, entries)
+            parent = self.get_value(self.main_window.config_dict, value["parent_key"])
+            if isinstance(parent, dict):
+                for single_key in value["single_entry_keys"]:
+                    parent.pop(single_key, None)
 
         # Seventh pass: write all active lists. Only the displayed groups are updated;
         # an absent list stays absent if the displayed groups did not change it.

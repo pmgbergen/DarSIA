@@ -374,6 +374,8 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "loadable": field.metadata.get("loadable", None),
                 "table_viewer": field.metadata.get("table_viewer", None),
                 "color_picker": field.metadata.get("color_picker", None),
+                "entry_title": field.metadata.get("entry_title", None),
+                "single_entry_keys": field.metadata.get("single_entry_keys", None),
             }
 
             # For list/tuple types, add the element type label and infer fixed_length
@@ -385,6 +387,10 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 args = get_args(field_type)
                 if len(args) == 2 and is_dataclass(args[1]):
                     setting_dict["entry_dataclass"] = args[1]
+            elif widget_type == "dataclass_list":
+                args = get_args(inner_type)
+                if len(args) == 1 and is_dataclass(args[0]):
+                    setting_dict["entry_dataclass"] = args[0]
 
         # Remove None values to keep the dict clean
         setting_dict = {k: v for k, v in setting_dict.items() if v is not None}
