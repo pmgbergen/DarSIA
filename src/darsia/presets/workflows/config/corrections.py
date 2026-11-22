@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal, Type
 import numpy as np
 
 from ._key_list_sources import ROI_SOURCES
+from .resize import ResizeConfig
 from .roi_registry import _load_roi_key_list
 from .utils import _get_section_from_toml
 
@@ -51,143 +52,6 @@ class TypeCorrectionConfig:
         elif str_target_type == "float64":
             self.target_type = np.float64
         return self
-
-
-@dataclass
-class ResizeCorrectionConfig:
-    """Configuration for resize correction.
-
-    Supports two modes: uniform scaling via ``scale`` factor, or explicit target shape
-    resizing. Exactly one mode must be configured via the ``mode`` field.
-
-    Attributes
-    ----------
-    mode
-        Resize mode — either ``"scale"`` (scale all axes uniformly) or
-        ``"target_shape"`` (resize to explicit rows/cols).
-    scale
-        Uniform scale factor applied to both spatial axes (mode='scale' only).
-    target_shape
-        Target ``(rows, cols)`` shape to resize to (mode='target_shape' only).
-    """
-
-    mode: Literal["scale", "target_shape"] = field(
-        default="scale",
-        metadata={
-            "name": "Resize mode",
-            "help": (
-                "Whether to resize by a uniform scale factor or to an "
-                "explicit target shape."
-            ),
-            "options": ["scale", "target_shape"],
-        },
-    )
-    """Resize mode: ``"scale"`` (uniform scaling) or ``"target_shape"`` (explicit shape)."""
-    scale: float | None = field(
-        default=None,
-        metadata={
-            "name": "Scale factor",
-            "help": (
-                "Uniform scale factor applied to both axes (mode='scale' only). "
-                "For example, 0.5 to halve the image size."
-            ),
-            "placeholder": "e.g., 0.5 for half size",
-            "depends_on": {"field": "mode", "value": "scale"},
-        },
-    )
-    """Uniform scale factor (mode='scale' only)."""
-    target_shape: tuple[int, int] | None = field(
-        default=None,
-        metadata={
-            "name": "Target shape",
-            "help": (
-                "Target (rows, cols) shape to resize to (mode='target_shape' only). "
-                "For example, [512, 1024]."
-            ),
-            "placeholder": "e.g., [512, 1024] for images of 512 rows and 1024 columns",
-            "depends_on": {"field": "mode", "value": "target_shape"},
-        },
-    )
-    """Target (rows, cols) shape (mode='target_shape' only)."""
-
-    def load(self, sec: dict) -> "ResizeCorrectionConfig":
-        """Load resize correction configuration from a dictionary.
-
-        Parameters
-        ----------
-        sec : dict
-            Dictionary containing resize correction settings.
-
-        Returns
-        -------
-            Self with loaded configuration.
-
-        Raises
-        ------
-        ValueError
-            If mode is invalid, if required field for the mode is missing,
-            or if target_shape does not have exactly 2 elements.
-        """
-        mode = sec.get("mode", self.mode)
-        if mode not in ("scale", "target_shape"):
-            raise ValueError(
-                f"[corrections.resize] mode must be 'scale' or 'target_shape', got {mode!r}"
-            )
-        self.mode = mode
-
-        self.scale = sec.get("scale", self.scale)
-        target_shape_raw = sec.get("target_shape", self.target_shape)
-        self.target_shape = (
-            tuple(int(v) for v in target_shape_raw)
-            if target_shape_raw is not None
-            else None
-        )
-
-        if mode == "scale" and self.scale is None:
-            raise ValueError(
-                "[corrections.resize] mode='scale' requires 'scale' to be set."
-            )
-        if mode == "target_shape" and self.target_shape is None:
-            raise ValueError(
-                "[corrections.resize] mode='target_shape' requires 'target_shape' to be set."
-            )
-        if mode == "target_shape" and len(self.target_shape) != 2:
-            raise ValueError(
-                f"[corrections.resize] target_shape must have exactly 2 elements, "
-                f"got {self.target_shape!r}"
-            )
-
-        return self
-
-    def resolve(
-        self, current_shape: tuple[int, int]
-    ) -> tuple[tuple[int, int], float | tuple[float, float]]:
-        """Resolve target shape and resize factor for a given current shape.
-
-        Parameters
-        ----------
-        current_shape : tuple[int, int]
-            Current (rows, cols) shape of the image to be
-            resized.
-
-        Returns
-        -------
-            (target_shape, resize_factor) tuple where:
-            - target_shape: resolved (rows, cols) target shape.
-            - resize_factor: scalar factor (mode='scale') or (scale_x,
-            Scale_y) tuple (mode='target_shape') to pass to downstream
-            corrections (e.g. CurvatureCorrection) that need to rescale
-            pixel-calibrated config values.
-        """
-        if self.mode == "scale":
-            target_shape = tuple(int(round(s * self.scale)) for s in current_shape)
-            resize_factor = self.scale
-        else:  # mode == "target_shape"
-            target_shape = self.target_shape
-            scale_x = target_shape[1] / current_shape[1]
-            scale_y = target_shape[0] / current_shape[0]
-            resize_factor = (scale_x, scale_y)
-        return target_shape, resize_factor
 
 
 @dataclass
@@ -1241,7 +1105,7 @@ class PatchwiseIlluminationCorrectionConfig:
 
 _CORRECTION_CLASSES: dict[str, type] = {
     "type": TypeCorrectionConfig,
-    "resize": ResizeCorrectionConfig,
+    "resize": ResizeConfig,
     "drift": DriftCorrectionConfig,
     "curvature": CurvatureCorrectionConfig,
     "color": ColorCorrectionConfig,
@@ -1265,7 +1129,7 @@ class CorrectionsConfig:
         TypeCorrectionConfig for type conversion correction (default: None).
         Converts image to a specified numpy floating-point type (e.g., float32, float64).
     resize
-        ResizeCorrectionConfig for resize correction (default: None).
+        ResizeConfig for resize correction (default: None).
         Resizes images to a target shape or scale.
     drift
         DriftCorrectionConfig for drift correction (default: None).
@@ -1291,7 +1155,7 @@ class CorrectionsConfig:
     type: TypeCorrectionConfig | None = field(
         default=None, metadata={"name": "Type correction", "active_list_key": "active"}
     )
-    resize: ResizeCorrectionConfig | None = field(
+    resize: ResizeConfig | None = field(
         default=None,
         metadata={"name": "Resize correction", "active_list_key": "active"},
     )
@@ -1365,6 +1229,8 @@ class CorrectionsConfig:
                 continue
             if name in ("drift", "color"):
                 parsed = cls().load(sub_sec, roi_registry=roi_registry)
+            elif name == "resize":
+                parsed = cls().load(sub_sec, context="corrections.resize")
             else:
                 parsed = cls().load(sub_sec)
             is_active = active is None or name in active
