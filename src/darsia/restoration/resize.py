@@ -374,7 +374,8 @@ def transfer(image: darsia.Image, grid: darsia.Image) -> darsia.Image:
       :class:`darsia.ExtensiveImage` keeps its sum (see :class:`Resize`).
 
     Integer images that are not categorical, e.g. 8-bit photographs, are to be
-    converted to float first (``as_float``).
+    converted to float first (``as_float``). An image already on the grid is returned
+    itself, not copied.
 
     Parameters
     ----------
@@ -386,7 +387,8 @@ def transfer(image: darsia.Image, grid: darsia.Image) -> darsia.Image:
     Returns
     -------
     darsia.Image
-        New image with the shape of the grid and the metadata of the image.
+        Image with the shape of the grid and the metadata of the image; the image
+        itself if it is already on the grid (then not to be modified).
 
     Raises
     ------
@@ -405,6 +407,8 @@ def transfer(image: darsia.Image, grid: darsia.Image) -> darsia.Image:
         )
     shape = tuple(grid.num_voxels)
     array = image.img
+    if array.shape[:2] == shape:
+        return image
     if array.dtype == bool or np.issubdtype(array.dtype, np.integer):
         rows = _center_indices(array.shape[0], shape[0])
         cols = _center_indices(array.shape[1], shape[1])

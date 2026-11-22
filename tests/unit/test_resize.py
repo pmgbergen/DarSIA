@@ -260,6 +260,14 @@ def test_transfer_takes_the_shape_of_the_grid_and_keeps_the_metadata(dtype):
     assert np.allclose(transferred.voxel_size, grid.voxel_size)
 
 
+def test_transfer_returns_an_image_already_on_the_grid_itself():
+    image = _scalar(np.arange(48).reshape((6, 8)))
+
+    assert darsia.transfer(image, _scalar(np.zeros((6, 8)))) is image
+    with pytest.raises(ValueError, match="different domains"):
+        darsia.transfer(image, _scalar(np.zeros((6, 8)), dimensions=(1.0, 1.0)))
+
+
 def test_transfer_rejects_a_grid_of_another_domain():
     image = _scalar(np.ones((6, 8)))
 
