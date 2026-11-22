@@ -490,3 +490,33 @@ def test_analysis_mass_passes_natural_scalar_write_bounds(
         "vmin": 0.0,
         "vmax": expected_extensive_vmax,
     }
+
+
+def test_fluid_model_on_another_grid_keeps_type_and_state() -> None:
+    co2 = CO2MassAnalysis(
+        baseline=darsia.ScalarImage(np.zeros((8, 6)), dimensions=[1.0, 1.0]),
+        atmospheric_temperature=25.0,
+        atmospheric_temperature_gradient=3.0,
+    )
+    coarse = darsia.ScalarImage(np.zeros((4, 3)), dimensions=[1.0, 1.0])
+
+    on_grid = co2.on_grid(coarse)
+
+    assert type(on_grid) is CO2MassAnalysis
+    assert on_grid.atmospheric_temperature == 25.0
+    assert on_grid.density_gas.shape == (4, 3)
+    assert co2.density_gas.shape == (8, 6)  # the original is unchanged
+    # Top and bottom rows at the same heights: the same properties
+    assert np.isclose(on_grid.density_gas[0, 0], co2.density_gas[0, 0])
+    assert np.isclose(on_grid.density_gas[-1, 0], co2.density_gas[-1, 0])
+
+
+def test_uniform_fluid_model_on_another_grid_stays_uniform() -> None:
+    tracer = darsia.FluidMassAnalysis()
+    coarse = darsia.ScalarImage(np.zeros((4, 3)), dimensions=[1.0, 1.0])
+
+    on_grid = tracer.on_grid(coarse)
+
+    assert on_grid is not tracer
+    assert on_grid.baseline is None
+    assert np.ndim(on_grid.aqueous_capacity) == 0
