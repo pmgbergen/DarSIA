@@ -276,10 +276,11 @@ class FluidMassAnalysis:
             self.setup_state()
 
     def on_grid(self, baseline: darsia.Image) -> "FluidMassAnalysis":
-        """Copy with the pressure and temperature fields on the grid of `baseline`.
+        """Fluid model with the pressure and temperature fields on the grid of `baseline`.
 
-        The state and the fluid system are kept. Without a baseline, the properties
-        are uniform and the copy has none either.
+        A copy of the same type, keeping the state and the fluid system. Without a
+        baseline (uniform properties, valid on any grid) or with a baseline of the
+        grid's shape, the fluid model itself.
 
         Parameters
         ----------
@@ -289,12 +290,16 @@ class FluidMassAnalysis:
         Returns
         -------
         FluidMassAnalysis
-            Copy of the same type.
+            The fluid model on the grid.
         """
+        if (
+            self.baseline is None
+            or self.baseline.img.shape[:2] == baseline.img.shape[:2]
+        ):
+            return self
         fluid_model = copy.copy(self)
-        if self.baseline is not None:
-            fluid_model.baseline = baseline
-            fluid_model.setup_state()
+        fluid_model.baseline = baseline
+        fluid_model.setup_state()
         return fluid_model
 
     @property
