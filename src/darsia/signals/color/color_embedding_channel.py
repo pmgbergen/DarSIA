@@ -9,7 +9,6 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.restoration import RestorationConfig
-from darsia.presets.workflows.restoration import build_restoration
 from darsia.signals.color.color_embedding import (
     ColorEmbedding,
     ColorEmbeddingBasis,
@@ -79,6 +78,9 @@ class ColorChannelEmbedding(ColorEmbedding):
     def canonical_transform(
         self, runtime: ColorEmbeddingRuntime
     ) -> ColorEmbeddingTransform:
+        # Imported here: the workflows restoration itself builds on darsia.signals
+        from darsia.presets.workflows.restoration import build_restoration
+
         if self.basis != ColorEmbeddingBasis.GLOBAL:
             raise NotImplementedError(
                 "Color channel embedding currently only supports basis='global'."

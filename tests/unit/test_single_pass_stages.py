@@ -15,9 +15,11 @@ import pytest
 import darsia
 import darsia.signals.color.color_path_kernels as color_kernels
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
+from darsia.presets.workflows.config.roi import RoiConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
+from darsia.presets.workflows.restoration import RestorationSteps
 
 pytestmark = pytest.mark.skipif(
     not color_kernels.NUMBA_AVAILABLE, reason="The kernels require numba."
@@ -78,7 +80,11 @@ def _spectrum() -> darsia.ColorSpectrum:
 
 
 def _analysis(
-    ignore_mode: str = "norm", expert=None, ignore_labels=None, geometry=None
+    ignore_mode: str = "norm",
+    expert=None,
+    ignore_labels=None,
+    geometry=None,
+    restoration=None,
 ):
     rng = np.random.default_rng(1)
     baseline = darsia.OpticalImage(
@@ -122,6 +128,7 @@ def _analysis(
         flash=darsia.SimpleFlash(0.05, 0.6, 0.5, 1.1),
         fluid_model=fluid_model,
         geometry=geometry,
+        restoration=restoration,
         ignore_labels=ignore_labels,
         expert_knowledge_adapter=expert,
     )
@@ -376,3 +383,26 @@ def test_reduced_analysis_takes_labels_at_the_centers_and_averages_the_geometry(
     ):
         expected = darsia.resize(field, shape=(6, 9), interpolation="inter_area")
         assert np.allclose(reduced_field.img, expected.img)
+
+
+def test_single_pass_stages_after_a_resize_step_of_the_restoration(monkeypatch):
+    """With a resize step, flash, expert knowledge and mass work on the coarse grid
+    (fluid properties and label regions transferred), still in single passes."""
+    resize = darsia.Resize(fx=0.5, fy=0.5, interpolation="inter_area")
+    _, baseline = _analysis()
+    restoration = RestorationSteps([resize], grid=resize(baseline))
+    expert = ExpertKnowledgeAdapter(
+        bounds={"concentration_aq": (0.0, None)},
+        no_saturation_g_rois={
+            "first": RoiConfig(shape="label", label_index=0, name="first")
+        },
+        labels_image=_labels(),
+    )
+    analysis, baseline = _analysis(expert=expert, restoration=restoration)
+
+    assert analysis.fluid_model.density_gas.shape == (12, 18)
+    _assert_identical(analysis, _image(baseline), monkeypatch)
+    fields, _ = _stages(analysis, _image(baseline), True, monkeypatch)
+    assert fields["mass"].img.shape == (12, 18)
+    # No gas in the first label (left third: 6 of 18 coarse columns)
+    assert np.all(fields["saturation_g"].img[:, :6] == 0)

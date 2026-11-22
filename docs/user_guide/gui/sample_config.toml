@@ -97,8 +97,10 @@ dim = "2"
 active = ["curvature", "drift", "patchwise_illumination", "resize", "type"]
 
 [restoration]
-method = "volume_average"
 active = false
+
+[[restoration.steps]]
+method = "volume_average"
 
 [labeling]
 colored_image = "/path/to/experiment/segmented_reference.png"

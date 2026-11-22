@@ -8,7 +8,12 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.config.restoration import RestorationConfig
+from darsia.presets.workflows.config.restoration import (
+    RestorationConfig,
+    RestorationStepConfig,
+    TVDConfig,
+    VolumeAveragingConfig,
+)
 
 if TYPE_CHECKING:
     from darsia.presets.workflows.rig import Rig
@@ -16,11 +21,31 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class RestorationMaskFactory:
-    """Factory for predefined restoration ignore masks."""
+class RestorationSteps(darsia.CombinedModel):
+    """Restoration steps applied in order, and the grid of their result."""
 
-    def __init__(self, fluidflower: "Rig") -> None:
+    def __init__(self, models: list, grid: darsia.Image) -> None:
+        """
+        Parameters
+        ----------
+        models : list
+            Models of the steps, in the order of application.
+        grid : darsia.Image
+            Image on the grid of the restored images: the rig baseline after the
+            resize steps (the baseline itself without them).
+
+        """
+        super().__init__(models)
+        self.grid = grid
+        """Image on the grid of the restored images."""
+
+
+class RestorationMaskFactory:
+    """Factory for predefined restoration ignore masks, on a given grid."""
+
+    def __init__(self, fluidflower: "Rig", grid: darsia.Image) -> None:
         self.fluidflower = fluidflower
+        self.grid = grid
         self._ignore_mask_builders = {
             "image_porosity": self._image_porosity_ignore_mask,
             "boolean_porosity": self._boolean_porosity_ignore_mask,
@@ -28,13 +53,15 @@ class RestorationMaskFactory:
         }
 
     def _image_porosity_ignore_mask(self) -> np.ndarray:
-        return self.fluidflower.image_porosity.img <= 0
+        return darsia.transfer(self.fluidflower.image_porosity, self.grid).img <= 0
 
     def _boolean_porosity_ignore_mask(self) -> np.ndarray:
-        return ~self.fluidflower.boolean_porosity.img.astype(bool)
+        boolean_porosity = darsia.transfer(self.fluidflower.boolean_porosity, self.grid)
+        return ~boolean_porosity.img.astype(bool)
 
     def _inner_labels_ignore_mask(self) -> np.ndarray:
-        return ~self.fluidflower.inner_labels.img.astype(bool)
+        inner_labels = darsia.transfer(self.fluidflower.inner_labels, self.grid)
+        return ~inner_labels.img.astype(bool)
 
     def build_ignore_mask(self, mask_names: list[str]) -> np.ndarray | None:
         if len(mask_names) == 0:
@@ -60,8 +87,11 @@ class RestorationMaskFactory:
 def build_restoration(
     restoration_config: RestorationConfig | None,
     fluidflower: "Rig",
-) -> darsia.VolumeAveraging | darsia.TVD | None:
-    """Build a restoration object from configuration.
+) -> RestorationSteps | None:
+    """Build the restoration from configuration.
+
+    The steps are built in order. A resize step changes the grid; the rig data of
+    later steps (porosity, ignore masks, REV size in pixels) is taken on the new grid.
 
     Parameters
     ----------
@@ -73,7 +103,9 @@ def build_restoration(
 
     Returns
     -------
-        A callable restoration object, or None if no restoration is configured.
+    RestorationSteps or None
+        The active steps and the grid of their result, or None without active steps.
+
     """
     if restoration_config is None:
         logger.info(
@@ -83,72 +115,88 @@ def build_restoration(
         )
         return None
 
-    method = restoration_config.method
-
-    if method is None:
+    steps = [step for step in restoration_config.steps if step.active]
+    if len(steps) == 0:
         return None
 
-    mask_factory = RestorationMaskFactory(fluidflower)
-    ignore_mask = mask_factory.build_ignore_mask(restoration_config.ignore)
+    grid = fluidflower.baseline
+    models = []
+    for step in steps:
+        model, grid = _build_step(step, restoration_config.ignore, fluidflower, grid)
+        models.append(model)
+    return RestorationSteps(models, grid)
+
+
+def _build_step(
+    step: RestorationStepConfig,
+    ignore: list[str],
+    fluidflower: "Rig",
+    grid: darsia.Image,
+) -> tuple:
+    """Model of one step on a grid, and the grid of its result."""
+    if step.method == "resize":
+        resize = step.resize_options
+        if resize is None:
+            raise ValueError("A resize step needs options (scale or target_shape).")
+        if resize.mode == "scale":
+            model = darsia.Resize(
+                fx=resize.scale, fy=resize.scale, interpolation="inter_area"
+            )
+        else:
+            model = darsia.Resize(shape=resize.target_shape, interpolation="inter_area")
+        return model, model(grid)
+
+    mask_factory = RestorationMaskFactory(fluidflower, grid)
+    ignore_mask = mask_factory.build_ignore_mask(ignore)
     active_mask = None if ignore_mask is None else (~ignore_mask).astype(float)
 
-    if method == "volume_average":
-        from darsia.presets.workflows.config.restoration import VolumeAveragingConfig
-
-        options = restoration_config.options
-        if not isinstance(options, VolumeAveragingConfig):
-            options = VolumeAveragingConfig()
-        rev_size = options.rev_size
+    if step.method == "volume_average":
+        volume_averaging = step.volume_averaging_options or VolumeAveragingConfig()
         # Work on a copy as the porosity image is shared in the rig object.
-        image_porosity = fluidflower.image_porosity.copy()
+        image_porosity = darsia.transfer(fluidflower.image_porosity, grid).copy()
         if active_mask is not None:
             image_porosity.img *= active_mask
-        return darsia.VolumeAveraging(
-            rev=darsia.REV(size=rev_size, img=fluidflower.baseline),
+        model = darsia.VolumeAveraging(
+            rev=darsia.REV(size=volume_averaging.rev_size, img=grid),
             mask=image_porosity,
         )
+        return model, grid
 
-    elif method == "tvd":
-        from darsia.presets.workflows.config.restoration import TVDConfig
+    # TVD
+    options = step.tvd_options or TVDConfig()
 
-        options = restoration_config.options
-        if not isinstance(options, TVDConfig):
-            options = TVDConfig()
-
-        # Resolve porosity-based weight strings to actual arrays, forcing
-        # "heterogeneous bregman" as the TVD method in those cases.
-        tvd_method = options.method
-        if isinstance(options.weight, str):
-            if options.weight == "image_porosity":
-                weight = fluidflower.image_porosity
-            elif options.weight == "boolean_porosity":
-                weight = fluidflower.boolean_porosity
-            else:
-                raise ValueError(
-                    f"Unknown weight string '{options.weight}'. "
-                    "Valid string values are 'image_porosity' and 'boolean_porosity'. "
-                    "For a scalar weight, provide a numeric value in the config."
-                )
-            tvd_method = "heterogeneous bregman"
+    # Resolve porosity-based weight strings to actual arrays, forcing
+    # "heterogeneous bregman" as the TVD method in those cases.
+    tvd_method = options.method
+    if isinstance(options.weight, str):
+        if options.weight == "image_porosity":
+            weight = darsia.transfer(fluidflower.image_porosity, grid)
+        elif options.weight == "boolean_porosity":
+            weight = darsia.transfer(fluidflower.boolean_porosity, grid)
         else:
-            weight = options.weight
-
-        if isinstance(weight, darsia.Image):
-            weight = weight.img
-
-        if active_mask is not None:
-            weight = np.multiply(weight, active_mask)
-            tvd_method = "heterogeneous bregman"
-
-        return darsia.TVD(
-            method=tvd_method,
-            weight=weight,
-            max_num_iter=options.max_num_iter,
-            eps=options.eps,
-            omega=options.omega,
-            regularization=options.regularization,
-            **options.kwargs,
-        )
-
+            raise ValueError(
+                f"Unknown weight string '{options.weight}'. "
+                "Valid string values are 'image_porosity' and 'boolean_porosity'. "
+                "For a scalar weight, provide a numeric value in the config."
+            )
+        tvd_method = "heterogeneous bregman"
     else:
-        raise NotImplementedError(f"Restoration method '{method}' not supported.")
+        weight = options.weight
+
+    if isinstance(weight, darsia.Image):
+        weight = weight.img
+
+    if active_mask is not None:
+        weight = np.multiply(weight, active_mask)
+        tvd_method = "heterogeneous bregman"
+
+    model = darsia.TVD(
+        method=tvd_method,
+        weight=weight,
+        max_num_iter=options.max_num_iter,
+        eps=options.eps,
+        omega=options.omega,
+        regularization=options.regularization,
+        **options.kwargs,
+    )
+    return model, grid

@@ -6,7 +6,7 @@ This is the user-facing map of workflow TOML sections currently loaded by `Fluid
 - `[data]`: image folder(s), baseline image name, results folder, optional cache toggles.
 - `[rig]`: geometry metadata (`dim`, `width`, `height`, optional `path`).
 - `[corrections]`: type/resize/drift/curvature/color/relative_color/illumination settings.
-- `[restoration]`: restoration method and method-specific options.
+- `[restoration]`: restoration steps (resize, volume averaging, TVD) in free order.
 - `[labeling]`: colored label image and generated labels artifact.
 - `[facies]`: facies properties and mapping to labels.
 - `[depth]`: depth measurements, depth-map path, and optional interpolation-resolution for depth-grid construction.
@@ -72,14 +72,49 @@ import_calibration_bundle = "/absolute/path/to/calibration_bundle.zip"
 - `[video]`: media utility config for protocol-time ordered MP4/GIF generation.
 
 ## Restoration section
-- `method`: `volume_average` or `tvd`.
+The restoration acts on the signal, before the flash. It is a list of steps, applied
+in the given order; a method may occur more than once.
+```toml
+[restoration]
+active = true                  # optional; false skips the restoration
+ignore = ["boolean_porosity"]  # optional; for all averaging and denoising steps
+
+[[restoration.steps]]
+method = "resize"
+options = { mode = "scale", scale = 0.2 }
+
+[[restoration.steps]]
+method = "tvd"
+options = { weight = 0.1, method = "chambolle" }
+```
+- `method` of a step:
+  - `"resize"`: changes the resolution by area averaging. Options as for
+    `[corrections.resize]`: `mode = "scale"` with `scale`, or
+    `mode = "target_shape"` with `target_shape = [rows, cols]`.
+  - `"volume_average"`: averages over a representative elementary volume; option
+    `rev_size` in meters.
+  - `"tvd"`: total variation denoising; options `method`, `weight` (a number,
+    `"image_porosity"` or `"boolean_porosity"`), `max_num_iter`, `eps`, `omega`,
+    `regularization`.
+- `active` of a step (optional, default true): false skips the step and keeps its
+  values.
 - `ignore` (optional): list of named ignore masks applied in additive mode.
   - Currently supported:
     - `"boolean_porosity"` (ignore regions outside the boolean porosity mask)
     - `"image_porosity"` (ignore regions with non-positive image porosity)
     - `"inner_labels"` (ignore band around labels boundaries)
-- `[restoration.options]`: method-specific options (for example TVD method/weights and
-  volume-averaging `rev_size`).
+- **Resolution:** after a resize step, all later steps and the rest of the analysis
+  (flash, expert knowledge, mass) work on the new grid. The rig data they use
+  (porosity, ignore masks, labels of expert knowledge regions, pressure and
+  temperature) is taken on that grid with `darsia.transfer`: labels and masks at the
+  center of each pixel, fields by area averaging. The REV size of a volume averaging
+  step is in meters, so it covers the same area on any grid.
+- **Single method:** `[restoration] method = "..."` with `[restoration.options]` is
+  read as one step (the form before the list of steps). A file uses either the steps
+  or a single method, not both.
+- **Color embeddings** (`[color.channel.<id>.restoration]`,
+  `[color.range.<id>.restoration]`) use the same format, but without resize steps:
+  an embedding keeps the grid of the image.
 
 ## Shared data registry (recommended)
 Define reusable selections in top-level `[data]` subsections:

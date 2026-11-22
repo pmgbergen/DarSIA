@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Union
 
+from .resize import ResizeConfig
 from .utils import _get_key, _get_section_from_toml
 
 
@@ -141,31 +142,48 @@ class TVDConfig:
         return self
 
 
+RESTORATION_METHODS = ("resize", "volume_average", "tvd")
+"""Methods of a restoration step."""
+
+
 @dataclass
-class RestorationConfig:
+class RestorationStepConfig:
+    """One restoration step: a method and its options.
+
+    A ``resize`` step changes the grid of the images (always by area averaging); all
+    later steps and the rest of the analysis work on the new grid.
+
+    """
+
     active: bool = field(
         default=True,
         metadata={
-            "name": "Activate restoration",
-            "help": (
-                "When unchecked, restoration is skipped (equivalent to omitting "
-                "[restoration] from the config). Other values below are preserved even "
-                "when unchecked."
-            ),
+            "name": "Active",
+            "help": "When unchecked, the step is skipped; its values are kept.",
             "section_active": True,
             "hidden": True,
         },
     )
-    """Whether to enable restoration processing."""
-    method: Literal["volume_average", "tvd"] | None = field(
+    """Whether the step is applied (the checkbox of the step in the GUI)."""
+    method: Literal["resize", "volume_average", "tvd"] = field(
         default="volume_average",
         metadata={
-            "name": "Restoration method",
+            "name": "Method",
             "help": (
-                "Restoration method to apply: 'volume_average' (simple averaging) or "
-                "'tvd' (Total Variation Denoising)."
+                "'resize' (change the resolution by area averaging), "
+                "'volume_average' (average over a representative elementary volume) "
+                "or 'tvd' (total variation denoising)."
             ),
-            "options": ["volume_average", "tvd"],
+            "options": list(RESTORATION_METHODS),
+        },
+    )
+    """Restoration method of the step."""
+    resize_options: ResizeConfig | None = field(
+        default=None,
+        metadata={
+            "name": "Options",
+            "toml_key": "options",
+            "depends_on": {"field": "method", "value": "resize"},
         },
     )
     volume_averaging_options: VolumeAveragingConfig | None = field(
@@ -184,23 +202,108 @@ class RestorationConfig:
             "depends_on": {"field": "method", "value": "tvd"},
         },
     )
+
+    def load(self, sec: dict, context: str = "restoration") -> "RestorationStepConfig":
+        """Load a step from its table.
+
+        Parameters
+        ----------
+        sec : dict
+            Table with ``method``, optional ``options`` and optional ``active``.
+        context : str
+            Location of the step in the config, for error messages.
+
+        Returns
+        -------
+        RestorationStepConfig
+            The loaded step.
+
+        Raises
+        ------
+        ValueError
+            For unknown keys, a missing method, or options which are not a table.
+        NotImplementedError
+            For an unknown method.
+
+        """
+        unknown = set(sec) - {"active", "method", "options"}
+        if unknown:
+            raise ValueError(
+                f"{context}: unknown keys {sorted(unknown)}; a step has 'method', "
+                "'options' and 'active'."
+            )
+        if "method" not in sec:
+            raise ValueError(f"{context}: a step needs a 'method'.")
+        method = str(sec["method"]).lower()
+        if method not in RESTORATION_METHODS:
+            raise NotImplementedError(
+                f"{context}: invalid restoration method {sec['method']!r}; "
+                f"methods are {list(RESTORATION_METHODS)}."
+            )
+        self.method = method  # type: ignore[assignment]
+        self.active = bool(sec.get("active", True))
+        options = sec.get("options", {})
+        if not isinstance(options, dict):
+            raise ValueError(f"{context}.options must be a table.")
+        if method == "resize":
+            self.resize_options = ResizeConfig().load(
+                options, context=f"{context}.options"
+            )
+        elif method == "volume_average":
+            self.volume_averaging_options = VolumeAveragingConfig().load(options)
+        else:
+            self.tvd_options = TVDConfig().load(options)
+        return self
+
+
+@dataclass
+class RestorationConfig:
+    """Restoration: steps applied in order to the signal.
+
+    The steps are given as ``[[restoration.steps]]``. The form with a single method,
+    ``[restoration] method = ...`` and ``[restoration.options]``, is read as one step.
+
+    """
+
+    active: bool = field(
+        default=True,
+        metadata={
+            "name": "Activate restoration",
+            "help": (
+                "When unchecked, restoration is skipped (equivalent to omitting "
+                "[restoration] from the config). Other values below are preserved even "
+                "when unchecked."
+            ),
+            "section_active": True,
+            "hidden": True,
+        },
+    )
+    """Whether to enable restoration processing."""
+    steps: list[RestorationStepConfig] = field(
+        default_factory=list,
+        metadata={
+            "name": "Steps",
+            "help": (
+                "Restoration steps, applied in this order. A resize step changes the "
+                "resolution for all later steps and the rest of the analysis."
+            ),
+            "widget": "dataclass_list",
+            "entry_title": "Step",
+            "single_entry_keys": ["method", "options"],
+        },
+    )
+    """Restoration steps, in the order of application."""
     ignore: list[str] = field(
         default_factory=list,
         metadata={
             "name": "Ignore regions",
-            "help": "List of region/label names to exclude from restoration.",
-            "placeholder": "e.g., label1, label2",
+            "help": (
+                "Regions excluded from all averaging and denoising steps: "
+                "'image_porosity', 'boolean_porosity', 'inner_labels'."
+            ),
+            "placeholder": "e.g., boolean_porosity",
         },
     )
-
-    @property
-    def options(self) -> VolumeAveragingConfig | TVDConfig | None:
-        """Backward-compatibility property: returns the active options (VA or TVD)."""
-        if self.method == "volume_average":
-            return self.volume_averaging_options
-        elif self.method == "tvd":
-            return self.tvd_options
-        return None
 
     def load(self, path: Path | dict) -> "RestorationConfig":
         if isinstance(path, dict):
@@ -211,31 +314,29 @@ class RestorationConfig:
         # Check if restoration is active.
         self.active = bool(sec.get("active", self.active))
 
-        # Select and validate the restoration method.
-        method_str = _get_key(
-            sec, "method", default=self.method, required=False, type_=str
-        )
-        if method_str is not None:
-            self.method = method_str.lower()
-        else:
-            self.method = None
-        if self.method == "none":
-            self.method = None
-        elif self.method is not None and self.method not in ["volume_average", "tvd"]:
-            raise NotImplementedError(f"Invalid restoration method: {self.method}")
-
         # Allow to mask out certain regions from restoration.
         self.ignore = _get_key(sec, "ignore", default=[], required=False, type_=list)
         if not all(isinstance(entry, str) for entry in self.ignore):
             raise ValueError("restoration.ignore must be a list of strings.")
 
-        # Allow for method-specific options under an "options" subsection.
-        options_sec = sec.get("options", {})
-        if self.method is None:
-            pass
-        elif self.method == "volume_average":
-            self.volume_averaging_options = VolumeAveragingConfig().load(options_sec)
-        elif self.method == "tvd":
-            self.tvd_options = TVDConfig().load(options_sec)
-
+        # Steps, or a single method (read as one step)
+        if "steps" in sec:
+            if "method" in sec or "options" in sec:
+                raise ValueError(
+                    "restoration: give either [[restoration.steps]] or a single "
+                    "'method' with [restoration.options], not both."
+                )
+            raw_steps = sec["steps"]
+            if not isinstance(raw_steps, list) or not all(
+                isinstance(step, dict) for step in raw_steps
+            ):
+                raise ValueError("restoration.steps must be an array of tables.")
+        elif sec.get("method") is None or str(sec["method"]).lower() == "none":
+            raw_steps = []
+        else:
+            raw_steps = [{"method": sec["method"], "options": sec.get("options", {})}]
+        self.steps = [
+            RestorationStepConfig().load(step, context=f"restoration.steps[{index}]")
+            for index, step in enumerate(raw_steps)
+        ]
         return self

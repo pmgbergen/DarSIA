@@ -178,10 +178,13 @@ def unavailable_resolution_level(config_path: Path) -> str | None:
             return None
         reasons = []
         restoration = config.restoration
-        if restoration is not None and restoration.method is not None:
-            reasons.append(
-                f'a restoration ([restoration] method = "{restoration.method}")'
-            )
+        methods = (
+            []
+            if restoration is None
+            else [step.method for step in restoration.steps if step.active]
+        )
+        if methods:
+            reasons.append(f"a restoration ([restoration] steps {methods})")
         if not reasons:
             return None
         return (
