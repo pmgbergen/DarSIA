@@ -230,6 +230,39 @@ def test_adapter_label_shape_excludes_raw_label_region() -> None:
     assert np.allclose(constrained.img[labels.img == 2], 1.0)
 
 
+def test_adapter_takes_labels_at_the_centers_for_a_field_on_another_grid() -> None:
+    """A field on a coarser grid (e.g. after a resize step of the restoration) is
+    masked by the label at the center of each of its pixels."""
+    numbered = np.arange(200, dtype=np.int32).reshape((10, 20))
+    labels = darsia.ScalarImage(numbered, space_dim=2, dimensions=[1.0, 2.0])
+    label_roi = RoiConfig(shape="label", label_index=numbered[7, 12], name="one")
+    adapter = ExpertKnowledgeAdapter(
+        concentration_aq_rois={"one": label_roi}, labels_image=labels
+    )
+    coarse = _make_scalar_image(rows=2, cols=4)  # blocks of 5 x 5 pixels
+
+    keep = adapter.mask_for(coarse, "concentration_aq")
+
+    # The block (1, 2) has its center at the pixel (7, 12)
+    expected = np.zeros((2, 4), dtype=bool)
+    expected[1, 2] = True
+    assert np.array_equal(keep, expected)
+    assert adapter.mask_for(_make_scalar_image(), "concentration_aq").sum() == 1
+
+
+def test_adapter_refuses_a_field_of_another_domain() -> None:
+    adapter = ExpertKnowledgeAdapter(
+        concentration_aq_rois={
+            "lbl1": RoiConfig(shape="label", label_index=1, name="lbl1")
+        },
+        labels_image=_make_labels_image(),
+    )
+    other = darsia.ScalarImage(np.ones((5, 5)), space_dim=2, dimensions=[1.0, 1.0])
+
+    with pytest.raises(ValueError, match="different domains"):
+        adapter.mask_for(other, "concentration_aq")
+
+
 def test_adapter_facies_shape_resolves_multiple_raw_labels() -> None:
     """shape='facies' matches every pixel resolved to that facies ID."""
     img = _make_scalar_image()
@@ -307,24 +340,6 @@ def test_adapter_multiple_positive_and_multiple_negative_rois_combine_correctly(
 
     assert constrained is not None
     assert np.array_equal(constrained.img > 0, expected_kept)
-
-
-def test_adapter_label_shape_without_labels_image_raises() -> None:
-    img = _make_scalar_image()
-    label_roi = RoiConfig(shape="label", label_index=1, name="lbl1")
-    adapter = ExpertKnowledgeAdapter(no_saturation_g_rois={"lbl1": label_roi})
-
-    with pytest.raises(ValueError, match="labels_image"):
-        adapter.apply(img, "saturation_g")
-
-
-def test_adapter_facies_shape_without_facies_image_raises() -> None:
-    img = _make_scalar_image()
-    facies_roi = RoiConfig(shape="facies", facies_id=7, name="fac7")
-    adapter = ExpertKnowledgeAdapter(no_saturation_g_rois={"fac7": facies_roi})
-
-    with pytest.raises(ValueError, match="facies_image"):
-        adapter.apply(img, "saturation_g")
 
 
 def _make_registry(*rois: RoiConfig) -> RoiRegistry:

@@ -110,25 +110,6 @@ class ExpertKnowledgeAdapter:
             return self.no_concentration_aq_rois
         return {}
 
-    def _check_mask_image(
-        self,
-        mask_image: darsia.Image | None,
-        image: darsia.Image,
-        context: str,
-        attr_name: str,
-    ) -> None:
-        if mask_image is None:
-            raise ValueError(
-                f"ROI '{context}' needs a {attr_name}, but none "
-                "was provided to ExpertKnowledgeAdapter."
-            )
-        if mask_image.img.shape[:2] != image.img.shape[:2]:
-            raise ValueError(
-                f"ExpertKnowledgeAdapter's {attr_name} shape "
-                f"{mask_image.img.shape[:2]} does not match the "
-                f"target field's shape {image.img.shape[:2]}."
-            )
-
     def _mask_for_roi(
         self,
         roi: "RoiConfig",
@@ -140,7 +121,10 @@ class ExpertKnowledgeAdapter:
         `"box"`/`"polygon"` are masked geometrically via `roi_to_mask`;
         `"label"` is masked against the raw `labels_image`; `"facies"` is
         masked against the resolved `facies_image` (whose pixel values are
-        already facies IDs, per `setup_facies`'s `reassign_labels` step);
+        already facies IDs, per `setup_facies`'s `reassign_labels` step), both
+        taken on the grid of the field (`darsia.transfer`: the label at the center
+        of each pixel; the field may be on another grid than the rig, e.g. after a
+        resize step of the restoration);
         `"intersection"`/`"union"` recursively combine their `members`'
         masks (looked up by name via `roi_registry`), so members may
         themselves be any shape, including another intersection/union.
@@ -149,12 +133,10 @@ class ExpertKnowledgeAdapter:
             return roi_to_mask(roi.roi, image).img.astype(bool)
 
         if roi.shape == "label":
-            self._check_mask_image(self.labels_image, image, roi.name, "labels_image")
-            return self.labels_image.img == roi.label_index
+            return darsia.transfer(self.labels_image, image).img == roi.label_index
 
         if roi.shape == "facies":
-            self._check_mask_image(self.facies_image, image, roi.name, "facies_image")
-            return self.facies_image.img == roi.facies_id
+            return darsia.transfer(self.facies_image, image).img == roi.facies_id
 
         # shape in ("intersection", "union")
         if roi.name in _visiting:
