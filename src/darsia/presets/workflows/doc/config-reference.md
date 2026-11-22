@@ -72,8 +72,9 @@ import_calibration_bundle = "/absolute/path/to/calibration_bundle.zip"
 - `[video]`: media utility config for protocol-time ordered MP4/GIF generation.
 
 ## Restoration section
-The restoration acts on the signal, before the flash. It is a list of steps, applied
-in the given order; a method may occur more than once.
+The restoration acts on the signal, before the flash, and on the images of color
+modes. It is a list of steps, applied in the given order; a method may occur more
+than once.
 ```toml
 [restoration]
 active = true                  # optional; false skips the restoration
@@ -112,9 +113,9 @@ options = { weight = 0.1, method = "chambolle" }
 - **Single method:** `[restoration] method = "..."` with `[restoration.options]` is
   read as one step (the form before the list of steps). A file uses either the steps
   or a single method, not both.
-- **Color embeddings** (`[color.channel.<id>.restoration]`,
-  `[color.range.<id>.restoration]`) use the same format, but without resize steps:
-  an embedding keeps the grid of the image.
+- **Color modes** (an analysis `mode` naming a color embedding, e.g. in segmentation,
+  thresholding or fingers): the embedding's image is restored with the same steps,
+  so all mode images share the result grid.
 
 ## Shared data registry (recommended)
 Define reusable selections in top-level `[data]` subsections:

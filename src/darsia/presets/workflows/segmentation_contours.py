@@ -12,6 +12,7 @@ import numpy as np
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import SegmentationConfig
 from darsia.presets.workflows.mode_resolution import resolve_mode_image
+from darsia.presets.workflows.restoration import RestorationSteps
 from darsia.signals.color import ColorEmbeddingRuntime
 from darsia.utils.augmented_plotting import as_ubyte, plot_contour_on_image
 
@@ -82,6 +83,7 @@ class SimpleSegmentation:
         mass_analysis_result=None,
         color_embedding_registry: ColorEmbeddingRegistry | None = None,
         color_embedding_runtime: ColorEmbeddingRuntime | None = None,
+        restoration: RestorationSteps | None = None,
         rescaled_saturation_g: darsia.Image | None = None,
         rescaled_concentration_aq: darsia.Image | None = None,
         rescaled_mass: darsia.Image | None = None,
@@ -106,6 +108,7 @@ class SimpleSegmentation:
             color_embedding_registry=color_embedding_registry,
             color_embedding_runtime=color_embedding_runtime,
             scalar_products=products,
+            restoration=restoration,
         )
 
         # Extract masks based on thresholds
@@ -382,6 +385,7 @@ class SegmentationContours:
         mass_analysis_result=None,
         color_embedding_registry: ColorEmbeddingRegistry | None = None,
         color_embedding_runtime: ColorEmbeddingRuntime | None = None,
+        restoration: RestorationSteps | None = None,
         background: darsia.Image | None = None,
     ) -> darsia.Image:
         """Contours of all segmentations, drawn on the image or on a background.
@@ -417,6 +421,7 @@ class SegmentationContours:
                 color_embedding_registry=color_embedding_registry,
                 color_embedding_runtime=color_embedding_runtime,
                 scalar_products=products,
+                restoration=restoration,
             )
 
             # Extract masks based on thresholds

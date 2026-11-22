@@ -17,7 +17,6 @@ from darsia.signals.color import (
     parse_color_embedding_basis,
 )
 
-from .restoration import RestorationConfig
 from .utils import _convert_none
 
 EMBEDDING_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -86,25 +85,6 @@ def parse_color_path_embedding(
     return embedding
 
 
-def _parse_embedding_restoration(cfg: dict, context: str) -> RestorationConfig | None:
-    """Restoration of a color embedding (None if absent or inactive).
-
-    The embedding keeps the grid of the image, so resize steps are refused.
-
-    """
-    if "restoration" not in cfg:
-        return None
-    if not isinstance(cfg["restoration"], dict):
-        raise ValueError(f"{context}.restoration must be a table.")
-    restoration = RestorationConfig().load(cfg["restoration"])
-    if any(step.method == "resize" for step in restoration.steps):
-        raise ValueError(
-            f"{context}.restoration: resize steps are not available for color "
-            "embeddings, which keep the grid of the image."
-        )
-    return restoration if restoration.active else None
-
-
 def parse_color_range_embedding(
     cfg: dict,
     embedding_id: str,
@@ -152,9 +132,6 @@ def parse_color_range_embedding(
         root=root,
         color_space=str(cfg["color_space"]).upper().strip(),
         ranges=ranges,
-        restoration_config=_parse_embedding_restoration(
-            cfg, f"color.range.{embedding_id}"
-        ),
     )
     return embedding
 
@@ -203,9 +180,6 @@ def parse_color_channel_embedding(
         color_space=str(cfg["color_space"]).upper().strip(),
         channel=str(cfg["channel"]).lower().strip(),
         mask_embedding=mask_embedding,
-        restoration_config=_parse_embedding_restoration(
-            cfg, f"color.channel.{embedding_id}"
-        ),
     )
     return embedding
 
@@ -462,13 +436,6 @@ class ColorRangeEmbeddingConfig:
             "range_encoding": "flat6",
         },
     )
-    restoration: RestorationConfig | None = field(
-        default=None,
-        metadata={
-            "name": "Restoration",
-            "help": "Optional restoration applied to this range/mask.",
-        },
-    )
     root: Path | None = field(
         default=None,
         metadata={
@@ -514,13 +481,6 @@ class ColorChannelEmbeddingConfig:
         metadata={
             "name": "Mask",
             "help": "Optional range-based mask restricting this channel.",
-        },
-    )
-    restoration: RestorationConfig | None = field(
-        default=None,
-        metadata={
-            "name": "Restoration",
-            "help": "Optional restoration applied to this channel.",
         },
     )
     root: Path | None = field(
