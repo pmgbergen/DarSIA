@@ -155,6 +155,7 @@ def analysis_segmentation_from_context(
             mass_analysis_result=mass_analysis_result,
             color_embedding_registry=getattr(ctx.config, "color", None),
             color_embedding_runtime=getattr(ctx, "color_embedding_runtime", None),
+            restoration=getattr(ctx, "restoration", None),
         )
 
         if show:

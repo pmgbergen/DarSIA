@@ -297,6 +297,7 @@ def analysis_thresholding_from_context(
                 mass_analysis_result=result,
                 color_embedding_registry=getattr(config, "color", None),
                 color_embedding_runtime=getattr(ctx, "color_embedding_runtime", None),
+                restoration=getattr(ctx, "restoration", None),
                 scalar_products=mode_images,
             )
             scalar = _to_scalar_array(mode_image)

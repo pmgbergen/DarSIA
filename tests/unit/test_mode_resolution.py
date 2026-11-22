@@ -1,5 +1,6 @@
 import textwrap
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -12,6 +13,12 @@ from darsia.presets.workflows.mode_resolution import (
     mode_requires_color_to_mass,
     resolve_mode_image,
 )
+from darsia.presets.workflows.config.resize import ResizeConfig
+from darsia.presets.workflows.config.restoration import (
+    RestorationConfig,
+    RestorationStepConfig,
+)
+from darsia.presets.workflows.restoration import build_restoration
 from darsia.presets.workflows.segmentation_contours import SimpleSegmentation
 from darsia.signals.color import (
     ColorEmbeddingBasis,
@@ -74,6 +81,45 @@ def test_resolve_color_channel_by_registry_key(tmp_path: Path) -> None:
     assert np.isclose(signal.img[0, 0], 0.0)
     assert np.isclose(signal.img[0, 1], 1.0)
     assert np.isclose(signal.img[1, 0], 127.0 / 255.0)
+
+
+def test_color_mode_is_restored_onto_the_result_grid(tmp_path: Path) -> None:
+    """Color modes get the restoration of the mass modes, e.g. a resize step."""
+    red = np.arange(16, dtype=float).reshape(4, 4) / 16
+    arr = np.stack([red, np.zeros_like(red), np.zeros_like(red)], axis=-1)
+    img = _optical_image(arr)
+    registry = _registry_from_toml(
+        tmp_path,
+        """
+        [[color_channel]]
+        name = "red_channel"
+        color_space = "RGB"
+        channel = "r"
+        """,
+    )
+    rig = SimpleNamespace(baseline=darsia.ScalarImage(np.zeros((4, 4))))
+    restoration = build_restoration(
+        RestorationConfig(
+            steps=[
+                RestorationStepConfig(
+                    method="resize", resize_options=ResizeConfig(scale=0.5)
+                )
+            ]
+        ),
+        rig,
+    )
+
+    signal = resolve_mode_image(
+        "red_channel",
+        img,
+        color_embedding_registry=registry,
+        color_embedding_runtime=_runtime(img),
+        restoration=restoration,
+    )
+
+    assert signal.img.shape == restoration.grid.img.shape == (2, 2)
+    expected = red.reshape(2, 2, 2, 2).mean(axis=(1, 3))
+    assert np.allclose(signal.img, expected)
 
 
 def test_resolve_color_mode_rejects_invalid_token() -> None:

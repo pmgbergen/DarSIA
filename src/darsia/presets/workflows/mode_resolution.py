@@ -9,6 +9,7 @@ import darsia
 from darsia.presets.workflows.config.color_embedding_registry import (
     ColorEmbeddingRegistry,
 )
+from darsia.presets.workflows.restoration import RestorationSteps
 from darsia.signals.color import ColorEmbeddingRuntime
 
 LEGACY_COLOR_TO_MASS_MODES = {
@@ -83,6 +84,7 @@ def _resolve_color_mode(
     image: darsia.Image,
     color_embedding_registry: ColorEmbeddingRegistry | None,
     color_embedding_runtime: ColorEmbeddingRuntime | None,
+    restoration: RestorationSteps | None,
 ) -> darsia.ScalarImage:
     if color_embedding_registry is None:
         raise ValueError(
@@ -96,7 +98,8 @@ def _resolve_color_mode(
     embedding = color_embedding_registry.resolve(embedding_id)
     if isinstance(image, darsia.Image):
         image = image.as_float()
-    return embedding.to_scalar_image(image, color_embedding_runtime)
+    scalar_image = embedding.to_scalar_image(image, color_embedding_runtime)
+    return scalar_image if restoration is None else restoration(scalar_image)
 
 
 def resolve_mode_image(
@@ -106,6 +109,7 @@ def resolve_mode_image(
     color_embedding_registry: ColorEmbeddingRegistry | None = None,
     color_embedding_runtime: ColorEmbeddingRuntime | None = None,
     scalar_products: dict[str, darsia.Image | None] | None = None,
+    restoration: RestorationSteps | None = None,
 ) -> darsia.Image:
     mode = mode.strip()
     # Rescaled mode.
@@ -123,5 +127,6 @@ def resolve_mode_image(
             image,
             color_embedding_registry,
             color_embedding_runtime,
+            restoration,
         )
     raise ValueError(f"Unsupported analysis mode '{mode}'.")

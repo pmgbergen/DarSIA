@@ -8,7 +8,6 @@ from pathlib import Path
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.config.restoration import RestorationConfig
 from darsia.signals.color.color_embedding import (
     ColorEmbedding,
     ColorEmbeddingBasis,
@@ -27,7 +26,6 @@ class ColorRangeEmbeddingTransform(ColorEmbeddingTransform):
     ranges: list[tuple[float | None, float | None]]
     mode: darsia.ColorMode
     baseline: darsia.Image | None
-    restoration: darsia.VolumeAveraging | darsia.TVD | None = None
 
     def __call__(self, image: darsia.Image) -> darsia.ScalarImage:
         trichromatic, color_space = normalized_trichromatic(
@@ -61,10 +59,6 @@ class ColorRangeEmbeddingTransform(ColorEmbeddingTransform):
 
         scalar_image = to_scalar_image(image, mask.astype(np.float32))
 
-        # Apply restoration if provided.
-        if self.restoration is not None:
-            scalar_image = self.restoration(scalar_image)
-
         return scalar_image
 
 
@@ -78,7 +72,6 @@ class ColorRangeEmbedding(ColorEmbedding):
     root: Path
     color_space: str
     ranges: list[tuple[float | None, float | None]]
-    restoration_config: RestorationConfig | None = None
 
     @property
     def config_file(self) -> Path:
@@ -87,9 +80,6 @@ class ColorRangeEmbedding(ColorEmbedding):
     def canonical_transform(
         self, runtime: ColorEmbeddingRuntime
     ) -> ColorEmbeddingTransform:
-        # Imported here: the workflows restoration itself builds on darsia.signals
-        from darsia.presets.workflows.restoration import build_restoration
-
         if self.basis != ColorEmbeddingBasis.GLOBAL:
             raise NotImplementedError(
                 "Color range embedding currently only supports basis='global'."
@@ -99,9 +89,4 @@ class ColorRangeEmbedding(ColorEmbedding):
             ranges=self.ranges,
             mode=self.mode,
             baseline=runtime.rig.baseline,
-            restoration=(
-                build_restoration(self.restoration_config, runtime.rig)
-                if self.restoration_config is not None
-                else None
-            ),
         )

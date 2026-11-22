@@ -8,7 +8,6 @@ from pathlib import Path
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.config.restoration import RestorationConfig
 from darsia.signals.color.color_embedding import (
     ColorEmbedding,
     ColorEmbeddingBasis,
@@ -33,7 +32,6 @@ class ColorChannelEmbeddingTransform(ColorEmbeddingTransform):
     mode: darsia.ColorMode
     baseline: darsia.Image | None
     mask_embedding_transform: ColorRangeEmbeddingTransform | None = None
-    restoration: darsia.VolumeAveraging | darsia.TVD | None = None
 
     def __call__(self, image: darsia.Image) -> darsia.ScalarImage:
         trichromatic, color_space = normalized_trichromatic(
@@ -47,13 +45,8 @@ class ColorChannelEmbeddingTransform(ColorEmbeddingTransform):
 
         # Retsrict to mask if provided.
         if self.mask_embedding_transform is not None:
-            print(type(self.mask_embedding_transform))
             mask_image = self.mask_embedding_transform(image)
             scalar_image.img = scalar_image.img * mask_image.img
-
-        # Apply restoration if provided.
-        if self.restoration is not None:
-            scalar_image = self.restoration(scalar_image)
 
         return scalar_image
 
@@ -69,7 +62,6 @@ class ColorChannelEmbedding(ColorEmbedding):
     color_space: str
     channel: str
     mask_embedding: ColorRangeEmbedding | None = None
-    restoration_config: RestorationConfig | None = None
 
     @property
     def config_file(self) -> Path:
@@ -78,9 +70,6 @@ class ColorChannelEmbedding(ColorEmbedding):
     def canonical_transform(
         self, runtime: ColorEmbeddingRuntime
     ) -> ColorEmbeddingTransform:
-        # Imported here: the workflows restoration itself builds on darsia.signals
-        from darsia.presets.workflows.restoration import build_restoration
-
         if self.basis != ColorEmbeddingBasis.GLOBAL:
             raise NotImplementedError(
                 "Color channel embedding currently only supports basis='global'."
@@ -94,11 +83,6 @@ class ColorChannelEmbedding(ColorEmbedding):
             mask_embedding_transform=(
                 self.mask_embedding.canonical_transform(runtime)
                 if self.mask_embedding is not None
-                else None
-            ),
-            restoration=(
-                build_restoration(self.restoration_config, runtime.rig)
-                if self.restoration_config is not None
                 else None
             ),
         )

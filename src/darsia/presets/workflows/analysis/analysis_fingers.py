@@ -363,6 +363,7 @@ def analysis_fingers_from_context(
             mass_analysis_result=mass_analysis_result,
             color_embedding_registry=getattr(ctx.config, "color", None),
             color_embedding_runtime=getattr(ctx, "color_embedding_runtime", None),
+            restoration=getattr(ctx, "restoration", None),
         )
 
         # Extract gradient-based segmentation if configured.
@@ -381,6 +382,7 @@ def analysis_fingers_from_context(
                 mass_analysis_result=mass_analysis_result,
                 color_embedding_registry=getattr(ctx.config, "color", None),
                 color_embedding_runtime=getattr(ctx, "color_embedding_runtime", None),
+                restoration=getattr(ctx, "restoration", None),
             )
 
         stream_images: dict[str, Any] | None = None
