@@ -753,7 +753,7 @@ class TestCorrectionsConfigMetadata:
                     assert pattern not in field_keys, f"{pattern} should be hidden"
 
     def test_resize_correction_mode_field_metadata(self):
-        """ResizeCorrectionConfig.mode should have name, help, and options."""
+        """ResizeConfig.mode should have name, help, and options."""
         from darsia.gui.ui.schema.dataclass_introspection import (
             get_section_fields,
         )
@@ -776,7 +776,7 @@ class TestCorrectionsConfigMetadata:
         assert mode_field.get("options") == ["scale", "target_shape"]
 
     def test_resize_correction_scale_and_shape_metadata(self):
-        """ResizeCorrectionConfig.scale and .target_shape should have name and help."""
+        """ResizeConfig.scale and .target_shape should have name and help."""
         from darsia.gui.ui.schema.dataclass_introspection import (
             get_section_fields,
         )
@@ -806,7 +806,7 @@ class TestCorrectionsConfigMetadata:
         assert target_shape_field.get("help") is not None
 
     def test_resize_correction_depends_on_metadata(self):
-        """ResizeCorrectionConfig.scale and .target_shape should have depends_on metadata."""
+        """ResizeConfig.scale and .target_shape should have depends_on metadata."""
         from darsia.gui.ui.schema.dataclass_introspection import (
             get_section_fields,
         )

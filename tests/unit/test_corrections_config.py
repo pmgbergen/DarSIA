@@ -1,6 +1,7 @@
 """Unit tests for CorrectionsConfig and sub-config validation.
 
-Focuses specifically on the ResizeCorrectionConfig mode/scale/target_shape refactor,
+Focuses specifically on loading [corrections.resize] (ResizeConfig, see
+test_resize_config.py),
 the DriftCorrectionConfig/ColorCorrectionConfig colorchecker/roi mode selection, and
 TOML round-trip loading. GUI schema metadata tests are in test_metadata_keywords.py.
 """
@@ -13,7 +14,6 @@ from darsia.presets.workflows.config.corrections import (
     ColorCorrectionConfig,
     CorrectionsConfig,
     DriftCorrectionConfig,
-    ResizeCorrectionConfig,
 )
 from darsia.presets.workflows.config.roi import RoiConfig
 from darsia.presets.workflows.config.roi_registry import RoiRegistry
@@ -35,62 +35,8 @@ def _write_toml(tmp_path: Path, content: str) -> Path:
     return p
 
 
-class TestResizeCorrectionConfigLoad:
-    """Test ResizeCorrectionConfig validation in load()."""
-
-    def test_mode_scale_with_scale_value_valid(self):
-        """mode='scale' with scale set should load successfully."""
-        cfg = ResizeCorrectionConfig().load({"mode": "scale", "scale": 0.5})
-        assert cfg.mode == "scale"
-        assert cfg.scale == 0.5
-        assert cfg.target_shape is None
-
-    def test_mode_scale_defaults_to_scale(self):
-        """Omitting mode should default to 'scale'."""
-        cfg = ResizeCorrectionConfig().load({"scale": 0.75})
-        assert cfg.mode == "scale"
-        assert cfg.scale == 0.75
-
-    def test_mode_scale_without_scale_value_raises(self):
-        """mode='scale' without scale set should raise ValueError."""
-        with pytest.raises(ValueError, match="mode='scale' requires 'scale' to be set"):
-            ResizeCorrectionConfig().load({"mode": "scale"})
-
-    def test_mode_target_shape_with_2_element_shape_valid(self):
-        """mode='target_shape' with valid 2-element shape should load successfully."""
-        cfg = ResizeCorrectionConfig().load(
-            {"mode": "target_shape", "target_shape": [512, 512]}
-        )
-        assert cfg.mode == "target_shape"
-        assert isinstance(cfg.target_shape, tuple), "target_shape list should convert to tuple"
-        assert cfg.target_shape == (512, 512)
-        assert cfg.scale is None
-
-    def test_mode_target_shape_without_shape_raises(self):
-        """mode='target_shape' without target_shape set should raise ValueError."""
-        with pytest.raises(
-            ValueError, match="mode='target_shape' requires 'target_shape' to be set"
-        ):
-            ResizeCorrectionConfig().load({"mode": "target_shape"})
-
-    @pytest.mark.parametrize(
-        "bad_shape",
-        [[512], [512, 512, 512]],
-        ids=["1-element", "3-element"],
-    )
-    def test_mode_target_shape_with_wrong_length_raises(self, bad_shape):
-        """mode='target_shape' with non-2-element shape should raise ValueError."""
-        with pytest.raises(
-            ValueError, match="target_shape must have exactly 2 elements"
-        ):
-            ResizeCorrectionConfig().load(
-                {"mode": "target_shape", "target_shape": bad_shape}
-            )
-
-    def test_invalid_mode_raises(self):
-        """Invalid mode value should raise ValueError."""
-        with pytest.raises(ValueError, match="mode must be 'scale' or 'target_shape'"):
-            ResizeCorrectionConfig().load({"mode": "invalid"})
+class TestCorrectionsConfigResize:
+    """Loading [corrections.resize] (the class itself: test_resize_config.py)."""
 
     def test_toml_round_trip_scale_mode(self, tmp_path):
         """Full TOML load/save round-trip for scale mode."""
@@ -127,7 +73,9 @@ class TestResizeCorrectionConfigLoad:
             tmp_path, "[corrections.resize]\ntarget_shape = [512, 512]\n"
         )
         # This should fail because mode defaults to 'scale' which requires scale to be set
-        with pytest.raises(ValueError, match="mode='scale' requires 'scale' to be set"):
+        with pytest.raises(
+            ValueError, match=r"\[corrections.resize\] mode='scale' requires 'scale'"
+        ):
             CorrectionsConfig().load(cfg_path)
 
 
