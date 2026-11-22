@@ -28,7 +28,7 @@ from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
-from darsia.presets.workflows.restoration import build_restoration
+from darsia.presets.workflows.restoration import RestorationSteps, build_restoration
 from darsia.presets.workflows.rig import Rig
 from darsia.signals.color import ColorEmbeddingRuntime, ColorPathEmbedding
 
@@ -141,7 +141,7 @@ class AnalysisContext:
     fluidflower: Rig
 
     # Optional - only initialized for mass/volume/segmentation analyses
-    restoration: darsia.VolumeAveraging | darsia.TVD | None = None
+    restoration: RestorationSteps | None = None
     color_to_mass_analysis: HeterogeneousColorToMassAnalysis | None = None
     expert_knowledge_adapter: ExpertKnowledgeAdapter | None = None
     color_embedding_runtime: ColorEmbeddingRuntime | None = None
@@ -294,7 +294,7 @@ def _build_color_to_mass_analysis(
     config: FluidFlowerConfig,
     experiment: darsia.ProtocolledExperiment,
     rig: Rig,
-    restoration: darsia.VolumeAveraging | darsia.TVD | None,
+    restoration: RestorationSteps | None,
     expert_knowledge_adapter: ExpertKnowledgeAdapter | None,
 ) -> HeterogeneousColorToMassAnalysis:
     interpretation = config.physics.interpretation

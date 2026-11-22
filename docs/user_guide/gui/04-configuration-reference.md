@@ -103,14 +103,20 @@ scale = 0.25
 
 ## `[restoration]`
 
-Optional smoothing applied to scalar fields before export:
+Optional restoration of the signal: a list of steps, applied in the given order:
 ```toml
 [restoration]
-method = "volume_average"
 active = false
+
+[[restoration.steps]]
+method = "volume_average"
+options = { rev_size = 0.005 }
 ```
-`method` is `volume_average` or `tvd`; `ignore` (not set here) can exclude
-`boolean_porosity`, `image_porosity`, or `inner_labels` masks from smoothing.
+A step's `method` is `resize` (coarser resolution by area averaging, for all later
+steps and the rest of the analysis), `volume_average` or `tvd`; `ignore` (not set
+here) can exclude `boolean_porosity`, `image_porosity`, or `inner_labels` masks from
+the averaging and denoising steps. See the workflows configuration reference for the
+options of each method.
 
 ## `[labeling]` and `[facies]`
 

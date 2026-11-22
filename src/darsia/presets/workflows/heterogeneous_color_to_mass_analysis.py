@@ -26,6 +26,7 @@ from darsia.presets.workflows.calibration.metadata import (
     write_calibration_metadata,
 )
 from darsia.presets.workflows.config.physics import Interpretation
+from darsia.presets.workflows.restoration import RestorationSteps
 from darsia.presets.workflows.simple_run_analysis import SimpleMassAnalysisResults
 from darsia.signals.color.color_embedding import (
     ColorEmbeddingBasis,
@@ -81,8 +82,10 @@ class HeterogeneousColorToMassAnalysis:
         self.flash = flash
         """Flash model for converting pH to concentrations."""
 
+        if isinstance(restoration, RestorationSteps):
+            fluid_model = fluid_model.on_grid(restoration.grid)
         self.fluid_model = fluid_model
-        """Mass computation tool (fluid model)."""
+        """Mass computation tool (fluid model), on the grid of the restored signal."""
 
         self.pressure_temperature_protocol: (
             darsia.PressureTemperatureProtocol | None

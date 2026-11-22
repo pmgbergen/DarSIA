@@ -86,6 +86,25 @@ def parse_color_path_embedding(
     return embedding
 
 
+def _parse_embedding_restoration(cfg: dict, context: str) -> RestorationConfig | None:
+    """Restoration of a color embedding (None if absent or inactive).
+
+    The embedding keeps the grid of the image, so resize steps are refused.
+
+    """
+    if "restoration" not in cfg:
+        return None
+    if not isinstance(cfg["restoration"], dict):
+        raise ValueError(f"{context}.restoration must be a table.")
+    restoration = RestorationConfig().load(cfg["restoration"])
+    if any(step.method == "resize" for step in restoration.steps):
+        raise ValueError(
+            f"{context}.restoration: resize steps are not available for color "
+            "embeddings, which keep the grid of the image."
+        )
+    return restoration if restoration.active else None
+
+
 def parse_color_range_embedding(
     cfg: dict,
     embedding_id: str,
@@ -126,14 +145,6 @@ def parse_color_range_embedding(
     )
     if "color_space" not in cfg:
         raise ValueError(f"color.range.{embedding_id}.color_space is required.")
-    if "restoration" in cfg:
-        if not isinstance(cfg["restoration"], dict):
-            raise ValueError(
-                f"color.channel.{embedding_id}.restoration must be a table."
-            )
-        from .restoration import RestorationConfig
-
-        restoration_config = RestorationConfig().load(cfg["restoration"])
     embedding = ColorRangeEmbedding(
         embedding_id=embedding_id,
         mode=mode,
@@ -141,7 +152,9 @@ def parse_color_range_embedding(
         root=root,
         color_space=str(cfg["color_space"]).upper().strip(),
         ranges=ranges,
-        restoration_config=restoration_config if "restoration" in cfg else None,
+        restoration_config=_parse_embedding_restoration(
+            cfg, f"color.range.{embedding_id}"
+        ),
     )
     return embedding
 
@@ -182,14 +195,6 @@ def parse_color_channel_embedding(
             color_root=root,
             data=data,
         )
-    if "restoration" in cfg:
-        if not isinstance(cfg["restoration"], dict):
-            raise ValueError(
-                f"color.channel.{embedding_id}.restoration must be a table."
-            )
-        from .restoration import RestorationConfig
-
-        restoration_config = RestorationConfig().load(cfg["restoration"])
     embedding = ColorChannelEmbedding(
         embedding_id=embedding_id,
         mode=mode,
@@ -198,7 +203,9 @@ def parse_color_channel_embedding(
         color_space=str(cfg["color_space"]).upper().strip(),
         channel=str(cfg["channel"]).lower().strip(),
         mask_embedding=mask_embedding,
-        restoration_config=restoration_config if "restoration" in cfg else None,
+        restoration_config=_parse_embedding_restoration(
+            cfg, f"color.channel.{embedding_id}"
+        ),
     )
     return embedding
 
