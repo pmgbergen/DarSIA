@@ -2573,6 +2573,8 @@ class SettingsFactory:
         # Mark as a group result so save_settings can identify it.
         result["widget"] = group_box
         result["is_group_result"] = True
+        if setting_dict.get("depends_on") is not None:
+            result["depends_on"] = setting_dict["depends_on"]
         return None, result
 
     def _sync_settings_inputs_to_config_dict(self):
@@ -2657,9 +2659,18 @@ class SettingsFactory:
                                     if isinstance(driver_value, (list, set, tuple))
                                     else current_val == driver_value
                                 )
-                                # If not active, skip this group's sub-inputs
+                                # If not active, skip this group's sub-inputs. Groups
+                                # may share keys (same toml_key and field name); skip
+                                # a key only if its registered widget is this group's.
                                 if not is_active:
-                                    skip_keys.update(value.get("sub_inputs", {}).keys())
+                                    skip_keys.update(
+                                        sub_key
+                                        for sub_key, sub_widget in value.get(
+                                            "sub_inputs", {}
+                                        ).items()
+                                        if self.main_window.settings_inputs.get(sub_key)
+                                        is sub_widget
+                                    )
 
         # Second pass: save all regular values (non-group dicts),
         # skipping unchecked group sub-inputs.
