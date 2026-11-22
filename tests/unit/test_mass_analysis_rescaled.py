@@ -511,12 +511,11 @@ def test_fluid_model_on_another_grid_keeps_type_and_state() -> None:
     assert np.isclose(on_grid.density_gas[-1, 0], co2.density_gas[-1, 0])
 
 
-def test_uniform_fluid_model_on_another_grid_stays_uniform() -> None:
+def test_fluid_model_on_its_own_grid_or_uniform_is_itself() -> None:
+    """Nothing to evaluate again: the fluid model itself, not a copy."""
     tracer = darsia.FluidMassAnalysis()
-    coarse = darsia.ScalarImage(np.zeros((4, 3)), dimensions=[1.0, 1.0])
+    co2 = _make_co2_mass_analysis((4, 3))
+    grid = darsia.ScalarImage(np.zeros((4, 3)), dimensions=[1.0, 1.0])
 
-    on_grid = tracer.on_grid(coarse)
-
-    assert on_grid is not tracer
-    assert on_grid.baseline is None
-    assert np.ndim(on_grid.aqueous_capacity) == 0
+    assert tracer.on_grid(grid) is tracer
+    assert co2.on_grid(grid) is co2
