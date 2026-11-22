@@ -329,16 +329,11 @@ class CalibrationState:
             else:
                 with darsia.timed("reduce analysis"):
                     analysis = self.analysis.reduced(factor)
-                shape = analysis.labels.img.shape[:2]
                 with darsia.timed("reduce images"):
                     images = []
                     for idx in range(len(self.images)):
                         image = self.float_image(idx)
-                        images.append(
-                            darsia.resize(
-                                image, shape=shape, interpolation="inter_area"
-                            )
-                        )
+                        images.append(darsia.transfer(image, analysis.labels))
                         if display is not None:
                             display.append(self._display_image(image))
             # The color interpretations of the images are cached only if computing

@@ -354,26 +354,22 @@ def test_generic_stages_are_used_for_other_setups(monkeypatch):
 
 
 def test_reduced_analysis_takes_labels_at_the_centers_and_averages_the_geometry():
-    """Labels (also of the expert knowledge) at the center of each reduced pixel,
-    depth and porosity averaged."""
+    """Labels at the center of each reduced pixel, depth and porosity averaged, fluid
+    properties on the reduced grid."""
     rng = np.random.default_rng(3)
     depth = darsia.ScalarImage(rng.random(SHAPE), **META)
     porosity = darsia.ScalarImage(rng.random(SHAPE), **META)
     geometry = darsia.ExtrudedPorousGeometry(
         depth=depth, porosity=porosity, **depth.shape_metadata()
     )
-    numbered = darsia.ScalarImage(np.arange(np.prod(SHAPE)).reshape(SHAPE), **META)
-    expert = ExpertKnowledgeAdapter(labels_image=numbered)
-    analysis, _ = _analysis(expert=expert, geometry=geometry)
+    analysis, _ = _analysis(geometry=geometry)
 
     reduced = analysis.reduced(4)
 
     centers = np.s_[2::4, 2::4]
     assert np.array_equal(reduced.labels.img, analysis.labels.img[centers])
     assert reduced.labels.img.dtype == analysis.labels.img.dtype
-    assert np.array_equal(
-        reduced.expert_knowledge_adapter.labels_image.img, numbered.img[centers]
-    )
+    assert reduced.fluid_model.density_gas.shape == (6, 9)
     for reduced_field, field in (
         (reduced.geometry.depth, depth),
         (reduced.geometry.porosity, porosity),
