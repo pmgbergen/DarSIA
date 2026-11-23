@@ -5,6 +5,8 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+from .migrations import migrate_section
+
 
 def _get_section(data: dict, section: str) -> dict:
     """Utility to get a section from a toml-loaded dictionary."""
@@ -59,6 +61,8 @@ def _get_section_from_toml(path: Path | list[Path], section: str) -> dict:
     else:
         raise TypeError(f"Path must be a Path or list of Paths. It is {type(path)}.")
     sec = _get_section(data, section)
+    if isinstance(sec, dict):
+        migrate_section(section, sec)
     return sec
 
 

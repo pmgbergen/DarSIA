@@ -78,14 +78,13 @@ pixels near label boundaries, which mix the colours of two facies. It is not the
 physical porosity of the facies properties. The setup step "Image porosity" (GUI:
 Setup > Image porosity; CLI: `user_interface_setup --image-porosity`, also run by
 `--all` after the rig) computes it from the rig's baseline and labels and stores it in
-`<results>/setup/image_porosity/<method>/` (`none/` without detection), with
-`metadata.json` and figures. The restoration and the colour calibration read it there.
+`<results>/setup/image_porosity/<method>/`, with `metadata.json` and figures.
+`[image_porosity]` only says how it is computed:
 ```toml
 [image_porosity]
-active = true          # detect from the baseline; false: ones (default)
-method = "kmeans"      # detection method
-tol = 0.9              # boolean porosity: image porosity > tol (with detection)
-cutoff = 0.3           # detected values below become 0
+method = "kmeans"      # "none" (default): no detection, ones
+tol = 0.9              # boolean porosity: image porosity > tol
+cutoff = 0.3           # values below become 0
 boundary_band = 5      # pixels on each side of label boundaries set to 0; 0: none
 
 [image_porosity.kmeans]
@@ -94,18 +93,29 @@ num_clusters = 5
 tol_color_distance = 0.1
 tol_color_gradient = 0.02
 ```
-- Steps: detection (or ones), then `cutoff`, then `boundary_band`. A missing section
-  means no detection with the default band.
-- Boolean porosity (mask of the colour calibration, `"boolean_porosity"` of the
-  restoration): image porosity > `tol` with detection, else the full domain. `tol` is
-  applied when reading, so it changes without a new setup; `active`, `method`,
-  `cutoff`, `boundary_band` and the method options need the step to run again.
+- Steps: the method (`"none"`: ones), then `cutoff`, then `boundary_band`. A missing
+  section means the defaults (ones with the band).
 - Methods: `"kmeans"` clusters the colours per patch and label and interpolates between
   the dominant colour (1) and an outlier colour (0) with a Gaussian kernel. Each method
   keeps its own options table and output folder.
-- The rig setup reads this section only for the mask of the illumination correction
-  (`[corrections.illumination]`): detection > `tol` on the current baseline.
-- Former keys (`mode`, flat `patches`, `num_clusters`, `sample_width`, ...) are errors.
+- Boolean porosity: image porosity > `tol`. `tol` is applied when reading, so it
+  changes without a new setup; `method`, `cutoff`, `boundary_band` and the method
+  options need the step to run again.
+- Whether the image porosity is used is decided by each consumer. One vocabulary:
+  `"image_porosity"` is the continuous map, `"boolean_porosity"` the map > `tol`,
+  `"none"` not used.
+  - restoration: `volume_average` option `mask = "none" | "image_porosity" |
+    "boolean_porosity"` (default `"image_porosity"`), ignore masks `"image_porosity"` /
+    `"boolean_porosity"`, TVD `weight = "image_porosity"` / `"boolean_porosity"`;
+  - `[calibration.color] mask = "none" | "boolean_porosity"` (default `"none"`: all
+    pixels of the ROIs): calibrate on the boolean porosity only;
+  - `[corrections.illumination] mask = "none" | "boolean_porosity"` (default
+    `"none"`): fit the illumination correction on the boolean porosity of the method,
+    computed in the rig setup on the current baseline (before cutoff and band).
+- The former switch `active` is read with a warning: `false` as `method = "none"`,
+  `true` as the given method (`"kmeans"` if none); the GUI drops it when it loads the
+  config. The other former keys (`mode`, flat `patches`, `num_clusters`,
+  `sample_width`, ...) are errors.
 
 ## Restoration section
 The restoration acts on the signal, before the flash, and on the images of color
@@ -128,9 +138,10 @@ options = { weight = 0.1, method = "chambolle" }
   - `"resize"`: changes the resolution by area averaging. Options as for
     `[corrections.resize]`: `mode = "scale"` with `scale`, or
     `mode = "target_shape"` with `target_shape = [rows, cols]`.
-  - `"volume_average"`: averages over a representative elementary volume, weighted
-    by the stored image porosity (see the image porosity section); option `rev_size`
-    in meters.
+  - `"volume_average"`: averages over a representative elementary volume; options
+    `rev_size` in meters and `mask` (default `"image_porosity"`: weighted by the
+    stored image porosity, see the image porosity section; `"boolean_porosity"`: over
+    the pixels of the boolean porosity, equally weighted; `"none"`: plain average).
   - `"tvd"`: total variation denoising; options `method`, `weight` (a number,
     `"image_porosity"` or `"boolean_porosity"`), `max_num_iter`, `eps`, `omega`,
     `regularization`.
@@ -145,8 +156,8 @@ options = { weight = 0.1, method = "chambolle" }
     image porosity has its own, configurable band (`[image_porosity] boundary_band`,
     default 5 px on each side), which `volume_average` and the `image_porosity` weight
     and mask see.
-  - `"image_porosity"`, `"boolean_porosity"` and `volume_average` need the setup step
-    "Image porosity" to have run (see below).
+  - `"image_porosity"`, `"boolean_porosity"` (also as `volume_average` mask) need the
+    setup step "Image porosity" to have run (see the image porosity section).
 - **Resolution:** after a resize step, all later steps and the rest of the analysis
   (flash, expert knowledge, mass) work on the new grid. The rig data they use
   (porosity, ignore masks, labels of expert knowledge regions, pressure and

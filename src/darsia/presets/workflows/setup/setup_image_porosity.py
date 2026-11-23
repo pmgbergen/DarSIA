@@ -58,10 +58,7 @@ def setup_image_porosity(
     rig = cls.load(config.rig.path)
 
     porosity = compute_image_porosity(rig.baseline, rig.labels, porosity_config)
-    folder = image_porosity_folder(
-        config.data.results,
-        porosity_config.method if porosity_config.active else None,
-    )
+    folder = image_porosity_folder(config.data.results, porosity_config.method)
     save_image_porosity(
         folder,
         porosity,

@@ -211,10 +211,16 @@ def calibration_color_paths_from_context(
 
     # ! ---- BUILD CALIBRATION MASK ----
 
-    # Porosity mask restricted to the union of ROIs listed in the calibration config.
-    boolean_porosity = load_image_porosity(
-        config.image_porosity, config.data.results
-    ).boolean_on(fluidflower.baseline)
+    # Porosity mask ([calibration.color] mask, "none": all pixels) restricted
+    # to the union of ROIs listed in the calibration config.
+    if color_cfg.mask == "boolean_porosity":
+        boolean_porosity = load_image_porosity(
+            config.image_porosity, config.data.results
+        ).boolean_on(fluidflower.baseline)
+    else:
+        boolean_porosity = darsia.ones_like(
+            fluidflower.baseline, mode="voxels", dtype=bool
+        )
     calibration_mask = boolean_porosity.copy()
     if color_cfg.rois and config.roi_registry is not None:
         roi_entries = config.roi_registry.resolve_rois(color_cfg.rois)

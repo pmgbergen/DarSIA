@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import darsia
 from darsia.utils.units import MASS_UNIT_FACTORS, TIME_UNIT_FACTORS, VOLUME_UNIT_FACTORS
 
 from ._key_list_sources import COLOR_EMBEDDING_SOURCES, REGISTRY_SOURCES, ROI_SOURCES
 from .contour_smoother import ContourSmootherSelection
+from .image_porosity import POROSITY_MASKS, load_porosity_mask
 from .roi_registry import _load_roi_key_list
 from .utils import _get_key, _get_section, _get_section_from_toml
 
@@ -144,6 +145,18 @@ class CalibrationColorConfig:
             "key_list_sources": ROI_SOURCES,
         },
     )
+    mask: Literal["none", "boolean_porosity"] = field(
+        default="none",
+        metadata={
+            "name": "Mask",
+            "help": (
+                "'none': all pixels of the selected ROIs; 'boolean_porosity': only "
+                "pixels of the boolean porosity (Setup > Image porosity, image porosity "
+                "> its boolean threshold)."
+            ),
+            "options": list(POROSITY_MASKS),
+        },
+    )
     color_path: ColorPathCalibrationConfig | None = field(
         default_factory=ColorPathCalibrationConfig,
         metadata={
@@ -191,6 +204,7 @@ class CalibrationColorConfig:
             context="calibration.color.no_rois",
             roi_registry=roi_registry,
         )
+        self.mask = load_porosity_mask(sec, self.mask, "[calibration.color]")
 
         # Load color_path calibration config if present
         try:

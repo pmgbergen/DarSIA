@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Union
 
+from .image_porosity import POROSITY_WEIGHTS, load_porosity_mask
 from .resize import ResizeConfig
 from .utils import _get_key, _get_section_from_toml
 
@@ -18,10 +19,26 @@ class VolumeAveragingConfig:
             "help": "Size of the representative elementary volume (REV) in meters.",
         },
     )
+    mask: Literal["none", "image_porosity", "boolean_porosity"] = field(
+        default="image_porosity",
+        metadata={
+            "name": "Mask",
+            "help": (
+                "'image_porosity': average weighted by the image porosity of Setup > "
+                "Image porosity (pixels with porosity 0, e.g. the boundary band, do not "
+                "contribute); 'boolean_porosity': average over the pixels of the "
+                "boolean porosity, equally weighted; 'none': plain average."
+            ),
+            "options": list(POROSITY_WEIGHTS),
+        },
+    )
 
     def load(self, sec: dict) -> "VolumeAveragingConfig":
         self.rev_size = _get_key(
             sec, "rev_size", self.rev_size, required=False, type_=float
+        )
+        self.mask = load_porosity_mask(
+            sec, self.mask, "volume_average", options=POROSITY_WEIGHTS
         )
         return self
 

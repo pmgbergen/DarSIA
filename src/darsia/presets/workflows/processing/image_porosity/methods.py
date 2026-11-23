@@ -2,8 +2,9 @@
 
 A method is a function `detect(baseline, labels, options) -> darsia.Image` with values
 in [0, 1] and an options dataclass, the sub-table `[image_porosity.<name>]` of the
-config. A new method needs a module `method_<name>.py`, an entry here, and its name
-and options in `config/image_porosity.py`.
+config (`"none"`, no detection, has no options). A new method needs a module
+`method_<name>.py`, an entry here, and its name and options in
+`config/image_porosity.py`.
 """
 
 from dataclasses import dataclass
@@ -12,7 +13,7 @@ from typing import Any, Callable
 import darsia
 from darsia.presets.workflows.config.image_porosity import IMAGE_POROSITY_METHODS
 
-from . import method_kmeans
+from . import method_kmeans, method_none
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,7 @@ class ImagePorosityMethod:
 
 
 METHODS: dict[str, ImagePorosityMethod] = {
+    "none": ImagePorosityMethod("none", method_none.detect),
     "kmeans": ImagePorosityMethod("kmeans", method_kmeans.detect),
 }
 """Detection methods by name."""

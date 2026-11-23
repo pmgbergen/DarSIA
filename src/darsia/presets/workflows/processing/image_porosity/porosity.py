@@ -3,13 +3,14 @@
 The image porosity marks pixels of the baseline that show the usual (pore space)
 colour of their facies (1) and pixels that do not (0). It is computed in three steps:
 
-1. detection with the method of `[image_porosity] method` (if `active`), else ones;
-2. `cutoff`: detected values below it become 0;
+1. detection with the method of `[image_porosity] method` (`"none"`: ones);
+2. `cutoff`: values below it become 0;
 3. `boundary_band`: pixels within that many pixels of a label boundary become 0. Pixels
    there mix the colours of two facies and represent neither.
 
-The boolean porosity is the image porosity above `tol` with detection, else the full
-domain; `tol` is applied when reading, so it can change without a new setup.
+The boolean porosity is the image porosity above `tol`; `tol` is applied when
+reading, so it can change without a new setup. Whether a step uses the image porosity
+is decided by that step (its own options), not here.
 """
 
 from __future__ import annotations
@@ -20,8 +21,6 @@ from dataclasses import asdict
 from datetime import datetime
 from importlib import metadata
 from pathlib import Path
-
-import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
@@ -39,7 +38,7 @@ METADATA_FILE = "metadata.json"
 def detect_image_porosity(
     baseline: darsia.Image, labels: darsia.Image, config: ImagePorosityConfig
 ) -> darsia.Image:
-    """Step 1 only: the detected image porosity, or ones without detection.
+    """Step 1 only: the image porosity of the configured method (`"none"`: ones).
 
     Parameters
     ----------
@@ -56,8 +55,6 @@ def detect_image_porosity(
         Image porosity in [0, 1] on the grid of the baseline.
 
     """
-    if not config.active:
-        return darsia.ones_like(baseline, mode="voxels", dtype=np.float32)
     method = METHODS[config.method]
     with darsia.timed(f"image porosity ({config.method})"):
         return method.detect(baseline, labels, config.method_options())
@@ -92,14 +89,8 @@ def compute_image_porosity(
 def boolean_image_porosity(
     porosity: darsia.Image, config: ImagePorosityConfig
 ) -> darsia.Image:
-    """Boolean porosity: image porosity above `tol` with detection, else all True."""
-    if config.active:
-        return porosity > config.tol
-    return darsia.ones_like(porosity, mode="voxels", dtype=bool)
-
-
-def _method_name(config: ImagePorosityConfig) -> str | None:
-    return config.method if config.active else None
+    """Boolean porosity: image porosity above `tol`."""
+    return porosity > config.tol
 
 
 def _darsia_version() -> str:
@@ -135,9 +126,10 @@ def save_image_porosity(
 
     folder.mkdir(parents=True, exist_ok=True)
     porosity.save(folder / IMAGE_POROSITY_FILE, verbose=False)
+    options = config.method_options()
     info = {
-        "method": _method_name(config),
-        "options": asdict(config.method_options()) if config.active else None,
+        "method": config.method,
+        "options": None if options is None else asdict(options),
         "cutoff": config.cutoff,
         "boundary_band": config.boundary_band,
         "darsia_version": _darsia_version(),
@@ -157,28 +149,25 @@ def save_image_porosity(
 
     figures = folder / "figures"
     figures.mkdir(exist_ok=True)
+    # Figures from every n-th pixel (display only; about 2000 pixels wide)
+    step = max(1, porosity.img.shape[1] // 2000)
     save_scalar_map_illustration(
-        porosity.img,
+        porosity.img[::step, ::step],
         figures / "image_porosity.jpg",
         title="Image porosity",
         colorbar_label="Image porosity",
     )
-    if config.active:
-        save_scalar_map_illustration(
-            boolean_image_porosity(porosity, config).img.astype(float),
-            figures / "boolean_porosity.jpg",
-            title=f"Boolean porosity (> {config.tol})",
-            colorbar_label="Porous",
-        )
+    save_scalar_map_illustration(
+        (porosity.img[::step, ::step] > config.tol).astype(float),
+        figures / "boolean_porosity.jpg",
+        title=f"Boolean porosity (> {config.tol})",
+        colorbar_label="Porous",
+    )
     logger.info(f"Image porosity stored in {folder}.")
 
 
 class ImagePorosity:
-    """Stored image porosity of the configured method, read on first use.
-
-    Without detection, the boolean porosity needs no file (full domain); the image
-    porosity itself is always read from the file, as it carries the boundary band.
-    """
+    """Stored image porosity of the configured method, read on first use."""
 
     def __init__(self, config: ImagePorosityConfig | None, results: Path) -> None:
         """
@@ -191,7 +180,7 @@ class ImagePorosity:
 
         """
         self.config = config if config is not None else ImagePorosityConfig()
-        self.folder = image_porosity_folder(results, _method_name(self.config))
+        self.folder = image_porosity_folder(results, self.config.method)
         """Folder of the stored image porosity."""
         self._map: darsia.Image | None = None
 
@@ -205,9 +194,9 @@ class ImagePorosity:
         """The stored image porosity (read on first use, not to be modified)."""
         if self._map is None:
             if not self.file.exists():
-                method = _method_name(self.config) or "no detection"
                 raise FileNotFoundError(
-                    f"No image porosity ({method}) at {self.file}. Run the setup step "
+                    f"No image porosity (method {self.config.method!r}) at "
+                    f"{self.file}. Run the setup step "
                     "'Image porosity' (GUI: Setup > Image porosity; CLI: "
                     "user_interface_setup --image-porosity)."
                 )
@@ -221,8 +210,6 @@ class ImagePorosity:
 
     def boolean_on(self, grid: darsia.Image) -> darsia.Image:
         """Boolean porosity on the grid of `grid`."""
-        if not self.config.active:
-            return darsia.ones_like(grid, mode="voxels", dtype=bool)
         return darsia.transfer(boolean_image_porosity(self.map, self.config), grid)
 
 

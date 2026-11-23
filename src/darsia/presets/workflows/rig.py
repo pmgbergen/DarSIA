@@ -415,10 +415,10 @@ class Rig:
         Relative color can either be loaded from a precomputed correction file or
         calibrated from configured images (interactive mode only).
 
-        The illumination correction is fitted on the boolean image porosity of the
-        current baseline (`[image_porosity]`: detection > `tol`, else the full domain),
-        computed here and not kept; the stored image porosity is a setup step of its
-        own, after the rig.
+        With `[corrections.illumination] mask = "boolean_porosity"`, the illumination
+        correction is fitted on the boolean image porosity of the current baseline
+        (`[image_porosity]` method > `tol`), computed here and not kept; the stored image
+        porosity is a setup step of its own, after the rig.
         """
         if corrections_config is None:
             corrections_config = CorrectionsConfig()
@@ -765,9 +765,10 @@ class Rig:
         show_plot : bool
             Whether to show diagnostic plots during setup (default: False).
         image_porosity_config : ImagePorosityConfig | None
-            `[image_porosity]`: the correction is fitted on the boolean image porosity
-            of the current baseline (detection > `tol`, else the full domain), which
-            is computed here and not kept. None means no detection.
+            `[image_porosity]`: with `config.mask = "boolean_porosity"`, the correction is
+            fitted on the boolean image porosity of the current baseline (method >
+            `tol`, before cutoff and boundary band), computed here and not kept. None
+            means the defaults.
 
         Notes
         -----
@@ -797,17 +798,22 @@ class Rig:
                     )
                     sample_groups.append(samples)
 
-            # Fit on the boolean image porosity of the current baseline
-            from darsia.presets.workflows.processing.image_porosity import (
-                boolean_image_porosity,
-                detect_image_porosity,
-            )
+            # Fit on the boolean image porosity of the current baseline, if asked for
+            if config.mask == "boolean_porosity":
+                from darsia.presets.workflows.processing.image_porosity import (
+                    boolean_image_porosity,
+                    detect_image_porosity,
+                )
 
-            porosity_config = image_porosity_config or ImagePorosityConfig()
-            mask = boolean_image_porosity(
-                detect_image_porosity(self.baseline, self.labels, porosity_config),
-                porosity_config,
-            )
+                porosity_config = image_porosity_config or ImagePorosityConfig()
+                mask = boolean_image_porosity(
+                    detect_image_porosity(self.baseline, self.labels, porosity_config),
+                    porosity_config,
+                )
+            else:
+                mask = darsia.ones_like(
+                    self.shape_corrected_baseline, mode="voxels", dtype=bool
+                )
 
             # Determine illumination correction based on inputs
             illumination_correction.setup(

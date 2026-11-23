@@ -538,8 +538,8 @@ class TestDepthConfigMetadata:
 
 
 class TestImagePorosityConfigMetadata:
-    """Regression test: GUI schema of ImagePorosityConfig (detection switch, method
-    dropdown, method options as a group shown for its method)."""
+    """Regression test: GUI schema of ImagePorosityConfig (method dropdown, method
+    options as a group shown for its method)."""
 
     def _schema(self):
         from darsia.gui.ui.schema.dataclass_introspection import (
@@ -554,7 +554,6 @@ class TestImagePorosityConfigMetadata:
         """The section shows its fields directly (no section-level toggle)."""
         fields = self._schema()
         assert set(fields) == {
-            "image_porosity.active",
             "image_porosity.method",
             "image_porosity.tol",
             "image_porosity.cutoff",
@@ -562,14 +561,9 @@ class TestImagePorosityConfigMetadata:
             "image_porosity.kmeans",
         }
 
-    def test_image_porosity_detection_switch(self):
-        active = self._schema()["image_porosity.active"]
-        assert active.get("type") == "bool"
-        assert active.get("name") == "Detect image porosity"
-
     def test_image_porosity_method_has_dropdown_options(self):
         method = self._schema()["image_porosity.method"]
-        assert method.get("options") == ["kmeans"]
+        assert method.get("options") == ["none", "kmeans"]
         assert method.get("name") == "Method"
         assert method.get("help") is not None
 

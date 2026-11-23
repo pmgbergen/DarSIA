@@ -8,6 +8,14 @@ from PySide6.QtWidgets import QFileDialog
 from .recent_files import add_recent_config, remove_recent_config
 
 
+def _migrate(config_dict: dict) -> None:
+    """Migrate former formats in place (`config/migrations.py`); the GUI writes its
+    config back on save, so they disappear with the next save."""
+    from darsia.presets.workflows.config.migrations import migrate_config
+
+    migrate_config(config_dict)
+
+
 class ConfigController:
     """Manages config file operations: new, open, save, recent files."""
 
@@ -87,6 +95,7 @@ class ConfigController:
         try:
             with open(file, "r") as f:
                 self.main_window.config_dict = toml.load(f)
+            _migrate(self.main_window.config_dict)
             self.main_window.config_file = file
             add_recent_config(file)
             self.main_window.print_log(f"Config loaded: {file}")
@@ -116,6 +125,7 @@ class ConfigController:
         except Exception as e:
             self.main_window.print_log(f"Error reloading config file: {e}")
             return
+        _migrate(self.main_window.config_dict)
         # Clear settings_inputs so the rebuild does not sync stale widgets back into
         # config_dict, overwriting values the run wrote (same as apply_partial_preset).
         self.main_window.settings_inputs.clear()

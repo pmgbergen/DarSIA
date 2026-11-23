@@ -7,6 +7,7 @@ import pytest
 
 import darsia
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
+from darsia.presets.workflows.config.migrations import migrate_config
 from darsia.presets.workflows.processing.image_porosity import (
     boolean_image_porosity,
     compute_image_porosity,
@@ -37,8 +38,8 @@ def _make_inputs(shape=(10, 20), two_labels=False):
 class TestImagePorosityConfig:
     def test_defaults(self):
         cfg = ImagePorosityConfig()
-        assert cfg.active is False
-        assert cfg.method == "kmeans"
+        assert cfg.method == "none"
+        assert cfg.method_options() is None
         assert cfg.tol == pytest.approx(0.9)
         assert cfg.cutoff == pytest.approx(0.3)
         assert cfg.boundary_band == 5
@@ -50,7 +51,6 @@ class TestImagePorosityConfig:
     def test_load_detection_and_options(self):
         cfg = ImagePorosityConfig()._load_dict(
             {
-                "active": True,
                 "method": "kmeans",
                 "tol": 0.8,
                 "cutoff": 0.2,
@@ -63,7 +63,7 @@ class TestImagePorosityConfig:
                 },
             }
         )
-        assert cfg.active is True
+        assert cfg.method == "kmeans"
         assert cfg.tol == pytest.approx(0.8)
         assert cfg.cutoff == pytest.approx(0.2)
         assert cfg.boundary_band == 3
@@ -74,8 +74,31 @@ class TestImagePorosityConfig:
 
     def test_load_empty_section_uses_defaults(self):
         cfg = ImagePorosityConfig()._load_dict({})
-        assert cfg.active is False
+        assert cfg.method == "none"
         assert cfg.boundary_band == 5
+
+    @pytest.mark.parametrize(
+        "sec, method",
+        [
+            ({"active": False}, "none"),
+            ({"active": False, "method": "kmeans"}, "none"),
+            ({"active": True}, "kmeans"),
+            ({"active": True, "method": "none"}, "none"),
+        ],
+    )
+    def test_former_active_is_migrated(self, sec, method):
+        config = {"image_porosity": dict(sec)}
+        with pytest.warns(DeprecationWarning, match="active"):
+            migrate_config(config)
+        assert "active" not in config["image_porosity"]
+        cfg = ImagePorosityConfig()._load_dict(config["image_porosity"])
+        assert cfg.method == method
+
+    def test_former_active_in_toml_is_migrated(self, tmp_path: Path):
+        toml_file = tmp_path / "config.toml"
+        toml_file.write_text("[image_porosity]\nactive = false\n")
+        with pytest.warns(DeprecationWarning, match="active"):
+            assert ImagePorosityConfig().load(toml_file).method == "none"
 
     @pytest.mark.parametrize("key", ["mode", "patches", "sample_width"])
     def test_former_keys_raise_with_hint(self, key):
@@ -98,11 +121,11 @@ class TestImagePorosityConfig:
     def test_load_from_toml_path(self, tmp_path: Path):
         toml_file = tmp_path / "config.toml"
         toml_file.write_text(
-            "[image_porosity]\nactive = true\ntol = 0.75\n\n"
+            '[image_porosity]\nmethod = "kmeans"\ntol = 0.75\n\n'
             "[image_porosity.kmeans]\nnum_clusters = 7\n"
         )
         cfg = ImagePorosityConfig().load(toml_file)
-        assert cfg.active is True
+        assert cfg.method == "kmeans"
         assert cfg.tol == pytest.approx(0.75)
         assert cfg.kmeans.num_clusters == 7
 
@@ -141,23 +164,25 @@ class TestComputeImagePorosity:
 
     def test_kmeans_shape_and_unit_interval(self):
         baseline, labels = _make_inputs(shape=(8, 12))
-        cfg = ImagePorosityConfig(active=True, boundary_band=0)
+        cfg = ImagePorosityConfig(method="kmeans", boundary_band=0)
         img = compute_image_porosity(baseline, labels, cfg).img
         assert img.shape == (8, 12)
         assert np.all(img >= 0.0)
         assert np.all(img <= 1.0)
 
-    def test_boolean_without_detection_is_full_domain(self):
-        baseline, labels = _make_inputs()
-        cfg = ImagePorosityConfig(tol=1.0)
+    def test_boolean_excludes_the_boundary_band(self):
+        baseline, labels = _make_inputs(shape=(20, 10), two_labels=True)
+        cfg = ImagePorosityConfig(boundary_band=2)
         porosity = compute_image_porosity(baseline, labels, cfg)
-        assert np.all(boolean_image_porosity(porosity, cfg).img)
+        boolean = boolean_image_porosity(porosity, cfg).img
+        assert not np.any(boolean[8:12])
+        assert np.all(boolean[:8]) and np.all(boolean[12:])
 
-    def test_boolean_with_detection_uses_tol(self):
+    def test_boolean_uses_tol(self):
         baseline, _ = _make_inputs(shape=(6, 8))
         porosity = darsia.zeros_like(baseline, mode="voxels", dtype=float)
         porosity.img[:3, :] = 1.0
-        cfg = ImagePorosityConfig(active=True, tol=0.5)
+        cfg = ImagePorosityConfig(method="kmeans", tol=0.5)
         boolean = boolean_image_porosity(porosity, cfg).img
         assert np.all(boolean[:3, :])
         assert not np.any(boolean[3:, :])
@@ -173,7 +198,7 @@ class TestStoredImagePorosity:
         baseline, labels = _make_inputs(shape=(20, 10), two_labels=True)
         cfg = ImagePorosityConfig(boundary_band=2)
         porosity = compute_image_porosity(baseline, labels, cfg)
-        folder = image_porosity_folder(tmp_path, None)
+        folder = image_porosity_folder(tmp_path, "none")
         save_image_porosity(folder, porosity, cfg)
         assert (folder / "image_porosity.npz").exists()
         assert (folder / "metadata.json").exists()
@@ -181,14 +206,10 @@ class TestStoredImagePorosity:
 
         stored = load_image_porosity(cfg, tmp_path)
         assert np.array_equal(stored.map_on(baseline).img, porosity.img)
-        assert np.all(stored.boolean_on(baseline).img)
+        boolean = stored.boolean_on(baseline).img
+        assert np.array_equal(boolean, porosity.img > cfg.tol)
 
     def test_missing_file_gives_hint(self, tmp_path: Path):
-        stored = load_image_porosity(ImagePorosityConfig(active=True), tmp_path)
+        stored = load_image_porosity(ImagePorosityConfig(method="kmeans"), tmp_path)
         with pytest.raises(FileNotFoundError, match="Image porosity"):
             stored.map  # noqa: B018
-
-    def test_boolean_without_detection_needs_no_file(self, tmp_path: Path):
-        baseline, _ = _make_inputs()
-        stored = load_image_porosity(None, tmp_path)
-        assert np.all(stored.boolean_on(baseline).img)

@@ -13,8 +13,29 @@ from typing import Literal
 
 from .utils import _get_section_from_toml
 
-IMAGE_POROSITY_METHODS = ("kmeans",)
-"""Detection methods; each has an options sub-table `[image_porosity.<method>]`."""
+POROSITY_MASKS = ("none", "boolean_porosity")
+"""Boolean masks: all pixels, or the boolean porosity (image porosity > `tol`)."""
+
+POROSITY_WEIGHTS = ("none", "image_porosity", "boolean_porosity")
+"""Weighting masks: none, the image porosity, or the boolean porosity."""
+
+
+def load_porosity_mask(
+    sec: dict,
+    default: str,
+    context: str,
+    options: tuple[str, ...] = POROSITY_MASKS,
+) -> str:
+    """Read and check the key `mask` of a consumer section."""
+    mask = sec.get("mask", default)
+    if mask not in options:
+        raise ValueError(f"{context} mask must be one of {options}, got {mask!r}")
+    return mask
+
+
+IMAGE_POROSITY_METHODS = ("none", "kmeans")
+"""Methods; `"none"` gives ones (no detection), the others have an options sub-table
+`[image_porosity.<method>]`."""
 
 
 @dataclass
@@ -106,35 +127,27 @@ class ImagePorosityConfig:
     Config section (TOML)::
 
         [image_porosity]
-        active = true          # detect from the baseline; false: ones
-        method = "kmeans"
+        method = "kmeans"      # "none" (default): ones, no detection
         tol = 0.9              # boolean porosity: image porosity > tol
-        cutoff = 0.3           # detected values below become 0
+        cutoff = 0.3           # values below become 0
         boundary_band = 5      # pixels around label boundaries set to 0
 
         [image_porosity.kmeans]
         patches = [10, 10]
 
-    A missing section means: no detection, `cutoff` and `boundary_band` as defaults.
+    Only how the image porosity is computed; whether it is used is decided by each
+    consumer. A missing section means the defaults.
     """
 
-    active: bool = field(
-        default=False,
-        metadata={
-            "name": "Detect image porosity",
-            "help": (
-                "Detect the image porosity from the baseline with the chosen method. "
-                "When off, the image porosity is 1 everywhere except for the boundary "
-                "band, and the boolean porosity is the full domain."
-            ),
-        },
-    )
-    """Whether to detect the image porosity from the baseline."""
-    method: Literal["kmeans"] = field(
-        default="kmeans",
+    method: Literal["none", "kmeans"] = field(
+        default="none",
         metadata={
             "name": "Method",
-            "help": "Detection method; its options are in its own group below.",
+            "help": (
+                "Detection method. 'none': no detection, the image porosity is 1 "
+                "except for the boundary band. Other methods have their options in "
+                "their own group below."
+            ),
             "options": list(IMAGE_POROSITY_METHODS),
         },
     )
@@ -144,21 +157,22 @@ class ImagePorosityConfig:
         metadata={
             "name": "Boolean threshold",
             "help": (
-                "With detection, the boolean porosity (e.g. the mask of the colour "
-                "calibration) is the image porosity above this value. Applied when "
-                "the porosity is read, so no new setup is needed after a change."
+                "The boolean porosity (e.g. the mask of the colour calibration, if it "
+                "uses the image porosity) is the image porosity above this value. "
+                "Applied when the porosity is read, so no new setup is needed after "
+                "a change."
             ),
         },
     )
-    """Threshold of the boolean porosity (with detection)."""
+    """Threshold of the boolean porosity."""
     cutoff: float = field(
         default=0.3,
         metadata={
             "name": "Cutoff",
-            "help": "With detection, image porosity values below this become 0.",
+            "help": "Image porosity values below this become 0.",
         },
     )
-    """Detected values below this become 0."""
+    """Values below this become 0."""
     boundary_band: int = field(
         default=5,
         metadata={
@@ -166,7 +180,7 @@ class ImagePorosityConfig:
             "help": (
                 "Set the image porosity to 0 within this many pixels of every label "
                 "boundary, on both sides: pixels there mix the colours of two facies. "
-                "0 switches the band off. Applies with and without detection."
+                "0 switches the band off. Applies with every method."
             ),
         },
     )
@@ -198,7 +212,7 @@ class ImagePorosityConfig:
         Raises
         ------
         ValueError
-            For keys of the former flat section, an unknown method, `tol` outside
+            For keys of the former section, an unknown method, `tol` outside
             (0, 1], or a negative boundary band.
 
         """
@@ -206,11 +220,10 @@ class ImagePorosityConfig:
         if replaced:
             raise ValueError(
                 f"[image_porosity] keys {replaced} are no longer supported: use "
-                'active = true/false (detection), method = "kmeans" and the method '
-                "options in [image_porosity.kmeans] (sample_width was dropped)."
+                'method = "none" | "kmeans" (no detection is method = "none"), the '
+                "method options in [image_porosity.kmeans] (sample_width was "
+                "dropped), and the mask options of the consumers."
             )
-
-        self.active = bool(sec.get("active", self.active))
 
         method = sec.get("method", self.method)
         if method not in IMAGE_POROSITY_METHODS:
@@ -237,6 +250,6 @@ class ImagePorosityConfig:
         self.kmeans = KMeansPorosityConfig().load(sec.get("kmeans", {}))
         return self
 
-    def method_options(self) -> KMeansPorosityConfig:
-        """Options of the selected method."""
-        return getattr(self, self.method)
+    def method_options(self) -> KMeansPorosityConfig | None:
+        """Options of the selected method; None for `"none"`."""
+        return getattr(self, self.method, None) if self.method != "none" else None

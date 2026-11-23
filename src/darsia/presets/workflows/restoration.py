@@ -175,8 +175,13 @@ def _build_step(
 
     if step.method == "volume_average":
         volume_averaging = step.volume_averaging_options or VolumeAveragingConfig()
-        # Work on a copy as the stored image porosity is shared.
-        weight = _required(image_porosity).map_on(grid).copy()
+        if volume_averaging.mask == "image_porosity":
+            # Work on a copy as the stored image porosity is shared.
+            weight = _required(image_porosity).map_on(grid).copy()
+        elif volume_averaging.mask == "boolean_porosity":
+            weight = _required(image_porosity).boolean_on(grid).astype(float)
+        else:
+            weight = darsia.ones_like(grid, mode="voxels", dtype=float)
         if active_mask is not None:
             weight.img *= active_mask
         model = darsia.VolumeAveraging(

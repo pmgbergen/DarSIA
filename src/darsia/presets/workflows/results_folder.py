@@ -99,10 +99,6 @@ def sparse_data_csv(results: Path, name: str) -> Path:
     return Path(results) / "sparse_data" / f"{name}.csv"
 
 
-IMAGE_POROSITY_WITHOUT_DETECTION = "none"
-"""Image porosity folder name when no detection method is active."""
-
-
 def image_porosity_root(results: Path) -> Path:
     """Folder of the setup step "Image porosity".
 
@@ -120,7 +116,7 @@ def image_porosity_root(results: Path) -> Path:
     return Path(results) / "setup" / "image_porosity"
 
 
-def image_porosity_folder(results: Path, method: str | None) -> Path:
+def image_porosity_folder(results: Path, method: str) -> Path:
     """Folder of the image porosity of one detection method.
 
     Each method has its own folder, so maps of several methods can be kept.
@@ -129,17 +125,16 @@ def image_porosity_folder(results: Path, method: str | None) -> Path:
     ----------
     results : Path
         The results folder (`[data].results`).
-    method : str | None
-        Detection method; None without detection.
+    method : str
+        Method (`[image_porosity] method`, e.g. `"none"`, `"kmeans"`).
 
     Returns
     -------
     Path
-        `<results>/setup/image_porosity/<method>`, or `.../none` without detection.
+        `<results>/setup/image_porosity/<method>`.
 
     """
-    name = IMAGE_POROSITY_WITHOUT_DETECTION if method is None else method
-    return image_porosity_root(results) / name
+    return image_porosity_root(results) / method
 
 
 # ! ---- GUI HELPERS ----
