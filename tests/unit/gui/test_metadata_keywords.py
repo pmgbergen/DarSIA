@@ -538,70 +538,52 @@ class TestDepthConfigMetadata:
 
 
 class TestImagePorosityConfigMetadata:
-    """Regression test: ensure ImagePorosityConfig has section-level active toggle."""
+    """Regression test: GUI schema of ImagePorosityConfig (detection switch, method
+    dropdown, method options as a group shown for its method)."""
 
-    def test_image_porosity_config_is_checkable_group(self):
-        """ImagePorosityConfig should render as a checkable group (section-level toggle)."""
+    def _schema(self):
         from darsia.gui.ui.schema.dataclass_introspection import (
             get_section_fields,
         )
 
         schema = get_section_fields("image_porosity")
         assert schema is not None
-        # Entire section becomes a single group
-        assert len(schema) == 1
-        group = schema[0]
-        assert group.get("type") == "group"
-        assert group.get("active_bool_key") == "image_porosity.active"
-        assert group.get("active_bool_default") is False
+        return {f["key"]: f for f in schema}
 
-    def test_image_porosity_nested_fields(self):
-        """ImagePorosityConfig group should contain all 7 original fields, not active."""
-        from darsia.gui.ui.schema.dataclass_introspection import (
-            get_section_fields,
-        )
+    def test_image_porosity_fields(self):
+        """The section shows its fields directly (no section-level toggle)."""
+        fields = self._schema()
+        assert set(fields) == {
+            "image_porosity.active",
+            "image_porosity.method",
+            "image_porosity.tol",
+            "image_porosity.cutoff",
+            "image_porosity.boundary_band",
+            "image_porosity.kmeans",
+        }
 
-        schema = get_section_fields("image_porosity")
-        group = schema[0]
-        fields = group.get("fields", [])
-        field_keys = [f["key"] for f in fields]
+    def test_image_porosity_detection_switch(self):
+        active = self._schema()["image_porosity.active"]
+        assert active.get("type") == "bool"
+        assert active.get("name") == "Detect image porosity"
 
-        # Should have exactly 7 nested fields (all original fields except active)
-        assert len(fields) == 7
-        assert "image_porosity.mode" in field_keys
-        assert "image_porosity.tol" in field_keys
-        assert "image_porosity.patches" in field_keys
-        assert "image_porosity.num_clusters" in field_keys
-        assert "image_porosity.sample_width" in field_keys
-        assert "image_porosity.tol_color_distance" in field_keys
-        assert "image_porosity.tol_color_gradient" in field_keys
-        # active should NOT be in the nested fields (it's hidden and used as the toggle)
-        assert "image_porosity.active" not in field_keys
+    def test_image_porosity_method_has_dropdown_options(self):
+        method = self._schema()["image_porosity.method"]
+        assert method.get("options") == ["kmeans"]
+        assert method.get("name") == "Method"
+        assert method.get("help") is not None
 
-    def test_image_porosity_mode_has_dropdown_options(self):
-        """ImagePorosityConfig.mode should have options for dropdown widget."""
-        from darsia.gui.ui.schema.dataclass_introspection import (
-            get_section_fields,
-        )
-
-        schema = get_section_fields("image_porosity")
-        group = schema[0]
-        fields = group.get("fields", [])
-        mode_field = next(f for f in fields if f["key"] == "image_porosity.mode")
-
-        assert mode_field.get("options") == ["full", "from_image"]
-        assert mode_field.get("name") == "Mode"
-        assert mode_field.get("help") is not None
-
-    def test_image_porosity_group_has_title(self):
-        """ImagePorosityConfig group box should have a user-friendly title."""
-        from darsia.gui.ui.schema.dataclass_introspection import (
-            get_section_fields,
-        )
-
-        schema = get_section_fields("image_porosity")
-        group = schema[0]
-        assert group.get("name") == "Activate image porosity"
+    def test_image_porosity_method_options_group(self):
+        kmeans = self._schema()["image_porosity.kmeans"]
+        assert kmeans.get("type") == "group"
+        assert kmeans.get("depends_on") == {"field": "method", "value": "kmeans"}
+        keys = {f["key"] for f in kmeans["fields"]}
+        assert keys == {
+            "image_porosity.kmeans.patches",
+            "image_porosity.kmeans.num_clusters",
+            "image_porosity.kmeans.tol_color_distance",
+            "image_porosity.kmeans.tol_color_gradient",
+        }
 
 
 class TestFaciesConfigMetadata:

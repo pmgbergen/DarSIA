@@ -38,6 +38,23 @@ def _rig(shape=(2, 2), image_porosity=None, boolean_porosity=None):
     )
 
 
+class _Porosity:
+    """Stand-in for `processing.image_porosity.ImagePorosity`: the maps of a fake rig."""
+
+    def __init__(self, rig):
+        self.rig = rig
+
+    def map_on(self, grid):
+        return darsia.transfer(self.rig.image_porosity, grid)
+
+    def boolean_on(self, grid):
+        return darsia.transfer(self.rig.boolean_porosity, grid)
+
+
+def _build(restoration_config, rig):
+    return build_restoration(restoration_config, rig, _Porosity(rig))
+
+
 def test_build_restoration_applies_boolean_porosity_ignore_mask_to_volume_averaging(
     monkeypatch,
 ):
@@ -71,7 +88,7 @@ def test_build_restoration_applies_boolean_porosity_ignore_mask_to_volume_averag
         boolean_porosity=[[True, False], [True, True]],
     )
 
-    build_restoration(restoration_config, fluidflower)
+    _build(restoration_config, fluidflower)
 
     np.testing.assert_allclose(
         captured["mask"].img,
@@ -101,7 +118,7 @@ def test_build_restoration_applies_boolean_porosity_ignore_mask_to_tvd_weight(
     )
     fluidflower = _rig(boolean_porosity=[[True, False], [False, True]])
 
-    build_restoration(restoration_config, fluidflower)
+    _build(restoration_config, fluidflower)
 
     np.testing.assert_allclose(
         captured["weight"],
@@ -117,7 +134,7 @@ def test_build_restoration_unknown_ignore_mask_raises():
     )
 
     with pytest.raises(ValueError, match="Unknown restoration ignore mask"):
-        build_restoration(restoration_config, _rig())
+        _build(restoration_config, _rig())
 
 
 def test_build_restoration_volume_averaging_with_default_rev_size():
@@ -130,7 +147,7 @@ def test_build_restoration_volume_averaging_with_default_rev_size():
     )
 
     # Should not raise TypeError about int not being subscriptable
-    restoration = build_restoration(restoration_config, _rig(shape=(10, 10)))
+    restoration = _build(restoration_config, _rig(shape=(10, 10)))
     assert isinstance(restoration, RestorationSteps)
     assert isinstance(restoration.models[0], darsia.VolumeAveraging)
 
@@ -141,7 +158,7 @@ def test_build_restoration_without_active_steps_is_none(active):
     for step, is_active in zip(steps, active):
         step.active = is_active
 
-    assert build_restoration(_config(*steps), _rig()) is None
+    assert _build(_config(*steps), _rig()) is None
 
 
 def test_build_restoration_skips_inactive_steps():
@@ -151,7 +168,7 @@ def test_build_restoration_skips_inactive_steps():
         inactive, RestorationStepConfig(method="tvd", tvd_options=TVDConfig())
     )
 
-    restoration = build_restoration(restoration_config, _rig(shape=(8, 8)))
+    restoration = _build(restoration_config, _rig(shape=(8, 8)))
 
     assert len(restoration.models) == 1
     assert isinstance(restoration.models[0], darsia.TVD)
@@ -167,7 +184,7 @@ def test_build_restoration_tracks_the_grid_of_resize_steps():
         ),
     )
 
-    restoration = build_restoration(restoration_config, _rig(shape=(12, 20)))
+    restoration = _build(restoration_config, _rig(shape=(12, 20)))
 
     assert restoration.grid.img.shape[:2] == (3, 5)
     assert np.allclose(restoration.grid.dimensions, META["dimensions"])
@@ -178,7 +195,7 @@ def test_build_restoration_tracks_the_grid_of_resize_steps():
 def test_build_restoration_averages_by_area_like_the_legacy_restoration():
     signal = np.random.default_rng(1).random((10, 15))
 
-    restoration = build_restoration(_config(_resize(0.2)), _rig(shape=(10, 15)))
+    restoration = _build(_config(_resize(0.2)), _rig(shape=(10, 15)))
 
     legacy = darsia.Resize(fx=0.2, fy=0.2, interpolation="inter_area")(signal)
     assert np.array_equal(restoration(signal), legacy)
@@ -208,7 +225,7 @@ def test_build_restoration_takes_rig_data_on_the_grid_after_a_resize(monkeypatch
         ignore=["boolean_porosity"],
     )
 
-    build_restoration(
+    _build(
         restoration_config,
         _rig(
             shape=(10, 10),
@@ -230,7 +247,7 @@ def test_build_restoration_volume_averaging_after_a_resize_uses_the_coarse_grid(
         ),
     )
 
-    restoration = build_restoration(restoration_config, _rig(shape=(20, 40)))
+    restoration = _build(restoration_config, _rig(shape=(20, 40)))
 
     averaging = restoration.models[1]
     assert averaging.mask.img.shape == (10, 20)

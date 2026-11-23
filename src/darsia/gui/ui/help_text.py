@@ -5,6 +5,10 @@ HELP_TEXT_SETUP = {
     "segmentation": "Segment colored images to identify fluid phases and interfaces.",
     "facies": "Define and configure geological layers (facies) for analysis.",
     "rig": "Initialize experimental rig geometry and hardware parameters.",
+    "image_porosity": (
+        "Mark the pixels of the baseline that show the usual colour of their "
+        "facies (image porosity), after the rig setup."
+    ),
     "all": "Execute all setup steps in sequence.",
     "show_plots": "Display visualization plots during setup execution.",
 }

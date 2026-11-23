@@ -71,6 +71,42 @@ import_calibration_bundle = "/absolute/path/to/calibration_bundle.zip"
 ```
 - `[video]`: media utility config for protocol-time ordered MP4/GIF generation.
 
+## Image porosity section
+The image porosity marks pixels of the baseline that show the usual (pore space) colour
+of their facies (1) and pixels that do not (0): grains, dark spots, reflections, and
+pixels near label boundaries, which mix the colours of two facies. It is not the
+physical porosity of the facies properties. The setup step "Image porosity" (GUI:
+Setup > Image porosity; CLI: `user_interface_setup --image-porosity`, also run by
+`--all` after the rig) computes it from the rig's baseline and labels and stores it in
+`<results>/setup/image_porosity/<method>/` (`none/` without detection), with
+`metadata.json` and figures. The restoration and the colour calibration read it there.
+```toml
+[image_porosity]
+active = true          # detect from the baseline; false: ones (default)
+method = "kmeans"      # detection method
+tol = 0.9              # boolean porosity: image porosity > tol (with detection)
+cutoff = 0.3           # detected values below become 0
+boundary_band = 5      # pixels on each side of label boundaries set to 0; 0: none
+
+[image_porosity.kmeans]
+patches = [10, 10]
+num_clusters = 5
+tol_color_distance = 0.1
+tol_color_gradient = 0.02
+```
+- Steps: detection (or ones), then `cutoff`, then `boundary_band`. A missing section
+  means no detection with the default band.
+- Boolean porosity (mask of the colour calibration, `"boolean_porosity"` of the
+  restoration): image porosity > `tol` with detection, else the full domain. `tol` is
+  applied when reading, so it changes without a new setup; `active`, `method`,
+  `cutoff`, `boundary_band` and the method options need the step to run again.
+- Methods: `"kmeans"` clusters the colours per patch and label and interpolates between
+  the dominant colour (1) and an outlier colour (0) with a Gaussian kernel. Each method
+  keeps its own options table and output folder.
+- The rig setup reads this section only for the mask of the illumination correction
+  (`[corrections.illumination]`): detection > `tol` on the current baseline.
+- Former keys (`mode`, flat `patches`, `num_clusters`, `sample_width`, ...) are errors.
+
 ## Restoration section
 The restoration acts on the signal, before the flash, and on the images of color
 modes. It is a list of steps, applied in the given order; a method may occur more
@@ -93,7 +129,8 @@ options = { weight = 0.1, method = "chambolle" }
     `[corrections.resize]`: `mode = "scale"` with `scale`, or
     `mode = "target_shape"` with `target_shape = [rows, cols]`.
   - `"volume_average"`: averages over a representative elementary volume, weighted
-    by the image porosity of the rig; option `rev_size` in meters.
+    by the stored image porosity (see the image porosity section); option `rev_size`
+    in meters.
   - `"tvd"`: total variation denoising; options `method`, `weight` (a number,
     `"image_porosity"` or `"boolean_porosity"`), `max_num_iter`, `eps`, `omega`,
     `regularization`.
@@ -104,15 +141,12 @@ options = { weight = 0.1, method = "chambolle" }
     - `"boolean_porosity"` (ignore regions outside the boolean porosity mask)
     - `"image_porosity"` (ignore regions with non-positive image porosity)
     - `"inner_labels"` (ignore band around labels boundaries)
-  - Label boundaries are excluded only through `"inner_labels"` (a band of about 2-3 px
-    on each side of a boundary). Rigs set up with an older darsia version store an
-    image porosity with zeroed bands of 5 px on each side of every label boundary; after
-    a new rig setup it is the detected map as is.
-  - The boolean porosity is the stored image porosity above `[image_porosity] tol`
-    (mode `"from_image"`) or the full domain (mode `"full"`, or the section missing or
-    inactive). Both are read from the current config whenever the rig is loaded, so a
-    new `tol` applies without a new rig setup; a new `mode` needs a new rig setup (the
-    stored image porosity is computed there).
+  - `"inner_labels"` is a band of about 2-3 px on each side of a label boundary. The
+    image porosity has its own, configurable band (`[image_porosity] boundary_band`,
+    default 5 px on each side), which `volume_average` and the `image_porosity` weight
+    and mask see.
+  - `"image_porosity"`, `"boolean_porosity"` and `volume_average` need the setup step
+    "Image porosity" to have run (see below).
 - **Resolution:** after a resize step, all later steps and the rest of the analysis
   (flash, expert knowledge, mass) work on the new grid. The rig data they use
   (porosity, ignore masks, labels of expert knowledge regions, pressure and

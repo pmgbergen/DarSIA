@@ -115,9 +115,11 @@ options = { rev_size = 0.005 }
 A step's `method` is `resize` (coarser resolution by area averaging, for all later
 steps and the rest of the analysis), `volume_average` or `tvd`; `ignore` (not set
 here) can exclude `boolean_porosity`, `image_porosity`, or `inner_labels` masks from
-the averaging and denoising steps. Label boundaries are excluded only with
-`inner_labels`, about 2-3 px on each side (rigs set up with an older darsia version
-also zeroed 5 px on each side in the stored image porosity). See the workflows configuration reference for the options of each method.
+the averaging and denoising steps. `inner_labels` is a band of about 2-3 px on each
+side of a label boundary; the image porosity has its own band (`[image_porosity]
+boundary_band`). `volume_average` and the porosity weights and masks need **Setup >
+Image porosity** to have run. See the workflows configuration reference for the
+options of each method and the `[image_porosity]` section.
 
 ## `[labeling]` and `[facies]`
 

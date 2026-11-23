@@ -29,6 +29,7 @@ from darsia.presets.workflows.config.sections import required_sections
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
+from darsia.presets.workflows.processing.image_porosity import load_image_porosity
 from darsia.presets.workflows.restoration import build_restoration
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.utils.images import load_images_with_cache
@@ -242,7 +243,7 @@ def helper_roi(cls: type[Rig], path: Path | list[Path], show: bool = False) -> N
     helper_config = config.helper.roi
     check_fluid_modes(config, "ROI helper", {"helper.roi.mode": helper_config.mode})
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
-    fluidflower = cls.load(config.rig.path, config.corrections, config.image_porosity)
+    fluidflower = cls.load(config.rig.path, config.corrections)
     fluidflower.load_experiment(experiment)
 
     image_paths = select_image_paths(
@@ -267,7 +268,11 @@ def helper_roi(cls: type[Rig], path: Path | list[Path], show: bool = False) -> N
                 "helper.roi.mode requires [analysis.mass] with a color embedding "
                 "when mode != 'none'."
             )
-        restoration = build_restoration(config.restoration, fluidflower)
+        restoration = build_restoration(
+            config.restoration,
+            fluidflower,
+            load_image_porosity(config.image_porosity, config.data.results),
+        )
         expert_knowledge_adapter = ExpertKnowledgeAdapter.from_config(
             config.expert_knowledge,
             config.roi_registry,

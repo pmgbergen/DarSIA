@@ -37,9 +37,9 @@ class TVDConfig:
         "isotropic bregman", "heterogeneous bregman".
     weight
         Regularization weight. Either a float or one of the strings
-        "porosity" (use fluidflower.image_porosity as heterogeneous weight)
-        or "boolean_porosity" (use fluidflower.boolean_porosity as heterogeneous
-        weight). When a string value is provided, "heterogeneous bregman" is
+        "image_porosity" (the stored image porosity of the setup step "Image
+        porosity" as heterogeneous weight) or "boolean_porosity" (its boolean
+        porosity). When a string value is provided, "heterogeneous bregman" is
         automatically selected as the TVD method.
     max_num_iter
         Maximum number of iterations.
@@ -76,8 +76,8 @@ class TVDConfig:
             "name": "Regularization weight",
             "help": (
                 "Regularization weight (float value) or special string: 'image_porosity' "
-                "(use fluidflower.image_porosity) or 'boolean_porosity' "
-                "(use fluidflower.boolean_porosity). String values automatically "
+                "(the image porosity of Setup > Image porosity) or 'boolean_porosity' "
+                "(its boolean porosity). String values automatically "
                 "select 'heterogeneous bregman' method."
             ),
             "placeholder": "e.g., 0.1 or 'image_porosity'",

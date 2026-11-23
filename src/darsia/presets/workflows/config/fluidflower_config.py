@@ -50,14 +50,13 @@ def _load_section(
 
 
 def _load_image_porosity(config, path: Path) -> None:
+    # Always a config object: a missing section means the defaults (no detection,
+    # default boundary band); `active` only switches the detection.
+    config.image_porosity = ImagePorosityConfig()
     try:
-        config.image_porosity = ImagePorosityConfig()
         config.image_porosity.load(path=path)
-        if not config.image_porosity.active:
-            config.image_porosity = None
     except KeyError:
-        config.image_porosity = None
-        warn("Section image_porosity not found, use [image_porosity].")
+        pass
 
 
 def _load_restoration(config, path: Path) -> None:

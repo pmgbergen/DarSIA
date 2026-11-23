@@ -22,6 +22,7 @@ from darsia.presets.workflows.config.sections import (
     list_required_sections,
     required_sections,
 )
+from darsia.presets.workflows.processing.image_porosity import load_image_porosity
 from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.presets.workflows.utils.roi_visualization import draw_active_region
 from darsia.presets.workflows.windows.color_path_editor import edit_color_paths
@@ -211,7 +212,10 @@ def calibration_color_paths_from_context(
     # ! ---- BUILD CALIBRATION MASK ----
 
     # Porosity mask restricted to the union of ROIs listed in the calibration config.
-    calibration_mask = fluidflower.boolean_porosity.copy()
+    boolean_porosity = load_image_porosity(
+        config.image_porosity, config.data.results
+    ).boolean_on(fluidflower.baseline)
+    calibration_mask = boolean_porosity.copy()
     if color_cfg.rois and config.roi_registry is not None:
         roi_entries = config.roi_registry.resolve_rois(color_cfg.rois)
         rois = [roi_cfg.roi for roi_cfg in roi_entries.values()]
@@ -223,7 +227,7 @@ def calibration_color_paths_from_context(
                 "porosity mask. Falling back to the full porosity mask for "
                 "colour-path calibration."
             )
-            calibration_mask = fluidflower.boolean_porosity.copy()
+            calibration_mask = boolean_porosity.copy()
 
     # Always exclude the union of no_rois, regardless of the positive selection
     # above - e.g. a known-contaminated sub-region that happens to share a label

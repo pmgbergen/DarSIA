@@ -5,6 +5,7 @@ Setup routines:
 - labeling setup
 - facies setup
 - rig setup
+- image porosity (after the rig)
 
 Preprocessing (protocols, depth measurements, crop correction) is a separate,
 earlier step — see ``user_interface_preprocessing`` instead.
@@ -17,6 +18,7 @@ Advanced usage (activate specific steps):
     python setup.py --segmentation
     python setup.py --facies
     python setup.py --rig
+    python setup.py --image-porosity
 
 """
 
@@ -27,6 +29,7 @@ import sys
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.setup.setup_depth import setup_depth_map
 from darsia.presets.workflows.setup.setup_facies import setup_facies
+from darsia.presets.workflows.setup.setup_image_porosity import setup_image_porosity
 from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
 from darsia.presets.workflows.setup.setup_rig import delete_rig, setup_rig
 
@@ -53,6 +56,11 @@ def build_parser_for_setup():
         "--facies", action="store_true", help="Activate setup of facies."
     )
     parser.add_argument("--rig", action="store_true", help="Activate setup of rig.")
+    parser.add_argument(
+        "--image-porosity",
+        action="store_true",
+        help="Activate setup of the image porosity (after the rig).",
+    )
     parser.add_argument(
         "--force",
         action="store_true",
@@ -90,6 +98,9 @@ def preset_setup(rig=Rig):
     if args.all or args.rig:
         print("Running rig setup...", flush=True)
         setup_rig(rig, args.config, args.show)
+    if args.all or args.image_porosity:
+        print("Running image porosity setup...", flush=True)
+        setup_image_porosity(rig, args.config, args.show)
     if args.delete:
         delete_rig(rig, args.config, args.show)
 

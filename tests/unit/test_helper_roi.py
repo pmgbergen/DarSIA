@@ -114,8 +114,8 @@ def test_helper_roi_mode_none_dispatches_viewer_with_source_images(
 
     class _FakeRig:
         @classmethod
-        def load(cls, rig_path, corrections, image_porosity=None):
-            del cls, rig_path, corrections, image_porosity
+        def load(cls, rig_path, corrections):
+            del cls, rig_path, corrections
             return _FakeRigInstance()
 
     class _FakeConfig:

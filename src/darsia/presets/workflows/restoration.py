@@ -16,6 +16,7 @@ from darsia.presets.workflows.config.restoration import (
 )
 
 if TYPE_CHECKING:
+    from darsia.presets.workflows.processing.image_porosity import ImagePorosity
     from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -43,9 +44,15 @@ class RestorationSteps(darsia.CombinedModel):
 class RestorationMaskFactory:
     """Factory for predefined restoration ignore masks, on a given grid."""
 
-    def __init__(self, fluidflower: "Rig", grid: darsia.Image) -> None:
+    def __init__(
+        self,
+        fluidflower: "Rig",
+        grid: darsia.Image,
+        image_porosity: "ImagePorosity | None" = None,
+    ) -> None:
         self.fluidflower = fluidflower
         self.grid = grid
+        self.image_porosity = image_porosity
         self._ignore_mask_builders = {
             "image_porosity": self._image_porosity_ignore_mask,
             "boolean_porosity": self._boolean_porosity_ignore_mask,
@@ -53,10 +60,10 @@ class RestorationMaskFactory:
         }
 
     def _image_porosity_ignore_mask(self) -> np.ndarray:
-        return darsia.transfer(self.fluidflower.image_porosity, self.grid).img <= 0
+        return _required(self.image_porosity).map_on(self.grid).img <= 0
 
     def _boolean_porosity_ignore_mask(self) -> np.ndarray:
-        boolean_porosity = darsia.transfer(self.fluidflower.boolean_porosity, self.grid)
+        boolean_porosity = _required(self.image_porosity).boolean_on(self.grid)
         return ~boolean_porosity.img.astype(bool)
 
     def _inner_labels_ignore_mask(self) -> np.ndarray:
@@ -84,9 +91,19 @@ class RestorationMaskFactory:
         return ignore_mask
 
 
+def _required(image_porosity: "ImagePorosity | None") -> "ImagePorosity":
+    if image_porosity is None:
+        raise ValueError(
+            "This restoration uses the image porosity, but none was given to "
+            "build_restoration."
+        )
+    return image_porosity
+
+
 def build_restoration(
     restoration_config: RestorationConfig | None,
     fluidflower: "Rig",
+    image_porosity: "ImagePorosity | None" = None,
 ) -> RestorationSteps | None:
     """Build the restoration from configuration.
 
@@ -99,7 +116,10 @@ def build_restoration(
         Parsed restoration configuration, or None if no
         restoration section was present in the config file.
     fluidflower : 'Rig'
-        The loaded rig instance (provides baseline and porosity).
+        The loaded rig instance (provides the baseline and inner labels).
+    image_porosity : ImagePorosity, optional
+        Stored image porosity (`processing.image_porosity.load_image_porosity`),
+        read only if a step or ignore mask uses it.
 
     Returns
     -------
@@ -122,7 +142,9 @@ def build_restoration(
     grid = fluidflower.baseline
     models = []
     for step in steps:
-        model, grid = _build_step(step, restoration_config.ignore, fluidflower, grid)
+        model, grid = _build_step(
+            step, restoration_config.ignore, fluidflower, grid, image_porosity
+        )
         models.append(model)
     return RestorationSteps(models, grid)
 
@@ -132,6 +154,7 @@ def _build_step(
     ignore: list[str],
     fluidflower: "Rig",
     grid: darsia.Image,
+    image_porosity: "ImagePorosity | None" = None,
 ) -> tuple:
     """Model of one step on a grid, and the grid of its result."""
     if step.method == "resize":
@@ -146,19 +169,19 @@ def _build_step(
             model = darsia.Resize(shape=resize.target_shape, interpolation="inter_area")
         return model, model(grid)
 
-    mask_factory = RestorationMaskFactory(fluidflower, grid)
+    mask_factory = RestorationMaskFactory(fluidflower, grid, image_porosity)
     ignore_mask = mask_factory.build_ignore_mask(ignore)
     active_mask = None if ignore_mask is None else (~ignore_mask).astype(float)
 
     if step.method == "volume_average":
         volume_averaging = step.volume_averaging_options or VolumeAveragingConfig()
-        # Work on a copy as the porosity image is shared in the rig object.
-        image_porosity = darsia.transfer(fluidflower.image_porosity, grid).copy()
+        # Work on a copy as the stored image porosity is shared.
+        weight = _required(image_porosity).map_on(grid).copy()
         if active_mask is not None:
-            image_porosity.img *= active_mask
+            weight.img *= active_mask
         model = darsia.VolumeAveraging(
             rev=darsia.REV(size=volume_averaging.rev_size, img=grid),
-            mask=image_porosity,
+            mask=weight,
         )
         return model, grid
 
@@ -170,9 +193,9 @@ def _build_step(
     tvd_method = options.method
     if isinstance(options.weight, str):
         if options.weight == "image_porosity":
-            weight = darsia.transfer(fluidflower.image_porosity, grid)
+            weight = _required(image_porosity).map_on(grid)
         elif options.weight == "boolean_porosity":
-            weight = darsia.transfer(fluidflower.boolean_porosity, grid)
+            weight = _required(image_porosity).boolean_on(grid)
         else:
             raise ValueError(
                 f"Unknown weight string '{options.weight}'. "
