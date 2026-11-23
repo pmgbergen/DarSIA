@@ -196,7 +196,8 @@ def porosity_based_averaging(
     """Custom (FFUM) averaging function that uses porosity in averaging.
 
     Porosity values below 0.3 are not considered in the averaging process.
-    Layer boundaries in the labels image are deactivated in the porosity image.
+    Layer boundaries in the labels image are deactivated in a copy of the porosity
+    image; the given porosity image is not changed.
 
     Parameters
     ----------
@@ -226,7 +227,8 @@ def porosity_based_averaging(
             collective_residual_mask.img, residual_mask
         )
 
-    # Deactivate grains and layer boundaries in the porosity image
+    # Deactivate grains and layer boundaries in a copy of the porosity image
+    porosity = porosity.copy()
     porosity.img[porosity.img < threshold] = 0.0
     porosity.img[collective_residual_mask.img] = 0.0
 

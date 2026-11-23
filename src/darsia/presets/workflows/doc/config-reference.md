@@ -92,8 +92,8 @@ options = { weight = 0.1, method = "chambolle" }
   - `"resize"`: changes the resolution by area averaging. Options as for
     `[corrections.resize]`: `mode = "scale"` with `scale`, or
     `mode = "target_shape"` with `target_shape = [rows, cols]`.
-  - `"volume_average"`: averages over a representative elementary volume; option
-    `rev_size` in meters.
+  - `"volume_average"`: averages over a representative elementary volume, weighted
+    by the image porosity of the rig; option `rev_size` in meters.
   - `"tvd"`: total variation denoising; options `method`, `weight` (a number,
     `"image_porosity"` or `"boolean_porosity"`), `max_num_iter`, `eps`, `omega`,
     `regularization`.
@@ -104,6 +104,13 @@ options = { weight = 0.1, method = "chambolle" }
     - `"boolean_porosity"` (ignore regions outside the boolean porosity mask)
     - `"image_porosity"` (ignore regions with non-positive image porosity)
     - `"inner_labels"` (ignore band around labels boundaries)
+  - Label boundaries are excluded only through `"inner_labels"` (a band of about 2-3 px
+    on each side of a boundary). Rigs set up with an older darsia version store an
+    image porosity with zeroed bands of 5 px on each side of every label boundary; after
+    a new rig setup it is the detected map as is.
+  - The boolean porosity is the image porosity above `[image_porosity] tol` (mode
+    `"from_image"`) or the full domain (mode `"full"`); a loaded rig uses the mode and
+    `tol` of its setup. Rigs set up with an older darsia version use the full domain.
 - **Resolution:** after a resize step, all later steps and the rest of the analysis
   (flash, expert knowledge, mass) work on the new grid. The rig data they use
   (porosity, ignore masks, labels of expert knowledge regions, pressure and

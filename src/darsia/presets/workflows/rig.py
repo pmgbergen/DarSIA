@@ -1084,21 +1084,6 @@ class Rig:
 
         logger.info("Rig setup completed.")
 
-        # ! ---- AVERAGING ----
-
-        # Use porosity-based averaging for restoration
-        restoration = darsia.porosity_based_averaging(
-            self.labels, self.image_porosity, self.baseline
-        )
-
-        # Cache
-        self.restoration = restoration
-        """Restoration model based on porosity-based averaging."""
-
-        clipping = darsia.ClipModel(min_value=0.0)
-        self.upscaling = darsia.CombinedModel([clipping] + 2 * [restoration])
-        logger.info("Upscaling setup completed.")
-
         # ! ---- COMBINED MODELS ----
 
         # self.concentration_analysis_aq = darsia.CombinedModel(
@@ -1147,6 +1132,13 @@ class Rig:
         meta_data = {
             "baseline_path": str(self.baseline_path),
         }
+        # How the stored image porosity was made, to rebuild the boolean porosity on load
+        porosity_config = getattr(self, "_image_porosity_config", None)
+        if porosity_config is not None:
+            meta_data["image_porosity"] = {
+                "mode": porosity_config.mode,
+                "tol": porosity_config.tol,
+            }
         with open(folder / "meta_data.json", "w") as f:
             json.dump(meta_data, f)
 
@@ -1280,8 +1272,23 @@ class Rig:
         if not image_porosity_path.exists():
             raise FileNotFoundError(f"File {image_porosity_path} does not exist.")
 
+        stored_porosity = meta_data.get("image_porosity")
+        if stored_porosity is None:
+            porosity_config = None
+        else:
+            porosity_config = ImagePorosityConfig(
+                mode=stored_porosity["mode"], tol=float(stored_porosity["tol"])
+            )
+
         def load_image_porosity() -> None:
-            rig.setup_image_porosity(path=image_porosity_path)
+            if porosity_config is None:
+                logger.warning(
+                    "The rig in %s was saved without its image-porosity mode; the "
+                    "boolean porosity is taken as the full domain. Re-run the rig setup "
+                    "to use a detected image porosity.",
+                    folder,
+                )
+            rig.setup_image_porosity(path=image_porosity_path, config=porosity_config)
             rig.setup_boolean_image_porosity()
 
         rig._defer(("image_porosity", "boolean_porosity"), load_image_porosity)
