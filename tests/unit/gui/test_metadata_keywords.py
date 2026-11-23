@@ -559,11 +559,12 @@ class TestImagePorosityConfigMetadata:
             "image_porosity.cutoff",
             "image_porosity.boundary_band",
             "image_porosity.kmeans",
+            "image_porosity.color_statistics",
         }
 
     def test_image_porosity_method_has_dropdown_options(self):
         method = self._schema()["image_porosity.method"]
-        assert method.get("options") == ["none", "kmeans"]
+        assert method.get("options") == ["none", "kmeans", "color_statistics"]
         assert method.get("name") == "Method"
         assert method.get("help") is not None
 

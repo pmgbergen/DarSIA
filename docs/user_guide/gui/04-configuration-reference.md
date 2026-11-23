@@ -119,7 +119,9 @@ the averaging and denoising steps. `inner_labels` is a band of about 2-3 px on e
 side of a label boundary; the image porosity has its own band (`[image_porosity]
 boundary_band`). `volume_average` (Mask, default `image_porosity`) and the porosity
 weights and masks need **Setup > Image porosity** to have run; `[image_porosity]
-method` (default `"none"`: no detection) sets how the image porosity is computed, and
+method` (default `"none"`: no detection; `"color_statistics"`: patch-wise colour
+statistics interpolated smoothly; `"kmeans"`: legacy) sets how the image porosity is
+computed, and
 the colour calibration and the illumination correction use it only with their
 `mask = "boolean_porosity"` (default `"none"`). See the workflows configuration reference
 for the options of each method and the `[image_porosity]` section.

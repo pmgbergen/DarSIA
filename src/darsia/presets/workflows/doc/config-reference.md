@@ -82,7 +82,7 @@ Setup > Image porosity; CLI: `user_interface_setup --image-porosity`, also run b
 `[image_porosity]` only says how it is computed:
 ```toml
 [image_porosity]
-method = "kmeans"      # "none" (default): no detection, ones
+method = "kmeans"      # "none" (default): no detection, ones; or "color_statistics"
 tol = 0.9              # boolean porosity: image porosity > tol
 cutoff = 0.3           # values below become 0
 boundary_band = 5      # pixels on each side of label boundaries set to 0; 0: none
@@ -92,12 +92,32 @@ patches = [10, 10]
 num_clusters = 5
 tol_color_distance = 0.1
 tol_color_gradient = 0.02
+
+[image_porosity.color_statistics]
+statistic = "arms"     # or "norm"
+patches = [20, 20]
+min_pixels = 2000      # pixels of a label a patch needs for its own fit
+smoothing = 0.0        # Gaussian smoothing of the patch values, in patches
+noise_percentile = 90  # local distances below: 1
+key_percentile = 99.5  # local distances above: 0, linear in between
+dark = true            # arms only: dark arm, bright arm, side (other hue)
+bright = true
+side = true
 ```
 - Steps: the method (`"none"`: ones), then `cutoff`, then `boundary_band`. A missing
   section means the defaults (ones with the band).
 - Methods: `"kmeans"` clusters the colours per patch and label and interpolates between
-  the dominant colour (1) and an outlier colour (0) with a Gaussian kernel. Each method
-  keeps its own options table and output folder.
+  the dominant colour (1) and an outlier colour (0) with a Gaussian kernel (legacy;
+  slow, patchwork). `"color_statistics"` fits colour statistics per patch and label and
+  interpolates them smoothly (cubic splines through the patch centres, linear beyond),
+  so they follow illumination trends; each pixel is scored against the statistics of
+  its label at its location: 1 up to the `noise_percentile` of the local distances from
+  the typical (median) colour, 0 from the `key_percentile` on, linear in between (under
+  linear colour mixing: 1 - grain fraction). `statistic = "arms"` measures the distance
+  along the main colour axis of the facies, darker (dark arm) or brighter (bright arm),
+  and off it (side: other hue); `"norm"` the distance in any direction. The options
+  table is `ColorStatisticsConfig` (`config/color_statistics.py`), usable elsewhere.
+  Each method keeps its own options table and output folder.
 - Boolean porosity: image porosity > `tol`. `tol` is applied when reading, so it
   changes without a new setup; `method`, `cutoff`, `boundary_band` and the method
   options need the step to run again.

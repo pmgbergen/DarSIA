@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING, Any, Literal, Type, get_args
 import numpy as np
 
 from ._key_list_sources import ROI_SOURCES
-from .image_porosity import PorosityMask, load_choice
+from .image_porosity import PorosityMask
 from .resize import ResizeConfig
 from .roi_registry import _load_roi_key_list
-from .utils import _get_section_from_toml
+from .utils import _get_section_from_toml, load_choice
 
 if TYPE_CHECKING:
     from .roi_registry import RoiRegistry

@@ -11,9 +11,9 @@ from darsia.utils.units import MASS_UNIT_FACTORS, TIME_UNIT_FACTORS, VOLUME_UNIT
 
 from ._key_list_sources import COLOR_EMBEDDING_SOURCES, REGISTRY_SOURCES, ROI_SOURCES
 from .contour_smoother import ContourSmootherSelection
-from .image_porosity import PorosityMask, load_choice
+from .image_porosity import PorosityMask
 from .roi_registry import _load_roi_key_list
-from .utils import _get_key, _get_section, _get_section_from_toml
+from .utils import _get_key, _get_section, _get_section_from_toml, load_choice
 
 RESOLUTION_LEVELS = (1, 2, 4, 8, 16)
 """Resolution levels of the interactive mass calibration: factor by which the images

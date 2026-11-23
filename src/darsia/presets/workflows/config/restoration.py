@@ -5,9 +5,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Union, get_args
 
-from .image_porosity import load_choice
 from .resize import ResizeConfig
-from .utils import _get_key, _get_section_from_toml
+from .utils import _get_key, _get_section_from_toml, load_choice
 
 VolumeAveragingMask = Literal["none", "image_porosity", "boolean_porosity"]
 """Weighting masks: none, the image porosity, or the boolean porosity."""

@@ -9,28 +9,20 @@ methods of `presets/workflows/processing/image_porosity`.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal, get_args
+from typing import Literal, get_args
 
-from .utils import _get_section_from_toml
+from .color_statistics import ColorStatisticsConfig
+from .utils import _get_section_from_toml, load_choice
 
 PorosityMask = Literal["none", "boolean_porosity"]
 """Boolean masks: all pixels, or the boolean porosity (image porosity > `tol`)."""
 
-ImagePorosityMethodName = Literal["none", "kmeans"]
+ImagePorosityMethodName = Literal["none", "kmeans", "color_statistics"]
 """Methods; `"none"` gives ones (no detection), the others have an options sub-table
 `[image_porosity.<method>]`."""
 
 IMAGE_POROSITY_METHODS = get_args(ImagePorosityMethodName)
 """The method names as a tuple."""
-
-
-def load_choice(sec: dict, key: str, default: str, choices: Any, context: str) -> str:
-    """Read the key `key` of a section and check it against a `Literal` type."""
-    value = sec.get(key, default)
-    options = get_args(choices)
-    if value not in options:
-        raise ValueError(f"{context} {key} must be one of {options}, got {value!r}")
-    return value
 
 
 @dataclass
@@ -130,6 +122,9 @@ class ImagePorosityConfig:
         [image_porosity.kmeans]
         patches = [10, 10]
 
+        [image_porosity.color_statistics]   # see `ColorStatisticsConfig`
+        statistic = "arms"
+
     Only how the image porosity is computed; whether it is used is decided by each
     consumer. A missing section means the defaults.
     """
@@ -188,6 +183,14 @@ class ImagePorosityConfig:
         },
     )
     """Options of the k-means method."""
+    color_statistics: ColorStatisticsConfig = field(
+        default_factory=ColorStatisticsConfig,
+        metadata={
+            "name": "Colour statistics method",
+            "depends_on": {"field": "method", "value": "color_statistics"},
+        },
+    )
+    """Options of the colour statistics method."""
 
     def load(self, path: Path | list[Path]) -> "ImagePorosityConfig":
         """Populate from a TOML config file (section `[image_porosity]`).
@@ -239,8 +242,11 @@ class ImagePorosityConfig:
         self.boundary_band = boundary_band
 
         self.kmeans = KMeansPorosityConfig().load(sec.get("kmeans", {}))
+        self.color_statistics = ColorStatisticsConfig().load(
+            sec.get("color_statistics", {}), "[image_porosity.color_statistics]"
+        )
         return self
 
-    def method_options(self) -> KMeansPorosityConfig | None:
+    def method_options(self) -> KMeansPorosityConfig | ColorStatisticsConfig | None:
         """Options of the selected method; None for `"none"`."""
         return getattr(self, self.method, None) if self.method != "none" else None
