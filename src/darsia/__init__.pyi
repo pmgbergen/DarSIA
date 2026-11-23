@@ -148,6 +148,7 @@ from .image.image import ExtensiveImage as ExtensiveImage
 from .image.image import Image as Image
 from .image.image import OpticalImage as OpticalImage
 from .image.image import ScalarImage as ScalarImage
+from .image.imread import exif_date as exif_date
 from .image.imread import imread as imread
 from .image.imread import imread_from_bytes as imread_from_bytes
 from .image.imread import imread_from_dicom as imread_from_dicom

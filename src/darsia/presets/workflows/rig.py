@@ -1294,88 +1294,6 @@ class Rig:
 
     # ! ---- I/O ----
 
-    def import_from_csv(
-        self,
-        path: Path,
-        *,
-        delimiter: str = ",",
-        date=None,
-        reference_date=None,
-        time=None,
-        name: str | None = None,
-        is_extensive: bool = False,
-    ) -> darsia.ScalarImage | darsia.ExtensiveImage:
-        """Import scalar result data from CSV."""
-        if not path.exists():
-            raise FileNotFoundError(f"CSV file {path} does not exist.")
-
-        # Read csv
-        try:
-            data = np.loadtxt(path, delimiter=delimiter)
-        except ValueError:
-            data = np.loadtxt(path, delimiter=delimiter, skiprows=1)
-
-        # Apply lex sort
-        # Sort, such that 0th column changes fasters, then 1st column.
-        indices = np.lexsort((data[:, 0], data[:, 1]))
-        data = data[indices]
-
-        # Extract coordinates (x, y) and values if in coordinate format,
-        # otherwise treat as array data
-        coordinates_x = data[:, 0]
-        coordinates_y = data[:, 1]
-        values = data[:, 2]
-
-        # Determine the shape = frequency of x_coordinates
-        # (fastest changing) and y_coordinates (slowest changing)
-        unique_x = np.unique(coordinates_x)
-        unique_y = np.unique(coordinates_y)
-
-        row = len(unique_y)
-        col = len(unique_x)
-        shape = (row, col)
-
-        # Determine the cell size in dx and dy direction
-        dx = np.min(np.diff(unique_x))
-        dy = np.min(np.diff(unique_y))
-
-        # Determine origin
-        origin = (unique_x[0] - dx / 2, unique_y[-1] + dy / 2)
-
-        # Determine the dimensions
-        dimensions = (
-            np.max(coordinates_y) - np.min(coordinates_y) + dy,
-            np.max(coordinates_x) - np.min(coordinates_x) + dx,
-        )
-
-        # Reshape values to the determined shape, remember that the
-        # values are ordered wrt. Euclidean coordinates, with x changing
-        # fastest, so we need to reshape accordingly. Also, we need to
-        # switch to row-col order, with origin at the top-left corner,
-        # so we need to flip the y-coordinates and reshape accordingly.
-        values_reshaped = values.reshape(
-            shape, order="C"
-        )  # Reshape to (row, col) with C order (x changes fastest)
-        values_reshaped = np.flip(values_reshaped, axis=0)  # Flip
-
-        # Collect the metadata
-        metadata = {
-            "origin": origin,
-            "cell_size": (dx, dy),
-            "dimensions": dimensions,
-            "name": name,
-            "time": time,
-            "date": date,
-            "reference_date": reference_date,
-            "series": False,
-            "scalar": True,
-        }
-
-        if is_extensive:
-            return darsia.ExtensiveImage(values_reshaped, **metadata)
-        else:
-            return darsia.ScalarImage(values_reshaped, **metadata)
-
     @darsia.timed("read image")
     def read(
         self,
@@ -1422,23 +1340,13 @@ class Rig:
             baseline = getattr(self, "baseline", None)
             reference_date = None if baseline is None else baseline.date
 
-        if isinstance(source, bytes):
-            image = darsia.imread_from_bytes(
-                source,
-                transformations=self.corrections,
-                color_space="RGB",
-                date=date,
-                reference_date=reference_date,
-            )
-            return image if native else image.img_as(float)
-
         return darsia.imread(
             source,
             transformations=self.corrections,
             date=date,
             reference_date=reference_date,
-            name=source.name,
-            **({"native": True} if native else {}),
+            native=native,
+            **({} if isinstance(source, bytes) else {"name": source.name}),
         )
 
     # ! ---- EXPERIMENT AND PROTOCOLS ----

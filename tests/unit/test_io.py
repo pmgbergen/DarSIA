@@ -50,7 +50,9 @@ def test_imread_from_bytes(shape):
     with open(path, "rb") as file:
         byte_str = file.read()
         file.close()
-        bytes_image = darsia.imread_from_bytes(byte_str, dim=2, width=2, height=1)
+        bytes_image = darsia.imread_from_bytes(
+            byte_str, native=True, dim=2, width=2, height=1
+        )
 
     # Compare arrays.
     assert np.allclose(bytes_image.img.reshape(pre_array.shape), pre_array)

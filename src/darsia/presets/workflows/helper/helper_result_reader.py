@@ -230,13 +230,13 @@ def helper_result_reader(
         if format_spec.type == "npz":
             image = darsia.imread(result_path)
         else:
-            image = fluidflower.import_from_csv(
+            image = darsia.imread(
                 result_path,
                 delimiter=format_spec.delimiter,
                 date=date,
                 reference_date=getattr(fluidflower, "reference_date", None),
                 name=source_path.name,
-                is_extensive="extensive" in str(result_path).lower(),
+                extensive="extensive" in str(result_path).lower(),
             )
         if roi is not None:
             image = image.subregion(roi)
