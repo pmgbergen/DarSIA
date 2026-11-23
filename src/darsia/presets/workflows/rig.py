@@ -117,7 +117,12 @@ class Rig:
         for name in names:
             deferred[name] = (names, loader)
 
-    def _defer_file(self, name: str, path: Path) -> None:
+    def _defer_file(
+        self,
+        name: str,
+        path: Path,
+        read: Callable[[Path], darsia.Image] = darsia.imread,
+    ) -> None:
         """Register the image file `path` as member `name`, read on first access.
 
         A missing file raises here, as reading it right away would.
@@ -125,7 +130,7 @@ class Rig:
         """
         if not Path(path).exists():
             raise FileNotFoundError(f"File {path} does not exist.")
-        self._defer((name,), lambda: setattr(self, name, darsia.imread(path)))
+        self._defer((name,), lambda: setattr(self, name, read(path)))
 
     def __getattr__(self, name: str):
         # Called only for attributes which are not set: load deferred members.
@@ -547,10 +552,9 @@ class Rig:
         log : Path | None
             Path to the log folder where geometry images will be saved.
         """
-        # Load depth map from file and reshape to baseline shape
+        # Load depth map from file, on the grid of the baseline
         assert path.exists(), f"Path to depth map {path} does not exist."
-        pre_depth = darsia.imread(path)
-        self.depth: darsia.Image = darsia.resize(pre_depth, ref_image=self.baseline)
+        self.depth: darsia.Image = self.read_field(path)
         """Depth map for the rig object."""
 
         # Log results
@@ -594,26 +598,8 @@ class Rig:
             Path to the log folder where label images will be saved.
         """
         assert path.exists(), f"Labels file {path} does not exist."
-        if apply_corrections:
-            # Assume that the labels are based on non-corrected baseline image.
-            # Thus, need to apply the relevant corrections from the read routine.
-            plain_labels = darsia.imread(path)
-            labels = plain_labels
-            if hasattr(self, "resize_correction_inter_nearest"):
-                labels = self.resize_correction_inter_nearest(labels)
-            if hasattr(self, "curvature_correction"):
-                labels = self.curvature_correction(labels)
-            labels = self.resize_correction_inter_nearest_final(labels)
-            self.labels = labels
-
-        else:
-            # Assume the labels are aligned with the corrected baseline.
-            pre_labels = darsia.imread(path)
-            self.labels = darsia.resize(
-                pre_labels,
-                ref_image=self.baseline,
-                interpolation="inter_nearest",
-            )
+        # Drawn on the uncorrected baseline photo, or aligned with the corrected one
+        self.labels = self.read_field(path, on_photo=apply_corrections)
 
         if log:
             # Plot labels
@@ -671,26 +657,8 @@ class Rig:
             Path to the log folder where facies images will be saved.
         """
         assert path.exists(), f"Facies file {path} does not exist."
-        if apply_corrections:
-            # Assume that the facies are based on non-corrected baseline image.
-            # Thus, need to apply the relevant corrections from the read routine.
-            plain_facies = darsia.imread(path)
-            facies = plain_facies
-            if hasattr(self, "resize_correction_inter_nearest"):
-                facies = self.resize_correction_inter_nearest(facies)
-            if hasattr(self, "curvature_correction"):
-                facies = self.curvature_correction(facies)
-            facies = self.resize_correction_inter_nearest_final(facies)
-            self.facies = facies
-
-        else:
-            # Assume the facies are aligned with the corrected baseline.
-            pre_facies = darsia.imread(path)
-            self.facies = darsia.resize(
-                pre_facies,
-                ref_image=self.baseline,
-                interpolation="inter_nearest",
-            )
+        # Drawn on the uncorrected baseline photo, or aligned with the corrected one
+        self.facies = self.read_field(path, on_photo=apply_corrections)
 
         if log:
             # Plot facies
@@ -737,8 +705,8 @@ class Rig:
         else:
             if not (porosity and permeability):
                 raise FileNotFoundError("No facies properties provided.")
-            self.porosity = darsia.imread(porosity)
-            self.permeability = darsia.imread(permeability)
+            self.porosity = self.read_field(porosity)
+            self.permeability = self.read_field(permeability)
 
     # ! ---- ILLUMINATION CORRECTION ----
     def setup_illumination_correction(
@@ -878,7 +846,7 @@ class Rig:
         self._image_porosity_config = config
 
         if path is not None:
-            self.image_porosity = darsia.imread(path)
+            self.image_porosity = self.read_field(path)
         elif config.mode == "from_image":
             self.image_porosity = patched_porosity_analysis(
                 baseline=self.baseline,
@@ -1268,8 +1236,10 @@ class Rig:
         # Load facies properties; the permeability (e.g. for Wasserstein distances) is
         # read on first use.
         with darsia.timed("facies properties"):
-            rig.porosity = darsia.imread(folder / "porosity.npz")
-            rig._defer_file("permeability", folder / "permeability.npz")
+            rig.porosity = rig.read_field(folder / "porosity.npz")
+            rig._defer_file(
+                "permeability", folder / "permeability.npz", read=rig.read_field
+            )
 
         # Setup geometry information
         with darsia.timed("geometry"):
@@ -1348,6 +1318,45 @@ class Rig:
             native=native,
             **({} if isinstance(source, bytes) else {"name": source.name}),
         )
+
+    def read_field(self, path: Path, *, on_photo: bool = False) -> darsia.Image:
+        """Read a field of the rig (labels, facies, depth, porosity, ...) onto the
+        grid of the baseline.
+
+        Parameters
+        ----------
+        path : Path
+            File of the field.
+        on_photo : bool
+            Whether the field was drawn on the uncorrected baseline photo (e.g. labels
+            from the labeling step). Then the shape corrections for fields follow:
+            nearest neighbor resize, curvature correction, final nearest neighbor
+            resize. Drift and type corrections do not apply to fields drawn on the
+            baseline photo itself. Otherwise (default, e.g. saved rigs) the field lies
+            on the corrected baseline and is transferred to its grid
+            (`darsia.transfer`): center sampling for integer fields, area averaging
+            for float fields; the identity on the grid of the baseline.
+
+        Returns
+        -------
+        darsia.Image
+            The field on the grid of the baseline.
+
+        Raises
+        ------
+        ValueError
+            If a field on the corrected baseline covers another domain than the
+            baseline.
+
+        """
+        field = darsia.imread(path)
+        if not on_photo:
+            return darsia.transfer(field, self.baseline)
+        if hasattr(self, "resize_correction_inter_nearest"):
+            field = self.resize_correction_inter_nearest(field)
+        if hasattr(self, "curvature_correction"):
+            field = self.curvature_correction(field)
+        return self.resize_correction_inter_nearest_final(field)
 
     # ! ---- EXPERIMENT AND PROTOCOLS ----
 
