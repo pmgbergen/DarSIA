@@ -10,9 +10,8 @@ from typing import Iterable
 
 import pandas as pd
 from natsort import natsorted, ns
-from PIL import Image
-from PIL.ExifTags import TAGS
 
+import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.sections import (
     list_required_sections,
@@ -30,18 +29,11 @@ def get_modification_time(filepath: Path) -> datetime:
 
 
 def _extract_exif_datetime(path: Path) -> datetime | None:
-    """Extract EXIF datetime from an image."""
-    with Image.open(path) as img:
-        exif_data = img.getexif()
-        if exif_data:
-            for tag_id, value in exif_data.items():
-                tag = TAGS.get(tag_id, tag_id)
-                if tag in ["DateTimeOriginal", "DateTime"]:
-                    return datetime.strptime(value, "%Y:%m:%d %H:%M:%S")
-            logger.warning("%s: No EXIF datetime found.", path.name)
-        else:
-            logger.warning("%s: No EXIF data found.", path.name)
-    return None
+    """Extract EXIF datetime from an image (as `darsia.imread` does)."""
+    date = darsia.exif_date(path)
+    if date is None:
+        logger.warning("%s: No EXIF datetime found.", path.name)
+    return date
 
 
 def _protocol_path(

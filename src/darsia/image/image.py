@@ -2126,6 +2126,11 @@ class ScalarImage(Image):
     ) -> None:
         """Write scalar image cell-center data to CSV file.
 
+        There is no standard for images in CSV format. DarSIA follows the reporting
+        format of the 11th SPE Comparative Solution Project (SPE11): one row per cell,
+        with the coordinates of the cell center and the value as columns. `darsia.imread`
+        reads such files (2D) back.
+
         Parameters
         ----------
         path : Path

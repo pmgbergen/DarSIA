@@ -1,21 +1,29 @@
-"""Module containing routines to read images from file to DarSIA. Several file types
-are supported:
+"""Module containing routines to read images to DarSIA.
 
-* optical images: *jpg, *jpeg, *png, *tif, *tiff
+The entry is :func:`imread`. It reads files, folders and lists of files (series), and
+the bytes of an image file. Supported file types:
+
+* optical images: *jpg, *jpeg, *png, *tif, *tiff (also as bytes)
+* images saved by DarSIA: *npz
+* numpy arrays: *npy
 * DICOM images: *dcm
 * simulation data: anything which can be read by meshio, e.g. *vtu
-* numpy images: *npy
+* scalar grids: *csv (one row per cell: coordinates and value, see
+  :func:`_imread_from_csv`)
+
+Dates of optical images: a given `date` is used as is (also `None`); without one,
+the date is taken from the EXIF data of the file (or bytes), see :func:`exif_date`.
 
 """
 
 from __future__ import annotations
 
+import io
 import logging
 import time
 from datetime import datetime
 from operator import itemgetter
 from pathlib import Path
-from subprocess import check_output
 from typing import Optional, Union
 
 import cv2
@@ -31,25 +39,37 @@ logger = logging.getLogger(__name__)
 # ! ---- Interface to subroutines - general reading routine
 
 
-def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Image:
-    """Determine and call reading routine depending on filetype.
-    Provide interface for numpy arrays, standard optical image formats,
-    dicom images, and vtu images.
+def imread(
+    path: Union[str, Path, list[str], list[Path], bytes], **kwargs
+) -> darsia.Image:
+    """Read an image: the single entry for all sources and file types.
+
+    The reader is chosen by the type of the source (the bytes of an image file, or
+    paths) and, for paths, by the file type (suffix, lower case; `suffix` overrides
+    it). See the module docstring for the supported file types and the dates.
 
     Parameters
     ----------
-    path : str, Path or list of such
-        Path(s) to file(s).
+    path : str, Path, list of such, or bytes
+        Path of a file, of a folder (all its files, sorted), a list of paths (a
+        series), or the bytes of an image file (e.g. received over a network).
     **kwargs
-        Keyword arguments tailored to the file format.
+        Keyword arguments tailored to the file type, e.g. `transformations`, `date`,
+        `native` for optical images.
 
     Returns
     -------
-    Image, or list of such
-        Image of collection of images.
+    Image
+        The image; a series (space-time image) for several files.
     """
     # Monitor time for performance analysis
     tic = time.time()
+
+    # Bytes of an image file
+    if isinstance(path, bytes):
+        image = imread_from_bytes(path, **kwargs)
+        logger.info("Image reading from bytes took %.2f seconds.", time.time() - tic)
+        return image
 
     # Convert to path
     if isinstance(path, list):
@@ -73,7 +93,7 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
         assert path.exists(), f"File {path} does not exist."
 
     # Determine file type of images
-    suffix = kwargs.get("suffix", None)
+    suffix = kwargs.pop("suffix", None)
 
     if suffix is None:
         if isinstance(path, list):
@@ -96,6 +116,8 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
         image = imread_from_dicom(path, **kwargs)
     elif suffix in [".vtu"]:
         image = imread_from_vtu(path, **kwargs)
+    elif suffix == ".csv":
+        image = _imread_from_csv(path, **kwargs)
     else:
         raise NotImplementedError(f"Filetype {suffix} not supported.")
 
@@ -106,18 +128,26 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
 def imread_from_bytes(
     data: bytes,
     transformations: Optional[list] = None,
+    native: bool = False,
     **kwargs,
 ) -> darsia.Image:
-    """Initialization of Image by reading from byte string.
+    """Initialization of Image by reading from the bytes of an image file.
+
+    The image is read like a single optical image file (see `imread_from_optical`):
+    color space RGB unless given, the date from the EXIF data unless given (also
+    `None`), and floats unless `native`.
 
     Parameters
     ----------
     data : bytes
-        Byte string of image.
+        Bytes of an image file (any format OpenCV decodes, e.g. jpg, png, tif).
     transformations : list of callables
         Transformations.
+    native : bool
+        Keep the data type resulting from the transformations instead of converting
+        to float in the end, see `imread_from_optical`.
     **kwargs
-        Keyword arguments.
+        Keyword arguments accepted by Image, e.g. `date`, `reference_date`, `name`.
 
     Returns
     -------
@@ -126,19 +156,51 @@ def imread_from_bytes(
     """
     # Read image from byte string, convert to RGB
     array = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_UNCHANGED)
+    if "date" not in kwargs:
+        kwargs["date"] = exif_date(data)
 
     if len(array.shape) == 3 and array.shape[-1] == 3:
         # If multichromatic, convert to RGB (Assume BGR format from cv2)
         array = cv2.cvtColor(array, cv2.COLOR_BGR2RGB)
-        return darsia.OpticalImage(img=array, transformations=transformations, **kwargs)
+        kwargs.setdefault("color_space", "RGB")
+        image = darsia.OpticalImage(
+            img=array, transformations=transformations, **kwargs
+        )
     elif len(array.shape) == 2:
-        return darsia.ScalarImage(img=array, transformations=transformations, **kwargs)
+        image = darsia.ScalarImage(img=array, transformations=transformations, **kwargs)
     elif len(array.shape) == 3 and array.shape[-1] == 1:
-        return darsia.ScalarImage(
+        image = darsia.ScalarImage(
             img=array[..., 0], transformations=transformations, **kwargs
         )
     else:
         raise NotImplementedError
+    return image if native else image.img_as(float)
+
+
+def exif_date(source: Path | bytes) -> datetime | None:
+    """Date of an image file from its EXIF data (tag 306, DateTime).
+
+    Parameters
+    ----------
+    source : Path or bytes
+        Image file, or the bytes of an image file.
+
+    Returns
+    -------
+    datetime or None
+        The date, or None if the file has no EXIF date (or no EXIF data).
+    """
+    stream = io.BytesIO(source) if isinstance(source, bytes) else source
+    try:
+        with PIL_Image.open(stream) as pil_img:
+            value = pil_img.getexif().get(306)
+    except (OSError, ValueError):
+        value = None
+    if value is None:
+        logger.debug("No EXIF date found.")
+        return None
+    # Format of the EXIF standard, e.g. "2022:08:29 23:10:27"
+    return datetime.strptime(value, "%Y:%m:%d %H:%M:%S")
 
 
 # ! ---- Numpy arrays
@@ -189,6 +251,81 @@ def imread_from_npz(
     return image
 
 
+# ! ---- Scalar grids in CSV format
+
+
+def _imread_from_csv(
+    path: Path,
+    delimiter: str = ",",
+    extensive: bool = False,
+    **kwargs,
+) -> darsia.ScalarImage | darsia.ExtensiveImage:
+    """Read a 2D scalar grid from a CSV file, one row per cell.
+
+    There is no standard for images in CSV format. DarSIA follows the reporting
+    format of the 11th SPE Comparative Solution Project (SPE11): one row per cell, with
+    the coordinates of the cell center and the value as columns (x, y, value), and an
+    optional header row. The cells form a regular grid; the rows may come in any
+    order. This is the format written by `ScalarImage.to_csv` (2D).
+
+    Parameters
+    ----------
+    path : Path
+        CSV file.
+    delimiter : str
+        Delimiter of the columns.
+    extensive : bool
+        Return an `ExtensiveImage` (values are amounts per cell, e.g. masses) instead
+        of a `ScalarImage`.
+    **kwargs
+        Keyword arguments accepted by Image, e.g. `date`, `reference_date`, `time`,
+        `name`.
+
+    Returns
+    -------
+    darsia.ScalarImage or darsia.ExtensiveImage
+        The grid, with origin and dimensions from the cell centers.
+    """
+    # Read csv, with or without header
+    try:
+        data = np.loadtxt(path, delimiter=delimiter)
+    except ValueError:
+        data = np.loadtxt(path, delimiter=delimiter, skiprows=1)
+
+    # Sort, such that the 0th column (x) changes fastest, then the 1st column (y)
+    data = data[np.lexsort((data[:, 0], data[:, 1]))]
+    coordinates_x, coordinates_y, values = data[:, 0], data[:, 1], data[:, 2]
+
+    # The shape from the number of distinct coordinates, the cell size from their
+    # spacing
+    unique_x = np.unique(coordinates_x)
+    unique_y = np.unique(coordinates_y)
+    shape = (len(unique_y), len(unique_x))
+    dx = np.min(np.diff(unique_x))
+    dy = np.min(np.diff(unique_y))
+
+    # Origin (top left corner) and dimensions from the cell centers
+    origin = (unique_x[0] - dx / 2, unique_y[-1] + dy / 2)
+    dimensions = (
+        np.max(coordinates_y) - np.min(coordinates_y) + dy,
+        np.max(coordinates_x) - np.min(coordinates_x) + dx,
+    )
+
+    # The values are ordered with x changing fastest (C order); the rows of an image
+    # count from the top, so flip the y direction
+    array = np.flip(values.reshape(shape, order="C"), axis=0)
+
+    image_type = darsia.ExtensiveImage if extensive else darsia.ScalarImage
+    return image_type(
+        array,
+        origin=origin,
+        dimensions=dimensions,
+        series=False,
+        scalar=True,
+        **kwargs,
+    )
+
+
 # ! ---- Optical images
 
 
@@ -229,13 +366,11 @@ def imread_from_optical(
     # TODO check method for grayscale images. shape of array?
 
     if isinstance(path, Path):
-        # Read single image incl. date from metadata of the image
+        # Read single image; the date from its EXIF data only if not provided
         with darsia.timed("decode file"):
-            array, date = _read_single_optical_image(path)
-
-        # Use the date only if not provided separately
+            array = _read_single_optical_image(path)
         if "date" not in kwargs:
-            kwargs["date"] = date
+            kwargs["date"] = exif_date(path)
 
         # Enhance metadata
         kwargs["series"] = False
@@ -259,12 +394,12 @@ def imread_from_optical(
     elif isinstance(path, list):
         # Collection of images
 
-        # Read from file
-        data = [_read_single_optical_image(p) for p in path]
-
-        # Create a space-time optical image through stacking along the time axis
-        space_time_array = np.stack([d[0] for d in data], axis=2)
-        dates = [d[1] for d in data]
+        # Read from file; the dates from the EXIF data only if not provided
+        space_time_array = np.stack(
+            [_read_single_optical_image(p) for p in path], axis=2
+        )
+        if "date" not in kwargs:
+            kwargs["date"] = [exif_date(p) for p in path]
 
         # Fix metadata
         kwargs["series"] = True
@@ -273,7 +408,6 @@ def imread_from_optical(
         # Define image
         image = darsia.OpticalImage(
             img=space_time_array,
-            date=dates,
             time=time,
             transformations=transformations,
             **kwargs,
@@ -284,7 +418,7 @@ def imread_from_optical(
         raise NotImplementedError
 
 
-def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetime]]:
+def _read_single_optical_image(path: Path) -> np.ndarray:
     """Utility function for setting up a single optical image.
 
     Parameters
@@ -296,9 +430,8 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
     -------
     np.ndarray
         Data array in RGB format.
-        Date (optional): date.
     """
-    # Read image and convert to RGB and float ([0,1])
+    # Read image and convert to RGB
     try:
         array = cv2.cvtColor(
             cv2.imread(str(path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB
@@ -313,41 +446,7 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
         array = cv2.cvtColor(
             cv2.imdecode(img_bytes, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB
         )
-
-    # Prefered: Read time from exif metafile.
-    pil_img = PIL_Image.open(path)
-    exif = pil_img.getexif()
-    if exif.get(306) is not None:
-        # Hardcoded way of retrieving the datetime of "2022:08:29 23:10:27"
-        date = datetime.strptime(exif.get(306), "%Y:%m:%d %H:%M:%S")
-    else:
-        date = None
-
-    # Alternatively, use terminal output.
-    # Credit to: https://stackoverflow.com/questions/27929025/...
-    # ...exif-python-pil-return-empty-dictionary
-    if date is None:
-        try:
-            # The following code requires the ImageMagick package. If not installed,
-            # the following line will raise a NotFileFoundError.
-            output = check_output(f"identify -verbose {str(path)}".split())
-            meta = {}
-            for line in output.splitlines()[:-1]:
-                spl = line.decode().split(":", 1)
-                k, v = spl
-                meta[k.lstrip()] = v.strip()
-
-            date_with_info = meta["date"]
-            spl = date_with_info.split(":", 1)
-            # Hardcoded way of retrieving the datetime of "2022-10-12T11:02:40+02:00"
-            date = datetime.strptime(spl[1][1:], "%Y-%m-%dT%H:%M:%S%z")
-        except FileNotFoundError:
-            print(
-                "Warning: No exif metafile found. "
-                "Please install ImageMagick to read metadata from terminal."
-            )
-
-    return array, date
+    return array
 
 
 # ! ---- DICOM images
