@@ -12,6 +12,11 @@ ColorStatisticName = Literal["arms", "norm"]
 """Statistics: dark/bright arms along the main colour axis plus side distance, or the
 distance from the median colour."""
 
+PERCENTILE_RANGE = (0.0, 100.0)
+"""Allowed range of the noise and key percentile (percent, not a fraction)."""
+MIN_PERCENTILE_GAP = 1.0
+"""Minimum gap between noise and key percentile."""
+
 
 @dataclass
 class ColorStatisticsConfig:
@@ -23,8 +28,8 @@ class ColorStatisticsConfig:
         patches = [20, 20]
         min_pixels = 2000
         smoothing = 0.0           # in patches
-        noise_percentile = 90.0   # below: value 1
-        key_percentile = 99.5     # above: value 0
+        noise_percentile = 90.0   # 0-100; local distances below: value 1
+        key_percentile = 99.5     # 0-100, >= noise + 1; above: value 0
         dark = true               # arms only
         bright = true
         side = true
@@ -81,22 +86,29 @@ class ColorStatisticsConfig:
     noise_percentile: float = field(
         default=90.0,
         metadata={
-            "name": "Noise percentile",
+            "name": "Noise percentile (%)",
             "help": (
-                "Colours closer to the typical colour than this percentile of the local "
-                "distances count as typical (value 1)."
+                "Percentile (0-100, not a fraction) of the local distances from the "
+                "typical colour of a region in a patch. Colours closer than this count "
+                "as typical (value 1); e.g. 90: the closest 90 % of the pixels. With "
+                "'arms' it applies to the dark arm, the bright arm and the side "
+                "separately. At least 1 below the key percentile."
             ),
+            "range": PERCENTILE_RANGE,
+            "less_than": {"field": "key_percentile", "gap": MIN_PERCENTILE_GAP},
         },
     )
     """Percentile of the local distances below which the value is 1."""
     key_percentile: float = field(
         default=99.5,
         metadata={
-            "name": "Key percentile",
+            "name": "Key percentile (%)",
             "help": (
-                "Colours farther from the typical colour than this percentile of the "
-                "local distances get value 0; linear in between."
+                "Percentile (0-100, not a fraction) of the same distances. Colours "
+                "farther than this get value 0, linear in between; e.g. 99.5: the "
+                "farthest 0.5 % of the pixels. At least 1 above the noise percentile."
             ),
+            "range": PERCENTILE_RANGE,
         },
     )
     """Percentile of the local distances from which on the value is 0."""
@@ -163,9 +175,15 @@ class ColorStatisticsConfig:
             sec.get("noise_percentile", self.noise_percentile)
         )
         self.key_percentile = float(sec.get("key_percentile", self.key_percentile))
-        if not (0.0 <= self.noise_percentile < self.key_percentile <= 100.0):
+        low, high = PERCENTILE_RANGE
+        if not (
+            low <= self.noise_percentile
+            and self.noise_percentile + MIN_PERCENTILE_GAP <= self.key_percentile
+            and self.key_percentile <= high
+        ):
             raise ValueError(
-                f"{context} needs 0 <= noise_percentile < key_percentile <= 100, got "
+                f"{context} needs {low:g} <= noise_percentile, noise_percentile + "
+                f"{MIN_PERCENTILE_GAP:g} <= key_percentile <= {high:g} (percent), got "
                 f"{self.noise_percentile} and {self.key_percentile}"
             )
         self.dark = bool(sec.get("dark", self.dark))

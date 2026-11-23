@@ -98,8 +98,8 @@ statistic = "arms"     # or "norm"
 patches = [20, 20]
 min_pixels = 2000      # pixels of a label a patch needs for its own fit
 smoothing = 0.0        # Gaussian smoothing of the patch values, in patches
-noise_percentile = 90  # local distances below: 1
-key_percentile = 99.5  # local distances above: 0, linear in between
+noise_percentile = 90  # percent (0-100); local distances below: 1
+key_percentile = 99.5  # percent, >= noise_percentile + 1; above: 0, linear between
 dark = true            # arms only (GUI: shown for arms): dark arm, bright arm, side
 bright = true
 side = true

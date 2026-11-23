@@ -146,6 +146,75 @@ def _set_field_error(edit, message=None):
     edit.setToolTip(message or "")
 
 
+def _wire_field_constraints(entries):
+    """Mark number fields red that break their `range` or `less_than` metadata.
+
+    `range: (low, high)` bounds one value (inclusive); `less_than: {"field": other,
+    "gap": g}` requires value <= other - g, with `other` a field of the same form, and
+    marks both fields. One checker per form rechecks all constraints whenever an
+    involved field changes, so the marks of different constraints do not overwrite each
+    other. Feedback only: saving is not blocked (the config loaders check too).
+
+    Parameters
+    ----------
+    entries : dict[str, tuple[QWidget, dict]]
+        Per unqualified field key of one form: the field widget (with the property
+        "value_widget" holding its QLineEdit) and its setting dict.
+
+    """
+    constrained = {
+        key: setting
+        for key, (_, setting) in entries.items()
+        if setting.get("range") or setting.get("less_than")
+    }
+    involved = set(constrained) | {
+        s["less_than"]["field"] for s in constrained.values() if s.get("less_than")
+    }
+    edits = {}
+    for key in involved:
+        widget = entries.get(key, (None, None))[0]
+        edit = widget.property("value_widget") if isinstance(widget, QWidget) else None
+        if isinstance(edit, QLineEdit):
+            edits[key] = edit
+    if not edits:
+        return
+    names = {key: entries[key][1].get("name") or key for key in edits}
+
+    def check(*_):
+        values, messages = {}, {key: [] for key in edits}
+        for key, edit in edits.items():
+            text = edit.text().strip()
+            try:
+                values[key] = float(text) if text else None
+            except ValueError:
+                values[key] = None
+                messages[key].append("Not a number.")
+        for key, setting in constrained.items():
+            value = values.get(key)
+            if value is None:
+                continue
+            bounds = setting.get("range")
+            if bounds and not bounds[0] <= value <= bounds[1]:
+                messages[key].append(
+                    f"{names[key]} must be between {bounds[0]:g} and {bounds[1]:g}."
+                )
+            order = setting.get("less_than")
+            other = order["field"] if order else None
+            if other in edits and values.get(other) is not None:
+                gap = order.get("gap", 0)
+                if value > values[other] - gap:
+                    limit = f"{names[other]} - {gap:g}" if gap else names[other]
+                    message = f"{names[key]} must be at most {limit}."
+                    messages[key].append(message)
+                    messages[other].append(message)
+        for key, edit in edits.items():
+            _set_field_error(edit, " ".join(messages[key]) or None)
+
+    for edit in edits.values():
+        edit.textChanged.connect(check)
+    check()
+
+
 def _check_cmap_text(combo, text):
     """Mark a colormap combo red unless empty, offered, or a matplotlib colormap."""
     import matplotlib
@@ -735,6 +804,14 @@ class SettingsFactory:
             elif isinstance(driver_control, QCheckBox):
                 driver_control.toggled.connect(handler)
                 handler(driver_control.isChecked())
+
+        # Red marks for number fields breaking their range / less_than metadata
+        _wire_field_constraints(
+            {
+                key: (widget, setting)
+                for key, (_, widget, setting, _) in field_row_map.items()
+            }
+        )
 
     def wrap_setting_with_help(self, setting_container, setting_dict):
         """Wrap a setting container with a dedicated help button column."""
@@ -2769,6 +2846,14 @@ class SettingsFactory:
 
             # Set initial visibility based on driver's current value
             handler(driver_combo.currentText())
+
+        # Red marks for number fields breaking their range / less_than metadata
+        _wire_field_constraints(
+            {
+                key: (widget, setting)
+                for key, (_, widget, setting) in field_row_map.items()
+            }
+        )
 
         # Return (None, group_dict) where group_dict carries the group_box and metadata.
         # display_settings will check if the label is None to detect this case.
