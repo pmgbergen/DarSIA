@@ -242,7 +242,7 @@ def helper_roi(cls: type[Rig], path: Path | list[Path], show: bool = False) -> N
     helper_config = config.helper.roi
     check_fluid_modes(config, "ROI helper", {"helper.roi.mode": helper_config.mode})
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
-    fluidflower = cls.load(config.rig.path, config.corrections)
+    fluidflower = cls.load(config.rig.path, config.corrections, config.image_porosity)
     fluidflower.load_experiment(experiment)
 
     image_paths = select_image_paths(

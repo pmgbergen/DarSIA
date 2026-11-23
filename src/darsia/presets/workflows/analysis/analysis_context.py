@@ -463,7 +463,9 @@ def prepare_analysis_context(
 
     # ! ---- LOAD RIG ----
     with darsia.timed("rig"):
-        fluidflower = cls.load(config.rig.path, config.corrections)
+        fluidflower = cls.load(
+            config.rig.path, config.corrections, config.image_porosity
+        )
         fluidflower.load_experiment(experiment)
 
     # ! ---- RESTORATION ----

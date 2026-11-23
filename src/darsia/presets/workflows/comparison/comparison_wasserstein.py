@@ -244,7 +244,9 @@ def _compute_wasserstein_distances(
 
     # Fetch geometry weighting factor
     example_config = config.runs.config[active_runs[0]]
-    fluidflower = cls.load(example_config.rig.path)
+    fluidflower = cls.load(
+        example_config.rig.path, image_porosity_config=example_config.image_porosity
+    )
     geometry = fluidflower.geometry
     porosity_times_depth = geometry.weight
 

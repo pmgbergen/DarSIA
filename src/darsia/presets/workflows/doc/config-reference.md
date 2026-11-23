@@ -108,9 +108,11 @@ options = { weight = 0.1, method = "chambolle" }
     on each side of a boundary). Rigs set up with an older darsia version store an
     image porosity with zeroed bands of 5 px on each side of every label boundary; after
     a new rig setup it is the detected map as is.
-  - The boolean porosity is the image porosity above `[image_porosity] tol` (mode
-    `"from_image"`) or the full domain (mode `"full"`); a loaded rig uses the mode and
-    `tol` of its setup. Rigs set up with an older darsia version use the full domain.
+  - The boolean porosity is the stored image porosity above `[image_porosity] tol`
+    (mode `"from_image"`) or the full domain (mode `"full"`, or the section missing or
+    inactive). Both are read from the current config whenever the rig is loaded, so a
+    new `tol` applies without a new rig setup; a new `mode` needs a new rig setup (the
+    stored image porosity is computed there).
 - **Resolution:** after a resize step, all later steps and the rest of the analysis
   (flash, expert knowledge, mass) work on the new grid. The rig data they use
   (porosity, ignore masks, labels of expert knowledge regions, pressure and

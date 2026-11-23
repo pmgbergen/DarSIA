@@ -195,7 +195,9 @@ def helper_result_reader(
         config, "Result helper", {"helper.results.mode": helper_config.mode}
     )
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
-    fluidflower = rig_cls.load(config.rig.path, config.corrections)
+    fluidflower = rig_cls.load(
+        config.rig.path, config.corrections, config.image_porosity
+    )
     fluidflower.load_experiment(experiment)
 
     image_paths = select_image_paths(

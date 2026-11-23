@@ -855,13 +855,14 @@ class Rig:
           ``tol_color_distance``, ``tol_color_gradient``).
 
         When *path* is provided the image is always loaded from disk regardless of
-        *config*, which is useful for restoring a previously saved rig.
+        *config*, which is useful for restoring a previously saved rig; *config* is
+        still stored and decides the boolean porosity (mode and ``tol``).
 
         Parameters
         ----------
         path : Path | None
             Path to a previously saved porosity ``.npz`` file.
-            When given, the file is loaded and *config* is not used.
+            When given, the file is loaded instead of computing the porosity.
         log : Path | None
             Folder for diagnostic output.  When given, a JPG
             illustration is stored to ``log/image_porosity/image_porosity.jpg``.
@@ -1132,13 +1133,6 @@ class Rig:
         meta_data = {
             "baseline_path": str(self.baseline_path),
         }
-        # How the stored image porosity was made, to rebuild the boolean porosity on load
-        porosity_config = getattr(self, "_image_porosity_config", None)
-        if porosity_config is not None:
-            meta_data["image_porosity"] = {
-                "mode": porosity_config.mode,
-                "tol": porosity_config.tol,
-            }
         with open(folder / "meta_data.json", "w") as f:
             json.dump(meta_data, f)
 
@@ -1200,7 +1194,10 @@ class Rig:
 
     @classmethod
     def load(
-        cls, folder: Path, corrections_config: CorrectionsConfig | None = None
+        cls,
+        folder: Path,
+        corrections_config: CorrectionsConfig | None = None,
+        image_porosity_config: ImagePorosityConfig | None = None,
     ) -> "Rig":
         """Load rig object from file.
 
@@ -1210,6 +1207,12 @@ class Rig:
         ----------
         folder : Path
             Path to the folder where the rig object is saved.
+        corrections_config : CorrectionsConfig | None
+            Corrections of the config (``[corrections]``).
+        image_porosity_config : ImagePorosityConfig | None
+            Image porosity of the config (``[image_porosity]``): its ``mode`` and
+            ``tol`` turn the stored image porosity into the boolean porosity. None
+            (no or inactive section) means mode ``"full"``: the full domain.
         """
         # Create rig object
         rig = cls()
@@ -1272,23 +1275,10 @@ class Rig:
         if not image_porosity_path.exists():
             raise FileNotFoundError(f"File {image_porosity_path} does not exist.")
 
-        stored_porosity = meta_data.get("image_porosity")
-        if stored_porosity is None:
-            porosity_config = None
-        else:
-            porosity_config = ImagePorosityConfig(
-                mode=stored_porosity["mode"], tol=float(stored_porosity["tol"])
-            )
-
         def load_image_porosity() -> None:
-            if porosity_config is None:
-                logger.warning(
-                    "The rig in %s was saved without its image-porosity mode; the "
-                    "boolean porosity is taken as the full domain. Re-run the rig setup "
-                    "to use a detected image porosity.",
-                    folder,
-                )
-            rig.setup_image_porosity(path=image_porosity_path, config=porosity_config)
+            rig.setup_image_porosity(
+                path=image_porosity_path, config=image_porosity_config
+            )
             rig.setup_boolean_image_porosity()
 
         rig._defer(("image_porosity", "boolean_porosity"), load_image_porosity)

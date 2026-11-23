@@ -114,8 +114,8 @@ def test_helper_roi_mode_none_dispatches_viewer_with_source_images(
 
     class _FakeRig:
         @classmethod
-        def load(cls, rig_path, corrections):
-            del cls, rig_path, corrections
+        def load(cls, rig_path, corrections, image_porosity=None):
+            del cls, rig_path, corrections, image_porosity
             return _FakeRigInstance()
 
     class _FakeConfig:
@@ -130,6 +130,7 @@ def test_helper_roi_mode_none_dispatches_viewer_with_source_images(
                 roi=SimpleNamespace(mode="none", data=SimpleNamespace())
             )
             self.corrections = None
+            self.image_porosity = None
             self.color_to_mass = None
 
         def check(self, *args):
