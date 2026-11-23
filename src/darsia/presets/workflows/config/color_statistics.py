@@ -102,14 +102,22 @@ class ColorStatisticsConfig:
     """Percentile of the local distances from which on the value is 0."""
     dark: bool = field(
         default=True,
-        metadata={"name": "Dark arm", "help": "Statistic 'arms' only: darker colours."},
+        metadata={
+            "name": "Dark arm",
+            "help": "Count colours darker than the typical colour (dark grains).",
+            "depends_on": {"field": "statistic", "value": "arms"},
+        },
     )
     """Whether the dark arm counts (arms only)."""
     bright: bool = field(
         default=True,
         metadata={
             "name": "Bright arm",
-            "help": "Statistic 'arms' only: brighter colours.",
+            "help": (
+                "Count colours brighter than the typical colour (bright grains, "
+                "reflections)."
+            ),
+            "depends_on": {"field": "statistic", "value": "arms"},
         },
     )
     """Whether the bright arm counts (arms only)."""
@@ -117,7 +125,11 @@ class ColorStatisticsConfig:
         default=True,
         metadata={
             "name": "Side",
-            "help": "Statistic 'arms' only: colours of another hue (off the axis).",
+            "help": (
+                "Count colours of another hue than the typical colour (off the main "
+                "colour axis, e.g. orange or greenish grains)."
+            ),
+            "depends_on": {"field": "statistic", "value": "arms"},
         },
     )
     """Whether the side distance counts (arms only)."""

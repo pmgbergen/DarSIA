@@ -100,7 +100,7 @@ min_pixels = 2000      # pixels of a label a patch needs for its own fit
 smoothing = 0.0        # Gaussian smoothing of the patch values, in patches
 noise_percentile = 90  # local distances below: 1
 key_percentile = 99.5  # local distances above: 0, linear in between
-dark = true            # arms only: dark arm, bright arm, side (other hue)
+dark = true            # arms only (GUI: shown for arms): dark arm, bright arm, side
 bright = true
 side = true
 ```
