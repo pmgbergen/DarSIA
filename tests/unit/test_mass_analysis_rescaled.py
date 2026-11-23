@@ -78,7 +78,7 @@ def test_analysis_mass_writes_default_artifacts_only(
                 space_dim=2, num_voxels=(4, 4), dimensions=[1.0, 1.0]
             )
 
-        def read_image(self, _path: Path) -> darsia.Image:
+        def read(self, _path: Path, **_) -> darsia.Image:
             return darsia.Image(
                 np.zeros((4, 4, 3), dtype=np.uint8),
                 dimensions=[1.0, 1.0],
@@ -187,7 +187,7 @@ def test_analysis_mass_writes_configured_export_subset_with_extensive_modes(
                 space_dim=2, num_voxels=(4, 4), dimensions=[1.0, 1.0]
             )
 
-        def read_image(self, _path: Path) -> darsia.Image:
+        def read(self, _path: Path, **_) -> darsia.Image:
             return darsia.Image(
                 np.zeros((4, 4, 3), dtype=np.uint8),
                 dimensions=[1.0, 1.0],
@@ -293,7 +293,7 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
                 space_dim=2, num_voxels=(4, 4), dimensions=[1.0, 1.0]
             )
 
-        def read_image(self, _path: Path) -> darsia.Image:
+        def read(self, _path: Path, **_) -> darsia.Image:
             return darsia.Image(
                 np.zeros((4, 4, 3), dtype=np.uint8),
                 dimensions=[1.0, 1.0],
@@ -397,7 +397,7 @@ def test_analysis_mass_passes_natural_scalar_write_bounds(
                 dimensions=[1.0, 1.0],
             )
 
-        def read_image(self, _path: Path) -> darsia.Image:
+        def read(self, _path: Path, **_) -> darsia.Image:
             return darsia.Image(
                 np.zeros((4, 4, 3), dtype=np.uint8),
                 dimensions=[1.0, 1.0],

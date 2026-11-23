@@ -328,15 +328,16 @@ class Image:
         Parameters
         ----------
         time : scalar or list, optional
-            Time to be set; if None, time is retrieved
-            from date.
+            Time to be set; if None, time is retrieved from date, relative to the
+            reference date (no time without a date or a reference date).
         """
         # ! ---- Safety check
 
         if time is None:
             # From date
+            undated = self._is_none(self.date) or self.reference_date is None
             if self.series:
-                if self._is_none(self.date):
+                if undated:
                     self.time = self.time_num * [None]
                 else:
                     self.time = [
@@ -344,7 +345,7 @@ class Image:
                         for i in range(self.time_num)
                     ]
             else:
-                if self._is_none(self.date):
+                if undated:
                     self.time = None
                 else:
                     self.time = (self.date - self.reference_date).total_seconds()

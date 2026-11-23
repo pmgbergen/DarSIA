@@ -50,7 +50,7 @@ INTEGER_SCALES = {np.uint8: 1.0 / 255.0, np.uint16: 1.0 / 65535.0}
 def image_scale(dtype: np.dtype, with_base: bool) -> float | None:
     """Factor with which `evaluate_labeled_image` reads an image of a type exactly.
 
-    Images may be held in the type of the corrections (see `Rig.read_image`, native)
+    Images may be held in the type of the corrections (see `Rig.read`, native)
     instead of float64. The kernels then convert pixel by pixel, which must give the
     result of converting the image beforehand:
 

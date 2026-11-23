@@ -4,6 +4,7 @@
 
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 from warnings import warn
@@ -824,7 +825,7 @@ class Rig:
             per-label reference color computation within each patch, ensuring
             heterogeneous regions contribute equally by material.
         """
-        baseline_images = [self.read_image(path) for path in config.baseline_paths]
+        baseline_images = [self.read(path) for path in config.baseline_paths]
 
         illumination_correction = darsia.PatchwiseIlluminationCorrection(
             baseline_images=baseline_images,
@@ -1376,15 +1377,30 @@ class Rig:
             return darsia.ScalarImage(values_reshaped, **metadata)
 
     @darsia.timed("read image")
-    def read_image(self, path: Path, native: bool = False) -> darsia.Image:
-        """Read image from file and apply corrections.
+    def read(
+        self,
+        source: Path | bytes,
+        *,
+        date: datetime | None = None,
+        native: bool = False,
+    ) -> darsia.Image:
+        """Read an image, given as a file or as the bytes of a file, and apply the
+        corrections of the rig.
 
-        The respective date is extracted from the path using the imaging protocol.
+        The date of the image is, in this order: the given `date`; for a file, the date
+        of the imaging protocol if an experiment is loaded (see `load_experiment`; a
+        file missing from the protocol raises); otherwise none. The time of the image
+        counts from the start of the loaded experiment (the first injection); without
+        an experiment, from the date of the baseline. Without a date or such a
+        reference, the image has no time. Analyses which need the date or the time check
+        for it themselves.
 
         Parameters
         ----------
-        path : Path
-            Path to the image file.
+        source : Path or bytes
+            Image file, or the bytes of an image file (e.g. received over a network).
+        date : datetime, optional
+            Date of the image, instead of the one of the imaging protocol.
         native : bool
             Keep the data type resulting from the corrections (the integers of the
             file without a type correction) instead of converting to float in the
@@ -1394,32 +1410,44 @@ class Rig:
         Returns
         -------
         darsia.Image
-            Image object with applied corrections.
-        """
-        assert hasattr(
-            self, "experiment"
-        ), "Experiment not defined. Run load_experiment() first."
-        # Convert date from path
-        date = self.experiment.get_datetime(path)
+            Image with the corrections of the rig applied.
 
-        # Read image from file and apply corrections
-        img = darsia.imread(
-            path,
+        """
+        experiment = getattr(self, "experiment", None)
+        if date is None and experiment is not None and not isinstance(source, bytes):
+            date = experiment.get_datetime(source)
+        if experiment is not None:
+            reference_date = self.reference_date
+        else:
+            baseline = getattr(self, "baseline", None)
+            reference_date = None if baseline is None else baseline.date
+
+        if isinstance(source, bytes):
+            image = darsia.imread_from_bytes(
+                source,
+                transformations=self.corrections,
+                color_space="RGB",
+                date=date,
+                reference_date=reference_date,
+            )
+            return image if native else image.img_as(float)
+
+        return darsia.imread(
+            source,
             transformations=self.corrections,
             date=date,
-            reference_date=self.reference_date,
-            name=path.name,
+            reference_date=reference_date,
+            name=source.name,
             **({"native": True} if native else {}),
         )
-
-        return img
 
     # ! ---- EXPERIMENT AND PROTOCOLS ----
 
     def load_experiment(self, experiment: darsia.ProtocolledExperiment) -> None:
         """Load experiment and associated protocols.
 
-        This is required to read images and compute the injected mass correctly.
+        This gives images read from files their date (`read`) and is required to
+        compute the injected mass correctly.
 
         Parameters
         ----------

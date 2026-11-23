@@ -92,7 +92,7 @@ class CalibrationState:
         The analysis to calibrate.
     images : list[darsia.Image]
         The calibration images, as floats or in their native type (e.g. integers of
-        the image files, see `Rig.read_image`). They are held at full resolution, so
+        the image files, see `Rig.read`). They are held at full resolution, so
         the native type saves most of their memory. `images` is their storage only:
         use :meth:`float_image` for calculations with an image; the analysis
         (`call_color_interpretation`) accepts the stored images.
