@@ -1,3 +1,4 @@
+import copy
 import logging
 import shutil
 from pathlib import Path
@@ -30,6 +31,13 @@ from darsia.signals.color import ColorPathEmbedding
 from darsia.utils.standard_images import roi_to_mask
 
 logger = logging.getLogger(__name__)
+
+
+def _with_data(image: darsia.Image, array: np.ndarray) -> darsia.Image:
+    """`image` with the data `array`: a shallow copy, so no data is copied."""
+    result = copy.copy(image)
+    result.img = array
+    return result
 
 
 def _load_initial_paths(
@@ -221,19 +229,21 @@ def calibration_color_paths_from_context(
         boolean_porosity = darsia.ones_like(
             fluidflower.baseline, mode="voxels", dtype=bool
         )
-    calibration_mask = boolean_porosity.copy()
+    # Masks are combined into new arrays (no copies, nothing changed in place).
+    calibration_mask = boolean_porosity
     if color_cfg.rois and config.roi_registry is not None:
         roi_entries = config.roi_registry.resolve_rois(color_cfg.rois)
         rois = [roi_cfg.roi for roi_cfg in roi_entries.values()]
-        union_mask = roi_to_mask(rois, calibration_mask, mode="voxels")
-        calibration_mask.img &= union_mask.img
-        if not np.any(calibration_mask.img):
+        union_mask = roi_to_mask(rois, boolean_porosity, mode="voxels")
+        restricted = boolean_porosity.img & union_mask.img
+        if np.any(restricted):
+            calibration_mask = _with_data(boolean_porosity, restricted)
+        else:
             logger.warning(
                 "The union of the provided ROIs does not overlap with the "
                 "porosity mask. Falling back to the full porosity mask for "
                 "colour-path calibration."
             )
-            calibration_mask = boolean_porosity.copy()
 
     # Always exclude the union of no_rois, regardless of the positive selection
     # above - e.g. a known-contaminated sub-region that happens to share a label
@@ -243,7 +253,9 @@ def calibration_color_paths_from_context(
         no_roi_entries = config.roi_registry.resolve_rois(color_cfg.no_rois)
         no_rois = [roi_cfg.roi for roi_cfg in no_roi_entries.values()]
         exclude_mask = roi_to_mask(no_rois, calibration_mask, mode="voxels")
-        calibration_mask.img &= ~exclude_mask.img
+        calibration_mask = _with_data(
+            calibration_mask, calibration_mask.img & ~exclude_mask.img
+        )
         if not np.any(calibration_mask.img):
             logger.warning(
                 "The union of 'no_rois' excludes the entire calibration mask "
