@@ -64,13 +64,35 @@ def imread(
     """
     # Monitor time for performance analysis
     tic = time.time()
-
-    # Bytes of an image file
     if isinstance(path, bytes):
         image = imread_from_bytes(path, **kwargs)
-        logger.info("Image reading from bytes took %.2f seconds.", time.time() - tic)
-        return image
+    else:
+        image = _imread_from_paths(path, **kwargs)
+    logger.debug(
+        "Reading %s took %.2f seconds.",
+        "bytes" if isinstance(path, bytes) else path,
+        time.time() - tic,
+    )
+    return image
 
+
+def _imread_from_paths(
+    path: Union[str, Path, list[str], list[Path]], **kwargs
+) -> darsia.Image:
+    """Read an image from paths, with the reader of the file type, see `imread`.
+
+    Parameters
+    ----------
+    path : str, Path or list of such
+        Path of a file, of a folder (all its files, sorted), or a list of paths.
+    **kwargs
+        Keyword arguments tailored to the file type; `suffix` overrides the file type.
+
+    Returns
+    -------
+    Image
+        The image; a series (space-time image) for several files.
+    """
     # Convert to path
     if isinstance(path, list):
         path = [Path(p) for p in path]
@@ -120,8 +142,6 @@ def imread(
         image = _imread_from_csv(path, **kwargs)
     else:
         raise NotImplementedError(f"Filetype {suffix} not supported.")
-
-    logger.info(f"Image reading for {path} took %.2f seconds.", time.time() - tic)
     return image
 
 
