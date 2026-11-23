@@ -28,7 +28,6 @@ from darsia.presets.workflows.results_folder import (
     sparse_data_csv,
 )
 from darsia.presets.workflows.rig import Rig
-from darsia.presets.workflows.utils.images import read_native
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +168,7 @@ def analysis_volume_from_context(
         saturation_g = saturation_aq = stream_payload = None
         image_started_at = time.monotonic()
         try:
-            img = read_native(fluidflower, path)
+            img = fluidflower.read(path, native=True)
         except Exception as e:
             logger.error(f"Failed to read image '{path}': {e}")
             continue

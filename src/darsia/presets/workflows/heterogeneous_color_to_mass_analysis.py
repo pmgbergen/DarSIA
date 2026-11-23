@@ -394,7 +394,7 @@ class HeterogeneousColorToMassAnalysis:
         base = None if analysis.base is None else analysis.base.img
         if base is not None and (base.dtype != np.float64 or base.shape != array.shape):
             return None
-        # The image may be held in the type of the corrections (see `Rig.read_image`,
+        # The image may be held in the type of the corrections (see `Rig.read`,
         # native), if the kernel reads that type exactly.
         if color_kernels.image_scale(array.dtype, with_base=base is not None) is None:
             return None
@@ -608,8 +608,8 @@ class HeterogeneousColorToMassAnalysis:
         """Set pressure and temperature (and gradients) of the fluid model at a date.
 
         Densities and solubility depend on the state, which may change during the
-        experiment (weather, room temperature). Nothing happens without a protocol or
-        a date; an unchanged state is not evaluated again.
+        experiment (weather, room temperature). Nothing happens without a protocol; an
+        unchanged state is not evaluated again.
 
         Parameters
         ----------
@@ -617,10 +617,21 @@ class HeterogeneousColorToMassAnalysis:
             Date of the image.
         protocol : darsia.PressureTemperatureProtocol, optional
             Protocol to use; default is `pressure_temperature_protocol`.
+
+        Raises
+        ------
+        ValueError
+            If there is a protocol, but no date.
         """
         protocol = self.pressure_temperature_protocol if protocol is None else protocol
-        if protocol is None or date is None:
+        if protocol is None:
             return
+        if date is None:
+            raise ValueError(
+                "The fluid state follows a pressure and temperature protocol, but the "
+                "image has no date: read it with a loaded experiment "
+                "(Rig.load_experiment) or give its date (Rig.read(..., date=...))."
+            )
         state = protocol.get_state(date)
         gradient = protocol.get_gradient(date)
         self.fluid_model.update_state(

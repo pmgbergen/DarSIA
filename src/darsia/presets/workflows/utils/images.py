@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 import logging
 from os.path import commonpath
 from pathlib import Path
@@ -14,30 +13,6 @@ if TYPE_CHECKING:
     from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
-
-
-def read_native(rig: Rig, path: Path) -> darsia.Image:
-    """Image read by `rig` in the type of the corrections (`Rig.read_image`, native).
-
-    The 8-bit image of a photo takes an eighth of the memory of floats. Users of the
-    image convert it where they need floats (`Image.as_float`). Rigs whose `read_image`
-    has no `native` option read as usual.
-
-    Parameters
-    ----------
-    rig : Rig
-        Object with a `read_image(path)` method.
-    path : Path
-        Path to the image.
-
-    Returns
-    -------
-    darsia.Image
-        The corrected image.
-    """
-    if "native" in inspect.signature(rig.read_image).parameters:
-        return rig.read_image(path, native=True)
-    return rig.read_image(path)
 
 
 def load_images_with_cache(
@@ -65,8 +40,7 @@ def load_images_with_cache(
     Parameters
     ----------
     rig : Rig
-        Object exposing a ``read_image(path: Path) -> darsia.Image`` method
-        (e.g. Rig).
+        Rig reading the images (``Rig.read``).
     paths : list[Path]
         Ordered list of image paths to load.
     use_cache : bool
@@ -76,7 +50,7 @@ def load_images_with_cache(
         Ignored when *use_cache* is ``False``.
     native : bool
         Keep the data type resulting from the corrections instead of converting to
-        float (see ``Rig.read_image``), to hold many images with less memory. Only
+        float (see ``Rig.read``), to hold many images with less memory. Only
         without caching: cached images are float, as other workflows expect them.
 
     Returns
@@ -107,11 +81,9 @@ def load_images_with_cache(
             if cache_path.exists():
                 image = darsia.imread(cache_path)
             else:
-                image = rig.read_image(p)
+                image = rig.read(p)
                 image.save(cache_path)
-        elif native:
-            image = rig.read_image(p, native=True)
         else:
-            image = rig.read_image(p)
+            image = rig.read(p, native=native)
         images.append(image)
     return images

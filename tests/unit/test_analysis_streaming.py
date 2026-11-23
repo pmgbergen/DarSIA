@@ -220,7 +220,7 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
             self.coordinatesystem = _FakeCoordinateSystem()
 
     class _FakeFluidFlower:
-        def read_image(self, path: Path) -> _FakeImage:
+        def read(self, path: Path, **_) -> _FakeImage:
             del path
             return _FakeImage(np.zeros((16, 24, 3), dtype=np.uint8))
 
@@ -314,7 +314,7 @@ def test_thresholding_supports_rescaled_layer_modes(
                 space_dim=2, num_voxels=(16, 24), dimensions=[1.0, 1.0]
             )
 
-        def read_image(self, path: Path) -> _FakeImage:
+        def read(self, path: Path, **_) -> _FakeImage:
             del path
             return _FakeImage()
 
@@ -404,7 +404,7 @@ def test_thresholding_applies_expert_knowledge_constraints(
             self.coordinatesystem = _FakeCoordinateSystem()
 
     class _FakeFluidFlower:
-        def read_image(self, path: Path) -> _FakeImage:
+        def read(self, path: Path, **_) -> _FakeImage:
             del path
             return _FakeImage()
 

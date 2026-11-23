@@ -180,7 +180,7 @@ class timed:
     Examples
     --------
     >>> with darsia.timed("read images"):
-    ...     images = [rig.read_image(path) for path in paths]
+    ...     images = [rig.read(path) for path in paths]
 
     >>> @darsia.timed("fluid model")
     ... def build_fluid_model(): ...
