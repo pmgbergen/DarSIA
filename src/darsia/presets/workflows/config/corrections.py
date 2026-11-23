@@ -2,12 +2,12 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, Type
+from typing import TYPE_CHECKING, Any, Literal, Type, get_args
 
 import numpy as np
 
 from ._key_list_sources import ROI_SOURCES
-from .image_porosity import POROSITY_MASKS, load_porosity_mask
+from .image_porosity import PorosityMask, load_choice
 from .resize import ResizeConfig
 from .roi_registry import _load_roi_key_list
 from .utils import _get_section_from_toml
@@ -991,7 +991,7 @@ class IlluminationCorrectionConfig:
         },
     )
     """Bounds for the illumination correction factors."""
-    mask: Literal["none", "boolean_porosity"] = field(
+    mask: PorosityMask = field(
         default="none",
         metadata={
             "name": "Mask",
@@ -1000,7 +1000,7 @@ class IlluminationCorrectionConfig:
                 "image porosity, detected on the current baseline with [image_porosity] "
                 "(method, options), exceeds its boolean threshold."
             ),
-            "options": list(POROSITY_MASKS),
+            "options": list(get_args(PorosityMask)),
         },
     )
     """Pixels to fit on: all, or the boolean image porosity."""
@@ -1042,7 +1042,9 @@ class IlluminationCorrectionConfig:
         self.sigma = sec.get("sigma", self.sigma)
         self.bounds = sec.get("bounds", self.bounds)
         self.outliers = sec.get("outliers", self.outliers)
-        self.mask = load_porosity_mask(sec, self.mask, "[corrections.illumination]")
+        self.mask = load_choice(
+            sec, "mask", self.mask, PorosityMask, "[corrections.illumination]"
+        )
         if not 0.0 <= self.outliers <= 1.0:
             raise ValueError(
                 f"IlluminationCorrectionConfig.outliers must be between 0.0 and 1.0, "

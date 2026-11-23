@@ -9,33 +9,28 @@ methods of `presets/workflows/processing/image_porosity`.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal, get_args
 
 from .utils import _get_section_from_toml
 
-POROSITY_MASKS = ("none", "boolean_porosity")
+PorosityMask = Literal["none", "boolean_porosity"]
 """Boolean masks: all pixels, or the boolean porosity (image porosity > `tol`)."""
 
-POROSITY_WEIGHTS = ("none", "image_porosity", "boolean_porosity")
-"""Weighting masks: none, the image porosity, or the boolean porosity."""
-
-
-def load_porosity_mask(
-    sec: dict,
-    default: str,
-    context: str,
-    options: tuple[str, ...] = POROSITY_MASKS,
-) -> str:
-    """Read and check the key `mask` of a consumer section."""
-    mask = sec.get("mask", default)
-    if mask not in options:
-        raise ValueError(f"{context} mask must be one of {options}, got {mask!r}")
-    return mask
-
-
-IMAGE_POROSITY_METHODS = ("none", "kmeans")
+ImagePorosityMethodName = Literal["none", "kmeans"]
 """Methods; `"none"` gives ones (no detection), the others have an options sub-table
 `[image_porosity.<method>]`."""
+
+IMAGE_POROSITY_METHODS = get_args(ImagePorosityMethodName)
+"""The method names as a tuple."""
+
+
+def load_choice(sec: dict, key: str, default: str, choices: Any, context: str) -> str:
+    """Read the key `key` of a section and check it against a `Literal` type."""
+    value = sec.get(key, default)
+    options = get_args(choices)
+    if value not in options:
+        raise ValueError(f"{context} {key} must be one of {options}, got {value!r}")
+    return value
 
 
 @dataclass
@@ -139,7 +134,7 @@ class ImagePorosityConfig:
     consumer. A missing section means the defaults.
     """
 
-    method: Literal["none", "kmeans"] = field(
+    method: ImagePorosityMethodName = field(
         default="none",
         metadata={
             "name": "Method",
@@ -225,13 +220,9 @@ class ImagePorosityConfig:
                 "dropped), and the mask options of the consumers."
             )
 
-        method = sec.get("method", self.method)
-        if method not in IMAGE_POROSITY_METHODS:
-            raise ValueError(
-                f"[image_porosity] method must be one of {IMAGE_POROSITY_METHODS}, "
-                f"got {method!r}"
-            )
-        self.method = method
+        self.method = load_choice(
+            sec, "method", self.method, ImagePorosityMethodName, "[image_porosity]"
+        )
 
         tol = float(sec.get("tol", self.tol))
         if not (0.0 < tol <= 1.0):

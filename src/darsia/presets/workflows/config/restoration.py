@@ -3,11 +3,14 @@
 import dataclasses
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, Union
+from typing import Literal, Union, get_args
 
-from .image_porosity import POROSITY_WEIGHTS, load_porosity_mask
+from .image_porosity import load_choice
 from .resize import ResizeConfig
 from .utils import _get_key, _get_section_from_toml
+
+VolumeAveragingMask = Literal["none", "image_porosity", "boolean_porosity"]
+"""Weighting masks: none, the image porosity, or the boolean porosity."""
 
 
 @dataclass
@@ -19,7 +22,7 @@ class VolumeAveragingConfig:
             "help": "Size of the representative elementary volume (REV) in meters.",
         },
     )
-    mask: Literal["none", "image_porosity", "boolean_porosity"] = field(
+    mask: VolumeAveragingMask = field(
         default="image_porosity",
         metadata={
             "name": "Mask",
@@ -29,7 +32,7 @@ class VolumeAveragingConfig:
                 "contribute); 'boolean_porosity': average over the pixels of the "
                 "boolean porosity, equally weighted; 'none': plain average."
             ),
-            "options": list(POROSITY_WEIGHTS),
+            "options": list(get_args(VolumeAveragingMask)),
         },
     )
 
@@ -37,8 +40,8 @@ class VolumeAveragingConfig:
         self.rev_size = _get_key(
             sec, "rev_size", self.rev_size, required=False, type_=float
         )
-        self.mask = load_porosity_mask(
-            sec, self.mask, "volume_average", options=POROSITY_WEIGHTS
+        self.mask = load_choice(
+            sec, "mask", self.mask, VolumeAveragingMask, "volume_average"
         )
         return self
 
