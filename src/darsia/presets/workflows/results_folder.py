@@ -99,6 +99,44 @@ def sparse_data_csv(results: Path, name: str) -> Path:
     return Path(results) / "sparse_data" / f"{name}.csv"
 
 
+def image_porosity_root(results: Path) -> Path:
+    """Folder of the setup step "Image porosity".
+
+    Parameters
+    ----------
+    results : Path
+        The results folder (`[data].results`).
+
+    Returns
+    -------
+    Path
+        `<results>/setup/image_porosity`.
+
+    """
+    return Path(results) / "setup" / "image_porosity"
+
+
+def image_porosity_folder(results: Path, method: str) -> Path:
+    """Folder of the image porosity of one detection method.
+
+    Each method has its own folder, so maps of several methods can be kept.
+
+    Parameters
+    ----------
+    results : Path
+        The results folder (`[data].results`).
+    method : str
+        Method (`[image_porosity] method`, e.g. `"none"`, `"kmeans"`).
+
+    Returns
+    -------
+    Path
+        `<results>/setup/image_porosity/<method>`.
+
+    """
+    return image_porosity_root(results) / method
+
+
 # ! ---- GUI HELPERS ----
 
 _ANALYSIS_MODE_ACTIONS = {
@@ -247,6 +285,8 @@ def suggested_workflow_results_folder(
             setup_candidates.append(results / "setup" / "facies")
         if "rig" in selected_actions:
             setup_candidates.append(results / "setup" / "rig")
+        if "image porosity" in selected_actions:
+            setup_candidates.append(image_porosity_root(results))
         if "protocols" in selected_actions:
             setup_candidates.append(results / "setup")
         if "all" in selected_actions:

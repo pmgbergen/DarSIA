@@ -376,6 +376,8 @@ def _build_fields(dataclass_type: type, key_prefix: str) -> list[dict[str, Any]]
                 "color_picker": field.metadata.get("color_picker", None),
                 "entry_title": field.metadata.get("entry_title", None),
                 "single_entry_keys": field.metadata.get("single_entry_keys", None),
+                "range": field.metadata.get("range", None),
+                "less_than": field.metadata.get("less_than", None),
             }
 
             # For list/tuple types, add the element type label and infer fixed_length

@@ -71,6 +71,82 @@ import_calibration_bundle = "/absolute/path/to/calibration_bundle.zip"
 ```
 - `[video]`: media utility config for protocol-time ordered MP4/GIF generation.
 
+## Image porosity section
+The image porosity marks pixels of the baseline that show the usual (pore space) colour
+of their facies (1) and pixels that do not (0): grains, dark spots, reflections, and
+pixels near label boundaries, which mix the colours of two facies. It is not the
+physical porosity of the facies properties. The setup step "Image porosity" (GUI:
+Setup > Image porosity; CLI: `user_interface_setup --image-porosity`, also run by
+`--all` after the rig) computes it from the rig's baseline and labels and stores it in
+`<results>/setup/image_porosity/<method>/`, with `metadata.json` and figures.
+`[image_porosity]` only says how it is computed:
+```toml
+[image_porosity]
+method = "kmeans"      # "none" (default): no detection, ones; or "color_statistics"
+regions = "labels"     # compare pixels within: "labels" (default), "facies", "global"
+tol = 0.9              # boolean porosity: image porosity > tol
+cutoff = 0.3           # values below become 0
+boundary_band = 5      # pixels on each side of label boundaries set to 0; 0: none
+
+[image_porosity.kmeans]
+patches = [10, 10]
+num_clusters = 5
+tol_color_distance = 0.1
+tol_color_gradient = 0.02
+
+[image_porosity.color_statistics]
+statistic = "arms"     # or "norm"
+patches = [20, 20]
+min_pixels = 2000      # pixels of a label a patch needs for its own fit
+smoothing = 0.0        # Gaussian smoothing of the patch values, in patches
+noise_percentile = 90  # percent (0-100); local distances below: 1
+key_percentile = 99.5  # percent, >= noise_percentile + 1; above: 0, linear between
+dark = true            # arms only (GUI: shown for arms): dark arm, bright arm, side
+bright = true
+side = true
+```
+- Steps: the method (`"none"`: ones), then `cutoff`, then `boundary_band`. A missing
+  section means the defaults (ones with the band).
+- Methods: `"kmeans"` clusters the colours per patch and label and interpolates between
+  the dominant colour (1) and an outlier colour (0) with a Gaussian kernel (legacy;
+  slow, patchwork). `"color_statistics"` fits colour statistics per patch and label and
+  interpolates them smoothly (cubic splines through the patch centres, linear beyond),
+  so they follow illumination trends; each pixel is scored against the statistics of
+  its label at its location: 1 up to the `noise_percentile` of the local distances from
+  the typical (median) colour, 0 from the `key_percentile` on, linear in between (under
+  linear colour mixing: 1 - grain fraction). `statistic = "arms"` measures the distance
+  along the main colour axis of the facies, darker (dark arm) or brighter (bright arm),
+  and off it (side: other hue); `"norm"` the distance in any direction. The options
+  table is `ColorStatisticsConfig` (`config/color_statistics.py`), usable elsewhere.
+  Each method keeps its own options table and output folder.
+- Regions (`regions`): the methods compare pixels within each region (above: "per
+  label"). `"labels"`: the segments (default; tighter statistics where segments of one
+  sand differ in illumination or packing); `"facies"`: groups of labels of one sand type
+  (`[facies]`; the labels without a facies file), more pixels per patch; `"global"`: the
+  whole image as one region (label agnostic). The boundary band always follows the label
+  boundaries. Stored in `metadata.json`.
+- Boolean porosity: image porosity > `tol`. `tol` is applied when reading, so it
+  changes without a new setup; `method`, `regions`, `cutoff`, `boundary_band` and the
+  method options need the step to run again.
+- Whether the image porosity is used is decided by each consumer. One vocabulary:
+  `"image_porosity"` is the continuous map, `"boolean_porosity"` the map > `tol`,
+  `"none"` not used.
+  - restoration: `volume_average` option `mask = "none" | "image_porosity" |
+    "boolean_porosity"` (default `"image_porosity"`), ignore masks `"image_porosity"` /
+    `"boolean_porosity"`, TVD `weight = "image_porosity"` / `"boolean_porosity"`;
+  - `[calibration.color] mask = "none" | "boolean_porosity"` (default `"none"`: all
+    pixels of the ROIs): calibrate on the boolean porosity only;
+  - `[corrections.illumination] mask = "none" | "boolean_porosity"` (default
+    `"none"`): fit the illumination correction on the boolean porosity of the method,
+    computed in the rig setup on the current baseline (before cutoff and band), with
+    the `[image_porosity] regions`. Its own `regions = "labels" | "facies" | "global"`
+    (default `"labels"`) says which regions the IDs in its `labels` key refer to when
+    drawing sample squares (`"global"`: ID 0 = the whole image).
+- The former switch `active` is read with a warning: `false` as `method = "none"`,
+  `true` as the given method (`"kmeans"` if none); the GUI drops it when it loads the
+  config. The other former keys (`mode`, flat `patches`, `num_clusters`,
+  `sample_width`, ...) are errors.
+
 ## Restoration section
 The restoration acts on the signal, before the flash, and on the images of color
 modes. It is a list of steps, applied in the given order; a method may occur more
@@ -92,8 +168,10 @@ options = { weight = 0.1, method = "chambolle" }
   - `"resize"`: changes the resolution by area averaging. Options as for
     `[corrections.resize]`: `mode = "scale"` with `scale`, or
     `mode = "target_shape"` with `target_shape = [rows, cols]`.
-  - `"volume_average"`: averages over a representative elementary volume; option
-    `rev_size` in meters.
+  - `"volume_average"`: averages over a representative elementary volume; options
+    `rev_size` in meters and `mask` (default `"image_porosity"`: weighted by the
+    stored image porosity, see the image porosity section; `"boolean_porosity"`: over
+    the pixels of the boolean porosity, equally weighted; `"none"`: plain average).
   - `"tvd"`: total variation denoising; options `method`, `weight` (a number,
     `"image_porosity"` or `"boolean_porosity"`), `max_num_iter`, `eps`, `omega`,
     `regularization`.
@@ -104,6 +182,12 @@ options = { weight = 0.1, method = "chambolle" }
     - `"boolean_porosity"` (ignore regions outside the boolean porosity mask)
     - `"image_porosity"` (ignore regions with non-positive image porosity)
     - `"inner_labels"` (ignore band around labels boundaries)
+  - `"inner_labels"` is a band of about 2-3 px on each side of a label boundary. The
+    image porosity has its own, configurable band (`[image_porosity] boundary_band`,
+    default 5 px on each side), which `volume_average` and the `image_porosity` weight
+    and mask see.
+  - `"image_porosity"`, `"boolean_porosity"` (also as `volume_average` mask) need the
+    setup step "Image porosity" to have run (see the image porosity section).
 - **Resolution:** after a resize step, all later steps and the rest of the analysis
   (flash, expert knowledge, mass) work on the new grid. The rig data they use
   (porosity, ignore masks, labels of expert knowledge regions, pressure and

@@ -3,10 +3,16 @@
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 from .utils import _get_key, _get_section_from_toml
 
 logger = logging.getLogger(__name__)
+
+RegionName = Literal["labels", "facies", "global"]
+"""Regions pixels are grouped by: the labels (segments), the facies (groups of labels
+of one sand type, `[facies]`; the labels without a facies file) or one region, the whole
+image (label agnostic). Resolved to an image by `Rig.regions`."""
 
 
 @dataclass

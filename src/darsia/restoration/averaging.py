@@ -190,13 +190,45 @@ def volume_average(img: darsia.Image, mask: darsia.Image, size: float) -> darsia
     return VolumeAveraging(rev=REV(size=size, img=img), mask=mask)(img)
 
 
+def label_boundary_mask(labels: darsia.Image, width: int) -> np.ndarray:
+    """Pixels within `width` pixels of a label boundary, on both sides.
+
+    Each label is eroded by a disk of radius `width`; the removed rim is marked. Where
+    two labels meet, both rims are marked, so the band is about `2 * width` pixels wide.
+    The frame border is not a boundary.
+
+    Parameters
+    ----------
+    labels : darsia.Image
+        Labels image.
+    width : int
+        Radius of the disk in pixels; 0 marks nothing.
+
+    Returns
+    -------
+    np.ndarray
+        Boolean array of the shape of the labels.
+
+    """
+    band = np.zeros(labels.img.shape[:2], dtype=bool)
+    if width <= 0:
+        return band
+    structure = skimage.morphology.disk(width)
+    for mask_img in darsia.Masks(labels):
+        mask = mask_img.img
+        eroded = ~scipy.ndimage.binary_dilation(~mask, structure=structure)
+        band |= np.logical_and(mask, ~eroded)
+    return band
+
+
 def porosity_based_averaging(
     labels, porosity, ref_image, threshold=0.3, disk_size=5, rev_size=0.005
 ):
     """Custom (FFUM) averaging function that uses porosity in averaging.
 
     Porosity values below 0.3 are not considered in the averaging process.
-    Layer boundaries in the labels image are deactivated in the porosity image.
+    Layer boundaries in the labels image are deactivated in a copy of the porosity
+    image; the given porosity image is not changed.
 
     Parameters
     ----------
@@ -212,23 +244,10 @@ def porosity_based_averaging(
     darsia.VolumeAveraging
         Volume averaging object that uses the porosity image.
     """
-    # Identify layer boundaries in the labels image
-    collective_residual_mask = darsia.zeros_like(labels, mode="voxels", dtype=bool)
-    for mask_img in darsia.Masks(labels):
-        mask = mask_img.img
-        negative_mask = ~mask
-        negative_dilated_mask = scipy.ndimage.binary_dilation(
-            negative_mask, structure=skimage.morphology.disk(disk_size)
-        )
-        dilated_mask = ~negative_dilated_mask
-        residual_mask = np.logical_and(mask, ~dilated_mask)
-        collective_residual_mask.img = np.logical_or(
-            collective_residual_mask.img, residual_mask
-        )
-
-    # Deactivate grains and layer boundaries in the porosity image
+    # Deactivate grains and layer boundaries in a copy of the porosity image
+    porosity = porosity.copy()
     porosity.img[porosity.img < threshold] = 0.0
-    porosity.img[collective_residual_mask.img] = 0.0
+    porosity.img[label_boundary_mask(labels, disk_size)] = 0.0
 
     # Porosity-based volume averaging object
     return darsia.VolumeAveraging(

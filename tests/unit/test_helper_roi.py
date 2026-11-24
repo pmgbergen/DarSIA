@@ -130,6 +130,7 @@ def test_helper_roi_mode_none_dispatches_viewer_with_source_images(
                 roi=SimpleNamespace(mode="none", data=SimpleNamespace())
             )
             self.corrections = None
+            self.image_porosity = None
             self.color_to_mass = None
 
         def check(self, *args):

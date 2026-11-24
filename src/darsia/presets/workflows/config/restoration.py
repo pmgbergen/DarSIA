@@ -3,10 +3,13 @@
 import dataclasses
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, Union
+from typing import Literal, Union, get_args
 
 from .resize import ResizeConfig
-from .utils import _get_key, _get_section_from_toml
+from .utils import _get_key, _get_section_from_toml, load_choice
+
+VolumeAveragingMask = Literal["none", "image_porosity", "boolean_porosity"]
+"""Weighting masks: none, the image porosity, or the boolean porosity."""
 
 
 @dataclass
@@ -18,10 +21,26 @@ class VolumeAveragingConfig:
             "help": "Size of the representative elementary volume (REV) in meters.",
         },
     )
+    mask: VolumeAveragingMask = field(
+        default="image_porosity",
+        metadata={
+            "name": "Mask",
+            "help": (
+                "'image_porosity': average weighted by the image porosity of Setup > "
+                "Image porosity (pixels with porosity 0, e.g. the boundary band, do not "
+                "contribute); 'boolean_porosity': average over the pixels of the "
+                "boolean porosity, equally weighted; 'none': plain average."
+            ),
+            "options": list(get_args(VolumeAveragingMask)),
+        },
+    )
 
     def load(self, sec: dict) -> "VolumeAveragingConfig":
         self.rev_size = _get_key(
             sec, "rev_size", self.rev_size, required=False, type_=float
+        )
+        self.mask = load_choice(
+            sec, "mask", self.mask, VolumeAveragingMask, "volume_average"
         )
         return self
 
@@ -37,9 +56,9 @@ class TVDConfig:
         "isotropic bregman", "heterogeneous bregman".
     weight
         Regularization weight. Either a float or one of the strings
-        "porosity" (use fluidflower.image_porosity as heterogeneous weight)
-        or "boolean_porosity" (use fluidflower.boolean_porosity as heterogeneous
-        weight). When a string value is provided, "heterogeneous bregman" is
+        "image_porosity" (the stored image porosity of the setup step "Image
+        porosity" as heterogeneous weight) or "boolean_porosity" (its boolean
+        porosity). When a string value is provided, "heterogeneous bregman" is
         automatically selected as the TVD method.
     max_num_iter
         Maximum number of iterations.
@@ -76,8 +95,8 @@ class TVDConfig:
             "name": "Regularization weight",
             "help": (
                 "Regularization weight (float value) or special string: 'image_porosity' "
-                "(use fluidflower.image_porosity) or 'boolean_porosity' "
-                "(use fluidflower.boolean_porosity). String values automatically "
+                "(the image porosity of Setup > Image porosity) or 'boolean_porosity' "
+                "(its boolean porosity). String values automatically "
                 "select 'heterogeneous bregman' method."
             ),
             "placeholder": "e.g., 0.1 or 'image_porosity'",

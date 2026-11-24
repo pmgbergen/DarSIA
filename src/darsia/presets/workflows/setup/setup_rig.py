@@ -1,6 +1,8 @@
 """Setup/storing/deleting main rig object. This routine is time consuming and should be run
-only once per run. It stores the baseline image, necessary corrections, the image porosity
-and the depth map, adapted to the corrected baseline image etc.
+only once per run. It stores the baseline image, necessary corrections and the depth map,
+adapted to the corrected baseline image etc. The image porosity is a setup step of its own
+(`setup_image_porosity.py`); `[image_porosity]` is read here only for the mask of the
+illumination correction.
 
 """
 

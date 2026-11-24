@@ -51,6 +51,7 @@ class SetupTab:
             "segmentation": selected_id == "segmentation",
             "facies": selected_id == "facies",
             "rig": selected_id == "rig",
+            "image_porosity": selected_id == "image_porosity",
             "show": show_plots,
             "force": False,
         }
@@ -78,6 +79,8 @@ class SetupTab:
             argv.append("--facies")
         if options["rig"]:
             argv.append("--rig")
+        if options["image_porosity"]:
+            argv.append("--image-porosity")
         if options["force"]:
             argv.append("--force")
         if options["show"]:
@@ -130,6 +133,12 @@ class SetupTab:
                         get_help_text("setup", "facies", "Facies"),
                     ),
                     ("Rig", "rig", "fa5s.circle", get_help_text("setup", "rig", "Rig")),
+                    (
+                        "Image porosity",
+                        "image_porosity",
+                        "fa5s.circle",
+                        get_help_text("setup", "image_porosity", "Image porosity"),
+                    ),
                 ],
             ),
         ]

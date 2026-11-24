@@ -28,6 +28,7 @@ from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
+from darsia.presets.workflows.processing.image_porosity import load_image_porosity
 from darsia.presets.workflows.restoration import RestorationSteps, build_restoration
 from darsia.presets.workflows.rig import Rig
 from darsia.signals.color import ColorEmbeddingRuntime, ColorPathEmbedding
@@ -468,7 +469,11 @@ def prepare_analysis_context(
 
     # ! ---- RESTORATION ----
     with darsia.timed("restoration"):
-        restoration = build_restoration(config.restoration, fluidflower)
+        restoration = build_restoration(
+            config.restoration,
+            fluidflower,
+            load_image_porosity(config.image_porosity, config.data.results),
+        )
 
     # ! ---- EXPERT KNOWLEDGE ADAPTER (for all analyses and calibration) ----
     # Built once, globally, regardless of any single consumer's own

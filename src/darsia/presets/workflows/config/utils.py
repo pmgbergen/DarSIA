@@ -3,7 +3,18 @@
 import tomllib
 from datetime import timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
+
+from .migrations import migrate_section
+
+
+def load_choice(sec: dict, key: str, default: str, choices: Any, context: str) -> str:
+    """Read the key `key` of a section and check it against a `Literal` type."""
+    value = sec.get(key, default)
+    options = get_args(choices)
+    if value not in options:
+        raise ValueError(f"{context} {key} must be one of {options}, got {value!r}")
+    return value
 
 
 def _get_section(data: dict, section: str) -> dict:
@@ -59,6 +70,8 @@ def _get_section_from_toml(path: Path | list[Path], section: str) -> dict:
     else:
         raise TypeError(f"Path must be a Path or list of Paths. It is {type(path)}.")
     sec = _get_section(data, section)
+    if isinstance(sec, dict):
+        migrate_section(section, sec)
     return sec
 
 

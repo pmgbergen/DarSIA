@@ -8,8 +8,11 @@ selects a label by a click (or Next Label), moves, adds, removes and aligns key 
 samples one from the image (pipette) or fits the path automatically (Auto: with the
 current number of key colors; Reset: with the number of the config), and saves. The
 pH view follows every change (computed in the background; only the edited label). It
-shows two signals (Next Signal): all labels in the colormap of the reference label's
-path (first), or each label in the colormap of its own path.
+shows the signals (Next Signal): all labels in the colormap of the reference label's
+path (first, if there is a reference), each label in the colormap of its own path, and
+the calibration mask in the colours of the shown image (white outside). The pH signals
+cover the whole labels, as the analysis does; the paths are fitted, and the pipette
+samples, within the calibration mask only.
 
 The R, G, B sliders show the selected key color (relative to the baseline; range
 symmetric around 0 and covering the label's colors); a change applies while dragging.
@@ -58,8 +61,9 @@ MIN_SLIDER_RANGE = 0.01
 SIGNAL_TITLES = {
     "reference": "colormap of label {reference} (reference)",
     "own": "own colormap of each label",
+    "mask": "calibration mask - colours of the image",
 }
-"""Signals of the pH view (first: reference) and their titles."""
+"""Signals of the pH view (first: reference, if any) and their titles."""
 
 UNSAVED_TEXT = "Changes not saved."
 """Save status while the shown paths differ from the saved ones."""
@@ -267,10 +271,10 @@ class ColorPathEditorState:
         }
         """Paths of the labels which are not edited."""
         self.reference_label = reference_label
-        self.signals = ["own"]
+        self.signals = ["own", "mask"]
         """Signals of the pH view (`SIGNAL_TITLES`)."""
         if reference_label in self.paths or reference_label in self.fixed_paths:
-            self.signals = ["reference", "own"]
+            self.signals = ["reference", "own", "mask"]
         elif reference_label is not None:
             logger.warning(
                 "Reference label %s has no color path; the pH view shows each label "
@@ -346,6 +350,11 @@ class ColorPathEditorState:
         """Path of the selected label."""
         return self.paths[self.label]
 
+    def label_region(self, label: int) -> np.ndarray:
+        """Pixels of a label (preview grid), with or without calibration mask."""
+        assert self.coarse_labels is not None
+        return self.coarse_labels.img == label
+
     def label_mask(self, label: int) -> np.ndarray:
         """Pixels of a label within the calibration mask (preview grid)."""
         assert self.coarse_labels is not None and self.coarse_mask is not None
@@ -413,13 +422,14 @@ class ColorPathEditorState:
         self, label: int, key_colors: list[np.ndarray] | None = None
     ) -> np.ndarray | None:
         """pH-indicator interpretation of the shown image in a label with its path
-        (through `key_colors` if given, e.g. a snapshot for a background calculation).
+        (through `key_colors` if given, e.g. a snapshot for a background calculation),
+        on the whole label: the calibration mask only limits the fit.
         """
         if not self.has_preview:
             return None
         assert self.coarse_baseline is not None
         path = self.paths[label]
-        label_mask = self.label_mask(label)
+        label_mask = self.label_region(label)
         if not np.any(label_mask):
             return np.full(self.coarse_shape, np.nan, dtype=float)
         relative = self.coarse_image().img.astype(
@@ -468,10 +478,22 @@ class ColorPathEditorState:
         colormap = self.colormap(label, key_colors)
         picture[valid] = colormap(np.clip(path.preview[valid], 0, 1))[:, :3]
 
+    def mask_picture(self) -> np.ndarray:
+        """The calibration mask in the colours of the shown image; white outside."""
+        picture = np.ones((*self.coarse_shape, 3))
+        if self.coarse_mask is None or len(self.coarse_images) == 0:
+            return picture
+        image = self.coarse_image().img
+        picture[self.coarse_mask] = np.clip(image[self.coarse_mask], 0, 1)
+        return picture
+
     def domain_picture(self, key_colors: dict | None = None) -> np.ndarray:
         """Interpretation of the whole domain as colors, in the colormaps of the shown
-        signal; white where there is no interpretation. `key_colors`: per label (e.g.
-        a snapshot), default the current ones."""
+        signal; white where there is no interpretation. The signal "mask" shows the
+        calibration mask instead (`mask_picture`). `key_colors`: per label (e.g. a
+        snapshot), default the current ones."""
+        if self.signal == "mask":
+            return self.mask_picture()
         picture = np.ones((*self.coarse_shape, 3))
         for label in self.paths:
             self._paint_label(picture, label, key_colors)
@@ -481,13 +503,16 @@ class ColorPathEditorState:
         self, label: int | None = None, key_colors: dict | None = None
     ) -> None:
         """Update the cached domain picture: one label (its region recolored), or all
-        labels (`label` None). `key_colors`: per label, default the current ones."""
+        labels (`label` None). `key_colors`: per label, default the current ones. The
+        mask picture does not depend on the key colors and stays as it is."""
         if label is None or self.picture is None:
             self.picture = self.domain_picture(key_colors)
             return
+        if self.signal == "mask":
+            return
         picture = self.picture.copy()
         if self.coarse_labels is not None:
-            picture[self.label_mask(label)] = 1.0
+            picture[self.label_region(label)] = 1.0
         self._paint_label(picture, label, key_colors)
         self.picture = picture
 
@@ -1044,9 +1069,6 @@ class ColorPathEditorWindow:
         if self.runner.refuse() or self.interpretation is None:
             return
         state = self.state
-        if len(state.signals) < 2:
-            self.message.set("No reference color path: only the own colormaps.")
-            return
         state.next_signal()
         key_colors = state.key_snapshot()
 

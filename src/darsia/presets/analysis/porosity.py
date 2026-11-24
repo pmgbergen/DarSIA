@@ -387,20 +387,26 @@ def patched_porosity_analysis(
     All other parameters are forwarded to :class:`PorosityAnalysis`, applied
     independently on each patch.
     """
+    if labels is None:
+        labels = darsia.zeros_like(baseline, mode="voxels", dtype=np.uint8)
     porosity = darsia.zeros_like(baseline, mode="voxels", dtype=float)
     patch_size = (np.ceil(np.array(baseline.num_voxels) / np.array(patches))).astype(
         int
     )
     for i in range(patches[0]):
         for j in range(patches[1]):
+            # Skip empty patches at the end of each axis (rounded-up patch size)
+            if (
+                i * patch_size[0] >= baseline.num_voxels[0]
+                or j * patch_size[1] >= baseline.num_voxels[1]
+            ):
+                continue
             subregion = (
                 slice(i * patch_size[0], (i + 1) * patch_size[0]),
                 slice(j * patch_size[1], (j + 1) * patch_size[1]),
             )
             sub_baseline = baseline.subregion(subregion)
             sub_labels = labels.subregion(subregion)
-            if np.any(sub_baseline.shape == 0):
-                continue
 
             try:
                 porosity_analysis = PorosityAnalysis(
@@ -416,10 +422,9 @@ def patched_porosity_analysis(
                 )
                 porosity.img[subregion] = porosity_analysis(sub_baseline).img
             except Exception as e:
-                warn(
-                    f"Porosity analysis failed for subregion {subregion}: {e}",
-                    UserWarning,
-                )
-                porosity.img[subregion] = 1.0
+                raise RuntimeError(
+                    f"Porosity analysis failed for patch ({i}, {j}) of {patches}, "
+                    f"pixels {subregion}."
+                ) from e
 
     return porosity

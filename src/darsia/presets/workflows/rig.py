@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, get_args
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -15,15 +15,14 @@ import scipy.ndimage
 import skimage
 
 import darsia
-from darsia.presets.analysis.porosity import patched_porosity_analysis
 from darsia.presets.workflows.config.corrections import (
     CorrectionsConfig,
     IlluminationCorrectionConfig,
     PatchwiseIlluminationCorrectionConfig,
 )
+from darsia.presets.workflows.config.facies import RegionName
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.facies_props import FaciesProps
-from darsia.presets.workflows.setup.illustrations import save_scalar_map_illustration
 
 if TYPE_CHECKING:
     from darsia.presets.workflows.config.roi_registry import RoiRegistry
@@ -414,13 +413,19 @@ class Rig:
         roi_registry: "RoiRegistry | None" = None,
         log: Path | None = None,
         show_plot: bool = False,
+        image_porosity_config: ImagePorosityConfig | None = None,
     ) -> None:
-        """Setup label-dependent color corrections after labels/porosity are available.
+        """Setup label-dependent color corrections after labels are available.
 
         Execution order is fixed:
         1) illumination, 2) relative color, 3) color correction.
         Relative color can either be loaded from a precomputed correction file or
         calibrated from configured images (interactive mode only).
+
+        With `[corrections.illumination] mask = "boolean_porosity"`, the illumination
+        correction is fitted on the boolean image porosity of the current baseline
+        (`[image_porosity]` method > `tol`), computed here and not kept; the stored image
+        porosity is a setup step of its own, after the rig.
         """
         if corrections_config is None:
             corrections_config = CorrectionsConfig()
@@ -430,7 +435,7 @@ class Rig:
             )
 
         self.color_corrections = []
-        """Color corrections initialized after labels and porosity are available."""
+        """Color corrections initialized after labels are available."""
 
         # 1) Illumination correction.
         if corrections_config.illumination:
@@ -438,6 +443,7 @@ class Rig:
                 corrections_config.illumination,
                 log=log,
                 show_plot=show_plot,
+                image_porosity_config=image_porosity_config,
             )
             self.color_corrections.append(self.illumination_correction)
 
@@ -708,12 +714,38 @@ class Rig:
             self.porosity = self.read_field(porosity)
             self.permeability = self.read_field(permeability)
 
+    def regions(self, name: RegionName) -> darsia.Image:
+        """Regions to group pixels by, on the grid of the labels.
+
+        Parameters
+        ----------
+        name : RegionName
+            "labels" (segments), "facies" (groups of labels; the labels without a
+            facies file) or "global" (one region 0, the whole image).
+
+        Returns
+        -------
+        darsia.Image
+            The labels or facies (not copies; not to be modified), or a new zero image.
+
+        """
+        if name == "labels":
+            return self.labels
+        if name == "facies":
+            return self.facies
+        if name == "global":
+            return darsia.zeros_like(self.labels, dtype=np.uint8)
+        raise ValueError(
+            f"Unknown regions {name!r}, use one of {get_args(RegionName)}."
+        )
+
     # ! ---- ILLUMINATION CORRECTION ----
     def setup_illumination_correction(
         self,
         config: IlluminationCorrectionConfig | None,
         log: Path | None = None,
         show_plot: bool = False,
+        image_porosity_config: ImagePorosityConfig | None = None,
     ) -> darsia.IlluminationCorrection:
         """Setup and return illumination correction.
 
@@ -727,6 +759,11 @@ class Rig:
             Path to the log folder where diagnostic plots will be saved.
         show_plot : bool
             Whether to show diagnostic plots during setup (default: False).
+        image_porosity_config : ImagePorosityConfig | None
+            `[image_porosity]`: with `config.mask = "boolean_porosity"`, the correction is
+            fitted on the boolean image porosity of the current baseline (method >
+            `tol`, before cutoff and boundary band), computed here and not kept. None
+            means the defaults.
 
         Notes
         -----
@@ -735,33 +772,57 @@ class Rig:
         """
         illumination_correction = darsia.IlluminationCorrection()
 
-        # Fetch samples for illumination correction based on labels and baseline.
+        # Fetch samples for illumination correction per region ID (`config.labels`).
         if config is not None:
             sample_groups = []
             if not config.labels:
-                # If no labels specified, use random samples from the whole image.
+                # If no IDs specified, use random samples from the whole image.
                 samples = illumination_correction.select_random_samples(
                     mask=darsia.ones_like(self.shape_corrected_baseline, dtype=bool),
                     config=config,
                 )
                 sample_groups.append(samples)
             else:
+                regions = self.regions(config.regions)
                 for label in config.labels:
-                    assert (
-                        label in self.labels.img
-                    ), f"Label {label} not found in labels image."
-                    mask = self.labels.img == label
+                    assert label in regions.img, (
+                        f"Region {label} not found in the {config.regions} "
+                        "([corrections.illumination] regions)."
+                    )
+                    mask = regions.img == label
                     samples = illumination_correction.select_random_samples(
                         mask=mask, config=config
                     )
                     sample_groups.append(samples)
+                del regions
+
+            # Fit on the boolean image porosity of the current baseline, if asked for
+            if config.mask == "boolean_porosity":
+                from darsia.presets.workflows.processing.image_porosity import (
+                    boolean_image_porosity,
+                    detect_image_porosity,
+                )
+
+                porosity_config = image_porosity_config or ImagePorosityConfig()
+                mask = boolean_image_porosity(
+                    detect_image_porosity(
+                        self.baseline,
+                        self.regions(porosity_config.regions),
+                        porosity_config,
+                    ),
+                    porosity_config,
+                )
+            else:
+                mask = darsia.ones_like(
+                    self.shape_corrected_baseline, mode="voxels", dtype=bool
+                )
 
             # Determine illumination correction based on inputs
             illumination_correction.setup(
                 # Use shape-corrected baseline as explicit setup input.
                 base=self.shape_corrected_baseline,
                 sample_groups=sample_groups,
-                mask=self.boolean_porosity,
+                mask=mask,
                 outliers=config.outliers,
                 filter=lambda x: skimage.filters.gaussian(x, sigma=config.sigma),
                 colorspace=config.colorspace,
@@ -805,147 +866,6 @@ class Rig:
         return illumination_correction
 
     # ! ---- POROSITY ----
-
-    def setup_image_porosity(
-        self,
-        path: Path | None = None,
-        log: Path | None = None,
-        config: ImagePorosityConfig | None = None,
-        show_plot: bool = False,
-    ) -> None:
-        """Setup image porosity based on the baseline image.
-
-        Behaviour is controlled by *config*:
-
-        * ``mode="full"`` (default): constant porosity of ``1`` over the full domain.
-        * ``mode="from_image"``: porosity derived from the baseline image via
-          :func:`~darsia.patched_porosity_analysis` using the parameters stored in
-          *config* (``patches``, ``num_clusters``, ``sample_width``,
-          ``tol_color_distance``, ``tol_color_gradient``).
-
-        When *path* is provided the image is always loaded from disk regardless of
-        *config*, which is useful for restoring a previously saved rig.
-
-        Parameters
-        ----------
-        path : Path | None
-            Path to a previously saved porosity ``.npz`` file.
-            When given, the file is loaded and *config* is not used.
-        log : Path | None
-            Folder for diagnostic output.  When given, a JPG
-            illustration is stored to ``log/image_porosity/image_porosity.jpg``.
-        config : ImagePorosityConfig | None
-            Porosity configuration.  Defaults to
-            ``ImagePorosityConfig()`` (i.e. ``mode="full"``) when not provided.
-        show_plot : bool
-            When ``True`` the image porosity is displayed interactively.
-            Pass ``True`` when calling from a GUI or user-interface workflow.
-        """
-        if config is None:
-            config = ImagePorosityConfig()
-        self._image_porosity_config = config
-
-        if path is not None:
-            self.image_porosity = self.read_field(path)
-        elif config.mode == "from_image":
-            self.image_porosity = patched_porosity_analysis(
-                baseline=self.baseline,
-                patches=config.patches,
-                labels=self.labels,
-                num_clusters=config.num_clusters,
-                sample_width=config.sample_width,
-                tol_color_distance=config.tol_color_distance,
-                tol_color_gradient=config.tol_color_gradient,
-            )
-        else:
-            # mode == "full"
-            self.image_porosity = darsia.ones_like(
-                self.baseline, mode="voxels", dtype=np.float32
-            )
-        """Image porosity for the rig object."""
-
-        if log:
-            out_dir = Path(log)
-            out_dir.mkdir(parents=True, exist_ok=True)
-            save_scalar_map_illustration(
-                self.image_porosity.img,
-                out_dir / "image_porosity.jpg",
-                title="Image porosity",
-                colorbar_label="Porosity",
-            )
-
-        if show_plot:
-            self.image_porosity.show(title="Image porosity")
-
-        logger.info("Porosity setup completed.")
-
-    def setup_boolean_image_porosity(
-        self,
-        threshold: float | None = None,
-        log: Path | None = None,
-        config: ImagePorosityConfig | None = None,
-        show_plot: bool = False,
-    ) -> None:
-        """Setup boolean porosity based on the defined threshold.
-
-        In ``mode="full"`` the boolean mask is always all-``True`` (full image domain),
-        regardless of *threshold* / *tol*.  In ``mode="from_image"`` the mask is
-        derived by thresholding ``self.image_porosity`` with the effective tolerance.
-
-        The effective tolerance is resolved in order of precedence:
-
-        1. *threshold* argument (when explicitly passed).
-        2. ``config.tol`` (when *config* is given).
-        3. ``self._image_porosity_config.tol`` (stored by :meth:`setup_image_porosity`).
-        4. ``0.9`` (hard-coded default).
-
-        Parameters
-        ----------
-        threshold : float | None
-            Override tolerance value.  Deprecated in favour of
-            ``config.tol``; kept for backward compatibility.
-        log : Path | None
-            Folder for diagnostic output.  When given, a JPG
-            illustration is stored to
-            ``log/image_porosity/boolean_porosity.jpg``.
-        config : ImagePorosityConfig | None
-            Porosity configuration.  Falls back to
-            the config stored by the last call to :meth:`setup_image_porosity`, and
-            finally to ``ImagePorosityConfig()`` (``mode="full"``).
-        show_plot : bool
-            When ``True`` the boolean porosity is displayed
-            interactively.  Pass ``True`` when calling from a GUI or
-            user-interface workflow.
-        """
-        if config is None:
-            config = getattr(self, "_image_porosity_config", ImagePorosityConfig())
-
-        # Resolve effective threshold: explicit argument wins over config.
-        tol = threshold if threshold is not None else config.tol
-
-        if config.mode == "full":
-            # Always full boolean mask regardless of tol.
-            self.boolean_porosity = darsia.ones_like(
-                self.baseline, mode="voxels", dtype=bool
-            )
-        else:
-            # from_image: threshold the continuous porosity map.
-            self.boolean_porosity = self.image_porosity > tol
-
-        if log:
-            out_dir = Path(log)
-            out_dir.mkdir(parents=True, exist_ok=True)
-            save_scalar_map_illustration(
-                self.boolean_porosity.img.astype(float),
-                out_dir / "boolean_porosity.jpg",
-                title="Boolean porosity",
-                colorbar_label="Porosity (boolean)",
-            )
-
-        if show_plot:
-            self.boolean_porosity.show(title="Boolean porosity")
-
-        logger.info("Boolean porosity setup completed.")
 
     def setup(
         self,
@@ -1019,26 +939,16 @@ class Rig:
         # Define geometry for integration
         self.setup_geometry()
 
-        # Pre-setup image and boolean porosity based on baseline (redo after color correction)
-        self.setup_image_porosity(
-            log=log, config=image_porosity_config, show_plot=show_plot
-        )
-        self.setup_boolean_image_porosity(log=log, show_plot=show_plot)
-
-        # Setup color corrections (wait until here to use label and porosity information)
+        # Setup color corrections (wait until here to use label information; the
+        # illumination correction uses the image porosity configuration for its mask).
+        # The image porosity itself is a setup step of its own, after the rig.
         self.setup_color_corrections(
             corrections_config=corrections_config,
             roi_registry=roi_registry,
             log=log,
             show_plot=show_plot,
+            image_porosity_config=image_porosity_config,
         )
-
-        # Redo the porosity setup after color corrections, as the latter can change the image.
-        if len(self.color_corrections) > 0:
-            self.setup_image_porosity(
-                log=log, config=image_porosity_config, show_plot=show_plot
-            )
-            self.setup_boolean_image_porosity(log=log, show_plot=show_plot)
 
         # TODO Setup concentration analysis and transformations?
         # self.co2_analysis = ...
@@ -1052,21 +962,6 @@ class Rig:
         # )
 
         logger.info("Rig setup completed.")
-
-        # ! ---- AVERAGING ----
-
-        # Use porosity-based averaging for restoration
-        restoration = darsia.porosity_based_averaging(
-            self.labels, self.image_porosity, self.baseline
-        )
-
-        # Cache
-        self.restoration = restoration
-        """Restoration model based on porosity-based averaging."""
-
-        clipping = darsia.ClipModel(min_value=0.0)
-        self.upscaling = darsia.CombinedModel([clipping] + 2 * [restoration])
-        logger.info("Upscaling setup completed.")
 
         # ! ---- COMBINED MODELS ----
 
@@ -1162,12 +1057,6 @@ class Rig:
         except Exception:
             warn("Permeability not available for saving.", UserWarning)
 
-        # Save porosity information
-        try:
-            self.image_porosity.save(folder / "image_porosity.npz")
-        except Exception:
-            warn("Image porosity not available for saving.", UserWarning)
-
         # Use green color and hyperlink
         folder_uri = Path(folder).absolute().as_uri()
         logger.info(
@@ -1177,7 +1066,9 @@ class Rig:
 
     @classmethod
     def load(
-        cls, folder: Path, corrections_config: CorrectionsConfig | None = None
+        cls,
+        folder: Path,
+        corrections_config: CorrectionsConfig | None = None,
     ) -> "Rig":
         """Load rig object from file.
 
@@ -1187,6 +1078,14 @@ class Rig:
         ----------
         folder : Path
             Path to the folder where the rig object is saved.
+        corrections_config : CorrectionsConfig | None
+            Corrections of the config (``[corrections]``).
+
+        Returns
+        -------
+        Rig
+            The loaded rig.
+
         """
         # Create rig object
         rig = cls()
@@ -1244,18 +1143,6 @@ class Rig:
         # Setup geometry information
         with darsia.timed("geometry"):
             rig.setup_geometry()
-
-        # Image porosity (e.g. for restorations and color path calibration masks): read
-        # on first use.
-        image_porosity_path = folder / "image_porosity.npz"
-        if not image_porosity_path.exists():
-            raise FileNotFoundError(f"File {image_porosity_path} does not exist.")
-
-        def load_image_porosity() -> None:
-            rig.setup_image_porosity(path=image_porosity_path)
-            rig.setup_boolean_image_porosity()
-
-        rig._defer(("image_porosity", "boolean_porosity"), load_image_porosity)
 
         # TODO setup color_analysis, and pw_transformation.
 
