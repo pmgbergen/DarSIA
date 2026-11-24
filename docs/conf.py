@@ -104,12 +104,15 @@ sphinx_gallery_conf = {
         "../examples/corrections",
         "../examples/restoration",
         "../examples/segmentation",
+        "../examples/porosity",
         "../examples/registration",
         "../examples/analysis",
         "../examples/distances",
         "../examples/paper",
     ],
     "image_scrapers": ("matplotlib",),
+    # Figures also at twice the resolution, for sharp screens and image maps.
+    "image_srcset": ["2x"],
     "doc_module": ("darsia",),
     "default_thumb_file": os.path.join(
         os.path.dirname(__file__), "_static", "darsia-logo.png"
