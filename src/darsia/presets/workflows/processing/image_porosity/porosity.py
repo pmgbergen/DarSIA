@@ -20,7 +20,6 @@ import json
 import logging
 from dataclasses import asdict
 from datetime import datetime
-from importlib import metadata
 from pathlib import Path
 
 import darsia
@@ -105,13 +104,6 @@ def boolean_image_porosity(
     return porosity > config.tol
 
 
-def _darsia_version() -> str:
-    try:
-        return metadata.version("darsia")
-    except metadata.PackageNotFoundError:
-        return "unknown"
-
-
 def save_image_porosity(
     folder: Path,
     porosity: darsia.Image,
@@ -145,7 +137,6 @@ def save_image_porosity(
         "options": None if options is None else asdict(options),
         "cutoff": config.cutoff,
         "boundary_band": config.boundary_band,
-        "darsia_version": _darsia_version(),
         "created": datetime.now().isoformat(timespec="seconds"),
         "inputs": {
             name: {
