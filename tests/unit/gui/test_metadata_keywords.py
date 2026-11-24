@@ -555,6 +555,7 @@ class TestImagePorosityConfigMetadata:
         fields = self._schema()
         assert set(fields) == {
             "image_porosity.method",
+            "image_porosity.regions",
             "image_porosity.tol",
             "image_porosity.cutoff",
             "image_porosity.boundary_band",

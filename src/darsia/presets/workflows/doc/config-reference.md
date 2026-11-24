@@ -83,6 +83,7 @@ Setup > Image porosity; CLI: `user_interface_setup --image-porosity`, also run b
 ```toml
 [image_porosity]
 method = "kmeans"      # "none" (default): no detection, ones; or "color_statistics"
+regions = "labels"     # compare pixels within: "labels" (default), "facies", "global"
 tol = 0.9              # boolean porosity: image porosity > tol
 cutoff = 0.3           # values below become 0
 boundary_band = 5      # pixels on each side of label boundaries set to 0; 0: none
@@ -118,9 +119,15 @@ side = true
   and off it (side: other hue); `"norm"` the distance in any direction. The options
   table is `ColorStatisticsConfig` (`config/color_statistics.py`), usable elsewhere.
   Each method keeps its own options table and output folder.
+- Regions (`regions`): the methods compare pixels within each region (above: "per
+  label"). `"labels"`: the segments (default; tighter statistics where segments of one
+  sand differ in illumination or packing); `"facies"`: groups of labels of one sand type
+  (`[facies]`; the labels without a facies file), more pixels per patch; `"global"`: the
+  whole image as one region (label agnostic). The boundary band always follows the label
+  boundaries. Stored in `metadata.json`.
 - Boolean porosity: image porosity > `tol`. `tol` is applied when reading, so it
-  changes without a new setup; `method`, `cutoff`, `boundary_band` and the method
-  options need the step to run again.
+  changes without a new setup; `method`, `regions`, `cutoff`, `boundary_band` and the
+  method options need the step to run again.
 - Whether the image porosity is used is decided by each consumer. One vocabulary:
   `"image_porosity"` is the continuous map, `"boolean_porosity"` the map > `tol`,
   `"none"` not used.
@@ -131,7 +138,10 @@ side = true
     pixels of the ROIs): calibrate on the boolean porosity only;
   - `[corrections.illumination] mask = "none" | "boolean_porosity"` (default
     `"none"`): fit the illumination correction on the boolean porosity of the method,
-    computed in the rig setup on the current baseline (before cutoff and band).
+    computed in the rig setup on the current baseline (before cutoff and band), with
+    the `[image_porosity] regions`. Its own `regions = "labels" | "facies" | "global"`
+    (default `"labels"`) says which regions the IDs in its `labels` key refer to when
+    drawing sample squares (`"global"`: ID 0 = the whole image).
 - The former switch `active` is read with a warning: `false` as `method = "none"`,
   `true` as the given method (`"kmeans"` if none); the GUI drops it when it loads the
   config. The other former keys (`mode`, flat `patches`, `num_clusters`,

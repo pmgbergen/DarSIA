@@ -3,7 +3,8 @@
 The image porosity marks pixels of the baseline that show the usual (pore space)
 colour of their facies (1) and pixels that do not (0). It is computed in three steps:
 
-1. detection with the method of `[image_porosity] method` (`"none"`: ones);
+1. detection with the method of `[image_porosity] method` (`"none"`: ones), comparing
+   pixels within the regions of `[image_porosity] regions` (labels, facies, global);
 2. `cutoff`: values below it become 0;
 3. `boundary_band`: pixels within that many pixels of a label boundary become 0. Pixels
    there mix the colours of two facies and represent neither.
@@ -36,7 +37,7 @@ METADATA_FILE = "metadata.json"
 
 
 def detect_image_porosity(
-    baseline: darsia.Image, labels: darsia.Image, config: ImagePorosityConfig
+    baseline: darsia.Image, regions: darsia.Image, config: ImagePorosityConfig
 ) -> darsia.Image:
     """Step 1 only: the image porosity of the configured method (`"none"`: ones).
 
@@ -44,8 +45,9 @@ def detect_image_porosity(
     ----------
     baseline : darsia.Image
         Baseline image.
-    labels : darsia.Image
-        Labels image.
+    regions : darsia.Image
+        Regions on the grid of the baseline; pixels are compared within each region
+        (e.g. `Rig.regions(config.regions)`: labels, facies or one global region).
     config : ImagePorosityConfig
         Configuration of the image porosity.
 
@@ -55,13 +57,21 @@ def detect_image_porosity(
         Image porosity in [0, 1] on the grid of the baseline.
 
     """
+    if regions.img.shape[:2] != baseline.img.shape[:2]:
+        raise ValueError(
+            f"Regions {regions.img.shape[:2]} and baseline "
+            f"{baseline.img.shape[:2]} differ."
+        )
     method = METHODS[config.method]
-    with darsia.timed(f"image porosity ({config.method})"):
-        return method.detect(baseline, labels, config.method_options())
+    with darsia.timed(f"image porosity ({config.method}, {config.regions})"):
+        return method.detect(baseline, regions, config.method_options())
 
 
 def compute_image_porosity(
-    baseline: darsia.Image, labels: darsia.Image, config: ImagePorosityConfig
+    baseline: darsia.Image,
+    regions: darsia.Image,
+    labels: darsia.Image,
+    config: ImagePorosityConfig,
 ) -> darsia.Image:
     """Image porosity: detection, cutoff and boundary band.
 
@@ -69,8 +79,10 @@ def compute_image_porosity(
     ----------
     baseline : darsia.Image
         Baseline image.
+    regions : darsia.Image
+        Regions of the detection (see `detect_image_porosity`).
     labels : darsia.Image
-        Labels image.
+        Labels image; the boundary band follows the label boundaries.
     config : ImagePorosityConfig
         Configuration of the image porosity.
 
@@ -80,7 +92,7 @@ def compute_image_porosity(
         Image porosity in [0, 1] on the grid of the baseline.
 
     """
-    porosity = detect_image_porosity(baseline, labels, config)
+    porosity = detect_image_porosity(baseline, regions, config)
     porosity.img[porosity.img < config.cutoff] = 0.0
     porosity.img[label_boundary_mask(labels, config.boundary_band)] = 0.0
     return porosity
@@ -129,6 +141,7 @@ def save_image_porosity(
     options = config.method_options()
     info = {
         "method": config.method,
+        "regions": config.regions,
         "options": None if options is None else asdict(options),
         "cutoff": config.cutoff,
         "boundary_band": config.boundary_band,

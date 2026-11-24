@@ -144,14 +144,16 @@ class TestImagePorosityConfig:
 class TestComputeImagePorosity:
     def test_no_detection_one_label_is_ones(self):
         baseline, labels = _make_inputs()
-        porosity = compute_image_porosity(baseline, labels, ImagePorosityConfig())
+        porosity = compute_image_porosity(
+            baseline, labels, labels, ImagePorosityConfig()
+        )
         assert porosity.img.dtype == np.float32
         assert np.all(porosity.img == 1.0)
 
     def test_boundary_band_zeroes_both_sides(self):
         baseline, labels = _make_inputs(shape=(20, 10), two_labels=True)
         cfg = ImagePorosityConfig(boundary_band=2)
-        porosity = compute_image_porosity(baseline, labels, cfg).img
+        porosity = compute_image_porosity(baseline, labels, labels, cfg).img
         # Boundary between rows 9 and 10: rows 8..11 zeroed, the rest stays 1.
         assert np.all(porosity[8:12] == 0.0)
         assert np.all(porosity[:8] == 1.0)
@@ -160,12 +162,12 @@ class TestComputeImagePorosity:
     def test_boundary_band_zero_switches_off(self):
         baseline, labels = _make_inputs(shape=(20, 10), two_labels=True)
         cfg = ImagePorosityConfig(boundary_band=0)
-        assert np.all(compute_image_porosity(baseline, labels, cfg).img == 1.0)
+        assert np.all(compute_image_porosity(baseline, labels, labels, cfg).img == 1.0)
 
     def test_kmeans_shape_and_unit_interval(self):
         baseline, labels = _make_inputs(shape=(8, 12))
         cfg = ImagePorosityConfig(method="kmeans", boundary_band=0)
-        img = compute_image_porosity(baseline, labels, cfg).img
+        img = compute_image_porosity(baseline, labels, labels, cfg).img
         assert img.shape == (8, 12)
         assert np.all(img >= 0.0)
         assert np.all(img <= 1.0)
@@ -173,7 +175,7 @@ class TestComputeImagePorosity:
     def test_boolean_excludes_the_boundary_band(self):
         baseline, labels = _make_inputs(shape=(20, 10), two_labels=True)
         cfg = ImagePorosityConfig(boundary_band=2)
-        porosity = compute_image_porosity(baseline, labels, cfg)
+        porosity = compute_image_porosity(baseline, labels, labels, cfg)
         boolean = boolean_image_porosity(porosity, cfg).img
         assert not np.any(boolean[8:12])
         assert np.all(boolean[:8]) and np.all(boolean[12:])
@@ -197,7 +199,7 @@ class TestStoredImagePorosity:
     def test_save_and_load(self, tmp_path: Path):
         baseline, labels = _make_inputs(shape=(20, 10), two_labels=True)
         cfg = ImagePorosityConfig(boundary_band=2)
-        porosity = compute_image_porosity(baseline, labels, cfg)
+        porosity = compute_image_porosity(baseline, labels, labels, cfg)
         folder = image_porosity_folder(tmp_path, "none")
         save_image_porosity(folder, porosity, cfg)
         assert (folder / "image_porosity.npz").exists()

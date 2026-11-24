@@ -5,7 +5,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, get_args
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -19,6 +19,7 @@ from darsia.presets.workflows.config.corrections import (
     IlluminationCorrectionConfig,
     PatchwiseIlluminationCorrectionConfig,
 )
+from darsia.presets.workflows.config.facies import RegionName
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.facies_props import FaciesProps
 
@@ -744,6 +745,31 @@ class Rig:
             self.porosity = darsia.imread(porosity)
             self.permeability = darsia.imread(permeability)
 
+    def regions(self, name: RegionName) -> darsia.Image:
+        """Regions to group pixels by, on the grid of the labels.
+
+        Parameters
+        ----------
+        name : RegionName
+            "labels" (segments), "facies" (groups of labels; the labels without a
+            facies file) or "global" (one region 0, the whole image).
+
+        Returns
+        -------
+        darsia.Image
+            The labels or facies (not copies; not to be modified), or a new zero image.
+
+        """
+        if name == "labels":
+            return self.labels
+        if name == "facies":
+            return self.facies
+        if name == "global":
+            return darsia.zeros_like(self.labels, dtype=np.uint8)
+        raise ValueError(
+            f"Unknown regions {name!r}, use one of {get_args(RegionName)}."
+        )
+
     # ! ---- ILLUMINATION CORRECTION ----
     def setup_illumination_correction(
         self,
@@ -777,26 +803,29 @@ class Rig:
         """
         illumination_correction = darsia.IlluminationCorrection()
 
-        # Fetch samples for illumination correction based on labels and baseline.
+        # Fetch samples for illumination correction per region ID (`config.labels`).
         if config is not None:
             sample_groups = []
             if not config.labels:
-                # If no labels specified, use random samples from the whole image.
+                # If no IDs specified, use random samples from the whole image.
                 samples = illumination_correction.select_random_samples(
                     mask=darsia.ones_like(self.shape_corrected_baseline, dtype=bool),
                     config=config,
                 )
                 sample_groups.append(samples)
             else:
+                regions = self.regions(config.regions)
                 for label in config.labels:
-                    assert (
-                        label in self.labels.img
-                    ), f"Label {label} not found in labels image."
-                    mask = self.labels.img == label
+                    assert label in regions.img, (
+                        f"Region {label} not found in the {config.regions} "
+                        "([corrections.illumination] regions)."
+                    )
+                    mask = regions.img == label
                     samples = illumination_correction.select_random_samples(
                         mask=mask, config=config
                     )
                     sample_groups.append(samples)
+                del regions
 
             # Fit on the boolean image porosity of the current baseline, if asked for
             if config.mask == "boolean_porosity":
@@ -807,7 +836,11 @@ class Rig:
 
                 porosity_config = image_porosity_config or ImagePorosityConfig()
                 mask = boolean_image_porosity(
-                    detect_image_porosity(self.baseline, self.labels, porosity_config),
+                    detect_image_porosity(
+                        self.baseline,
+                        self.regions(porosity_config.regions),
+                        porosity_config,
+                    ),
                     porosity_config,
                 )
             else:

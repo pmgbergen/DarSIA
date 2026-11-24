@@ -121,7 +121,8 @@ boundary_band`). `volume_average` (Mask, default `image_porosity`) and the poros
 weights and masks need **Setup > Image porosity** to have run; `[image_porosity]
 method` (default `"none"`: no detection; `"color_statistics"`: patch-wise colour
 statistics interpolated smoothly; `"kmeans"`: legacy) sets how the image porosity is
-computed, and
+computed, `regions` (`"labels"`, default; `"facies"`; `"global"`: label agnostic) within
+which regions pixels are compared, and
 the colour calibration and the illumination correction use it only with their
 `mask = "boolean_porosity"` (default `"none"`). See the workflows configuration reference
 for the options of each method and the `[image_porosity]` section.

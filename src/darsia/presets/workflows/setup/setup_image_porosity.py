@@ -57,17 +57,20 @@ def setup_image_porosity(
 
     rig = cls.load(config.rig.path)
 
-    porosity = compute_image_porosity(rig.baseline, rig.labels, porosity_config)
-    folder = image_porosity_folder(config.data.results, porosity_config.method)
-    save_image_porosity(
-        folder,
-        porosity,
+    porosity = compute_image_porosity(
+        rig.baseline,
+        rig.regions(porosity_config.regions),
+        rig.labels,
         porosity_config,
-        inputs={
-            "baseline": Path(config.rig.path) / "baseline.npz",
-            "labels": Path(config.rig.path) / "labels.npz",
-        },
     )
+    folder = image_porosity_folder(config.data.results, porosity_config.method)
+    inputs = {
+        "baseline": Path(config.rig.path) / "baseline.npz",
+        "labels": Path(config.rig.path) / "labels.npz",
+    }
+    if porosity_config.regions == "facies":
+        inputs["facies"] = Path(config.rig.path) / "facies.npz"
+    save_image_porosity(folder, porosity, porosity_config, inputs=inputs)
     if show:
         porosity.show(title="Image porosity")
 

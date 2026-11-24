@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal, Type, get_args
 import numpy as np
 
 from ._key_list_sources import ROI_SOURCES
+from .facies import RegionName
 from .image_porosity import PorosityMask
 from .resize import ResizeConfig
 from .roi_registry import _load_roi_key_list
@@ -878,7 +879,11 @@ class IlluminationCorrectionConfig:
     Attributes
     ----------
     labels
-        List of label IDs to use for illumination correction (default: []).
+        IDs of the regions (see `regions`) to draw sample squares from; empty: the
+        whole image (default: []).
+    regions
+        Regions the IDs refer to: "labels", "facies" or "global" (ID 0 = the whole
+        image; default: "labels").
     interpolation
         Interpolation method for scaling ("rbf", "quartic", "illumination";
         default: "illumination").
@@ -903,11 +908,27 @@ class IlluminationCorrectionConfig:
         default_factory=list,
         metadata={
             "name": "Labels",
-            "help": "List of label IDs to use for illumination correction.",
+            "help": (
+                "IDs of the regions (see Regions) to draw sample squares from; "
+                "empty: the whole image."
+            ),
             "placeholder": "e.g., [4, 5, 6]",
         },
     )
-    """List of labels to use for illumination correction. Overrides `label` if not empty."""
+    """IDs of the regions to draw sample squares from; empty: the whole image."""
+    regions: RegionName = field(
+        default="labels",
+        metadata={
+            "name": "Regions",
+            "help": (
+                "Regions the sample squares are drawn from, per ID in 'Labels': "
+                "'labels' (segments; default), 'facies' (groups of labels of one sand "
+                "type) or 'global' (ID 0 = the whole image)."
+            ),
+            "options": list(get_args(RegionName)),
+        },
+    )
+    """Regions the IDs in `labels` refer to, one of `RegionName`."""
     interpolation: Literal["rbf", "quartic", "illumination"] = field(
         default="illumination",
         metadata={
@@ -1028,6 +1049,9 @@ class IlluminationCorrectionConfig:
             "gray",
         )
         self.labels = sec.get("labels", self.labels)
+        self.regions = load_choice(
+            sec, "regions", self.regions, RegionName, "[corrections.illumination]"
+        )
         self.interpolation = sec.get("interpolation", self.interpolation)
         colorspace = sec.get("colorspace", self.colorspace)
         if colorspace not in _supported_colorspaces:

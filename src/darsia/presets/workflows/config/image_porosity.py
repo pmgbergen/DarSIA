@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Literal, get_args
 
 from .color_statistics import ColorStatisticsConfig
+from .facies import RegionName
 from .utils import _get_section_from_toml, load_choice
 
 PorosityMask = Literal["none", "boolean_porosity"]
@@ -142,6 +143,20 @@ class ImagePorosityConfig:
         },
     )
     """Detection method, one of `IMAGE_POROSITY_METHODS`."""
+    regions: RegionName = field(
+        default="labels",
+        metadata={
+            "name": "Regions",
+            "help": (
+                "Pixels are compared within regions: 'labels' (segments; default), "
+                "'facies' (groups of labels of one sand type) or 'global' (the whole "
+                "image as one region). The boundary band always follows the label "
+                "boundaries."
+            ),
+            "options": list(get_args(RegionName)),
+        },
+    )
+    """Regions the detection groups pixels by, one of `RegionName`."""
     tol: float = field(
         default=0.9,
         metadata={
@@ -225,6 +240,9 @@ class ImagePorosityConfig:
 
         self.method = load_choice(
             sec, "method", self.method, ImagePorosityMethodName, "[image_porosity]"
+        )
+        self.regions = load_choice(
+            sec, "regions", self.regions, RegionName, "[image_porosity]"
         )
 
         tol = float(sec.get("tol", self.tol))
