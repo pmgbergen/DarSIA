@@ -1086,11 +1086,6 @@ class Rig:
         Rig
             The loaded rig.
 
-        Notes
-        -----
-        The image porosity is not part of the rig: see the setup step "Image porosity"
-        (`processing/image_porosity`).
-
         """
         # Create rig object
         rig = cls()
