@@ -112,6 +112,9 @@ darsia = ["py.typed", "*.pyi"]
 # ── pytest (migrated from setup.cfg [tool:pytest]) ───────────────────────────
 [tool.pytest.ini_options]
 python_files = ["tests/*.py"]
+markers = [
+    "workflow: end-to-end runs of the workflows on synthetic data (uv run pytest -m workflow)",
+]
 
 # ── Black ─────────────────────────────────────────────────────────────────────
 [tool.black]
