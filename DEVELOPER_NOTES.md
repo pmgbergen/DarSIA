@@ -46,3 +46,26 @@ and IDEs. This keeps the GUI (which only needs the configuration classes) small 
 - Modules imported by the GUI (`darsia.gui`) must not import analysis, rig or calibration
   modules (or pandas, scipy, numba) at module level; import them inside functions or
   under `TYPE_CHECKING`. Check with `python -X importtime -c "import darsia.gui.ui.main_window"`.
+
+## Synthetic workflow test (`tests/integration/workflows`)
+
+An end-to-end run of the workflows (setup -> colour calibration -> analysis) on a small
+synthetic experiment, part of the normal test run in CI (about 10 s). Run it alone with
+`uv run pytest -m workflow`.
+
+- `synthetic.py`, `make_synthetic_experiment(folder, shape, num_images, seed, ...)`,
+  writes everything into `folder`: PNG images (64 x 128 by default; a blue sand, a
+  dark blue seal, the same sand below; a growing white gas cap and a yellow aqueous halo
+  under the seal; static dark grains; slight noise), the coloured segmentation, the
+  protocols, the depth and facies CSVs, and `config.toml`. It returns the ground truth
+  (layers, grains, gas and aqueous masks per image). No binary files are in the
+  repository.
+- `test_synthetic_workflow.py` calls the same entry points as the CLI and the GUI
+  (`setup_*`, `calibration_*_from_context` without interaction, `run_analysis`) in
+  module-scoped fixtures and compares the results with the ground truth.
+- `DARSIA_SYNTHETIC_KEEP=<folder> uv run pytest -m workflow` writes the experiment and its
+  results to `<folder>` and keeps them. `<folder>/config.toml` opens in the GUI as a small
+  demo.
+- Variants (other corrections, illumination gradients, noise for the restoration, ...):
+  add options to `make_synthetic_experiment` and a test module per variant. Keep the
+  images small; most of the time and memory is imports (about 250 MB).

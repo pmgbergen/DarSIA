@@ -48,6 +48,26 @@ class _SmoothField:
                 cols, values[0], k=min(3, len(cols) - 1)
             )
 
+    def _row_slope(self, i: int, cols: np.ndarray) -> np.ndarray:
+        """Slope along the rows at the outer row centre `i` (0 or -1), shape (1, C).
+
+        A linear spline (2 rows of patches) has no derivative in scipy; its slope is
+        the one of the outer segment.
+        """
+        if len(self.rows) > 2:
+            return self.spline([self.rows[i]], cols, dx=1)
+        lower = self.spline([self.rows[0]], cols)
+        upper = self.spline([self.rows[1]], cols)
+        return (upper - lower) / (self.rows[1] - self.rows[0])
+
+    def _col_slope(self, rows: np.ndarray, j: int) -> np.ndarray:
+        """Slope along the columns at the outer column centre `j`, shape (R, 1)."""
+        if len(self.cols) > 2:
+            return self.spline(rows, [self.cols[j]], dy=1)
+        left = self.spline(rows, [self.cols[0]])
+        right = self.spline(rows, [self.cols[1]])
+        return (right - left) / (self.cols[1] - self.cols[0])
+
     def __call__(self, rows: np.ndarray, cols: np.ndarray) -> np.ndarray:
         """Values on the grid `rows` x `cols` (increasing pixel indices)."""
         r = np.clip(rows, self.rows[0], self.rows[-1])
@@ -57,16 +77,14 @@ class _SmoothField:
         if self.spline is not None:
             values = self.spline(r, c)
             # Slopes only at the outer centres (one row or column each).
-            for edge in (self.rows[0], self.rows[-1]):
+            for i, edge in ((0, self.rows[0]), (-1, self.rows[-1])):
                 beyond = (r == edge) & (rows != edge)
                 if beyond.any():
-                    slope = self.spline([edge], c, dx=1)
-                    values[beyond] += dr[beyond] * slope
-            for edge in (self.cols[0], self.cols[-1]):
+                    values[beyond] += dr[beyond] * self._row_slope(i, c)
+            for j, edge in ((0, self.cols[0]), (-1, self.cols[-1])):
                 beyond = (c == edge) & (cols != edge)
                 if beyond.any():
-                    slope = self.spline(r, [edge], dy=1)
-                    values[:, beyond] += dc[:, beyond] * slope
+                    values[:, beyond] += dc[:, beyond] * self._col_slope(r, j)
             return values
         if self.spline_1d is None:
             return np.full((len(r), len(c)), self.values[0, 0])
