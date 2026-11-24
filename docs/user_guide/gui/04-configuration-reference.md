@@ -125,7 +125,8 @@ computed, `regions` (`"labels"`, default; `"facies"`; `"global"`: label agnostic
 which regions pixels are compared, and
 the colour calibration and the illumination correction use it only with their
 `mask = "boolean_porosity"` (default `"none"`). See the workflows configuration reference
-for the options of each method and the `[image_porosity]` section.
+for the options of each method and the `[image_porosity]` section, and the gallery
+example "Image porosity: which pixels show the pore space" for the options on an image.
 
 ## `[labeling]` and `[facies]`
 

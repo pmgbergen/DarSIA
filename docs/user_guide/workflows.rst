@@ -41,6 +41,8 @@ Where to go
   the same ground from the ``user_interface_*`` CLI angle (``quickstart.md``,
   ``config-reference.md``, ``workflow-setup.md`` and siblings).
 * :doc:`../api/workflows` -- the Python entry points.
+* :ref:`sphx_glr_auto_examples_porosity_plot_image_porosity.py` -- the options of
+  the image porosity (``[image_porosity]``), shown on the example baseline.
 
 Run a phase from the command line with, e.g.::
 

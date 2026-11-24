@@ -105,6 +105,8 @@ dark = true            # arms only (GUI: shown for arms): dark arm, bright arm, 
 bright = true
 side = true
 ```
+- The options shown on an example image: docs gallery, "Image porosity: which pixels
+  show the pore space" (`examples/porosity/plot_image_porosity.py`).
 - Steps: the method (`"none"`: ones), then `cutoff`, then `boundary_band`. A missing
   section means the defaults (ones with the band).
 - Methods: `"kmeans"` clusters the colours per patch and label and interpolates between
