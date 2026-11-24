@@ -4,6 +4,7 @@
 
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, get_args
 from warnings import warn
@@ -115,7 +116,12 @@ class Rig:
         for name in names:
             deferred[name] = (names, loader)
 
-    def _defer_file(self, name: str, path: Path) -> None:
+    def _defer_file(
+        self,
+        name: str,
+        path: Path,
+        read: Callable[[Path], darsia.Image] = darsia.imread,
+    ) -> None:
         """Register the image file `path` as member `name`, read on first access.
 
         A missing file raises here, as reading it right away would.
@@ -123,7 +129,7 @@ class Rig:
         """
         if not Path(path).exists():
             raise FileNotFoundError(f"File {path} does not exist.")
-        self._defer((name,), lambda: setattr(self, name, darsia.imread(path)))
+        self._defer((name,), lambda: setattr(self, name, read(path)))
 
     def __getattr__(self, name: str):
         # Called only for attributes which are not set: load deferred members.
@@ -552,10 +558,9 @@ class Rig:
         log : Path | None
             Path to the log folder where geometry images will be saved.
         """
-        # Load depth map from file and reshape to baseline shape
+        # Load depth map from file, on the grid of the baseline
         assert path.exists(), f"Path to depth map {path} does not exist."
-        pre_depth = darsia.imread(path)
-        self.depth: darsia.Image = darsia.resize(pre_depth, ref_image=self.baseline)
+        self.depth: darsia.Image = self.read_field(path)
         """Depth map for the rig object."""
 
         # Log results
@@ -599,26 +604,8 @@ class Rig:
             Path to the log folder where label images will be saved.
         """
         assert path.exists(), f"Labels file {path} does not exist."
-        if apply_corrections:
-            # Assume that the labels are based on non-corrected baseline image.
-            # Thus, need to apply the relevant corrections from the read routine.
-            plain_labels = darsia.imread(path)
-            labels = plain_labels
-            if hasattr(self, "resize_correction_inter_nearest"):
-                labels = self.resize_correction_inter_nearest(labels)
-            if hasattr(self, "curvature_correction"):
-                labels = self.curvature_correction(labels)
-            labels = self.resize_correction_inter_nearest_final(labels)
-            self.labels = labels
-
-        else:
-            # Assume the labels are aligned with the corrected baseline.
-            pre_labels = darsia.imread(path)
-            self.labels = darsia.resize(
-                pre_labels,
-                ref_image=self.baseline,
-                interpolation="inter_nearest",
-            )
+        # Drawn on the uncorrected baseline photo, or aligned with the corrected one
+        self.labels = self.read_field(path, on_photo=apply_corrections)
 
         if log:
             # Plot labels
@@ -676,26 +663,8 @@ class Rig:
             Path to the log folder where facies images will be saved.
         """
         assert path.exists(), f"Facies file {path} does not exist."
-        if apply_corrections:
-            # Assume that the facies are based on non-corrected baseline image.
-            # Thus, need to apply the relevant corrections from the read routine.
-            plain_facies = darsia.imread(path)
-            facies = plain_facies
-            if hasattr(self, "resize_correction_inter_nearest"):
-                facies = self.resize_correction_inter_nearest(facies)
-            if hasattr(self, "curvature_correction"):
-                facies = self.curvature_correction(facies)
-            facies = self.resize_correction_inter_nearest_final(facies)
-            self.facies = facies
-
-        else:
-            # Assume the facies are aligned with the corrected baseline.
-            pre_facies = darsia.imread(path)
-            self.facies = darsia.resize(
-                pre_facies,
-                ref_image=self.baseline,
-                interpolation="inter_nearest",
-            )
+        # Drawn on the uncorrected baseline photo, or aligned with the corrected one
+        self.facies = self.read_field(path, on_photo=apply_corrections)
 
         if log:
             # Plot facies
@@ -742,8 +711,8 @@ class Rig:
         else:
             if not (porosity and permeability):
                 raise FileNotFoundError("No facies properties provided.")
-            self.porosity = darsia.imread(porosity)
-            self.permeability = darsia.imread(permeability)
+            self.porosity = self.read_field(porosity)
+            self.permeability = self.read_field(permeability)
 
     def regions(self, name: RegionName) -> darsia.Image:
         """Regions to group pixels by, on the grid of the labels.
@@ -885,7 +854,7 @@ class Rig:
             per-label reference color computation within each patch, ensuring
             heterogeneous regions contribute equally by material.
         """
-        baseline_images = [self.read_image(path) for path in config.baseline_paths]
+        baseline_images = [self.read(path) for path in config.baseline_paths]
 
         illumination_correction = darsia.PatchwiseIlluminationCorrection(
             baseline_images=baseline_images,
@@ -1163,8 +1132,10 @@ class Rig:
         # Load facies properties; the permeability (e.g. for Wasserstein distances) is
         # read on first use.
         with darsia.timed("facies properties"):
-            rig.porosity = darsia.imread(folder / "porosity.npz")
-            rig._defer_file("permeability", folder / "permeability.npz")
+            rig.porosity = rig.read_field(folder / "porosity.npz")
+            rig._defer_file(
+                "permeability", folder / "permeability.npz", read=rig.read_field
+            )
 
         # Setup geometry information
         with darsia.timed("geometry"):
@@ -1177,98 +1148,31 @@ class Rig:
 
     # ! ---- I/O ----
 
-    def import_from_csv(
-        self,
-        path: Path,
-        *,
-        delimiter: str = ",",
-        date=None,
-        reference_date=None,
-        time=None,
-        name: str | None = None,
-        is_extensive: bool = False,
-    ) -> darsia.ScalarImage | darsia.ExtensiveImage:
-        """Import scalar result data from CSV."""
-        if not path.exists():
-            raise FileNotFoundError(f"CSV file {path} does not exist.")
-
-        # Read csv
-        try:
-            data = np.loadtxt(path, delimiter=delimiter)
-        except ValueError:
-            data = np.loadtxt(path, delimiter=delimiter, skiprows=1)
-
-        # Apply lex sort
-        # Sort, such that 0th column changes fasters, then 1st column.
-        indices = np.lexsort((data[:, 0], data[:, 1]))
-        data = data[indices]
-
-        # Extract coordinates (x, y) and values if in coordinate format,
-        # otherwise treat as array data
-        coordinates_x = data[:, 0]
-        coordinates_y = data[:, 1]
-        values = data[:, 2]
-
-        # Determine the shape = frequency of x_coordinates
-        # (fastest changing) and y_coordinates (slowest changing)
-        unique_x = np.unique(coordinates_x)
-        unique_y = np.unique(coordinates_y)
-
-        row = len(unique_y)
-        col = len(unique_x)
-        shape = (row, col)
-
-        # Determine the cell size in dx and dy direction
-        dx = np.min(np.diff(unique_x))
-        dy = np.min(np.diff(unique_y))
-
-        # Determine origin
-        origin = (unique_x[0] - dx / 2, unique_y[-1] + dy / 2)
-
-        # Determine the dimensions
-        dimensions = (
-            np.max(coordinates_y) - np.min(coordinates_y) + dy,
-            np.max(coordinates_x) - np.min(coordinates_x) + dx,
-        )
-
-        # Reshape values to the determined shape, remember that the
-        # values are ordered wrt. Euclidean coordinates, with x changing
-        # fastest, so we need to reshape accordingly. Also, we need to
-        # switch to row-col order, with origin at the top-left corner,
-        # so we need to flip the y-coordinates and reshape accordingly.
-        values_reshaped = values.reshape(
-            shape, order="C"
-        )  # Reshape to (row, col) with C order (x changes fastest)
-        values_reshaped = np.flip(values_reshaped, axis=0)  # Flip
-
-        # Collect the metadata
-        metadata = {
-            "origin": origin,
-            "cell_size": (dx, dy),
-            "dimensions": dimensions,
-            "name": name,
-            "time": time,
-            "date": date,
-            "reference_date": reference_date,
-            "series": False,
-            "scalar": True,
-        }
-
-        if is_extensive:
-            return darsia.ExtensiveImage(values_reshaped, **metadata)
-        else:
-            return darsia.ScalarImage(values_reshaped, **metadata)
-
     @darsia.timed("read image")
-    def read_image(self, path: Path, native: bool = False) -> darsia.Image:
-        """Read image from file and apply corrections.
+    def read(
+        self,
+        source: Path | bytes,
+        *,
+        date: datetime | None = None,
+        native: bool = False,
+    ) -> darsia.Image:
+        """Read an image, given as a file or as the bytes of a file, and apply the
+        corrections of the rig.
 
-        The respective date is extracted from the path using the imaging protocol.
+        The date of the image is, in this order: the given `date`; for a file, the date
+        of the imaging protocol if an experiment is loaded (see `load_experiment`; a
+        file missing from the protocol raises); otherwise none. The time of the image
+        counts from the start of the loaded experiment (the first injection); without
+        an experiment, from the date of the baseline. Without a date or such a
+        reference, the image has no time. Analyses which need the date or the time check
+        for it themselves.
 
         Parameters
         ----------
-        path : Path
-            Path to the image file.
+        source : Path or bytes
+            Image file, or the bytes of an image file (e.g. received over a network).
+        date : datetime, optional
+            Date of the image, instead of the one of the imaging protocol.
         native : bool
             Keep the data type resulting from the corrections (the integers of the
             file without a type correction) instead of converting to float in the
@@ -1278,32 +1182,73 @@ class Rig:
         Returns
         -------
         darsia.Image
-            Image object with applied corrections.
-        """
-        assert hasattr(
-            self, "experiment"
-        ), "Experiment not defined. Run load_experiment() first."
-        # Convert date from path
-        date = self.experiment.get_datetime(path)
+            Image with the corrections of the rig applied.
 
-        # Read image from file and apply corrections
-        img = darsia.imread(
-            path,
+        """
+        experiment = getattr(self, "experiment", None)
+        if date is None and experiment is not None and not isinstance(source, bytes):
+            date = experiment.get_datetime(source)
+        if experiment is not None:
+            reference_date = self.reference_date
+        else:
+            baseline = getattr(self, "baseline", None)
+            reference_date = None if baseline is None else baseline.date
+
+        return darsia.imread(
+            source,
             transformations=self.corrections,
             date=date,
-            reference_date=self.reference_date,
-            name=path.name,
-            **({"native": True} if native else {}),
+            reference_date=reference_date,
+            native=native,
+            **({} if isinstance(source, bytes) else {"name": source.name}),
         )
 
-        return img
+    def read_field(self, path: Path, *, on_photo: bool = False) -> darsia.Image:
+        """Read a field of the rig (labels, facies, depth, porosity, ...) onto the
+        grid of the baseline.
+
+        Parameters
+        ----------
+        path : Path
+            File of the field.
+        on_photo : bool
+            Whether the field was drawn on the uncorrected baseline photo (e.g. labels
+            from the labeling step). Then the shape corrections for fields follow:
+            nearest neighbor resize, curvature correction, final nearest neighbor
+            resize. Drift and type corrections do not apply to fields drawn on the
+            baseline photo itself. Otherwise (default, e.g. saved rigs) the field lies
+            on the corrected baseline and is transferred to its grid
+            (`darsia.transfer`): center sampling for integer fields, area averaging
+            for float fields; the identity on the grid of the baseline.
+
+        Returns
+        -------
+        darsia.Image
+            The field on the grid of the baseline.
+
+        Raises
+        ------
+        ValueError
+            If a field on the corrected baseline covers another domain than the
+            baseline.
+
+        """
+        field = darsia.imread(path)
+        if not on_photo:
+            return darsia.transfer(field, self.baseline)
+        if hasattr(self, "resize_correction_inter_nearest"):
+            field = self.resize_correction_inter_nearest(field)
+        if hasattr(self, "curvature_correction"):
+            field = self.curvature_correction(field)
+        return self.resize_correction_inter_nearest_final(field)
 
     # ! ---- EXPERIMENT AND PROTOCOLS ----
 
     def load_experiment(self, experiment: darsia.ProtocolledExperiment) -> None:
         """Load experiment and associated protocols.
 
-        This is required to read images and compute the injected mass correctly.
+        This gives images read from files their date (`read`) and is required to
+        compute the injected mass correctly.
 
         Parameters
         ----------

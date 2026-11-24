@@ -245,7 +245,7 @@ def analysis_thresholding_from_context(
         preview = preview_image = None
         image_started_at = time.monotonic()
         try:
-            img = fluidflower.read_image(path)
+            img = fluidflower.read(path)
         except Exception as e:
             logger.error(f"Failed to read image '{path}': {e}")
             continue

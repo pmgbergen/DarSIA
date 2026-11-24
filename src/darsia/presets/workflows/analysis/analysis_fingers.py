@@ -333,7 +333,7 @@ def analysis_fingers_from_context(
         image_started_at = monotonic()
         # Extract color signal and assign mass
         try:
-            img = fluidflower.read_image(path)
+            img = fluidflower.read(path)
         except Exception as e:
             logger.error(f"Failed to read image '{path}': {e}")
             continue

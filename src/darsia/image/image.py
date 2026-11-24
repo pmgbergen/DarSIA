@@ -328,15 +328,16 @@ class Image:
         Parameters
         ----------
         time : scalar or list, optional
-            Time to be set; if None, time is retrieved
-            from date.
+            Time to be set; if None, time is retrieved from date, relative to the
+            reference date (no time without a date or a reference date).
         """
         # ! ---- Safety check
 
         if time is None:
             # From date
+            undated = self._is_none(self.date) or self.reference_date is None
             if self.series:
-                if self._is_none(self.date):
+                if undated:
                     self.time = self.time_num * [None]
                 else:
                     self.time = [
@@ -344,7 +345,7 @@ class Image:
                         for i in range(self.time_num)
                     ]
             else:
-                if self._is_none(self.date):
+                if undated:
                     self.time = None
                 else:
                     self.time = (self.date - self.reference_date).total_seconds()
@@ -2124,6 +2125,11 @@ class ScalarImage(Image):
         float_format: str = "{:.2e}",
     ) -> None:
         """Write scalar image cell-center data to CSV file.
+
+        There is no standard for images in CSV format. DarSIA follows the reporting
+        format of the 11th SPE Comparative Solution Project (SPE11): one row per cell,
+        with the coordinates of the cell center and the value as columns. `darsia.imread`
+        reads such files (2D) back.
 
         Parameters
         ----------
