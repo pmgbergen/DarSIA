@@ -368,40 +368,47 @@ class InjectionProtocolConfig:
 class PressureTemperatureProtocolConfig:
     """The pressure and temperature conditions over the run."""
 
-    pressure_temperature: Path | tuple[Path, str] | None = field(
-        default=None,
-        metadata={
-            "name": "Pressure/Temperature protocol",
-            "help": (
-                "Path to the pressure-temperature protocol file, or [file, sheet]. "
-                "Used for all fluids: densities (and CO2 solubility) depend on "
-                "pressure and temperature, including their gradients."
-            ),
-            "widget": "file",
-            "group": "Experimental conditions",
-            "table_viewer": "csv",
-        },
-    )
-    """Path to the pressure-temperature protocol file or (file, sheet)."""
     pressure_temperature_mode: str = field(
         default="constant",
         metadata={
             "name": "Pressure/Temperature mode",
             "help": (
-                "'constant' writes a single-row template from the values below; "
-                "'Load from CSV' leaves the pressure-temperature protocol file "
-                "alone (author/point to a full custom CSV instead)."
+                "'constant' uses the values below for the whole run; 'Load from CSV' "
+                "reads the pressure-temperature protocol file below. The protocol setup "
+                "stores the protocol in <results>/setup/protocols, which the analyses "
+                "use; run it again after changes here."
             ),
             "options": ["constant", "Load from CSV"],
             "group": "Experimental conditions",
         },
     )
-    """Pressure/temperature template mode: 'constant' or 'Load from CSV'."""
+    """Pressure/temperature mode: 'constant' (the values below) or 'Load from CSV'."""
+    pressure_temperature: Path | tuple[Path, str] | None = field(
+        default=None,
+        metadata={
+            "name": "Pressure/Temperature protocol",
+            "help": (
+                "Path to the pressure-temperature protocol file, or [file, sheet] "
+                "(mode 'Load from CSV' only). Used for all fluids: densities (and CO2 "
+                "solubility) depend on pressure and temperature, including their "
+                "gradients."
+            ),
+            "depends_on": {
+                "field": "pressure_temperature_mode",
+                "value": "Load from CSV",
+            },
+            "widget": "file",
+            "group": "Experimental conditions",
+            "table_viewer": "csv",
+        },
+    )
+    """Path to the pressure-temperature protocol file or (file, sheet)
+    (pressure_temperature_mode='Load from CSV' only)."""
     pressure_bar: float = field(
         default=1.013,
         metadata={
             "name": "Pressure (bar)",
-            "help": "Constant pressure written to the pressure-temperature template.",
+            "help": "Pressure of the whole run.",
             "depends_on": {"field": "pressure_temperature_mode", "value": "constant"},
             "group": "Experimental conditions",
         },
@@ -411,7 +418,7 @@ class PressureTemperatureProtocolConfig:
         default=20.0,
         metadata={
             "name": "Temperature (C)",
-            "help": "Constant temperature written to the pressure-temperature template.",
+            "help": "Temperature of the whole run.",
             "depends_on": {"field": "pressure_temperature_mode", "value": "constant"},
             "group": "Experimental conditions",
         },

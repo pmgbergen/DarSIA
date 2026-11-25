@@ -17,6 +17,7 @@ from darsia.presets.workflows.config.sections import (
     list_required_sections,
     required_sections,
 )
+from darsia.presets.workflows.results_folder import PRESSURE_TEMPERATURE, protocol_csv
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,6 @@ def _generation_targets(
     config: FluidFlowerConfig,
     imaging_targets: dict[Path, Path],
     injection_path: Path | None,
-    pressure_temperature_path: Path | None,
 ) -> list[Path]:
     """Targets that generation would actually write to, given the configured modes.
 
@@ -110,11 +110,6 @@ def _generation_targets(
         and config.protocols.injection_mode != "Load from CSV"
     ):
         targets.append(injection_path)
-    if (
-        pressure_temperature_path is not None
-        and config.protocols.pressure_temperature_mode != "Load from CSV"
-    ):
-        targets.append(pressure_temperature_path)
     return targets
 
 
@@ -128,12 +123,7 @@ def preview_protocol_setup_conflicts(path: Path | list[Path]) -> list[Path]:
         config.protocols.imaging, config.data.folders
     )
     injection_path = _protocol_path(config.protocols.injection, "injection")
-    pressure_temperature_path = _protocol_path(
-        config.protocols.pressure_temperature, "pressure_temperature"
-    )
-    targets = _generation_targets(
-        config, imaging_targets, injection_path, pressure_temperature_path
-    )
+    targets = _generation_targets(config, imaging_targets, injection_path)
     return _overwrite_conflicts(targets)
 
 
@@ -320,19 +310,34 @@ def _write_empty_injection_template(path: Path) -> None:
     _write_csv(df, path)
 
 
-def _write_pressure_temperature_template(
-    path: Path, start: datetime, pressure_bar: float, temperature_celsius: float
+def _store_pressure_temperature_protocol(
+    config: FluidFlowerConfig, start: datetime
 ) -> None:
-    df = pd.DataFrame(
-        {
-            "datetime": [start],
-            "pressure_bar": [pressure_bar],
-            "temperature_celsius": [temperature_celsius],
-            "pressure_gradient_bar": [0.0],
-            "temperature_gradient_celsius": [0.0],
-        }
-    )
+    """Store the pressure-temperature protocol the analyses use (`protocol_csv`).
+
+    In mode 'constant' it is a single row of the values in [protocols], dated at the
+    start of the images; in mode 'Load from CSV' the checked content of the user's
+    file. Always rewritten: the stored protocol is a product of the setup, not input.
+    """
+    assert config.data is not None
+    assert config.protocols is not None
+    protocols = config.protocols
+    if protocols.pressure_temperature_mode == "constant":
+        df = pd.DataFrame(
+            {
+                "datetime": [start],
+                "pressure_bar": [protocols.pressure_bar],
+                "temperature_celsius": [protocols.temperature_celsius],
+                "pressure_gradient_bar": [0.0],
+                "temperature_gradient_celsius": [0.0],
+            }
+        )
+    else:
+        assert protocols.pressure_temperature is not None
+        df = darsia.PressureTemperatureProtocol(protocols.pressure_temperature).df
+    path = protocol_csv(config.data.results, PRESSURE_TEMPERATURE)
     _write_csv(df, path)
+    logger.info("Saved pressure-temperature protocol to %s", path)
 
 
 @required_sections("data", "protocols")
@@ -342,7 +347,13 @@ def setup_imaging_protocol(
     force: bool = False,
     show: bool = False,
 ) -> None:
-    """Generate imaging/injection/pressure-temperature protocol CSV templates."""
+    """Generate imaging and injection protocol CSV templates, and store the
+    pressure-temperature protocol the analyses use.
+
+    The pressure-temperature protocol is stored in `<results>/setup/protocols`
+    (`protocol_csv`), from the values in [protocols] (mode 'constant') or from the
+    user's file (mode 'Load from CSV'), which is input only.
+    """
     logger.info("\033[92mSetting up protocol CSV templates...\033[0m")
     del show
 
@@ -351,26 +362,27 @@ def setup_imaging_protocol(
     assert config.data is not None
     assert config.protocols is not None
     assert config.protocols.imaging is not None
+    if (
+        config.protocols.pressure_temperature_mode == "Load from CSV"
+        and config.protocols.pressure_temperature is None
+    ):
+        raise ValueError(
+            "[protocols].pressure_temperature_mode = 'Load from CSV' requires "
+            "[protocols].pressure_temperature."
+        )
 
     imaging_targets = _imaging_protocol_paths(
         config.protocols.imaging, config.data.folders
     )
     injection_path = _protocol_path(config.protocols.injection, "injection")
-    pressure_temperature_path = _protocol_path(
-        config.protocols.pressure_temperature, "pressure_temperature"
-    )
 
     for imaging_path in imaging_targets.values():
         _assert_csv(imaging_path, "imaging")
     if injection_path is not None:
         _assert_csv(injection_path, "injection")
-    if pressure_temperature_path is not None:
-        _assert_csv(pressure_temperature_path, "pressure_temperature")
 
     conflicts = _overwrite_conflicts(
-        _generation_targets(
-            config, imaging_targets, injection_path, pressure_temperature_path
-        )
+        _generation_targets(config, imaging_targets, injection_path)
     )
     if conflicts and not force:
         conflict_text = ", ".join(str(path) for path in conflicts)
@@ -465,17 +477,4 @@ def setup_imaging_protocol(
             logger.info(
                 "Saved empty injection protocol CSV template to %s", injection_path
             )
-    if (
-        pressure_temperature_path is not None
-        and config.protocols.pressure_temperature_mode == "constant"
-    ):
-        _write_pressure_temperature_template(
-            pressure_temperature_path,
-            overall_start,
-            config.protocols.pressure_bar,
-            config.protocols.temperature_celsius,
-        )
-        logger.info(
-            "Saved pressure-temperature protocol CSV template to %s",
-            pressure_temperature_path,
-        )
+    _store_pressure_temperature_protocol(config, overall_start)

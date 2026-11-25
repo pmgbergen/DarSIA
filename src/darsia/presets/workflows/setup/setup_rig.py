@@ -63,16 +63,9 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
     assert config.protocols is not None
     assert config.protocols.imaging is not None
     assert config.protocols.injection is not None
-    assert config.protocols.pressure_temperature is not None
 
     # Load imaging protocol
-    experiment = darsia.ProtocolledExperiment(
-        data=config.data.data,
-        imaging_protocol=config.protocols.imaging,
-        injection_protocol=config.protocols.injection,
-        pressure_temperature_protocol=config.protocols.pressure_temperature,
-        blacklist_protocol=config.protocols.blacklist,
-    )
+    experiment = darsia.ProtocolledExperiment.init_from_config(config)
 
     # Determine effective baseline path, using cache when enabled.
     baseline_path = config.data.baseline

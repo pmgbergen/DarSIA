@@ -209,9 +209,12 @@ STEPS = [
         "Pressure & temperature",
         "The conditions the experiment ran under.",
         (
-            "'constant' writes a single row from the values below — fine when the rig "
-            "held steady conditions throughout. Choose 'Load from CSV' to keep a full "
-            "time-resolved CSV you maintain yourself; the file is then left untouched."
+            "'constant' uses the values below as the state of the whole run — fine "
+            "when the rig held steady conditions throughout; no file of yours is "
+            "needed. Choose 'Load from CSV' to use a full time-resolved CSV you "
+            "maintain yourself, chosen below; the file is left untouched. Either way, "
+            "the protocol setup stores the protocol the analyses use in "
+            "<results>/setup/protocols."
         ),
     ),
     (

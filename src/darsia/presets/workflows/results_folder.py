@@ -36,6 +36,9 @@ DEFAULT_MASS_FORMATS = ["npz", "jpg"]
 VOLUME_FIELDS = ("saturation_g", "concentration_aq")
 """Fields written by the volume analysis (as field map folders)."""
 
+PRESSURE_TEMPERATURE = "pressure_temperature"
+"""Pressure/temperature protocol as used by the analyses."""
+
 
 def analysis_folder(results: Path, name: str) -> Path:
     """Output folder of an analysis with a folder of its own.
@@ -97,6 +100,28 @@ def sparse_data_csv(results: Path, name: str) -> Path:
 
     """
     return Path(results) / "sparse_data" / f"{name}.csv"
+
+
+def protocol_csv(results: Path, name: str) -> Path:
+    """Protocol as used by the analyses, e.g. `PRESSURE_TEMPERATURE`.
+
+    The protocol setup stores it from the inputs in `[protocols]` (constant values
+    or a file of the user); the analyses read only this file.
+
+    Parameters
+    ----------
+    results : Path
+        The results folder (`[data].results`).
+    name : str
+        Name of the protocol without suffix.
+
+    Returns
+    -------
+    Path
+        `<results>/setup/protocols/<name>.csv`.
+
+    """
+    return Path(results) / "setup" / "protocols" / f"{name}.csv"
 
 
 # ! ---- GUI HELPERS ----
@@ -365,8 +390,9 @@ def _protocol_target_path(value: Any) -> Path | None:
 
 
 def _has_configured_protocol_files(merged: dict[str, Any]) -> bool:
-    """Whether every configured protocol file (imaging/injection/pressure-
-    temperature) already exists on disk, regardless of mode.
+    """Whether every configured protocol file (imaging/injection) and the stored
+    pressure-temperature protocol (`protocol_csv`) already exist on disk,
+    regardless of mode.
 
     Protocol paths are arbitrary user-configured locations, not necessarily
     anywhere near <results>/setup, so this checks the actual configured paths
@@ -383,10 +409,13 @@ def _has_configured_protocol_files(merged: dict[str, Any]) -> bool:
             target = _protocol_target_path(value)
             if target is not None:
                 targets.append(target)
-    for key in ("injection", "pressure_temperature"):
-        target = _protocol_target_path(protocols.get(key))
-        if target is not None:
-            targets.append(target)
+    target = _protocol_target_path(protocols.get("injection"))
+    if target is not None:
+        targets.append(target)
+    # The pressure-temperature protocol as stored by the protocol setup
+    results = _results_folder_from_merged_config(merged)
+    if results is not None:
+        targets.append(protocol_csv(results, PRESSURE_TEMPERATURE))
 
     if not targets:
         return False

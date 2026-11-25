@@ -614,19 +614,19 @@ class HeterogeneousColorToMassAnalysis:
         Parameters
         ----------
         date : datetime, optional
-            Date of the image.
+            Date of the image; not needed for a constant protocol.
         protocol : darsia.PressureTemperatureProtocol, optional
             Protocol to use; default is `pressure_temperature_protocol`.
 
         Raises
         ------
         ValueError
-            If there is a protocol, but no date.
+            If the protocol is not constant and there is no date.
         """
         protocol = self.pressure_temperature_protocol if protocol is None else protocol
         if protocol is None:
             return
-        if date is None:
+        if date is None and not protocol.is_constant:
             raise ValueError(
                 "The fluid state follows a pressure and temperature protocol, but the "
                 "image has no date: read it with a loaded experiment "

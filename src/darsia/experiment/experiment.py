@@ -11,6 +11,7 @@ from typing import Optional
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.time_data import TimeWindow
+from darsia.presets.workflows.results_folder import PRESSURE_TEMPERATURE, protocol_csv
 
 
 # TODO rm.
@@ -116,11 +117,19 @@ class ProtocolledExperiment:
             raise ValueError(
                 "Multiple [data].folders require [protocols].imaging to be a per-folder table."
             )
+        # The pressure-temperature protocol as stored by the protocol setup, not the
+        # inputs in [protocols]
+        pressure_temperature = protocol_csv(config.data.results, PRESSURE_TEMPERATURE)
+        if not pressure_temperature.exists():
+            raise FileNotFoundError(
+                f"No pressure-temperature protocol at {pressure_temperature}: run the "
+                "protocol setup (user_interface_preprocessing --protocol)."
+            )
         return cls(
             data=config.data.data,
             imaging_protocol=config.protocols.imaging,
             injection_protocol=config.protocols.injection,
-            pressure_temperature_protocol=config.protocols.pressure_temperature,
+            pressure_temperature_protocol=pressure_temperature,
             blacklist_protocol=config.protocols.blacklist,
         )
 

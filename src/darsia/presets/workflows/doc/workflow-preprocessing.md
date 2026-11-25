@@ -15,7 +15,10 @@ Runs ahead of, and independently from, the main [Setup workflow](./workflow-setu
 - `--show`
 
 ## Purpose
-- Generate imaging/injection/pressure-temperature protocol CSV templates
+- Generate imaging/injection protocol CSV templates
+- Store the pressure/temperature protocol the analyses use in
+  `<results>/setup/protocols/pressure_temperature.csv`, from the constant values in
+  `[protocols]` or from the user's file (input only); always rewritten
 - Generate a depth-measurements CSV from a constant value, if
   `[depth].measurements_mode` is `'constant'`
 - Interactively set up crop correction (`[corrections.curvature]`)

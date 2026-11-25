@@ -130,7 +130,6 @@ def calibration_color_paths_from_context(
     assert config.protocols is not None
     assert config.protocols.imaging is not None
     assert config.protocols.injection is not None
-    assert config.protocols.pressure_temperature is not None
 
     # ! ---- SELECT EMBEDDING AND LABELS ----
 

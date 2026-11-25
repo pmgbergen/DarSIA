@@ -679,25 +679,53 @@ class ThermodynamicState:
 
 
 class PressureTemperatureProtocol:
-    """Pressure/temperature protocol, queried for a :class:`ThermodynamicState`."""
+    """Pressure/temperature protocol, queried for a :class:`ThermodynamicState`.
+
+    A protocol of a single row is constant: it gives the same state for every date,
+    and no date is needed.
+
+    Parameters
+    ----------
+    path : Path | tuple[Path, str]
+        Protocol file (CSV or Excel), or (file, sheet).
+    """
 
     def __init__(self, path: Path | tuple[Path, str]) -> None:
         self.df = self._load_protocol(path)
         """DataFrame containing the protocol."""
 
-    def get_state(self, date: datetime) -> ThermodynamicState:
+    @property
+    def is_constant(self) -> bool:
+        """Whether the state is the same for every date (a single row)."""
+        return len(self.df) == 1
+
+    def get_state(self, date: datetime | None = None) -> ThermodynamicState:
         """Get the pressure and temperature at the given date.
 
         Parameters
         ----------
-        date : datetime
-            Date to get the pressure and temperature for.
+        date : datetime, optional
+            Date to get the pressure and temperature for; not needed for a constant
+            protocol.
 
         Returns
         -------
         ThermodynamicState
             Pressure [bar] and temperature [Celsius] at the given date.
+
+        Raises
+        ------
+        ValueError
+            If the protocol is not constant and no date is given.
         """
+        if self.is_constant:
+            row = self.df.iloc[0]
+            return ThermodynamicState(
+                pressure=row["pressure_bar"], temperature=row["temperature_celsius"]
+            )
+        if date is None:
+            raise ValueError("The pressure/temperature protocol needs a date.")
+
         # Find the two rows surrounding the date
         before = (
             self.df[self.df["datetime"] <= date].iloc[-1]
@@ -741,20 +769,35 @@ class PressureTemperatureProtocol:
             )
             return ThermodynamicState(pressure=pressure, temperature=temperature)
 
-    def get_gradient(self, date: datetime) -> ThermodynamicState:
+    def get_gradient(self, date: datetime | None = None) -> ThermodynamicState:
         """Get the pressure and temperature gradient (upwards) at the given date.
 
         Parameters
         ----------
-        date : datetime
-            Date to get the pressure and temperature gradient for.
+        date : datetime, optional
+            Date to get the pressure and temperature gradient for; not needed for a
+            constant protocol.
 
         Returns
         -------
         ThermodynamicState
             Pressure [bar] and temperature [Celsius] gradient at the given
             date.
+
+        Raises
+        ------
+        ValueError
+            If the protocol is not constant and no date is given.
         """
+        if self.is_constant:
+            row = self.df.iloc[0]
+            return ThermodynamicState(
+                pressure=row["pressure_gradient_bar"],
+                temperature=row["temperature_gradient_celsius"],
+            )
+        if date is None:
+            raise ValueError("The pressure/temperature protocol needs a date.")
+
         # Find the two rows surrounding the date
         before = (
             self.df[self.df["datetime"] <= date].iloc[-1]
