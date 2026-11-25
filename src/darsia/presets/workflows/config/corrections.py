@@ -124,12 +124,12 @@ class CropCorrectionConfig:
         Bottom-right corner as [row, col] in pixels (matrix indexing).
     top_right
         Top-right corner as [row, col] in pixels (matrix indexing).
-    width
-        Crop width (default: 1.0).
-    height
-        Crop height (default: 1.0).
+    width, height
+        Physical size of the cropped region. Set from `[rig]` by the rig setup (the
+        only place for the size); values in the TOML must equal `[rig]` (default:
+        None, i.e. from `[rig]`).
     in_meters
-        Whether width/height are in meters (default: True).
+        Whether width/height are in meters (default: True; set by the rig setup).
     """
 
     top_left: tuple[int, int] | None = field(
@@ -167,21 +167,21 @@ class CropCorrectionConfig:
             "placeholder": "e.g., 110, 5263",
         },
     )
-    width: float = field(
-        default=1.0,
-        metadata={"name": "Width", "help": "Crop width in meters or pixels."},
+    width: float | None = field(
+        default=None,
+        metadata={"hidden": True},
     )
-    height: float = field(
-        default=1.0,
-        metadata={"name": "Height", "help": "Crop height in meters or pixels."},
+    """Width of the cropped region; from `[rig] width` (rig setup)."""
+    height: float | None = field(
+        default=None,
+        metadata={"hidden": True},
     )
+    """Height of the cropped region; from `[rig] height` (rig setup)."""
     in_meters: bool = field(
         default=True,
-        metadata={
-            "name": "Width/height in meters",
-            "help": "If true, width and height are in meters; otherwise pixels.",
-        },
+        metadata={"hidden": True},
     )
+    """Whether width and height are in metres (always, with `[rig]`)."""
 
     @property
     def pts_src(self) -> list[list[int]] | None:
@@ -216,8 +216,9 @@ class CropCorrectionConfig:
         self.bottom_right = make_tuple(corners[2])
         self.top_right = make_tuple(corners[3])
 
-        self.width = float(sec.get("width", self.width))
-        self.height = float(sec.get("height", self.height))
+        # The size comes from [rig]; given values are only checked against it.
+        self.width = float(sec["width"]) if "width" in sec else self.width
+        self.height = float(sec["height"]) if "height" in sec else self.height
         self.in_meters = sec.get("in_meters", self.in_meters)
         if not isinstance(self.in_meters, bool):
             self.in_meters = bool(self.in_meters)
@@ -458,10 +459,12 @@ class CurvatureCorrectionConfig:
                     "bottom_left": stage_config.bottom_left,
                     "bottom_right": stage_config.bottom_right,
                     "top_right": stage_config.top_right,
-                    "width": stage_config.width,
-                    "height": stage_config.height,
                     "in_meters": stage_config.in_meters,
                 }
+                # Size (and aspect ratio of the crop) only when set (from [rig])
+                for key in ("width", "height"):
+                    if getattr(stage_config, key) is not None:
+                        result["crop"][key] = getattr(stage_config, key)
             elif isinstance(stage_config, BulgeCorrectionConfig):
                 result["bulge"] = {
                     "horizontal_bulge": stage_config.horizontal_bulge,

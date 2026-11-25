@@ -534,7 +534,10 @@ upper = 1.0
 
 ## Notes on legacy vs current naming
 - Current rig section is `[rig]`.
-- Curvature settings are part of `[corrections.curvature.*]`.
+- Curvature settings are part of `[corrections.curvature.*]`. The crop section holds
+  only the four corners; the physical size (and the aspect ratio of the cropped image)
+  is `[rig]` width/height. Width/height left in the crop section must equal `[rig]`,
+  otherwise the rig setup stops with an error; `in_meters` is obsolete.
 - Prefer data/ROI registries for reusable definitions.
 
 For practical examples, see:
