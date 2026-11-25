@@ -127,14 +127,9 @@ def test_build_restoration_applies_boolean_porosity_ignore_mask_to_tvd_weight(
     assert captured["method"] == "heterogeneous bregman"
 
 
-def test_build_restoration_unknown_ignore_mask_raises():
-    restoration_config = _config(
-        RestorationStepConfig(method="tvd", tvd_options=TVDConfig(weight=0.1)),
-        ignore=["unknown-mask"],
-    )
-
-    with pytest.raises(ValueError, match="Unknown restoration ignore mask"):
-        _build(restoration_config, _rig())
+def test_unknown_ignore_mask_raises_at_load():
+    with pytest.raises(ValueError, match=r"ignore: unknown \['unknown-mask'\]"):
+        RestorationConfig().load({"method": "tvd", "ignore": ["unknown-mask"]})
 
 
 def test_build_restoration_volume_averaging_with_default_rev_size():

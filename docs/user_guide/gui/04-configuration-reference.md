@@ -114,10 +114,10 @@ options = { rev_size = 0.005 }
 ```
 A step's `method` is `resize` (coarser resolution by area averaging, for all later
 steps and the rest of the analysis), `volume_average` or `tvd`; `ignore` (not set
-here) can exclude `boolean_porosity`, `image_porosity`, or `inner_labels` masks from
-the averaging and denoising steps. `inner_labels` is a band of about 2-3 px on each
-side of a label boundary; the image porosity has its own band (`[image_porosity]
-boundary_band`). `volume_average` (Mask, default `image_porosity`) and the porosity
+here) can exclude `boolean_porosity` or `image_porosity` masks from the averaging and
+denoising steps. `image_porosity` excludes the grains and the band at label boundaries
+(`[image_porosity] boundary_band`); with `[image_porosity] method = "none"` only the
+band. `volume_average` (Mask, default `image_porosity`) and the porosity
 weights and masks need **Setup > Image porosity** to have run; `[image_porosity]
 method` (default `"none"`: no detection; `"color_statistics"`: patch-wise colour
 statistics interpolated smoothly; `"kmeans"`: legacy) sets how the image porosity is

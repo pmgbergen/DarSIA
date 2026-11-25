@@ -68,6 +68,8 @@ class SyntheticExperiment:
     """Gas cap per image (H, W), bool; empty for the baseline."""
     aqueous: list[np.ndarray] = field(default_factory=list)
     """Aqueous halo per image (H, W), bool, without the gas cap."""
+    size: tuple[float, float] = (1.0, 1.0)
+    """Physical size (height, width) of the rig in metres."""
 
 
 def _interfaces(shape: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
@@ -119,6 +121,7 @@ def make_synthetic_experiment(
     seed: int = 0,
     noise: float = 0.01,
     grain_fraction: float = 0.02,
+    crop: bool = True,
 ) -> SyntheticExperiment:
     """Write a synthetic experiment to `folder`.
 
@@ -136,6 +139,9 @@ def make_synthetic_experiment(
         Standard deviation of the Gaussian noise (colours in [0, 1]).
     grain_fraction : float
         Fraction of pixels showing a dark grain.
+    crop : bool
+        Whether the config has a curvature crop of the full image (which sets the
+        physical size); without it, the size comes from `[rig]` alone.
 
     Returns
     -------
@@ -237,6 +243,27 @@ def make_synthetic_experiment(
     # Config.
     images = _toml_path(images_folder)
     last = f"00:{10 * num_images:02d}:00"
+    corrections = (
+        f"""
+[corrections]
+active = ["curvature"]
+
+[corrections.curvature]
+active = ["crop"]
+
+[corrections.curvature.crop]
+top_left = [0, 0]
+bottom_left = [{height - 1}, 0]
+bottom_right = [{height - 1}, {width - 1}]
+top_right = [0, {width - 1}]
+width = {rig_width}
+height = {rig_height}
+in_meters = true
+"""
+        if crop
+        else ""
+    )
+    experiment.size = (rig_height, rig_width)
     experiment.config.write_text(
         f"""
 [data]
@@ -270,22 +297,7 @@ pressure_temperature = "{_toml_path(pressure_temperature)}"
 dim = 2
 width = {rig_width}
 height = {rig_height}
-
-[corrections]
-active = ["curvature"]
-
-[corrections.curvature]
-active = ["crop"]
-
-[corrections.curvature.crop]
-top_left = [0, 0]
-bottom_left = [{height - 1}, 0]
-bottom_right = [{height - 1}, {width - 1}]
-top_right = [0, {width - 1}]
-width = {rig_width}
-height = {rig_height}
-in_meters = true
-
+{corrections}
 [depth]
 measurements = "{_toml_path(depth)}"
 

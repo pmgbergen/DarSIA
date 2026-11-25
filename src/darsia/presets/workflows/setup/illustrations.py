@@ -8,6 +8,32 @@ import numpy as np
 
 ANNOTATION_GRID_SIZE = 3
 NUM_COLORBAR_TICKS = 7
+DISPLAY_WIDTH = 2000
+"""Approximate width in pixels of the data drawn in an illustration."""
+
+
+def display_step(shape: tuple[int, ...]) -> int:
+    """Step for drawing every n-th pixel, about `DISPLAY_WIDTH` pixels wide.
+
+    Drawing a full-resolution image (tens of megapixels) makes matplotlib resample the
+    whole array, which costs seconds and gigabytes; the figures do not show more.
+    """
+    return max(1, int(shape[1]) // DISPLAY_WIDTH)
+
+
+def save_photo_illustration(array: np.ndarray, path: Path, title: str) -> None:
+    """Store a JPG illustration of a photo (colors clipped to [0, 1] if float)."""
+    data = np.asarray(array)
+    if np.issubdtype(data.dtype, np.floating):
+        data = np.clip(data, 0, 1)
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.imshow(data)
+    ax.set_title(title)
+    ax.axis("off")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout()
+    fig.savefig(path, format="jpg", dpi=200)
+    plt.close(fig)
 
 
 def _to_2d(array: np.ndarray) -> np.ndarray:

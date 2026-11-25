@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, get_args
 
 import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.restoration import (
     RestorationConfig,
+    RestorationIgnoreMask,
     RestorationStepConfig,
     TVDConfig,
     VolumeAveragingConfig,
@@ -20,7 +21,6 @@ if TYPE_CHECKING:
     from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
-
 
 class RestorationSteps(darsia.CombinedModel):
     """Restoration steps applied in order, and the grid of their result."""
@@ -56,8 +56,8 @@ class RestorationMaskFactory:
         self._ignore_mask_builders = {
             "image_porosity": self._image_porosity_ignore_mask,
             "boolean_porosity": self._boolean_porosity_ignore_mask,
-            "inner_labels": self._inner_labels_ignore_mask,
         }
+        assert set(self._ignore_mask_builders) == set(get_args(RestorationIgnoreMask))
 
     def _image_porosity_ignore_mask(self) -> np.ndarray:
         return _required(self.image_porosity).map_on(self.grid).img <= 0
@@ -66,21 +66,13 @@ class RestorationMaskFactory:
         boolean_porosity = _required(self.image_porosity).boolean_on(self.grid)
         return ~boolean_porosity.img.astype(bool)
 
-    def _inner_labels_ignore_mask(self) -> np.ndarray:
-        inner_labels = darsia.transfer(self.fluidflower.inner_labels, self.grid)
-        return ~inner_labels.img.astype(bool)
-
     def build_ignore_mask(self, mask_names: list[str]) -> np.ndarray | None:
         if len(mask_names) == 0:
             return None
 
         ignore_mask: np.ndarray | None = None
         for name in mask_names:
-            if name not in self._ignore_mask_builders:
-                raise ValueError(
-                    f"Unknown restoration ignore mask '{name}'. "
-                    f"Valid values are: {list(self._ignore_mask_builders.keys())}."
-                )
+            # Names are checked when the config is loaded (`RestorationIgnoreMask`).
             current_ignore_mask = self._ignore_mask_builders[name]()
             ignore_mask = (
                 current_ignore_mask

@@ -114,6 +114,7 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
         image_porosity_config=config.image_porosity,
         log=config.rig.path / "figures",
         show_plot=show,
+        dimensions=(config.rig.height, config.rig.width),
     )
     rig.save(config.rig.path)
 

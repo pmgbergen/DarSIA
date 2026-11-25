@@ -48,12 +48,17 @@ def _iou(a: np.ndarray, b: np.ndarray) -> float:
     return 1.0 if union == 0 else np.count_nonzero(a & b) / union
 
 
-@pytest.fixture(scope="module")
-def experiment(tmp_path_factory) -> SyntheticExperiment:
-    """The synthetic experiment (files and ground truth)."""
+@pytest.fixture(scope="module", params=["crop", "no_crop"])
+def experiment(request, tmp_path_factory) -> SyntheticExperiment:
+    """The synthetic experiment (files and ground truth), with a curvature crop of the
+    full image, or without (the physical size then comes from `[rig]` alone)."""
     keep = os.environ.get(KEEP)
-    folder = Path(keep) if keep else tmp_path_factory.mktemp("synthetic")
-    return make_synthetic_experiment(folder)
+    folder = (
+        Path(keep) / request.param
+        if keep
+        else tmp_path_factory.mktemp(f"synthetic_{request.param}")
+    )
+    return make_synthetic_experiment(folder, crop=request.param == "crop")
 
 
 @pytest.fixture(scope="module")
@@ -125,6 +130,8 @@ def test_rig_round_trip(experiment, results):
     rig = Rig.load(results / "setup" / "rig")
     shape = rig.baseline.img.shape[:2]
     assert shape == experiment.layers.shape
+    # The physical size of `[rig]`, with or without a crop correction
+    assert rig.baseline.dimensions == pytest.approx(list(experiment.size))
     for name in ("labels", "facies", "global"):
         regions = rig.regions(name)
         assert regions.img.shape == shape
@@ -160,6 +167,18 @@ def test_thresholding_finds_the_gas_cap(experiment, analysed):
             analysed / "thresholding" / "npz" / "gas" / f"image_{k:03d}.npz"
         ).img.astype(bool)
         assert _iou(detected, gas) > 0.8, f"image {k}"
+
+
+def test_gas_extent_in_metres(experiment, analysed):
+    """The horizontal extent of the gas cap is reported in metres of the rig."""
+    extent = pd.read_csv(analysed / "sparse_data" / "thresholding_extent.csv")
+    pixel_width = experiment.size[1] / experiment.layers.shape[1]
+    for k, gas in enumerate(experiment.gas):
+        columns = np.flatnonzero(gas.any(axis=0))
+        painted = 0.0 if len(columns) == 0 else len(columns) * pixel_width
+        assert extent["gas_extent_x"][k] == pytest.approx(
+            painted, abs=2 * pixel_width
+        ), f"image {k}"
 
 
 def test_mass_grows_with_the_injection(experiment, analysed):

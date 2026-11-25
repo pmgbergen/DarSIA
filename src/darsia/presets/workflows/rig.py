@@ -11,7 +11,6 @@ from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.ndimage
 import skimage
 
 import darsia
@@ -23,6 +22,12 @@ from darsia.presets.workflows.config.corrections import (
 from darsia.presets.workflows.config.facies import RegionName
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.facies_props import FaciesProps
+from darsia.presets.workflows.setup.illustrations import (
+    display_step,
+    save_discrete_map_illustration,
+    save_photo_illustration,
+    save_scalar_map_illustration,
+)
 
 if TYPE_CHECKING:
     from darsia.presets.workflows.config.roi_registry import RoiRegistry
@@ -184,12 +189,21 @@ class Rig:
         roi_registry: "RoiRegistry | None" = None,
         log: Path | None = None,
         show_plot: bool = False,
+        dimensions: tuple[float, float] | None = None,
     ):
         # Cache experiment for protocol-based datetime lookup
         self.experiment = experiment
 
+        # Physical size (height, width) of the rig (`[rig]`); a crop correction sets
+        # its own size after reading.
+        size = (
+            {}
+            if dimensions is None
+            else {"height": dimensions[0], "width": dimensions[1]}
+        )
+
         # Setup (based on baseline image without any corrections applied)
-        pre_baseline = darsia.imread(baseline_path)
+        pre_baseline = darsia.imread(baseline_path, **size)
 
         if show_plot:
             # Allows to visually check the baseline image before any corrections
@@ -206,22 +220,22 @@ class Rig:
 
         # Define shape-corrected baseline.
         self.shape_corrected_baseline = darsia.imread(
-            baseline_path, transformations=self.shape_corrections
+            baseline_path, transformations=self.shape_corrections, **size
         )
         self.baseline = self.shape_corrected_baseline.copy()
 
-        # Plot corrected baseline - show and/or log.
-        plt.figure("Corrected baseline")
-        plt.imshow(self.baseline.img)
-        plt.title("Corrected baseline")
-        if show_plot:
-            plt.show()
+        # Plot corrected baseline - show and/or log (from every n-th pixel).
+        step = display_step(self.baseline.img.shape)
+        reduced = self.baseline.img[::step, ::step]
         if log:
-            plt.savefig(
-                log / "corrected_baseline.png",
-                dpi=500,
+            save_photo_illustration(
+                reduced, log / "corrected_baseline.jpg", "Corrected baseline"
             )
-        plt.close()
+        if show_plot:
+            plt.figure("Corrected baseline")
+            plt.imshow(reduced)
+            plt.title("Corrected baseline")
+            plt.show()
 
         logger.info("Reading setup completed.")
 
@@ -565,13 +579,14 @@ class Rig:
 
         # Log results
         if log:
-            # Plot depth map
-            plt.figure()
-            plt.imshow(self.depth.img)
-            plt.colorbar()
-            plt.title("Depth map")
-            plt.savefig(log / "depth_map.png", dpi=500)
-            plt.close()
+            # Plot depth map (from every n-th pixel)
+            step = display_step(self.depth.img.shape)
+            save_scalar_map_illustration(
+                self.depth.img[::step, ::step],
+                Path(log) / "depth_map.jpg",
+                title="Depth map",
+                colorbar_label="Depth",
+            )
 
         logging.info("Depth map setup completed.")
 
@@ -608,38 +623,16 @@ class Rig:
         self.labels = self.read_field(path, on_photo=apply_corrections)
 
         if log:
-            # Plot labels
-            plt.figure()
-            plt.imshow(self.labels.img)
-            plt.colorbar()
-            plt.title("Labels")
-            plt.savefig(Path(log) / "labels.png", dpi=500)
-            plt.close()
+            # Plot labels (from every n-th pixel)
+            step = display_step(self.labels.img.shape)
+            save_discrete_map_illustration(
+                self.labels.img[::step, ::step],
+                Path(log) / "labels.jpg",
+                title="Labels",
+                colorbar_label="Label id",
+            )
 
         logger.info("Labels setup completed.")
-
-    def setup_inner_labels(self, log: Path | None = None) -> None:
-        """Define boolean mask which excludes the label boundaries."""
-        # Identify the boundary pixels.
-        boundary_mask = skimage.segmentation.find_boundaries(
-            self.labels.img, mode="outer", connectivity=1
-        )
-
-        # Extend the boundary pixels by a certain number of pixels (e.g., 2)
-        # to create a buffer zone.
-        # TODO: Allow for configuration of the buffer size and structuring element.
-        buffer_zone = scipy.ndimage.binary_dilation(
-            boundary_mask, structure=skimage.morphology.disk(2)
-        )
-
-        # Create a boolean mask where the inner labels (excluding the boundary)
-        # are True and the rest is False.
-        inner_labels = ~buffer_zone
-
-        self.inner_labels = darsia.Image(
-            inner_labels.astype(bool), **self.labels.metadata()
-        )
-        """Boolean mask for inner labels, excluding boundaries."""
 
     def setup_facies(
         self,
@@ -666,20 +659,21 @@ class Rig:
         # Drawn on the uncorrected baseline photo, or aligned with the corrected one
         self.facies = self.read_field(path, on_photo=apply_corrections)
 
+        step = display_step(self.facies.img.shape)
         if log:
-            # Plot facies
-            plt.figure()
-            plt.imshow(self.facies.img)
-            plt.colorbar()
-            plt.title("Facies")
-            plt.savefig(log / "facies.png", dpi=500)
-            plt.close()
+            # Plot facies (from every n-th pixel)
+            save_discrete_map_illustration(
+                self.facies.img[::step, ::step],
+                Path(log) / "facies.jpg",
+                title="Facies",
+                colorbar_label="Facies id",
+            )
 
         if show_plot:
             # Display facies on top of baseline for visual inspection.
             plt.figure()
-            plt.imshow(self.baseline.img)
-            plt.imshow(self.facies.img, alpha=0.5)
+            plt.imshow(self.baseline.img[::step, ::step])
+            plt.imshow(self.facies.img[::step, ::step], alpha=0.5)
             plt.title("Facies overlay on baseline")
             plt.show()
 
@@ -881,8 +875,13 @@ class Rig:
         # ref_colorchecker_path: Path,
         log: Path | None = None,
         show_plot: bool = False,
+        dimensions: tuple[float, float] | None = None,
     ) -> None:
-        """Fast setup."""
+        """Fast setup.
+
+        `dimensions` is the physical size (height, width) of the rig (`[rig]`); without
+        it, and without a crop correction setting the size, images get the size 1 x 1.
+        """
         # Create log directory if it doesn't exist
         if log:
             assert isinstance(log, Path), "Log path must be a Path object."
@@ -902,6 +901,7 @@ class Rig:
             roi_registry=roi_registry,
             log=log,
             show_plot=show_plot,
+            dimensions=dimensions,
         )
 
         # Fetch depth map
@@ -914,11 +914,6 @@ class Rig:
         self.setup_labels(
             path=labels_path,
             apply_corrections=True,
-            log=log,
-        )
-
-        # Setup inner labels
-        self.setup_inner_labels(
             log=log,
         )
 
@@ -1124,10 +1119,6 @@ class Rig:
         with darsia.timed("labels"):
             rig.setup_labels(path=folder / "labels.npz", apply_corrections=False)
 
-        # Inner labels (only for restorations ignoring label boundaries): computed on
-        # first use
-        rig._defer(("inner_labels",), rig.setup_inner_labels)
-
         # Load facies information - corrections not needed assuming facies are aligned with
         with darsia.timed("facies"):
             rig.setup_facies(path=folder / "facies.npz", apply_corrections=False)
@@ -1197,12 +1188,19 @@ class Rig:
             baseline = getattr(self, "baseline", None)
             reference_date = None if baseline is None else baseline.date
 
+        # Physical size of the baseline (from `[rig]` or a crop correction, which sets
+        # it again after reading)
+        size = {}
+        baseline = getattr(self, "baseline", None)
+        if baseline is not None:
+            size = {"height": baseline.dimensions[0], "width": baseline.dimensions[1]}
         return darsia.imread(
             source,
             transformations=self.corrections,
             date=date,
             reference_date=reference_date,
             native=native,
+            **size,
             **({} if isinstance(source, bytes) else {"name": source.name}),
         )
 
