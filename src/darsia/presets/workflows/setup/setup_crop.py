@@ -24,10 +24,11 @@ logging.basicConfig(level=logging.INFO)
 
 
 def _crop_section(crop_config: CropCorrectionConfig) -> dict:
-    """Crop section of the TOML config, in plain Python types.
+    """Crop section of the TOML config, in plain Python types: the four corners.
 
     The toml library writes numpy numbers as the text of their repr (e.g.
-    "np.int64(743)"), so the corners are stored as lists of int.
+    "np.int64(743)"), so the corners are stored as lists of int. The size of the
+    cropped region is not written: it is `[rig]` width/height (set by the rig setup).
 
     """
 
@@ -39,9 +40,6 @@ def _crop_section(crop_config: CropCorrectionConfig) -> dict:
         "bottom_left": corner(crop_config.bottom_left),
         "bottom_right": corner(crop_config.bottom_right),
         "top_right": corner(crop_config.top_right),
-        "width": float(crop_config.width),
-        "height": float(crop_config.height),
-        "in_meters": bool(crop_config.in_meters),
     }
 
 
@@ -50,9 +48,9 @@ def setup_crop_correction(path: Path | list[Path], show: bool = False) -> None:
     """Setup and store crop correction configuration interactively.
 
     Uses CropAssistant to let the user click 4 corner points on the baseline
-    image, then stores the resulting crop configuration in the run's TOML file.
-    Width and height default to the rig configuration; if not available there,
-    the user is prompted for them interactively.
+    image, then stores the four corners in the run's TOML file. The size of the
+    cropped region is `[rig]` width/height (shown in the assistant, not stored in the
+    crop section).
 
     Parameters
     ----------

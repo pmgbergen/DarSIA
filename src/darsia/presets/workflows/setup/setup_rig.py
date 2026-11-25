@@ -12,8 +12,12 @@ import time
 from pathlib import Path
 from typing import Type
 
+import numpy as np
+
 import darsia
+from darsia.presets.workflows.config.corrections import CorrectionsConfig
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.rig import RigConfig
 from darsia.presets.workflows.config.sections import (
     list_required_sections,
     required_sections,
@@ -23,6 +27,35 @@ from darsia.presets.workflows.rig import Rig
 # Set logging level
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+
+
+def _crop_size_from_rig(corrections: CorrectionsConfig | None, rig: RigConfig) -> None:
+    """Give the crop correction the size of the rig: `[rig]` is the only place for it.
+
+    The crop sets the physical size of the corrected images and, by its aspect ratio,
+    their pixel shape. Width and height still written in the crop section must equal
+    `[rig]`.
+
+    Raises
+    ------
+    ValueError
+        If the crop section gives a width or height other than `[rig]`.
+
+    """
+    curvature = getattr(corrections, "curvature", None)
+    crop = getattr(curvature, "crop", None)
+    if crop is None:
+        return
+    for key in ("width", "height"):
+        given, size = getattr(crop, key), getattr(rig, key)
+        if given is not None and not np.isclose(given, size):
+            raise ValueError(
+                f"[corrections.curvature.crop] {key} = {given} differs from [rig] "
+                f"{key} = {size}. The size of the rig is set in [rig] only; remove "
+                "width and height from the crop section."
+            )
+        setattr(crop, key, size)
+    crop.in_meters = True
 
 
 @required_sections(
@@ -66,6 +99,10 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
     assert config.protocols.imaging is not None
     assert config.protocols.injection is not None
     assert config.protocols.pressure_temperature is not None
+    assert config.rig is not None
+
+    # The crop correction takes the size of the rig ([rig] is the only place for it)
+    _crop_size_from_rig(config.corrections, config.rig)
 
     # Load imaging protocol
     experiment = darsia.ProtocolledExperiment(

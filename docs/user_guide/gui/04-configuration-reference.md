@@ -77,10 +77,10 @@ top_left = ["2", "357"]
 bottom_left = ["4432", "341"]
 bottom_right = ["4400", "7694"]
 top_right = ["18", "7668"]
-width = 0.92
-height = 0.55
-in_meters = true
 ```
+The physical size of the cropped region is `[rig]` width/height, the only place for
+it. Older configs may still have `width`/`height` in the crop section; they must equal
+`[rig]` (otherwise the rig setup stops with an error) and can be removed.
 
 **`[corrections.patchwise_illumination]`** — flattens lighting using one or
 more baseline images, divided into an `nw`×`nw` patch grid:

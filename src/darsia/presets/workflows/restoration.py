@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 class RestorationSteps(darsia.CombinedModel):
     """Restoration steps applied in order, and the grid of their result."""
 
