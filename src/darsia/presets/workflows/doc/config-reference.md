@@ -182,12 +182,11 @@ options = { weight = 0.1, method = "chambolle" }
 - `ignore` (optional): list of named ignore masks applied in additive mode.
   - Currently supported:
     - `"boolean_porosity"` (ignore regions outside the boolean porosity mask)
-    - `"image_porosity"` (ignore regions with non-positive image porosity)
-    - `"inner_labels"` (ignore band around labels boundaries)
-  - `"inner_labels"` is a band of about 2-3 px on each side of a label boundary. The
-    image porosity has its own, configurable band (`[image_porosity] boundary_band`,
-    default 5 px on each side), which `volume_average` and the `image_porosity` weight
-    and mask see.
+    - `"image_porosity"` (ignore regions with non-positive image porosity: grains
+      and the band at label boundaries, `[image_porosity] boundary_band`, default 5 px
+      on each side; with `[image_porosity] method = "none"` only the band)
+  - Other names are an error at load. The band at label boundaries has one setting,
+    `[image_porosity] boundary_band`.
   - `"image_porosity"`, `"boolean_porosity"` (also as `volume_average` mask) need the
     setup step "Image porosity" to have run (see the image porosity section).
 - **Resolution:** after a resize step, all later steps and the rest of the analysis

@@ -125,6 +125,7 @@ def save_image_porosity(
 
     """
     from darsia.presets.workflows.setup.illustrations import (
+        display_step,
         save_scalar_map_illustration,
     )
 
@@ -154,7 +155,7 @@ def save_image_porosity(
     figures = folder / "figures"
     figures.mkdir(exist_ok=True)
     # Figures from every n-th pixel (display only; about 2000 pixels wide)
-    step = max(1, porosity.img.shape[1] // 2000)
+    step = display_step(porosity.img.shape)
     save_scalar_map_illustration(
         porosity.img[::step, ::step],
         figures / "image_porosity.jpg",
@@ -198,15 +199,31 @@ class ImagePorosity:
         """The stored image porosity (read on first use, not to be modified)."""
         if self._map is None:
             if not self.file.exists():
-                raise FileNotFoundError(
-                    f"No image porosity (method {self.config.method!r}) at "
-                    f"{self.file}. Run the setup step "
-                    "'Image porosity' (GUI: Setup > Image porosity; CLI: "
-                    "user_interface_setup --image-porosity)."
-                )
+                raise FileNotFoundError(self._missing_message())
             with darsia.timed("load image porosity"):
                 self._map = darsia.imread(self.file)
         return self._map
+
+    def _missing_message(self) -> str:
+        """What is missing and the two ways out: set it up, or switch the method to
+        one that has been set up."""
+        available = sorted(
+            path.parent.name
+            for path in self.folder.parent.glob(f"*/{IMAGE_POROSITY_FILE}")
+        )
+        message = (
+            "This step needs the image porosity of [image_porosity] method = "
+            f"{self.config.method!r}, but it has not been set up (expected: "
+            f"{self.file}). {'Either run' if available else 'Run'} the setup step "
+            "'Image porosity' with this config (GUI: Setup > Image porosity; CLI: "
+            "user_interface_setup --image-porosity)"
+        )
+        if available:
+            message += (
+                ", or set [image_porosity] method to one that has been set up: "
+                + ", ".join(repr(name) for name in available)
+            )
+        return message + "."
 
     def map_on(self, grid: darsia.Image) -> darsia.Image:
         """Image porosity on the grid of `grid` (the stored one on its own grid)."""

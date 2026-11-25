@@ -11,6 +11,10 @@ from .utils import _get_key, _get_section_from_toml, load_choice
 VolumeAveragingMask = Literal["none", "image_porosity", "boolean_porosity"]
 """Weighting masks: none, the image porosity, or the boolean porosity."""
 
+RestorationIgnoreMask = Literal["image_porosity", "boolean_porosity"]
+"""Ignore masks of the restoration (`[restoration] ignore`): pixels with image porosity
+0, or outside the boolean porosity."""
+
 
 @dataclass
 class VolumeAveragingConfig:
@@ -318,7 +322,9 @@ class RestorationConfig:
             "name": "Ignore regions",
             "help": (
                 "Regions excluded from all averaging and denoising steps: "
-                "'image_porosity', 'boolean_porosity', 'inner_labels'."
+                "'image_porosity' (image porosity 0: grains and the band at label "
+                "boundaries; only the band with [image_porosity] method 'none'), "
+                "'boolean_porosity' (image porosity at most its boolean threshold)."
             ),
             "placeholder": "e.g., boolean_porosity",
         },
@@ -337,6 +343,12 @@ class RestorationConfig:
         self.ignore = _get_key(sec, "ignore", default=[], required=False, type_=list)
         if not all(isinstance(entry, str) for entry in self.ignore):
             raise ValueError("restoration.ignore must be a list of strings.")
+        allowed = get_args(RestorationIgnoreMask)
+        unknown = [entry for entry in self.ignore if entry not in allowed]
+        if unknown:
+            raise ValueError(
+                f"[restoration] ignore: unknown {unknown}; allowed: {list(allowed)}."
+            )
 
         # Steps, or a single method (read as one step)
         if "steps" in sec:
