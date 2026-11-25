@@ -157,7 +157,9 @@ depth map from them.
 [protocols]
 imaging_mode = "exif"                 # or "ctime"
 injection = "/path/to/experiment/protocols/injection_protocol.csv"
-pressure_temperature = "/path/to/experiment/protocols/pressure_temperature_protocol.csv"
+pressure_temperature_mode = "constant"  # or "Load from CSV" with pressure_temperature = "<file>.csv"
+pressure_bar = 1.013
+temperature_celsius = 20.0
 
 [protocols.imaging]
 "/path/to/experiment/images" = "/path/to/experiment/protocols/imaging_protocol.csv"
@@ -168,7 +170,18 @@ folders, a value can also be `["<file>.xlsx", "Sheet1"]`).
 
 The pressure-temperature protocol is used for **every** fluid: densities (and, for
 CO₂, solubility) depend on pressure and temperature, including their gradients over
-the rig height (hydrostatic pressure, temperature gradient).
+the rig height (hydrostatic pressure, temperature gradient). In the mode `"constant"`
+(the default), `pressure_bar` and `temperature_celsius` are the state of the whole
+run, without gradients; no file of yours is needed. In the mode `"Load from CSV"`,
+`pressure_temperature` is a CSV (or `["<file>.xlsx", "Sheet1"]`) with the columns
+`datetime`, `pressure_bar`, `temperature_celsius`, `pressure_gradient_bar` and
+`temperature_gradient_celsius`, interpolated in time.
+
+These are inputs only. The protocol setup (`user_interface_preprocessing --protocol`)
+stores the protocol in `<results>/setup/protocols/pressure_temperature.csv`, and the
+analyses read only that file; run the protocol setup again after changing the inputs.
+A protocol of a single row (as in the mode `"constant"`) gives the same state for
+every image, so images need no date for it.
 
 ## Color embedding registry
 

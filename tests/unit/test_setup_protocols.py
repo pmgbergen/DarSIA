@@ -43,7 +43,7 @@ imaging_mode = "ctime"
 """
 
 
-def test_setup_imaging_protocol_generates_all_csv_templates(tmp_path: Path) -> None:
+def test_setup_imaging_protocol_generates_the_csv_templates(tmp_path: Path) -> None:
     now = 1_700_000_000
     image_1 = tmp_path / "images" / "img_0001.JPG"
     image_2 = tmp_path / "images" / "img_0002.JPG"
@@ -60,7 +60,10 @@ def test_setup_imaging_protocol_generates_all_csv_templates(tmp_path: Path) -> N
     pressure_path = tmp_path / "protocols" / "pressure_temperature_protocol.csv"
     assert imaging_path.exists()
     assert injection_path.exists()
-    assert pressure_path.exists()
+    # A constant pressure and temperature is stored with the results, not at the
+    # path of the user's file
+    assert not pressure_path.exists()
+    assert (tmp_path / "results" / "setup" / "protocols").is_dir()
 
     imaging_df = pd.read_csv(imaging_path)
     assert set(imaging_df.columns) == {"path", "datetime"}
@@ -76,17 +79,6 @@ def test_setup_imaging_protocol_generates_all_csv_templates(tmp_path: Path) -> N
         "rate_kg/s",
     }
     assert injection_df["rate_kg/s"].iloc[0] == 0.0
-
-    pressure_df = pd.read_csv(pressure_path)
-    assert set(pressure_df.columns) == {
-        "datetime",
-        "pressure_bar",
-        "temperature_celsius",
-        "pressure_gradient_bar",
-        "temperature_gradient_celsius",
-    }
-    assert pressure_df["pressure_bar"].iloc[0] == 1.013
-    assert pressure_df["temperature_celsius"].iloc[0] == 20.0
 
 
 def test_setup_imaging_protocol_requires_force_for_existing_files(
@@ -116,7 +108,7 @@ def test_preview_protocol_setup_conflicts_lists_existing_targets(
     setup_imaging_protocol(config_path, force=False)
     conflicts = preview_protocol_setup_conflicts(config_path)
 
-    assert len(conflicts) == 3
+    assert len(conflicts) == 2
     assert all(path.exists() for path in conflicts)
 
 

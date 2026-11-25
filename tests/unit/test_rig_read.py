@@ -130,5 +130,7 @@ def test_fluid_state_needs_the_date_of_the_image() -> None:
     update_state = HeterogeneousColorToMassAnalysis.update_state
     # Without a pressure and temperature protocol, nothing to do
     update_state(SimpleNamespace(pressure_temperature_protocol=None), None)
+    # A protocol that changes over time needs the date
+    protocol = SimpleNamespace(is_constant=False)
     with pytest.raises(ValueError, match="no date"):
-        update_state(SimpleNamespace(pressure_temperature_protocol=object()), None)
+        update_state(SimpleNamespace(pressure_temperature_protocol=protocol), None)

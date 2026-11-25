@@ -47,7 +47,9 @@ use_cache = false
 [protocols]
 imaging_mode = "exif"
 injection = "/path/to/experiment/protocols/injection_protocol.csv"
-pressure_temperature = "/path/to/experiment/protocols/pressure_temperature_protocol.csv"
+pressure_temperature_mode = "constant"  # or "Load from CSV" with pressure_temperature = "<file>.csv"
+pressure_bar = 1.013
+temperature_celsius = 20.0
 
 [protocols.imaging]
 "/path/to/experiment/images" = "/path/to/experiment/protocols/imaging_protocol.csv"
